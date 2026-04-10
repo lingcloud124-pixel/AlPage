@@ -1,0 +1,28 @@
+{
+  "name": "端午节",
+  "nameEn": "dragon-boat",
+  "description": "端午节主题，青绿色系，传统清新，适合端午节文化氛围",
+  "colors": {
+    "primary": "#2E7D32",
+    "primaryHover": "#4CAF50",
+    "primaryLight": "#A5D6A7",
+    "primaryDark": "#1B5E20",
+    "primaryOpacity10": "#E8F5E9",
+    "primaryOpacity20": "#C8E6C9",
+    "primaryOpacity30": "#A5D6A7",
+    "sidebarBg": "#F1F8E9",
+    "contentBg": "#FAFFF5",
+    "cardBg": "#E8F5E9",
+    "textOnPrimary": "#FFFFFF",
+    "linkText": "#2E7D32",
+    "linkTextHover": "#4CAF50"
+  },
+  "gradient": {
+    "start": "#2E7D32",
+    "end": "#4CAF50"
+  },
+  "backgroundImage": {
+    "prompt": "端午节氛围背景图，青绿色调，龙舟竞赛，粽子，艾草，清新传统风格，纯背景无界面元素，1920x1080尺寸",
+    "style": "传统清新，水上竞赛"
+  }
+}

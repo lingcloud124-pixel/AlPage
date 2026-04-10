@@ -1,0 +1,11 @@
+$primary-color: #3498db;
+$secondary-color: #2ecc71;
+$font-size-base: 16px;
+
+@mixin button-style($bg-color) {
+  background-color: $bg-color;
+  border-radius: 4px;
+  padding: 10px 20px;
+  color: white;
+  font-size: $font-size-base;
+}

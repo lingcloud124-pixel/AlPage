@@ -1,0 +1,10 @@
+.simple-style {
+  color: #333;
+  background: #fff;
+
+  .nested {
+    padding: 10px;
+  }
+}
+
+$another-var: #ff5722;

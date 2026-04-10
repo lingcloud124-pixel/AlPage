@@ -1,0 +1,17 @@
+{
+  "name": "高考",
+  "nameEn": "gaokao",
+  "primary": "#C53030",
+  "primaryLight": "#FC8181",
+  "primaryHover": "#E53E3E",
+  "accent": "#F6AD55",
+  "background": "#FFF5F5",
+  "text": "#742A2A",
+  "sidebarBg": "#FED7D7",
+  "contentBg": "#FFFFFF",
+  "backgroundImage": {
+    "prompt": "A dramatic sunrise over a Chinese examination hall, golden sunlight streaming through windows illuminating rows of empty desks, scattered exam papers catching the light, sense of determination and hope, warm red and golden tones, cinematic lighting, photorealistic style, 16:9 aspect ratio, no text or UI elements",
+    "aspect_ratio": "16:9",
+    "size": "1920x1080"
+  }
+}

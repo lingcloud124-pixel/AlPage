@@ -1,0 +1,37 @@
+{
+  "name": "西瓜丰收了",
+  "nameEn": "watermelon-harvest",
+  "templateType": "light-ui",
+  "description": "西瓜丰收主题，清新可爱的卡通西瓜元素，适合夏季主题",
+  "colors": {
+    "primary": "#E53935",
+    "primaryHover": "#FF5252",
+    "alterColor": "#A61B1B",
+    "alterColorHoverOn": "#FF8A8A",
+    "primaryOpacity10": "#FFEBEE",
+    "primaryOpacity20": "#FFCDD2",
+    "primaryOpacity30": "#EF9A9A",
+    "primaryLight": "#FFCDD2",
+    "primaryDark": "#A61B1B",
+    "sidebarBg": "#F1F8E9",
+    "contentBg": "#FCFFF5",
+    "cardBg": "#C8E6C9",
+    "textOnPrimary": "#FFFFFF",
+    "linkText": "#D32F2F",
+    "linkTextHover": "#E53935"
+  },
+  "gradient": {
+    "start": "#E53935",
+    "end": "#FF9800"
+  },
+  "backgroundImage": {
+    "prompt": "Cute cartoon watermelon harvest scene, lush green watermelon vines with ripe juicy red watermelons, cheerful summer farm atmosphere, playful cartoon style, fresh and vibrant colors, simple clean background, no UI elements, 1920x1080",
+    "style": "卡通可爱，西瓜丰收，绿色藤蔓，夏季农场，明亮清新"
+  },
+  "hueCalculation": {
+    "primary": 4,
+    "primaryHover": 357,
+    "alterColor": 4,
+    "alterColorHoverOn": 357
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "一个年轻人登顶泰山",
+  "nameEn": "mount-tai-summit",
+  "description": "泰山日出金色风格，云雾缭绕清新感，朝气蓬勃",
+  "colors": {
+    "primary": "#E68A2E",
+    "primaryHover": "#F7C285",
+    "primaryLight": "#FFDDB3",
+    "primaryDark": "#C06010",
+    "primaryOpacity10": "#FDF3EB",
+    "primaryOpacity20": "#FBE8D8",
+    "primaryOpacity30": "#F8DCC4",
+    "alterColor": "#C06010",
+    "alterColorHoverOn": "#E8913A",
+    "sidebarBg": "#FDF3EB",
+    "contentBg": "#FFFFFF",
+    "cardBg": "#FBE8D8",
+    "textOnPrimary": "#333333",
+    "linkText": "#C06010",
+    "linkTextHover": "#E68A2E"
+  },
+  "gradient": {
+    "start": "#E68A2E",
+    "end": "#F7C285"
+  },
+  "backgroundImage": {
+    "prompt": "Photorealistic scene of a young person standing at the summit of Mount Taishan (South Gate to Heaven), facing a magnificent sunrise bursting with golden light, surrounded by swirling clouds and mist. The sky transitions from soft pink and orange to bright blue. The atmosphere is fresh, grand, and inspiring. No UI elements, pure scenic background, 1920x1080",
+    "style": "泰山日出金色，云雾缭绕，大气清新"
+  },
+  "colorSource": "从背景图 #F0C090 (H=30°) 提取计算，符合 light-ui-color-rules.md 规范"
+}

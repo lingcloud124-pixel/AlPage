@@ -1,0 +1,28 @@
+{
+  "name": "夏天凉爽",
+  "nameEn": "summer-cool",
+  "description": "清凉海洋风格，清新可爱的海边卡通元素，适合夏季主题",
+  "colors": {
+    "primary": "#00B4D8",
+    "primaryHover": "#0096C7",
+    "primaryLight": "#90E0EF",
+    "primaryDark": "#0077B6",
+    "primaryOpacity10": "#E0F7FA",
+    "primaryOpacity20": "#B2EBF2",
+    "primaryOpacity30": "#80DEEA",
+    "sidebarBg": "#E0F7FA",
+    "contentBg": "#F0FDFF",
+    "cardBg": "#B2EBF2",
+    "textOnPrimary": "#FFFFFF",
+    "linkText": "#0077B6",
+    "linkTextHover": "#00B4D8"
+  },
+  "gradient": {
+    "start": "#00B4D8",
+    "end": "#0096C7"
+  },
+  "backgroundImage": {
+    "prompt": "Cute cartoon ocean beach scene, light blue sea with gentle waves, cute seashells and starfish on sandy beach, cartoon sea gulls flying, sunny summer day, playful and fresh style, simple clean background, no UI elements, 1920x1080",
+    "style": "卡通可爱，海洋沙滩，阳光夏日，清新干净"
+  }
+}

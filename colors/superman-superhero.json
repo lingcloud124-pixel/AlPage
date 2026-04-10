@@ -1,0 +1,31 @@
+{
+  "name": "超级英雄超人",
+  "nameEn": "superman-superhero",
+  "templateType": "light-ui",
+  "description": "基于背景图实际主色调（暖橙赤褐 H16°）计算，英雄力量感氛围",
+  "colors": {
+    "primary": "#BF613F",
+    "primaryHover": "#D29078",
+    "alterColor": "#734B3D",
+    "alterColorHoverOn": "#E5BFB1",
+    "primaryOpacity10": "#F8EFEB",
+    "primaryOpacity20": "#F2DFD8",
+    "primaryOpacity30": "#EBCFC5",
+    "primaryLight": "#D8A08B",
+    "primaryDark": "#85432C",
+    "sidebarBg": "#F8EFEB",
+    "contentBg": "#F9F2EF",
+    "cardBg": "#F2DFD8",
+    "textOnPrimary": "#FFFFFF",
+    "linkText": "#734B3D",
+    "linkTextHover": "#BF613F"
+  },
+  "gradient": {
+    "start": "#BF613F",
+    "end": "#3D5AA9"
+  },
+  "backgroundImage": {
+    "prompt": "Superman flying through city with red cape, comic book style",
+    "style": "超人超级英雄，红蓝配色，漫画风格"
+  }
+}

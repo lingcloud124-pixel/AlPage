@@ -1,0 +1,543 @@
+{
+  "version": "1.0",
+  "themeName": "清明节主题",
+  "themeType": "Light-UI",
+  "description": "Light-UI模板与清明节主题样例包页眉变量映射配置",
+  "createdAt": "2026-04-04",
+  
+  "samplePackage": {
+    "path": "主题样例包/Light-UI/主题-V17-2026清明主题",
+    "varsFile": "scss/lib/vars.scss",
+    "lineCount": 447
+  },
+  
+  "pencilFile": {
+    "path": "Light-UI-模板.pen",
+    "headerFrameId": "5puUK",
+    "headerFrameName": "【清明节】页眉设计"
+  },
+  
+  "ekpVersions": {
+    "v17": {
+      "description": "最新版本，变量最完整",
+      "lineCount": 447,
+      "baseVersion": true,
+      "supportedHeaderTypes": ["经典页眉", "多页签页眉", "简洁多页签页眉", "简洁页眉", "默认页眉", "V16默认页眉"]
+    },
+    "v14-v16": {
+      "description": "支持多页签页眉",
+      "lineCount": 430,
+      "supportedHeaderTypes": ["经典页眉", "多页签页眉", "简洁多页签页眉", "简洁页眉", "默认页眉"]
+    },
+    "v13": {
+      "description": "缺少部分页眉变量",
+      "lineCount": 164,
+      "supportedHeaderTypes": ["经典页眉", "简洁页眉"]
+    },
+    "v12": {
+      "description": "基础版本",
+      "lineCount": 165,
+      "supportedHeaderTypes": ["经典页眉", "简洁页眉"]
+    }
+  },
+  
+  "pencilVariables": {
+    "primary-color": {
+      "type": "color",
+      "value": "#2C615C",
+      "versionConsistent": true,
+      "description": "主色调",
+      "products": {
+        "ekp": "$primary-color"
+      }
+    },
+    "alter-color": {
+      "type": "color",
+      "value": "#144E48",
+      "versionConsistent": true,
+      "description": "交互色",
+      "products": {
+        "ekp": "$alter-color"
+      }
+    },
+    "alter-color-hover-on": {
+      "type": "color",
+      "value": "#56817D",
+      "versionConsistent": true,
+      "description": "交互色鼠标经过或当前",
+      "products": {
+        "ekp": "$alter-color-hover-on"
+      }
+    },
+    "header-font-color": {
+      "type": "color",
+      "value": "#333333",
+      "versionConsistent": true,
+      "description": "页眉文字颜色",
+      "products": {
+        "ekp": "$header-font-color"
+      }
+    },
+    "header-font-color-hover": {
+      "type": "color",
+      "value": "#2C615C",
+      "versionConsistent": true,
+      "description": "页眉文字hover颜色（引用primary-color）",
+      "products": {
+        "ekp": "$header-font-color-hover",
+        "note": "实际值为$primary-color，即#2C615C"
+      }
+    },
+    "portal-header-bg-extend-color": {
+      "type": "color",
+      "value": "#FBFCF2",
+      "versionConsistent": true,
+      "description": "经典页眉图片延展色",
+      "products": {
+        "ekp": "$portal-header-bg-extend-color"
+      }
+    },
+    "portal-header-complex-bg-extend-color": {
+      "type": "color",
+      "value": "#FBFCF2",
+      "versionConsistent": true,
+      "description": "多页签页眉图片延展色",
+      "products": {
+        "ekp": "$portal-header-complex-bg-extend-color"
+      }
+    },
+    "portal-header-simple-bg-extend-color": {
+      "type": "color",
+      "value": "#FBFCF2",
+      "versionConsistent": true,
+      "description": "简洁多页签页眉图片延展色",
+      "products": {
+        "ekp": "$portal-header-simple-bg-extend-color"
+      }
+    },
+    "portal-header-zone-bg-extend-color": {
+      "type": "color",
+      "value": "#FBFCF2",
+      "versionConsistent": true,
+      "description": "简洁页眉图片延展色",
+      "products": {
+        "ekp": "$portal-header-zone-bg-extend-color"
+      }
+    },
+    "tlayout-header-bg-extend-color": {
+      "type": "color",
+      "value": "#FBFCF2",
+      "versionConsistent": true,
+      "description": "默认页眉图片延展色",
+      "products": {
+        "ekp": "$tlayout-header-bg-extend-color"
+      }
+    },
+    "auxiliary-gray": {
+      "type": "color",
+      "value": "#999999",
+      "versionConsistent": true,
+      "description": "辅助灰色（图标、次要文字）",
+      "products": {
+        "ekp": "$auxiliary-gray"
+      }
+    },
+    "auxiliary-gray-dark": {
+      "type": "color",
+      "value": "#666666",
+      "versionConsistent": true,
+      "description": "深辅助灰色（边框、辅助文字）",
+      "products": {
+        "ekp": "$auxiliary-gray-dark"
+      }
+    },
+    "login-bg-color": {
+      "type": "color",
+      "value": "#FDFFF6",
+      "versionConsistent": true,
+      "description": "登录页背景色",
+      "products": {
+        "ekp": "$login-bg-color"
+      }
+    }
+  },
+  
+  "headerTypes": {
+    "classic-header": {
+      "name": "经典页眉",
+      "ekpVarPrefix": "portal-header",
+      "supportedVersions": ["v12", "v13", "v14-v16", "v17"],
+      "elements": {
+        "background-extend": {
+          "pencilVar": "portal-header-bg-extend-color",
+          "ekpVar": "$portal-header-bg-extend-color",
+          "value": "#FBFCF2",
+          "description": "图片背景延展色"
+        },
+        "pure-extend": {
+          "ekpVar": "$portal-header-pure-extend-color",
+          "value": "$primary-color",
+          "description": "纯色背景延展色"
+        },
+        "font-color": {
+          "pencilVar": "header-font-color",
+          "ekpVar": "$portal-header-font-color",
+          "value": "$header-font-color",
+          "description": "文字颜色"
+        },
+        "font-color-hover": {
+          "pencilVar": "header-font-color-hover",
+          "ekpVar": "$portal-header-font-color-hover",
+          "value": "$header-font-color-hover",
+          "description": "文字hover颜色"
+        }
+      }
+    },
+    
+    "complex-tab-header": {
+      "name": "多页签页眉",
+      "ekpVarPrefix": "portal-header-complex",
+      "supportedVersions": ["v14-v16", "v17"],
+      "elements": {
+        "background-extend": {
+          "pencilVar": "portal-header-complex-bg-extend-color",
+          "ekpVar": "$portal-header-complex-bg-extend-color",
+          "value": "#FBFCF2",
+          "description": "图片背景延展色"
+        },
+        "pure-extend": {
+          "ekpVar": "$portal-header-complex-pure-extend-color",
+          "value": "$primary-color",
+          "description": "纯色背景延展色"
+        },
+        "font-color": {
+          "ekpVar": "$portal-header-complex-font-color",
+          "value": "#fff",
+          "description": "文字颜色（深色主题用白色）"
+        },
+        "font-color-hover": {
+          "ekpVar": "$portal-header-complex-font-color-hover",
+          "value": "#fff",
+          "description": "文字hover颜色"
+        },
+        "search-bg": {
+          "ekpVar": "$search-complex-input-bg",
+          "value": "transparent",
+          "description": "搜索框背景色"
+        },
+        "search-font": {
+          "ekpVar": "$search-complex-input-font",
+          "value": "$primary-color",
+          "description": "搜索框字体颜色"
+        }
+      }
+    },
+    
+    "simple-tab-header": {
+      "name": "简洁多页签页眉",
+      "ekpVarPrefix": "portal-header-simple",
+      "supportedVersions": ["v14-v16", "v17"],
+      "elements": {
+        "background-extend": {
+          "pencilVar": "portal-header-simple-bg-extend-color",
+          "ekpVar": "$portal-header-simple-bg-extend-color",
+          "value": "#FBFCF2",
+          "description": "图片背景延展色"
+        },
+        "pure-extend": {
+          "ekpVar": "$portal-header-simple-pure-extend-color",
+          "value": "$primary-color",
+          "description": "纯色背景延展色"
+        },
+        "font-color-top": {
+          "ekpVar": "$portal-header-simple-font-color-top",
+          "value": "#fff",
+          "description": "上方文字颜色"
+        },
+        "font-color-hover": {
+          "pencilVar": "header-font-color-hover",
+          "ekpVar": "$portal-header-simple-font-color-hover",
+          "value": "$primary-color",
+          "description": "悬浮和选中文字颜色"
+        }
+      }
+    },
+    
+    "zone-header": {
+      "name": "简洁页眉",
+      "ekpVarPrefix": "portal-header-zone",
+      "supportedVersions": ["v12", "v13", "v14-v16", "v17"],
+      "elements": {
+        "background-extend": {
+          "pencilVar": "portal-header-zone-bg-extend-color",
+          "ekpVar": "$portal-header-zone-bg-extend-color",
+          "value": "#FBFCF2",
+          "description": "图片背景延展色"
+        },
+        "font-color": {
+          "pencilVar": "header-font-color",
+          "ekpVar": "$portal-header-zone-font-color",
+          "value": "$header-font-color",
+          "description": "文字颜色"
+        },
+        "font-color-hover": {
+          "pencilVar": "header-font-color-hover",
+          "ekpVar": "$portal-header-zone-font-color-hover",
+          "value": "$primary-color",
+          "description": "文字hover颜色"
+        }
+      }
+    },
+    
+    "tlayout-header": {
+      "name": "默认页眉",
+      "ekpVarPrefix": "tlayout-header",
+      "supportedVersions": ["v12", "v13", "v14-v16", "v17"],
+      "elements": {
+        "background-extend": {
+          "pencilVar": "tlayout-header-bg-extend-color",
+          "ekpVar": "$tlayout-header-bg-extend-color",
+          "value": "#FBFCF2",
+          "description": "图片背景延展色"
+        },
+        "font-color": {
+          "pencilVar": "header-font-color",
+          "ekpVar": "$tlayout-header-font-color",
+          "value": "$header-font-color",
+          "description": "文字颜色"
+        },
+        "font-color-hover": {
+          "pencilVar": "header-font-color-hover",
+          "ekpVar": "$tlayout-header-font-color-hover",
+          "value": "$header-font-color-hover",
+          "description": "文字hover颜色"
+        }
+      }
+    },
+    
+    "single-header": {
+      "name": "V16默认页眉",
+      "ekpVarPrefix": "single-header",
+      "supportedVersions": ["v14-v16", "v17"],
+      "elements": {
+        "background-extend": {
+          "ekpVar": "$single-header-bg-extend-color",
+          "value": "#FBFCF2",
+          "description": "图片背景延展色"
+        },
+        "font-color": {
+          "pencilVar": "header-font-color",
+          "ekpVar": "$single-header-font-color",
+          "value": "$header-font-color",
+          "description": "文字颜色"
+        },
+        "font-color-hover": {
+          "pencilVar": "header-font-color-hover",
+          "ekpVar": "$single-header-font-color-hover",
+          "value": "$header-font-color-hover",
+          "description": "文字hover颜色"
+        }
+      }
+    }
+  },
+  
+  "iconVariables": {
+    "header-icon-position-y": {
+      "value": "-48px",
+      "description": "页眉图标位置（灰色）",
+      "options": {
+        "0": "白色带透明度",
+        "-16px": "主色",
+        "-32px": "白色",
+        "-48px": "灰色（当前值）"
+      }
+    },
+    "header-icon-position-y-hover": {
+      "value": "-16px",
+      "description": "页眉图标hover位置（主色）"
+    },
+    "header-simple-icon-position-y": {
+      "value": "-32px",
+      "description": "简洁多页签页眉图标位置（白色）"
+    },
+    "header-simple-arrow-position-x": {
+      "value": "-20px",
+      "description": "简洁多页签页眉三角图标（白色）",
+      "options": {
+        "0": "灰色",
+        "-10px": "主色",
+        "-20px": "白色（当前值）"
+      }
+    },
+    "header-complex-menu-arrow-position-y": {
+      "value": "-40px",
+      "description": "多页签页眉菜单左右切换三角图标（白色）",
+      "options": {
+        "0": "灰色",
+        "-20px": "主色",
+        "-40px": "白色（当前值）"
+      }
+    }
+  },
+  
+  "gradientHandling": {
+    "description": "渐变色处理说明",
+    "pencilBehavior": {
+      "note": "Pencil中的渐变色会被导出为图片，不会体现在CSS/SCSS变量中",
+      "usage": "用于页眉背景图片的渐变效果",
+      "exportFormat": "PNG/JPG图片格式"
+    },
+    "examples": [
+      {
+        "element": "页眉左右渐变",
+        "pencilConfig": {
+          "type": "gradient",
+          "colors": [
+            {"color": "$primary-color", "position": 0},
+            {"color": "#889fc600", "position": 1}
+          ]
+        },
+        "output": "导出为背景图片的一部分（如 header_complex_frame_bg.png）",
+        "scssVariable": "无对应变量，通过图片延展色控制"
+      },
+      {
+        "element": "多页签页眉背景渐变",
+        "pencilNode": ["RYel2", "uCkYW", "o6YyM", "sCJfW"],
+        "purpose": "背景图片左右两侧的渐变遮罩",
+        "exportMethod": "嵌入到背景图片中"
+      }
+    ],
+    "importantNotes": [
+      "渐变色不对应 SCSS 变量",
+      "渐变色用于视觉设计，导出为图片资源",
+      "SCSS 变量主要控制文字、边框、背景纯色等",
+      "背景延展色（bg-extend-color）控制图片两侧的纯色延展"
+    ]
+  },
+
+  "validation": {
+    "variableMatch": {
+      "primary-color": true,
+      "alter-color": true,
+      "header-font-color": true,
+      "header-font-color-hover": true,
+      "portal-header-bg-extend-color": true,
+      "tlayout-header-bg-extend-color": true
+    },
+    "hardcodedColors": {
+      "status": "completed",
+      "description": "所有色值已使用变量引用，无硬编码"
+    },
+    "corrections": {
+      "date": "2026-04-04",
+      "changes": [
+        "修正默认页眉背景色从深色改为浅色 (#FBFCF2)",
+        "修正多页签页眉文字颜色从 #fdfff6 改为 #ffffff",
+        "确认多页签页眉使用深色背景 + 白色文字",
+        "确认默认页眉使用浅色背景 + 深色文字"
+      ],
+      "importantFindings": [
+        "Pencil中的渐变色导出为图片，不对应SCSS变量",
+        "渐变色用于背景图片效果（如 header_xxx_frame_bg.png）",
+        "SCSS变量主要控制纯色：文字、边框、背景延展色等",
+        "详见：20260403/渐变色处理说明.md"
+      ]
+    }
+  },
+  
+  "headerCutMapping": {
+    "description": "Pencil页眉设计与主题样例包切图映射关系",
+    "samplePackagePath": "主题样例包/Light-UI/mk-festival-26-qingm/static",
+    "mappings": [
+      {
+        "sampleFile": "header-banner.png",
+        "sampleSize": "2560 x 480px",
+        "pencilNodeId": "gMPX0",
+        "pencilNodeName": "横幅页眉(Banner)",
+        "pencilNodeSize": "2560 x 480px",
+        "status": "created",
+        "cutArea": "上半部分 480px高度",
+        "description": "超大横幅页眉，用于门户首页或活动页",
+        "cssClass": ".header-banner.use-theme",
+        "bgExtendColor": "#fbfcf2"
+      },
+      {
+        "sampleFile": "header-icon.png",
+        "sampleSize": "1920 x 90px",
+        "pencilNodeId": "8mNrm",
+        "pencilNodeName": "多页签页眉",
+        "pencilNodeSize": "1920 x 90px (上半部分)",
+        "status": "matched",
+        "note": "尺寸匹配，用同一个pen位置切图，覆盖到主题样例包header-icon.png位置"
+      },
+      {
+        "sampleFile": "header-sideheader.png",
+        "sampleSize": "200 x 900px",
+        "pencilNodeId": "tDxIq",
+        "pencilNodeName": "侧边栏",
+        "pencilNodeSize": "200 x 1020px",
+        "status": "size_mismatch",
+        "note": "高度不一致，Pencil为1020px，主题样例包为900px，需调整或新建"
+      },
+      {
+        "sampleFile": "header-classic.png",
+        "sampleSize": "1920 x ?",
+        "pencilNodeId": "mNY4P",
+        "pencilNodeName": "经典页眉",
+        "status": "matched"
+      },
+      {
+        "sampleFile": "header-simple.png",
+        "sampleSize": "1920 x ?",
+        "pencilNodeId": "HQmJc",
+        "pencilNodeName": "简洁页眉",
+        "status": "matched"
+      },
+      {
+        "sampleFile": "header-tabs.png",
+        "sampleSize": "1920 x ?",
+        "pencilNodeId": "8mNrm",
+        "pencilNodeName": "多页签页眉",
+        "status": "matched",
+        "note": "与header-icon.png使用同一个Pencil节点，但覆盖到不同主题样例包位置"
+      }
+    ],
+    "cutInstructions": {
+      "header-icon_vs_header-tabs": {
+        "pencilNodeId": "8mNrm",
+        "pencilNodeName": "多页签页眉",
+        "outputs": [
+          {
+            "sampleFile": "header-icon.png",
+            "cutArea": "上半部分 90px高度",
+            "description": "只截取页眉主体部分"
+          },
+          {
+            "sampleFile": "header-tabs.png",
+            "cutArea": "完整页眉 130px高度",
+            "description": "包含底部标签栏"
+          }
+        ]
+      }
+    }
+  },
+  
+  "automation": {
+    "defaultEkpVersion": "v17",
+    "fallbackStrategy": "useLatestVersion",
+    "outputFormats": {
+      "ekp": {
+        "format": "scss",
+        "file": "scss/lib/vars.scss",
+        "template": "templates/ekp/vars.scss.template"
+      }
+    },
+    "workflow": [
+      "1. 读取Pencil变量定义",
+      "2. 加载本映射配置",
+      "3. 根据目标版本查找对应变量",
+      "4. 生成目标格式的输出文件",
+      "5. 验证生成的文件与主题样例包一致性"
+    ]
+  }
+}

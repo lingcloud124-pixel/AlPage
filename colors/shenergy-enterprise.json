@@ -1,0 +1,39 @@
+{
+  "name": "申能企业",
+  "nameEn": "shenergy-enterprise",
+  "templateType": "dark-ui",
+  "description": "申能企业Dark-UI主题，深绿+科技配色，营造高效、有序、富有科技感的数智办公空间",
+  "colors": {
+    "primary": "#226F3B",
+    "primaryHover": "#B2FFE6",
+    "alterColor": "#1A5530",
+    "alterColorHoverOn": "#73CAA6",
+    "primaryOpacity10": "#E9F1EB",
+    "primaryOpacity20": "#D3E2D8",
+    "primaryOpacity30": "#BDD4C4",
+    "headerFont": "#CCFEEB",
+    "sidebarPanelBg": "#CCFEEB",
+    "sidebarColor": "#333333",
+    "sidebarIconColor": "#CCFEEB",
+    "loginBg": "#1A5530",
+    "auxiliaryGray": "#999999",
+    "auxiliaryGrayDark": "#666666",
+    "bodyBgColor": "#F8F8F8",
+    "borderColor": "#EEEEEE",
+    "borderIconColor": "#EEEEEE"
+  },
+  "gradient": {
+    "start": "#226F3B",
+    "end": "#B2FFE6"
+  },
+  "backgroundImage": {
+    "prompt": "Abstract technology background with deep green geometric patterns, subtle grid lines and data flow effects, digital enterprise workspace atmosphere, clean modern design without text or interface elements"
+  },
+  "hueCalculation": {
+    "backgroundHue": 135,
+    "primary": 135,
+    "primaryHover": 161,
+    "headerFont": 157,
+    "note": "主题色调偏移计算：primaryHover = H+26° (L≈85%), headerFont = H+22° (L≈90%)"
+  }
+}

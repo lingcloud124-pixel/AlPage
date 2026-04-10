@@ -1,0 +1,28 @@
+{
+  "name": "中秋节",
+  "nameEn": "mid-autumn",
+  "description": "中秋节主题，金橙色系，温馨团圆，适合中秋赏月氛围",
+  "colors": {
+    "primary": "#FF9800",
+    "primaryHover": "#FFB74D",
+    "primaryLight": "#FFE0B2",
+    "primaryDark": "#E65100",
+    "primaryOpacity10": "#FFF8E1",
+    "primaryOpacity20": "#FFECB3",
+    "primaryOpacity30": "#FFE0B2",
+    "sidebarBg": "#FFF8E1",
+    "contentBg": "#FFFBF5",
+    "cardBg": "#FFF8E1",
+    "textOnPrimary": "#FFFFFF",
+    "linkText": "#FF9800",
+    "linkTextHover": "#FFB74D"
+  },
+  "gradient": {
+    "start": "#FF9800",
+    "end": "#FFD54F"
+  },
+  "backgroundImage": {
+    "prompt": "中秋节氛围背景图，金橙色渐变夜空，满月，桂花，云朵，温馨团圆氛围，古典中国风，纯背景无界面元素，1920x1080尺寸",
+    "style": "古典中国风，温馨团圆"
+  }
+}

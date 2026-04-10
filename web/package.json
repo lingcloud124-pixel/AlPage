@@ -1,0 +1,22 @@
+{
+  "name": "theme-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "screenshot": "npx playwright test screenshot",
+    "screenshot:single": "npx tsx scripts/screenshot.ts"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.3.3",
+    "vite": "^6.3.0"
+  }
+}

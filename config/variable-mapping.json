@@ -1,0 +1,1162 @@
+{
+  "version": "1.0",
+  "description": "变量映射配置 - 用于自动化主题包生成",
+  "ekpVersions": {
+    "v17": {
+      "description": "最新版本，变量最完整",
+      "varsFile": "scss/lib/vars.scss",
+      "lineCount": 447,
+      "baseVersion": true
+    },
+    "v14-v16": {
+      "description": "新增多页签页眉变量",
+      "varsFile": "scss/lib/vars.scss",
+      "lineCount": 430,
+      "baseVersion": false
+    },
+    "v13-v13.5": {
+      "description": "缺少header-placeholder-color",
+      "varsFile": "scss/lib/vars.scss",
+      "lineCount": 164,
+      "baseVersion": false
+    },
+    "v12": {
+      "description": "基础版本",
+      "varsFile": "scss/lib/vars.scss",
+      "lineCount": 165,
+      "baseVersion": false
+    }
+  },
+  "versionDiff": {
+    "header-font-color": {
+      "v17": "$header-font-color",
+      "v14-v16": "$header-font-color",
+      "v13": "$header-color",
+      "v12": "$header-color"
+    },
+    "header-placeholder-color": {
+      "v17": null,
+      "v14-v16": null,
+      "v13": null,
+      "v12": "$header-placeholder-color: #fff"
+    },
+    "tlayout-header-bg-extend-color": {
+      "v17": "$tlayout-header-bg-extend-color",
+      "v14-v16": "$tlayout-header-bg-extend-color",
+      "v13": null,
+      "v12": null
+    },
+    "portal-header-complex-bg-extend-color": {
+      "v17": "$portal-header-complex-bg-extend-color",
+      "v14-v16": "$portal-header-complex-bg-extend-color",
+      "v13": null,
+      "v12": null
+    }
+  },
+  "pencilVariables": {
+    "primary-color": {
+      "value": "#2c615c",
+      "category": "主色系",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "$primary-color",
+        "mk": "--primary-color",
+        "kk": "primaryColor"
+      }
+    },
+    "alter-color": {
+      "value": "#144E48",
+      "category": "主色系",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "$alter-color",
+        "mk": "--secondray-color",
+        "kk": "secondaryColor"
+      }
+    },
+    "alter-color-hover-on": {
+      "value": "#56817D",
+      "category": "主色系",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "$alter-color-hover-on",
+        "mk": "--thirdray-color",
+        "kk": "tertiaryColor"
+      }
+    },
+    "text-primary": {
+      "value": "#333333",
+      "category": "文字色",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "#333",
+        "mk": ".text-regular",
+        "kk": "textPrimary"
+      }
+    },
+    "text-secondary": {
+      "value": "#666666",
+      "category": "文字色",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "#666",
+        "mk": ".text-secondary",
+        "kk": "textSecondary"
+      }
+    },
+    "text-weak": {
+      "value": "#999999",
+      "category": "文字色",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "#999",
+        "mk": ".text-info",
+        "kk": "textWeak"
+      }
+    },
+    "text-on-primary": {
+      "value": "#ffffff",
+      "category": "文字色",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "#fff",
+        "mk": ".text-white",
+        "kk": "textOnPrimary"
+      }
+    },
+    "border-default": {
+      "value": "#666666",
+      "category": "边框色",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "#666",
+        "mk": ".bd-dark",
+        "kk": "borderDefault"
+      }
+    },
+    "border-focus": {
+      "value": "#2c615c",
+      "category": "边框色",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "$primary-color",
+        "mk": ".bd-theme",
+        "kk": "borderFocus"
+      }
+    },
+    "header-font-color": {
+      "value": "#333333",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$header-font-color",
+          "v14-v16": "$header-font-color",
+          "v13": "$header-color",
+          "v12": "$header-color"
+        },
+        "mk": "color: #333",
+        "kk": "headerFontColor"
+      }
+    },
+    "header-font-color-hover": {
+      "value": "#2c615c",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$header-font-color-hover",
+          "v14-v16": "$header-font-color-hover",
+          "v13": "$header-color-hover",
+          "v12": null
+        },
+        "mk": "color: #2c615c",
+        "kk": "headerFontColorHover"
+      }
+    },
+    "portal-header-bg-extend-color": {
+      "value": "#FBFCF2",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-bg-extend-color",
+          "v14-v16": "$portal-header-bg-extend-color",
+          "v13": null,
+          "v12": null
+        },
+        "mk": "background: #fbfcf2",
+        "kk": "headerBgExtend"
+      }
+    },
+    "tlayout-header-bg-extend-color": {
+      "value": "#FBFCF2",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$tlayout-header-bg-extend-color",
+          "v14-v16": "$tlayout-header-bg-extend-color",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "portal-header-complex-bg-extend-color": {
+      "value": "#FBFCF2",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-complex-bg-extend-color",
+          "v14-v16": "$portal-header-complex-bg-extend-color",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "search-input-border-color": {
+      "value": "#2c615c",
+      "description": "搜索框边框色",
+      "category": "页眉-搜索框",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "$search-input-border-color",
+        "mk": null,
+        "kk": "searchInputBorder"
+      }
+    },
+    "search-placehold-font-color": {
+      "value": "#2c615c",
+      "description": "搜索框placeholder颜色",
+      "category": "页眉-搜索框",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "$search-placehold-font-color",
+        "mk": null,
+        "kk": "searchPlaceholder"
+      }
+    },
+    "search-font-color": {
+      "value": "#333",
+      "description": "搜索框文字颜色",
+      "category": "页眉-搜索框",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "$search-font-color",
+        "mk": null,
+        "kk": "searchFont"
+      }
+    },
+    "light-primary-color": {
+      "value": "#2c615c",
+      "description": "浅主色（同primary-color）",
+      "category": "主色系",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "$primary-color",
+        "mk": "--primary-color",
+        "kk": "primaryColor"
+      }
+    },
+    "light-text-primary": {
+      "value": "#333333",
+      "description": "浅主题文字色（同text-primary）",
+      "category": "文字色",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "#333",
+        "mk": ".text-regular",
+        "kk": "textPrimary"
+      }
+    },
+    "portal-header-zone-bg-extend-color": {
+      "value": "#FBFCF2",
+      "description": "简洁页眉背景延展色",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-zone-bg-extend-color",
+          "v14-v16": "$portal-header-zone-bg-extend-color",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "portal-header-zone-font-color": {
+      "value": "#333333",
+      "description": "简洁页眉文字颜色",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-zone-font-color",
+          "v14-v16": "$portal-header-zone-font-color",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "portal-header-zone-font-color-hover": {
+      "value": "#2C615C",
+      "description": "简洁页眉hover文字颜色",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-zone-font-color-hover",
+          "v14-v16": "$portal-header-zone-font-color-hover",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "portal-header-bg-extend-color": {
+      "value": "#FBFCF2",
+      "description": "菜单页眉背景延展色",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-bg-extend-color",
+          "v14-v16": "$portal-header-bg-extend-color",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "portal-header-simple-bg-extend-color": {
+      "value": "#FBFCF2",
+      "description": "简洁多标签页眉背景延展色",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-simple-bg-extend-color",
+          "v14-v16": "$portal-header-simple-bg-extend-color",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "portal-header-simple-pure-extend-color": {
+      "value": "#2C615C",
+      "description": "简洁多标签页眉纯色延展",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-simple-pure-extend-color",
+          "v14-v16": "$portal-header-simple-pure-extend-color",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "portal-header-simple-font-color-top": {
+      "value": "#ffffff",
+      "description": "简洁多标签页眉上方文字色",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-simple-font-color-top",
+          "v14-v16": "$portal-header-simple-font-color-top",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "portal-header-simple-font-color-hover": {
+      "value": "#2C615C",
+      "description": "简洁多标签页眉hover文字色",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-simple-font-color-hover",
+          "v14-v16": "$portal-header-simple-font-color-hover",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "portal-header-complex-pure-extend-color": {
+      "value": "#2C615C",
+      "description": "多页签页眉底部纯色延展",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-complex-pure-extend-color",
+          "v14-v16": "$portal-header-complex-pure-extend-color",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "portal-header-complex-font-color": {
+      "value": "#ffffff",
+      "description": "多页签页眉文字颜色",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-complex-font-color",
+          "v14-v16": "$portal-header-complex-font-color",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "portal-header-complex-font-color-hover": {
+      "value": "#ffffff",
+      "description": "多页签页眉hover文字颜色",
+      "category": "页眉",
+      "versionConsistent": false,
+      "products": {
+        "ekp": {
+          "v17": "$portal-header-complex-font-color-hover",
+          "v14-v16": "$portal-header-complex-font-color-hover",
+          "v13": null,
+          "v12": null
+        },
+        "mk": null,
+        "kk": null
+      }
+    },
+    "search-complex-input-bg": {
+      "value": "transparent",
+      "description": "多页签搜索框背景",
+      "category": "页眉-搜索框",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "$search-complex-input-bg",
+        "mk": null,
+        "kk": null
+      }
+    },
+    "search-complex-input-font": {
+      "value": "#2C615C",
+      "description": "多页签搜索框文字色",
+      "category": "页眉-搜索框",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "$search-complex-input-font",
+        "mk": null,
+        "kk": null
+      }
+    },
+    "search-complex-input-icon-bg": {
+      "value": "transparent",
+      "description": "多页签搜索按钮背景",
+      "category": "页眉-搜索框",
+      "versionConsistent": true,
+      "products": {
+        "ekp": "$search-complex-input-icon-bg",
+        "mk": null,
+        "kk": null
+      }
+    }
+  },
+  "components": {
+    "login": {
+      "description": "登录页组件",
+      "supportedVersions": ["v12", "v13", "v14-v16", "v17"],
+      "elements": {
+        "background": {
+          "pencilVar": null,
+          "asset": "bg-login.jpg",
+          "size": "2215x1080",
+          "products": {
+            "ekp": "login_bg/bg-login.jpg",
+            "mk": "N/A",
+            "kk": "N/A"
+          }
+        },
+        "iframe-bg": {
+          "description": "登录框背景",
+          "pencilVar": "login-iframe-bg",
+          "value": "#fdfff6",
+          "opacity": "0.6-0.8",
+          "products": {
+            "ekp": "login.css rgba(253,255,246,x)",
+            "mk": "N/A",
+            "kk": "loginBg"
+          }
+        },
+        "input-placeholder": {
+          "description": "输入框placeholder默认",
+          "value": "#666",
+          "pencilVar": "text-secondary",
+          "products": {
+            "ekp": "login.css .lui_login_input_div input::-webkit-input-placeholder",
+            "mk": "N/A",
+            "kk": "inputPlaceholder"
+          }
+        },
+        "input-placeholder-focus": {
+          "description": "输入框placeholder聚焦",
+          "value": "#333",
+          "pencilVar": "text-primary",
+          "products": {
+            "ekp": "login.css .lui_login_input_div.input_focus input::-webkit-input-placeholder",
+            "mk": "N/A",
+            "kk": "inputPlaceholderFocus"
+          }
+        },
+        "input-text": {
+          "description": "输入框文字颜色",
+          "value": "#333",
+          "pencilVar": "text-primary",
+          "products": {
+            "ekp": "login.css .lui_login_input_div .lui_login_input_username",
+            "mk": "N/A",
+            "kk": "inputText"
+          }
+        },
+        "input-border": {
+          "description": "输入框边框默认",
+          "value": "#666",
+          "pencilVar": "border-default",
+          "products": {
+            "ekp": "login.css border-bottom: 1px #666 solid",
+            "mk": "N/A",
+            "kk": "inputBorder"
+          }
+        },
+        "input-border-focus": {
+          "description": "输入框边框聚焦",
+          "value": "#2c615c",
+          "pencilVar": "border-focus",
+          "products": {
+            "ekp": "login.css border-bottom-color: #2c615c",
+            "mk": "N/A",
+            "kk": "inputBorderFocus"
+          }
+        },
+        "button-bg": {
+          "description": "登录按钮背景",
+          "value": "#2c615c",
+          "pencilVar": "primary-color",
+          "products": {
+            "ekp": "login.css .lui_login_button_div_l background: #2c615c",
+            "mk": "N/A",
+            "kk": "buttonBg"
+          }
+        },
+        "button-bg-hover": {
+          "description": "登录按钮hover背景",
+          "value": "#228077",
+          "pencilVar": "primary-color-hover",
+          "products": {
+            "ekp": "login.css .lui_login_button_div_l:hover background: #228077",
+            "mk": "N/A",
+            "kk": "buttonBgHover"
+          }
+        },
+        "button-text": {
+          "description": "登录按钮文字",
+          "value": "#fff",
+          "pencilVar": "text-on-primary",
+          "products": {
+            "ekp": "login.css .lui_login_button_div_l color: #fff",
+            "mk": "N/A",
+            "kk": "buttonText"
+          }
+        },
+        "title-text": {
+          "description": "标题文字",
+          "value": "#333",
+          "pencilVar": "text-primary",
+          "products": {
+            "ekp": "login.css .login_iframe .header color: #333",
+            "mk": "N/A",
+            "kk": "titleText"
+          }
+        },
+        "tab-selected": {
+          "description": "登录方式标签选中",
+          "value": "#2c615c",
+          "pencilVar": "primary-color",
+          "products": {
+            "ekp": "login.css",
+            "mk": "N/A",
+            "kk": "tabSelected"
+          }
+        },
+        "tab-unselected": {
+          "description": "登录方式标签未选",
+          "value": "#333",
+          "pencilVar": "text-primary",
+          "products": {
+            "ekp": "login.css",
+            "mk": "N/A",
+            "kk": "tabUnselected"
+          }
+        },
+        "link-text": {
+          "description": "忘记密码链接",
+          "value": "#333",
+          "pencilVar": "text-primary",
+          "products": {
+            "ekp": "login.css .lui_login_form_opt .forgetPswLink color: #333",
+            "mk": "N/A",
+            "kk": "linkText"
+          }
+        },
+        "link-text-hover": {
+          "description": "链接hover色",
+          "value": "#228077",
+          "pencilVar": "primary-color-hover",
+          "products": {
+            "ekp": "login.css .lui_login_form_opt a:hover color: #228077",
+            "mk": "N/A",
+            "kk": "linkTextHover"
+          }
+        },
+        "logo-color": {
+          "description": "Logo颜色",
+          "value": "#2c615c",
+          "pencilVar": "primary-color",
+          "products": {
+            "ekp": "login.css",
+            "mk": "N/A",
+            "kk": "logoColor"
+          }
+        }
+      }
+    },
+    "header-default": {
+      "description": "默认页眉组件（T型布局页眉）",
+      "pencilNodeId": "ZuqPH",
+      "cssClass": ".lui_tlayout_header",
+      "supportedVersions": ["v14-v16", "v17"],
+      "elements": {
+        "background": {
+          "description": "页眉背景切图",
+          "pencilNodeId": "A7bgM",
+          "pencilVar": null,
+          "asset": "header_tlayout_frame_bg.png",
+          "size": "1920x60",
+          "exportNode": "A7bgM（背景切图组）",
+          "products": {
+            "ekp": "images/image-style/header_tlayout_frame_bg.png",
+            "mk": "static/header-tabs.png",
+            "kk": "N/A"
+          }
+        },
+        "bg-color": {
+          "description": "背景延展色",
+          "pencilNodeId": "LlcWg",
+          "value": "#FBFCF2",
+          "pencilVar": "tlayout-header-bg-extend-color",
+          "products": {
+            "ekp": "$tlayout-header-bg-extend-color",
+            "mk": "background: #fbfcf2",
+            "kk": "headerBgExtend"
+          }
+        },
+        "bg-image-node": {
+          "description": "背景图节点（需删除或替换）",
+          "pencilNodeId": "fUNB2",
+          "note": "此节点包含 header_tlayout_frame_bg.png，导出时需删除或作为占位符",
+          "products": {
+            "ekp": "N/A（导出背景切图组即可）",
+            "mk": "N/A",
+            "kk": "N/A"
+          }
+        },
+        "left-gradient": {
+          "description": "左渐变遮罩",
+          "pencilNodeId": "eqxUW",
+          "note": "宽度859，导出背景切图时包含",
+          "products": {
+            "ekp": "N/A（包含在背景切图中）",
+            "mk": "N/A",
+            "kk": "N/A"
+          }
+        },
+        "right-gradient": {
+          "description": "右渐变遮罩",
+          "pencilNodeId": "bY1Os",
+          "note": "宽度920，导出背景切图时包含",
+          "products": {
+            "ekp": "N/A（包含在背景切图中）",
+            "mk": "N/A",
+            "kk": "N/A"
+          }
+        },
+        "font-color": {
+          "description": "页眉文字颜色（菜单项）",
+          "pencilNodeId": "21p4J/AvDyK",
+          "value": "#333",
+          "pencilVar": "header-font-color",
+          "products": {
+            "ekp": "$tlayout-header-font-color",
+            "mk": "color: #333",
+            "kk": "headerFontColor"
+          }
+        },
+        "font-color-hover": {
+          "description": "页眉文字hover颜色",
+          "value": "#2c615c",
+          "pencilVar": "header-font-color-hover",
+          "products": {
+            "ekp": "$tlayout-header-font-color-hover",
+            "mk": "color: #2c615c",
+            "kk": "headerFontColorHover"
+          }
+        },
+        "logo-color": {
+          "description": "Logo颜色",
+          "pencilNodeId": "ay07Z",
+          "value": "#2c615c",
+          "pencilVar": "primary-color",
+          "products": {
+            "ekp": ".lui_tlayout_header_logo svg path",
+            "mk": "logo color",
+            "kk": "logoColor"
+          }
+        },
+        "menu-underline": {
+          "description": "选中菜单下划线",
+          "pencilNodeId": "ED7w3",
+          "value": "#2c615c",
+          "pencilVar": "primary-color",
+          "cssProperty": "border-bottom: 2px solid $primary-color",
+          "products": {
+            "ekp": ".lui_tlayout_header_item.hover",
+            "mk": "underline color",
+            "kk": "menuUnderline"
+          }
+        },
+        "search-border": {
+          "description": "搜索框边框",
+          "pencilNodeId": "0e5O4",
+          "value": "#2c615c",
+          "pencilVar": "light-primary-color",
+          "note": "Pencil用$light-primary-color，样例包用$search-input-border-color（值相同）",
+          "products": {
+            "ekp": "$search-input-border-color",
+            "mk": "search border",
+            "kk": "searchInputBorder"
+          }
+        },
+        "search-placeholder": {
+          "description": "搜索框placeholder",
+          "pencilNodeId": "2cJpe",
+          "value": "#2c615c",
+          "pencilVar": "light-primary-color",
+          "note": "Pencil用$light-primary-color，样例包用$search-placehold-font-color（值相同）",
+          "products": {
+            "ekp": "$search-placehold-font-color",
+            "mk": "placeholder color",
+            "kk": "searchPlaceholder"
+          }
+        },
+        "search-bg": {
+          "description": "搜索框背景",
+          "pencilNodeId": "0e5O4",
+          "value": "rgba(255,255,255,0.5)",
+          "opacity": "0.3-0.5",
+          "pencilVar": null,
+          "products": {
+            "ekp": "$search-input-bg-rgba: transparent",
+            "mk": "search bg",
+            "kk": "searchBg"
+          }
+        },
+        "divider-line": {
+          "description": "分隔线",
+          "pencilNodeId": "a18PJ/rjpmK/RKsKq",
+          "value": "#CCCCCC",
+          "pencilVar": null,
+          "note": "硬编码色值，需新增变量$header-divider-color",
+          "products": {
+            "ekp": "#CCCCCC（硬编码）",
+            "mk": "divider",
+            "kk": "dividerColor"
+          }
+        },
+        "icon-group-right": {
+          "description": "右侧功能区图标组",
+          "pencilNodeId": "cK5SJ",
+          "note": "包含退出、文件夹、企业、提醒等图标（SVG示意，实际使用sprite图片）",
+          "spriteImage": "images/icon-multi-sprite/tlayout_header_icon@2x.png",
+          "products": {
+            "ekp": "sprite图片：tlayout_header_icon@2x.png",
+            "mk": "icons",
+            "kk": "headerIcons"
+          }
+        }
+      }
+    },
+    "header-complex": {
+      "description": "经典页眉/多页签页眉组件",
+      "pencilNodeId": "C0kVM",
+      "cssClass": ".lui_portal_header_complex_frame",
+      "supportedVersions": ["v14-v16", "v17"],
+      "structure": {
+        "type": "two-layer",
+        "upperLayer": {
+          "height": "90px",
+          "description": "背景图 + 延展色"
+        },
+        "lowerLayer": {
+          "height": "60px",
+          "description": "纯色延展（:before伪元素）",
+          "color": "$portal-header-complex-pure-extend-color"
+        },
+        "totalHeight": "150px"
+      },
+      "elements": {
+        "background": {
+          "description": "页眉背景切图（上层90px）",
+          "pencilNodeId": "C0kVM",
+          "pencilVar": null,
+          "asset": "header_complex_frame_bg.png",
+          "size": "1920x90",
+          "exportNode": "C0kVM（整个组）",
+          "note": "Pencil中只设计90px背景部分，下层60px由CSS伪元素实现",
+          "products": {
+            "ekp": "images/image-style/header_complex_frame_bg.png",
+            "mk": "static/header-tabs.png",
+            "kk": "N/A"
+          }
+        },
+        "bg-image-node": {
+          "description": "背景图节点",
+          "pencilNodeId": "hY5BJ",
+          "note": "使用 header_complex_frame_bg.png 填充",
+          "products": {
+            "ekp": "N/A（导出整个C0kVM组）",
+            "mk": "N/A",
+            "kk": "N/A"
+          }
+        },
+        "left-gradient": {
+          "description": "左渐变遮罩",
+          "pencilNodeId": "QdJ89",
+          "note": "宽度859，导出背景切图时包含",
+          "products": {
+            "ekp": "N/A（包含在背景切图中）",
+            "mk": "N/A",
+            "kk": "N/A"
+          }
+        },
+        "right-gradient": {
+          "description": "右渐变遮罩",
+          "pencilNodeId": "4oPtJ",
+          "note": "宽度920，导出背景切图时包含",
+          "products": {
+            "ekp": "N/A（包含在背景切图中）",
+            "mk": "N/A",
+            "kk": "N/A"
+          }
+        },
+        "bg-extend-color": {
+          "description": "背景延展色（上层）",
+          "value": "#FBFCF2",
+          "pencilVar": "portal-header-complex-bg-extend-color",
+          "products": {
+            "ekp": "$portal-header-complex-bg-extend-color",
+            "mk": "background: #fbfcf2",
+            "kk": "headerComplexBgExtend"
+          }
+        },
+        "pure-extend-color": {
+          "description": "底部纯色延展（下层）",
+          "value": "#2C615C",
+          "pencilVar": "portal-header-complex-pure-extend-color",
+          "cssProperty": ".lui_portal_header_complex_frame:before { background: $portal-header-complex-pure-extend-color }",
+          "note": "Pencil中不显示，由CSS伪元素实现",
+          "products": {
+            "ekp": "$portal-header-complex-pure-extend-color",
+            "mk": null,
+            "kk": "headerComplexPureExtend"
+          }
+        },
+        "font-color": {
+          "description": "多页签文字颜色",
+          "value": "#fff",
+          "pencilVar": "portal-header-complex-font-color",
+          "note": "菜单项文字颜色（白色）",
+          "products": {
+            "ekp": "$portal-header-complex-font-color",
+            "mk": "color: #fff",
+            "kk": "headerComplexFontColor"
+          }
+        },
+        "font-color-hover": {
+          "description": "多页签hover文字颜色",
+          "value": "#fff",
+          "pencilVar": "portal-header-complex-font-color-hover",
+          "products": {
+            "ekp": "$portal-header-complex-font-color-hover",
+            "mk": "color: #fff",
+            "kk": "headerComplexFontColorHover"
+          }
+        },
+        "personal-info-font-color": {
+          "description": "个人信息文字颜色",
+          "value": "#333",
+          "pencilVar": "text-primary",
+          "note": "个人信息区域文字（用户名等），在下层60px纯色延展上，使用深色文字",
+          "products": {
+            "ekp": ".lui_portal_header_complex_content .lui_portal_header_text { color: #333 }",
+            "mk": "color: #333",
+            "kk": "headerPersonalInfoFont"
+          }
+        },
+        "search-input-bg": {
+          "description": "搜索框背景",
+          "value": "transparent",
+          "pencilVar": "search-complex-input-bg",
+          "products": {
+            "ekp": "$search-complex-input-bg",
+            "mk": null,
+            "kk": "headerComplexSearchBg"
+          }
+        },
+        "search-input-font": {
+          "description": "搜索框文字色",
+          "value": "#2C615C",
+          "pencilVar": "search-complex-input-font",
+          "products": {
+            "ekp": "$search-complex-input-font",
+            "mk": null,
+            "kk": "headerComplexSearchFont"
+          }
+        },
+        "search-input-icon-bg": {
+          "description": "搜索按钮背景",
+          "value": "transparent",
+          "pencilVar": "search-complex-input-icon-bg",
+          "products": {
+            "ekp": "$search-complex-input-icon-bg",
+            "mk": null,
+            "kk": "headerComplexSearchIconBg"
+          }
+        }
+      }
+    },
+    "header-zone": {
+      "description": "简洁页眉组件",
+      "pencilNodeId": "HQmJc",
+      "cssClass": ".lui_portal_header_zone_frame",
+      "supportedVersions": ["v14-v16", "v17"],
+      "elements": {
+        "background": {
+          "description": "页眉背景切图",
+          "pencilNodeId": "60s7S",
+          "pencilVar": null,
+          "asset": "header_zone_frame_bg.png",
+          "size": "1920x60",
+          "exportNode": "60s7S（背景组）",
+          "products": {
+            "ekp": "images/image-style/header_zone_frame_bg.png",
+            "mk": null,
+            "kk": "N/A"
+          }
+        },
+        "bg-color": {
+          "description": "背景延展色",
+          "pencilNodeId": "S1Ian",
+          "value": "#FBFCF2",
+          "pencilVar": "portal-header-zone-bg-extend-color",
+          "note": "当前Pencil中是#3D8A5A（深色），样例包中是#FBFCF2（浅色），需确认",
+          "products": {
+            "ekp": "$portal-header-zone-bg-extend-color",
+            "mk": null,
+            "kk": "headerZoneBgExtend"
+          }
+        },
+        "font-color": {
+          "description": "页眉文字颜色",
+          "value": "#333",
+          "pencilVar": "portal-header-zone-font-color",
+          "products": {
+            "ekp": "$portal-header-zone-font-color",
+            "mk": "color: #333",
+            "kk": "headerZoneFontColor"
+          }
+        },
+        "font-color-hover": {
+          "description": "页眉hover文字颜色",
+          "value": "#2C615C",
+          "pencilVar": "portal-header-zone-font-color-hover",
+          "products": {
+            "ekp": "$portal-header-zone-font-color-hover",
+            "mk": "color: #2C615C",
+            "kk": "headerZoneFontColorHover"
+          }
+        }
+      }
+    },
+    "header-menu": {
+      "description": "菜单页眉组件",
+      "pencilNodeId": "aFQix",
+      "cssClass": ".lui_portal_header_menu_frame",
+      "supportedVersions": ["v14-v16", "v17"],
+      "elements": {
+        "background": {
+          "description": "页眉背景切图",
+          "pencilNodeId": "aFQix",
+          "pencilVar": null,
+          "asset": "header_menu_frame_bg.png",
+          "size": "1920x130",
+          "exportNode": "aFQix（整个组）",
+          "note": "Pencil中节点透明度为0.25，可能影响视觉效果",
+          "products": {
+            "ekp": "images/image-style/header_menu_frame_bg.png",
+            "mk": null,
+            "kk": "N/A"
+          }
+        },
+        "bg-color": {
+          "description": "背景延展色",
+          "pencilNodeId": "AEKki",
+          "value": "#FBFCF2",
+          "pencilVar": "portal-header-bg-extend-color",
+          "note": "Pencil中是$primary-color，样例包中是#FBFCF2，需确认",
+          "products": {
+            "ekp": "$portal-header-bg-extend-color",
+            "mk": null,
+            "kk": "headerMenuBgExtend"
+          }
+        },
+        "font-color": {
+          "description": "页眉文字颜色",
+          "value": "#333",
+          "pencilVar": "header-font-color",
+          "products": {
+            "ekp": "$header-font-color",
+            "mk": "color: #333",
+            "kk": "headerMenuFontColor"
+          }
+        }
+      }
+    },
+    "header-simple": {
+      "description": "简洁多标签页眉组件",
+      "pencilNodeId": "Q9gtt",
+      "cssClass": ".lui_portal_header_simple_frame",
+      "supportedVersions": ["v14-v16", "v17"],
+      "elements": {
+        "background": {
+          "description": "页眉背景切图",
+          "pencilNodeId": "Q9gtt",
+          "pencilVar": null,
+          "asset": "header_simple_frame_bg.png",
+          "size": "1920x60",
+          "exportNode": "Q9gtt（整个组）",
+          "note": "导出文件大小异常小（962B），需重新验证",
+          "products": {
+            "ekp": "images/image-style/header_simple_frame_bg.png",
+            "mk": null,
+            "kk": "N/A"
+          }
+        },
+        "bg-color": {
+          "description": "背景延展色",
+          "pencilNodeId": "zIMzg",
+          "value": "#FBFCF2",
+          "pencilVar": "portal-header-simple-bg-extend-color",
+          "note": "Pencil中是$primary-color，样例包中是#FBFCF2，需确认",
+          "products": {
+            "ekp": "$portal-header-simple-bg-extend-color",
+            "mk": null,
+            "kk": "headerSimpleBgExtend"
+          }
+        },
+        "pure-extend-color": {
+          "description": "纯色延展",
+          "value": "#2C615C",
+          "pencilVar": "portal-header-simple-pure-extend-color",
+          "products": {
+            "ekp": "$portal-header-simple-pure-extend-color",
+            "mk": null,
+            "kk": "headerSimplePureExtend"
+          }
+        },
+        "font-color-top": {
+          "description": "上方文字颜色",
+          "value": "#fff",
+          "pencilVar": "portal-header-simple-font-color-top",
+          "products": {
+            "ekp": "$portal-header-simple-font-color-top",
+            "mk": "color: #fff",
+            "kk": "headerSimpleFontColorTop"
+          }
+        },
+        "font-color-hover": {
+          "description": "hover文字颜色",
+          "value": "#2C615C",
+          "pencilVar": "portal-header-simple-font-color-hover",
+          "products": {
+            "ekp": "$portal-header-simple-font-color-hover",
+            "mk": "color: #2C615C",
+            "kk": "headerSimpleFontColorHover"
+          }
+        }
+      }
+    }
+  },
+  "outputFormats": {
+    "ekp": {
+      "format": "scss",
+      "file": "scss/lib/vars.scss",
+      "prefix": "$",
+      "versions": {
+        "v17": { "template": "v17/vars.scss.template" },
+        "v14-v16": { "template": "v14-v16/vars.scss.template" },
+        "v13": { "template": "v13/vars.scss.template" },
+        "v12": { "template": "v12/vars.scss.template" }
+      }
+    },
+    "mk": {
+      "format": "css",
+      "file": "style.css",
+      "prefix": "--"
+    },
+    "kk": {
+      "format": "json",
+      "file": "config.json",
+      "prefix": ""
+    }
+  },
+  "automation": {
+    "defaultEkpVersion": "v17",
+    "fallbackStrategy": "useLatestVersion",
+    "validation": {
+      "checkVersionSupport": true,
+      "checkVariableExists": true
+    }
+  }
+}

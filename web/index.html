@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theme Studio - 主题编辑器</title>
+    <link rel="stylesheet" href="/src/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 左侧面板：对话 -->
+        <div class="chat-panel">
+            <div class="chat-header">
+                <div class="brand-header">
+                    <div class="brand-icon"></div>
+                    <div class="brand-info">
+                        <div class="brand-title">Theme Studio</div>
+                        <div class="brand-subtitle">AI 主题设计助手</div>
+                    </div>
+                </div>
+                <button id="settingsBtn" class="settings-btn" title="设置">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
+                        <path d="M19.005 13.5C19.0098 13.759 19.0098 14.019 19.005 14.279C18.9477 16.7227 18.8524 17.9445 18.353 18.8814C17.9101 19.712 17.212 20.4093 16.3811 20.8532C15.4446 21.3524 14.2222 21.4477 11.7789 21.505C9.335 21.5624 8.665 21.5624 6.221 21.505C3.77783 21.4477 2.55543 21.3524 1.61894 20.8532C0.787989 20.4093 0.0898875 19.712 0.0330015 18.8814C-0.0624285 17.9445 -0.0523286 16.7227 -0.0523286 14.279C-0.0523286 13.759 -0.0523286 13.241 0.005 12.721C0.0624284 11.2773 0.157743 10.0555 0.657058 9.11863C1.08989 8.28799 1.78799 7.59072 2.61894 7.14679C3.55543 6.64757 4.77783 6.55225 7.221 6.495C8.886 6.495 10.115 6.495 11 6.495C11.885 6.495 13.114 6.495 14.779 6.495C17.222 6.55225 18.444 6.64757 19.381 7.14679C20.212 7.59072 20.91 8.28799 21.343 9.11863C21.842 10.0555 21.938 11.2773 21.995 12.721C22.048 13.241 22.048 13.759 21.995 14.279C21.938 15.7227 21.842 16.9445 21.343 17.8814C20.91 18.712 20.212 19.4093 19.381 19.8532C18.444 20.3524 17.222 20.4477 14.779 20.505" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="messages-container">
+                <!-- Welcome message with suggestions -->
+                <div class="message ai-message welcome-message">
+                    <div class="avatar">
+                        <svg class="robot-avatar" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="5" y="6" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <circle cx="18" cy="7" r="1" fill="currentColor"/>
+                            <circle cx="6" cy="7" r="1" fill="currentColor"/>
+                            <rect x="9" y="10" width="6" height="2" rx="1" fill="currentColor"/>
+                            <line x1="9" y1="15" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div class="message-content">
+                        <h4 class="welcome-title">欢迎使用 Theme Studio</h4>
+                        <p class="welcome-text">我是您的 AI 主题设计助手，请告诉我您想要的主题风格，例如 "国庆节喜庆主题" 或 "科技蓝主题"。您也可以尝试以下主题风格：</p>
+                        <div class="theme-suggestions">
+                            <button class="theme-btn">🎨 科技蓝</button>
+                            <button class="theme-btn">❤️ 中国红</button>
+                            <button class="theme-btn">🌿 自然绿</button>
+                            <button class="theme-btn">🌅 日落橙</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="attachments-preview" id="attachmentsPreview"></div>
+            
+            <div class="input-area">
+                <div class="input-row">
+                    <input type="text" id="messageInput" placeholder="描述您想要的主题风格..." />
+                    <button id="sendBtn" title="发送">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="attachment-buttons">
+                    <button id="uploadImageBtn" class="icon-btn" title="上传图片">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M16 13H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M16 17H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M10 9H9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <button id="uploadPenBtn" class="icon-btn" title="上传Pen文件">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <polyline points="16,13 10,13 10,21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧面板：预览区域 -->
+        <div class="preview-panel">
+            <div class="preview-tabs">
+                <button id="loginTab" class="active-tab">登录页</button>
+                <button id="mainPageTab">主页</button>
+            </div>
+            
+            <div class="preview-content">
+                <div id="loginPage" class="preview-page active-preview">
+                    <!-- .pen renderer fills this -->
+                </div>
+                
+                <div id="mainPage" class="preview-page">
+                    <!-- .pen renderer fills this -->
+                </div>
+            </div>
+            
+        </div> <!-- end preview-panel -->
+
+        <!-- 右上角操作按钮 -->
+        <div class="top-actions">
+            <button id="screenshotBtn">截图</button>
+            <button id="bundleBtn">打包</button>
+        </div>
+
+        <!-- 底部可折叠颜色编辑器 -->
+        <div class="color-editor-drawer" id="colorEditorDrawer">
+            <button class="drawer-toggle" id="colorEditorToggle">🎨 色值面板</button>
+            <div class="drawer-content" id="colorEditorContent">
+                <div class="drawer-header">
+                    <h3>颜色配置</h3>
+                    <button class="drawer-close-btn" id="colorEditorClose">&times;</button>
+                </div>
+                <div id="colorEditor"></div>
+            </div>
+        </div>
+    </div> <!-- end app-container -->
+
+    <!-- 设置模态框 -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>API设置</h3>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-field">
+                    <label for="apiEndpoint">API端点：</label>
+                    <input type="text" id="apiEndpoint" placeholder="https://open.bigmodel.cn/api/paas/v4" />
+                </div>
+                <div class="form-field">
+                    <label for="apiKey">API密钥：</label>
+                    <input type="password" id="apiKey" placeholder="智谱 API Key" />
+                </div>
+                <div class="form-field">
+                    <label for="modelName">模型名称：</label>
+                    <input type="text" id="modelName" placeholder="GLM-4-Flash" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveSettings">保存</button>
+                <button id="cancelSettings">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      function resizePreview() {
+        const container = document.querySelector('.preview-content');
+        if (!container) return;
+
+        const cw = container.clientWidth;
+        const ch = container.clientHeight;
+        if (cw === 0 || ch === 0) return;
+
+        const activePage = document.querySelector('.preview-page.active-preview');
+        if (!activePage) return;
+
+        const rendered = activePage.firstElementChild;
+        if (!rendered) return;
+
+        const rw = rendered.offsetWidth || parseInt(rendered.style.width) || 0;
+        const rh = rendered.offsetHeight || parseInt(rendered.style.height) || 0;
+        if (rw === 0 || rh === 0) return;
+
+        const scaleX = cw / rw;
+        const scaleY = ch / rh;
+        const scale = Math.min(scaleX, scaleY, 1);
+
+        rendered.style.transform = 'scale(' + scale + ')';
+        rendered.style.transformOrigin = 'top left';
+      }
+
+      window.addEventListener('resize', resizePreview);
+      document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(resizePreview, 200);
+        document.querySelectorAll('.preview-tabs button').forEach(function(btn) {
+          btn.addEventListener('click', function() { setTimeout(resizePreview, 100); });
+        });
+      });
+    </script>
+
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

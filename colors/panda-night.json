@@ -1,0 +1,33 @@
+{
+  "name": "熊猫咪咪晚上睡觉看星星",
+  "nameEn": "panda-night",
+  "description": "深夜星空下，可爱熊猫咪咪睡觉看星星的温馨场景。深紫蓝夜空配淡紫星光，营造梦幻童趣氛围，现代科技风格表现。",
+  "templateType": "dark-ui",
+  "colors": {
+    "primary": "#4A3F6B",
+    "primaryHover": "#E6B2FF",
+    "alterColor": "#3A2F5B",
+    "alterColorHoverOn": "#C4A0E0",
+    "primaryOpacity10": "#4A3F6B1A",
+    "primaryOpacity20": "#4A3F6B33",
+    "primaryOpacity30": "#4A3F6B4D",
+    "headerFont": "#EBCCFE",
+    "sidebarIconColor": "#C8B8F0",
+    "sidebarPanelBg": "#EBCCFE",
+    "loginBg": "#3A2F5B"
+  },
+  "gradient": {
+    "start": "#4A3F6B",
+    "end": "#E6B2FF"
+  },
+  "backgroundImage": {
+    "prompt": "Dreamy night sky with deep purple and indigo gradient, abstract geometric constellation lines connecting soft glowing star nodes, minimal low-poly network pattern suggesting stars and space, no text, no interface elements, no recognizable objects, modern tech aesthetic"
+  },
+  "hueCalculation": {
+    "backgroundHue": 255,
+    "primary": 255,
+    "primaryHover": 281,
+    "headerFont": 277,
+    "note": "主题色调偏移计算：primaryHover = H+26° (L≈85%), headerFont = H+22° (L≈90%)"
+  }
+}

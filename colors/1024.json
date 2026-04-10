@@ -1,0 +1,28 @@
+{
+  "name": "1024程序员节",
+  "nameEn": "1024",
+  "description": "1024程序员节主题，明亮活力配色，卡通风格，轻松快乐，致敬程序员",
+  "colors": {
+    "primary": "#6366F1",
+    "primaryHover": "#818CF8",
+    "primaryLight": "#C7D2FE",
+    "primaryDark": "#4338CA",
+    "primaryOpacity10": "#F5F7FF",
+    "primaryOpacity20": "#EEF2FF",
+    "primaryOpacity30": "#E0E7FF",
+    "sidebarBg": "#F5F7FF",
+    "contentBg": "#FAFBFF",
+    "cardBg": "#F5F7FF",
+    "textOnPrimary": "#FFFFFF",
+    "linkText": "#6366F1",
+    "linkTextHover": "#818CF8"
+  },
+  "gradient": {
+    "start": "#6366F1",
+    "end": "#818CF8"
+  },
+  "backgroundImage": {
+    "prompt": "双十一程序员节1024卡通背景图，浅色明亮背景，轻松快乐氛围，卡通风格程序员人物，彩色显示器和笔记本电脑，多样化的程序员角色包括男女老少，代码符号和可爱图标点缀，绿色草地和蓝天白云，活泼温馨，欢乐节日气氛，1920x1080尺寸",
+    "style": "卡通风格，浅色背景，程序员和计算机元素"
+  }
+}

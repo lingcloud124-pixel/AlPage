@@ -1,0 +1,45 @@
+{
+  "name": "东北冰雪世界度假季",
+  "nameEn": "ice-wonderland",
+  "description": "东北冰雪夜景风格，深蓝极光色系，冰雪度假氛围，星空感",
+  "colors": {
+    "primary": "#14648C",
+    "primaryHover": "#64B4DC",
+    "primaryLight": "#8CC8E8",
+    "primaryDark": "#0F5070",
+    "primaryOpacity10": "#1A6E96",
+    "primaryOpacity20": "#2078A0",
+    "primaryOpacity30": "#2682AA",
+    "alterColor": "#0F3460",
+    "alterColorHoverOn": "#50A0C8",
+    "sidebarBg": "#0F1A2E",
+    "contentBg": "#14648C",
+    "cardBg": "#0F3460",
+    "textOnPrimary": "#DFE3EB",
+    "linkText": "#8CC8E8",
+    "linkTextHover": "#64B4DC",
+    "headerFont": "#DFE3EB",
+    "sidebarIcon": "#8CC8E8",
+    "sidebarPanelBg": "#DFE3EB",
+    "sidebarColor": "#333333",
+    "loginBg": "#0F3460",
+    "borderColor": "#EEEEEE",
+    "borderIconColor": "#EEEEEE",
+    "bodyBg": "#F8F8F8",
+    "auxiliaryGray": "#999999",
+    "auxiliaryGrayDark": "#666666",
+    "hoverBg": "#14648C",
+    "portalHeaderExtend": "#DFE3EB",
+    "portalHeaderPureExtend": "#14648C",
+    "singleHeaderExtend": "#DFE3EB",
+    "sidebarIconHover": "#FFFFFF"
+  },
+  "gradient": {
+    "start": "#14648C",
+    "end": "#3C8CB4"
+  },
+  "backgroundImage": {
+    "prompt": "Northeast China winter wonderland night scene, deep blue ice and snow landscape, northern lights aurora borealis in the sky, starry night, frozen lake with ice crystals, snow-covered pine trees, magical ice palace in the distance, cool blue and silver tones, atmospheric winter night, no UI elements, no text, pure scenic background, 1920x1080",
+    "style": "东北冰雪夜景，深蓝极光，星空水晶，冰雪王国氛围"
+  }
+}

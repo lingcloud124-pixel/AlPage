@@ -1,0 +1,43 @@
+{
+  "name": "春节（Dark-UI）",
+  "nameEn": "dark-ui-spring",
+  "templateType": "dark-ui",
+  "description": "Dark-UI 春节主题，深红色系，金橙辅助，适合深色背景主题",
+  "colors": {
+    "primary": "#A7160B",
+    "primaryHover": "#FFD3B2",
+    "alterColor": "#8A1209",
+    "alterColorHoverOn": "#E6A87A",
+    "primaryOpacity10": "#F7E8E6",
+    "primaryOpacity20": "#EFD2CF",
+    "primaryOpacity30": "#E7BCB8",
+    "headerFont": "#FEDECC",
+    "portalHeaderBgExtendColor": "#A7160B",
+    "portalHeaderPureExtendColor": "#A7160B",
+    "sidebarColor": "#333333",
+    "sidebarIconColor": "#FEDECC",
+    "sidebarIconColorHover": "#FFFFFF",
+    "sidebarPanelBg": "#FEDECC",
+    "loginBgColor": "#8A1209",
+    "auxiliaryGray": "#999999",
+    "auxiliaryGrayDark": "#666666",
+    "bodyBgColor": "#F8F8F8",
+    "borderColor": "#EEEEEE",
+    "borderIconColor": "#EEEEEE"
+  },
+  "gradient": {
+    "start": "#A7160B",
+    "end": "#FFD3B2"
+  },
+  "backgroundImage": {
+    "prompt": "Deep red Chinese New Year atmosphere, elegant lantern glow on dark background, subtle golden sparkles, traditional festive mood without text or elements, 1920x1080",
+    "style": "Dark background traditional Chinese New Year, warm red and gold tones, elegant and modern"
+  },
+  "hueCalculation": {
+    "backgroundHue": 0,
+    "primary": 0,
+    "primaryHover": 26,
+    "headerFont": 22,
+    "note": "主题色调偏移计算：primaryHover = H+26° (L≈85%), headerFont = H+22° (L≈90%)"
+  }
+}

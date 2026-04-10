@@ -1,0 +1,28 @@
+/* Login page CSS */
+body.login-page {
+  background: #2C615C; /* Primary background */
+  color: #FFFFFF;
+}
+
+.login-container {
+  border: 2px solid #2C615C; /* Primary border */
+}
+
+.login-button {
+  background-color: #2C615C; /* Primary button */
+  color: white;
+}
+
+.login-button:hover {
+  background-color: #234e48; /* Primary hover */
+}
+
+/* Links in login page */
+.login-links a {
+  color: #2C615C; /* Link color */
+  text-decoration: none;
+}
+
+.login-links a:hover {
+  color: #234e48; /* Link hover */
+}

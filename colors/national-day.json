@@ -1,0 +1,38 @@
+{
+  "name": "国庆节",
+  "nameEn": "national-day",
+  "templateType": "dark-ui",
+  "description": "国庆节主题，深红色系，庄重喜庆，适合国庆节爱国氛围，现代科技感表现",
+  "colors": {
+    "primary": "#A60905",
+    "primaryHover": "#FFD3B2",
+    "alterColor": "#8A0A05",
+    "alterColorHoverOn": "#E8A090",
+    "primaryOpacity10": "#FFEBE8",
+    "primaryOpacity20": "#FFD6D0",
+    "primaryOpacity30": "#FFC2B8",
+    "headerFont": "#FEDECC",
+    "sidebarPanelBg": "#FEDECC",
+    "loginBg": "#8A0A05",
+    "sidebarColor": "#333333",
+    "sidebarIconColor": "#FEDECC",
+    "auxiliaryGray": "#999999",
+    "auxiliaryGrayDark": "#666666",
+    "borderColor": "#EEEEEE",
+    "borderIconColor": "#EEEEEE"
+  },
+  "gradient": {
+    "start": "#A60905",
+    "end": "#FFD3B2"
+  },
+  "backgroundImage": {
+    "prompt": "Modern technology background with deep red accents, abstract geometric patterns suggesting Chinese architectural elements in minimalist style, digital data network overlay, golden highlights on dark navy base, clean corporate tech aesthetic, no text, no interface elements"
+  },
+  "hueCalculation": {
+    "backgroundHue": 0,
+    "primary": 0,
+    "primaryHover": 26,
+    "headerFont": 22,
+    "note": "主题色调偏移计算：primaryHover = H+26° (L≈85%), headerFont = H+22° (L≈90%)"
+  }
+}

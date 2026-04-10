@@ -1,0 +1,25 @@
+{
+  "name": "篮球对抗赛，热血青春燃起来",
+  "nameEn": "basketball-match",
+  "templateType": "light-ui",
+  "description": "篮球赛事主题，活力橙色系，运动竞技氛围",
+  "colors": {
+    "primary": "#F07828",
+    "primaryHover": "#FAB088",
+    "alterColor": "#C86020",
+    "alterColorHoverOn": "#FDC8A8",
+    "primaryOpacity10": "#FDF1E9",
+    "primaryOpacity20": "#FCE4D4",
+    "primaryOpacity30": "#FAD6BE",
+    "headerFont": "#333333",
+    "sidebarPanelBg": "#F9F6F5",
+    "loginBg": "#FCE4D4"
+  },
+  "gradient": {
+    "start": "#F07828",
+    "end": "#FAB088"
+  },
+  "backgroundImage": {
+    "prompt": "Abstract energetic orange and basketball-themed geometric patterns, dynamic angular shapes suggesting motion and energy, clean modern sports technology aesthetic, warm orange gradient background, no text, no interface elements"
+  }
+}

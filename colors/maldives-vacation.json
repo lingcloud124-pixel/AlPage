@@ -1,0 +1,30 @@
+{
+  "name": "马尔代夫公司度假季",
+  "nameEn": "maldives-vacation",
+  "description": "马尔代夫海滨度假风格，清新海洋蓝绿色主题，真实摄影风格，有人物在度假，热带海岛风情",
+  "colors": {
+    "primary": "#00C9A7",
+    "primaryHover": "#3DD5BC",
+    "primaryLight": "#7DEA D4",
+    "primaryDark": "#009B8D",
+    "primaryOpacity10": "#E0F9F6",
+    "primaryOpacity20": "#C3F2EC",
+    "primaryOpacity30": "#A5EBE3",
+    "alterColor": "#009B8D",
+    "alterColorHoverOn": "#5ED9C8",
+    "sidebarBg": "#E0F9F6",
+    "contentBg": "#F0FDFB",
+    "cardBg": "#C3F2EC",
+    "textOnPrimary": "#FFFFFF",
+    "linkText": "#007A6F",
+    "linkTextHover": "#00C9A7"
+  },
+  "gradient": {
+    "start": "#00C9A7",
+    "end": "#00B894"
+  },
+  "backgroundImage": {
+    "prompt": "Photorealistic Maldives beach resort scene, beautiful turquoise ocean with gentle waves, white sandy beach with coconut palm trees, several happy people in summer vacation outfits enjoying the beach, overwater bungalows in the background, soft golden sunlight, blue sky with fluffy white clouds, warm tropical paradise atmosphere, no UI elements, clean composition, 1920x1080",
+    "style": "马尔代夫真实摄影风格，热带海滨度假，有人物享受阳光沙滩，海洋蓝绿色"
+  }
+}
