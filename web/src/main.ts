@@ -128,6 +128,17 @@ function showNewProjectDialog() {
               </label>
             </div>
           </div>
+          <div class="form-field">
+            <label>快速配色：</label>
+            <div class="preset-filter">
+              <button class="preset-filter-btn active" data-filter="all">全部</button>
+              <button class="preset-filter-btn" data-filter="light-ui">Light-UI</button>
+              <button class="preset-filter-btn" data-filter="dark-ui">Dark-UI</button>
+            </div>
+            <div class="preset-grid" id="presetGrid">
+              <!-- JS 动态生成 -->
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button id="createProjectBtn">创建</button>
@@ -141,6 +152,73 @@ function showNewProjectDialog() {
   const closeBtn = document.getElementById('closeNewProjectModal');
   const cancelBtn = document.getElementById('cancelNewProject');
   const createBtn = document.getElementById('createProjectBtn');
+  const presetGrid = document.getElementById('presetGrid');
+  const presetFilterBtns = document.querySelectorAll('.preset-filter-btn');
+  
+  // 记录当前选中预设
+  let selectedPreset: string | null = null;
+  
+  // 渲染预设选项
+  function renderPresets(filter: string = 'all') {
+    if (!presetGrid) return;
+    
+    presetGrid.innerHTML = '';
+    
+    const presets = Object.entries(PRESET_DISPLAY).filter(([_, preset]) => {
+      if (filter === 'all') return true;
+      return preset.type === filter;
+    });
+    
+    presets.forEach(([key, preset]) => {
+      const presetCard = document.createElement('div');
+      presetCard.className = 'preset-card';
+      presetCard.dataset.preset = key;
+      presetCard.innerHTML = `
+        <div class="preset-color" style="background: ${preset.primary};"></div>
+        <span class="preset-label">${preset.label}</span>
+      `;
+      
+      presetCard.addEventListener('click', () => {
+        // 移除之前的选中状态
+        document.querySelectorAll('.preset-card').forEach(card => {
+          card.classList.remove('selected');
+        });
+        
+        // 添加新的选中状态
+        presetCard.classList.add('selected');
+        
+        // 设置所选的预设
+        selectedPreset = key;
+        
+        // 自动切换模板类型(如果预设类型与当前类型不符)
+        const selectedType = preset.type;
+        const typeRadios = document.querySelectorAll('input[name="templateType"]') as NodeListOf<HTMLInputElement>;
+        typeRadios.forEach(radio => {
+          if (radio.value === selectedType) {
+            radio.checked = true;
+          }
+        });
+      });
+      
+      presetGrid.appendChild(presetCard);
+    });
+  }
+  
+  // 渲染初始预设
+  renderPresets('all');
+  
+  // 绑定筛选事件
+  presetFilterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      presetFilterBtns.forEach(b => b.classList.remove('active'));
+      (btn as HTMLElement).classList.add('active');
+      
+      const filter = (btn as HTMLElement).dataset.filter;
+      if (filter) {
+        renderPresets(filter);
+      }
+    });
+  });
   
   const closeModal = () => {
     modal!.classList.remove('active');
@@ -153,7 +231,7 @@ function showNewProjectDialog() {
     if (e.target === modal) closeModal();
   });
   
-  createBtn?.addEventListener('click', () => {
+  createBtn?.addEventListener('click', async () => {
     const nameInput = document.getElementById('projectNameInput') as HTMLInputElement;
     const projectName = nameInput?.value.trim();
     
@@ -168,7 +246,34 @@ function showNewProjectDialog() {
       return;
     }
     
-    const project = createProject(projectName, templateType.value as 'light-ui' | 'dark-ui');
+    // 创建项目时应用选中的预设
+    let project;
+    if (selectedPreset) {
+      // 从colors/目录获取预设配色
+      try {
+        const response = await fetch(`/colors/${selectedPreset}.json`);
+        if (response.ok) {
+          const presetColors = await response.json();
+          
+          // 创建带预设配色的项目
+          project = createProjectWithPreset(
+            projectName, 
+            templateType.value as 'light-ui' | 'dark-ui',
+            presetColors,
+            selectedPreset
+          );
+        } else {
+          // 获取失败时使用默认配色
+          project = createProject(projectName, templateType.value as 'light-ui' | 'dark-ui');
+        }
+      } catch {
+        // 错误处理：使用默认项目
+        project = createProject(projectName, templateType.value as 'light-ui' | 'dark-ui');
+      }
+    } else {
+      project = createProject(projectName, templateType.value as 'light-ui' | 'dark-ui');
+    }
+    
     if (project) {
       closeModal();
       showWorkspace(project.id);
@@ -187,6 +292,32 @@ function getDefaultColors(): Record<string, string> {
     '--auxiliary-gray': '#999999',
     '--body-bg-color': '#F8F8F8'
   };
+}
+
+function createProjectWithPreset(name: string, templateType: 'light-ui' | 'dark-ui', presetColors: Record<string, string>, presetId: string): Project | null {
+  const id = Date.now().toString();
+  
+  // 合并默认颜色与预设颜色
+  const defaultColors = getDefaultColors();
+  const colors = { ...defaultColors, ...presetColors };
+  
+  // 从预设中获取主色调更新页面样式
+  const primaryColor = colors['--primary-color'] || '#2C615C';
+  document.documentElement.style.setProperty('--primary-color', primaryColor);
+  
+  const newProject: Project = {
+    id,
+    name,
+    templateType,
+    colors,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  
+  // 同时保存为对应的预设（可重用）
+  localStorage.setItem(`theme-studio-colors-${presetId}`, JSON.stringify(presetColors));
+  
+  return saveProject(newProject);
 }
 
 function createProject(name: string, templateType: 'light-ui' | 'dark-ui'): Project | null {
@@ -613,6 +744,44 @@ const KNOWN_PRESETS = [
   'peach-blossom', 'sanya', 'shenergy-enterprise', 'superman-superhero',
   'yellow-duck',
 ];
+
+const PRESET_DISPLAY: Record<string, { label: string; primary: string; type: string }> = {
+  'basketball-match': { label: '🏀 篮球对抗赛', primary: '#F07828', type: 'light-ui' },
+  'cherry-blossom': { label: '🌸 樱花', primary: '#E8B4C8', type: 'light-ui' },
+  'christmas': { label: '🎄 圣诞节', primary: '#E53935', type: 'light-ui' },
+  'corporate-blue': { label: '💼 企业蓝', primary: '#1565C0', type: 'light-ui' },
+  'dark-ui-spring': { label: '🌙 暗夜春色', primary: '#4A3F6B', type: 'dark-ui' },
+  'dragon-boat': { label: '🐉 端午节', primary: '#2E7D32', type: 'light-ui' },
+  'dragon-boat-fresh': { label: '🌿 端午清新', primary: '#4CAF50', type: 'light-ui' },
+  'football-match': { label: '⚽ 足球赛', primary: '#2E7D32', type: 'light-ui' },
+  'gaokao': { label: '📝 高考', primary: '#1565C0', type: 'light-ui' },
+  'ice-wonderland': { label: '❄️ 冰雪世界', primary: '#00ACC1', type: 'light-ui' },
+  'interstellar': { label: '🚀 星际', primary: '#311B92', type: 'dark-ui' },
+  'mid-autumn': { label: '🌕 中秋', primary: '#FF9800', type: 'light-ui' },
+  'mount-tai-summit': { label: '🏔️ 泰山', primary: '#5D4037', type: 'light-ui' },
+  'national-day': { label: '🇨🇳 国庆节', primary: '#C62828', type: 'light-ui' },
+  'national-day-dark': { label: '🇨🇳 国庆暗色', primary: '#8B1A1A', type: 'dark-ui' },
+  'qingming': { label: '🍃 清明', primary: '#7BA894', type: 'light-ui' },
+  'spring-festival': { label: '🧨 春节', primary: '#D32F2F', type: 'light-ui' },
+  'summer-cool': { label: '🌤️ 夏日清凉', primary: '#00ACC1', type: 'light-ui' },
+  'watermelon-harvest': { label: '🍉 西瓜丰收', primary: '#388E3C', type: 'light-ui' },
+  'winter-solstice': { label: '❄️ 冬至', primary: '#455A64', type: 'light-ui' },
+  'women-day': { label: '💐 妇女节', primary: '#E91E63', type: 'light-ui' },
+  'work-hard': { label: '💪 加油干', primary: '#F57C00', type: 'light-ui' },
+  'childrens-day': { label: '🎈 儿童节', primary: '#FF9800', type: 'light-ui' },
+  '1024': { label: '💻 程序员节', primary: '#6366F1', type: 'light-ui' },
+  '20th-anniversary': { label: '🎂 廿周年', primary: '#B8860B', type: 'light-ui' },
+  'happy-xishuangbanna': { label: '🌴 西双版纳', primary: '#2E7D32', type: 'light-ui' },
+  'maldives-vacation': { label: '🏝️ 马尔代夫', primary: '#00ACC1', type: 'light-ui' },
+  'national-day-generated': { label: '🇨🇳 国庆AI', primary: '#C62828', type: 'light-ui' },
+  'overtime-worker': { label: '🏢 深夜加班', primary: '#2D3A4A', type: 'dark-ui' },
+  'panda-night': { label: '🐼 熊猫夜晚', primary: '#4A3F6B', type: 'dark-ui' },
+  'peach-blossom': { label: '🍑 桃花', primary: '#E8B4C8', type: 'light-ui' },
+  'sanya': { label: '🏖️ 三亚', primary: '#00BCD4', type: 'light-ui' },
+  'shenergy-enterprise': { label: '🏭 申能企业', primary: '#1565C0', type: 'light-ui' },
+  'superman-superhero': { label: '🦸 超级英雄', primary: '#BF613F', type: 'light-ui' },
+  'yellow-duck': { label: '🐥 小黄鸭', primary: '#FDD835', type: 'light-ui' },
+};
 
 function getAvailablePresets(): string[] {
   const saved = Object.keys(localStorage)

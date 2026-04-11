@@ -78,8 +78,6 @@ export async function renderTemplate(
   wrapper.innerHTML = html;
 
   targetElement.appendChild(wrapper);
-
-  applyThemeVariablesToElement(wrapper);
 }
 
 export function applyThemeVariables(colors: Record<string, string>): void {
@@ -87,31 +85,6 @@ export function applyThemeVariables(colors: Record<string, string>): void {
   for (const [key, value] of Object.entries(colors)) {
     const varName = key.startsWith('--') ? key : `--${key}`;
     root.style.setProperty(varName, value);
-  }
-
-  document.querySelectorAll('[class*="template-"]').forEach((el) => {
-    applyThemeVariablesToElement(el as HTMLElement);
-  });
-}
-
-function applyThemeVariablesToElement(el: HTMLElement): void {
-  const computedStyle = getComputedStyle(document.documentElement);
-  const varNames = [
-    '--primary-color', '--primary-color-hover', '--alter-color', '--alter-color-hover-on',
-    '--primary-color-opacity-10', '--primary-color-opacity-20', '--primary-color-opacity-30',
-    '--header-font-color', '--auxiliary-gray', '--auxiliary-gray-dark',
-    '--body-bg-color', '--login-bg-color', '--panel-bg-color',
-    '--sidebar-panel-bg', '--sidebar-color', '--sidebar-icon-color',
-    '--border-color', '--border-icon-color',
-    '--gradient-start', '--gradient-mid',
-    '--theme-bg-image', '--theme-login-bg-image', '--theme-header-bg-image',
-  ];
-
-  for (const varName of varNames) {
-    const value = computedStyle.getPropertyValue(varName).trim();
-    if (value) {
-      el.style.setProperty(varName, value);
-    }
   }
 }
 
