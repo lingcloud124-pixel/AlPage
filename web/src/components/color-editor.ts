@@ -1,3 +1,5 @@
+import { deriveColorsFromPrimary } from '../theme/color-utils';
+
 export interface ColorSetting {
   name: string;
   property: string;
@@ -106,6 +108,105 @@ export function initializeColorEditor(): void {
   
   container.appendChild(resetButton);
   
+  // === 品牌色推导区域 ===
+  const deriveSection = document.createElement('div');
+  deriveSection.className = 'derive-section';
+
+  const deriveTitle = document.createElement('h3');
+  deriveTitle.textContent = '品牌色推导';
+  deriveSection.appendChild(deriveTitle);
+
+  const deriveDescription = document.createElement('p');
+  deriveDescription.textContent = '输入品牌主色，自动推导全套配色';
+  deriveDescription.style.fontSize = '12px';
+  deriveDescription.style.color = 'var(--auxiliary-gray)';
+  deriveDescription.style.margin = '0 0 12px 0';
+  deriveSection.appendChild(deriveDescription);
+
+  const deriveRow = document.createElement('div');
+  deriveRow.className = 'derive-row';
+  deriveRow.style.display = 'flex';
+  deriveRow.style.gap = '8px';
+  deriveRow.style.alignItems = 'center';
+
+  const deriveInput = document.createElement('input');
+  deriveInput.type = 'text';
+  deriveInput.placeholder = '#FF6B00';
+  deriveInput.className = 'derive-input';
+  deriveInput.style.flex = '1';
+  deriveInput.style.height = '36px';
+  deriveInput.style.border = '1px solid var(--border-color)';
+  deriveInput.style.borderRadius = '4px';
+  deriveInput.style.padding = '0 12px';
+  deriveInput.style.fontSize = '14px';
+
+  const deriveColorPicker = document.createElement('input');
+  deriveColorPicker.type = 'color';
+  deriveColorPicker.style.width = '36px';
+  deriveColorPicker.style.height = '36px';
+  deriveColorPicker.style.border = 'none';
+  deriveColorPicker.style.cursor = 'pointer';
+  deriveColorPicker.style.padding = '0';
+
+  deriveColorPicker.addEventListener('input', () => {
+    deriveInput.value = deriveColorPicker.value.toUpperCase();
+  });
+
+  deriveInput.addEventListener('input', () => {
+    const val = deriveInput.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+      deriveColorPicker.value = val;
+    }
+  });
+
+  const deriveBtn = document.createElement('button');
+  deriveBtn.textContent = '推导';
+  deriveBtn.className = 'derive-btn';
+  deriveBtn.style.height = '36px';
+  deriveBtn.style.padding = '0 16px';
+  deriveBtn.style.backgroundColor = 'var(--primary-color)';
+  deriveBtn.style.color = 'white';
+  deriveBtn.style.border = 'none';
+  deriveBtn.style.borderRadius = '4px';
+  deriveBtn.style.cursor = 'pointer';
+  deriveBtn.style.fontSize = '14px';
+  deriveBtn.style.fontWeight = '500';
+  deriveBtn.style.transition = 'background-color 0.2s ease';
+
+  deriveBtn.addEventListener('mouseenter', () => {
+    deriveBtn.style.backgroundColor = 'var(--alter-color)';
+  });
+  deriveBtn.addEventListener('mouseleave', () => {
+    deriveBtn.style.backgroundColor = 'var(--primary-color)';
+  });
+
+  deriveBtn.addEventListener('click', () => {
+    const hex = deriveInput.value.trim() || deriveColorPicker.value;
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      showDeriveError(deriveSection, '请输入有效的 #RRGGBB 格式颜色');
+      return;
+    }
+    
+    // 使用 color-utils 推导
+    const colors = deriveColorsFromPrimary(hex, 'light-ui');
+    
+    // 应用到 CSS 变量
+    for (const [key, value] of Object.entries(colors)) {
+      setCSSVar(`--${key}`, value);
+    }
+    
+    // 刷新面板显示
+    initializeColorEditor();
+    showDeriveSuccess(deriveSection, `已从 ${hex} 推导并应用全套配色`);
+  });
+
+  deriveRow.appendChild(deriveColorPicker);
+  deriveRow.appendChild(deriveInput);
+  deriveRow.appendChild(deriveBtn);
+  deriveSection.appendChild(deriveRow);
+
+  container.appendChild(deriveSection);
+
   console.log('Color editor initialized with', colorSettings.length, 'color controls');
 }
 
@@ -204,4 +305,32 @@ function normalizeHexColor(str: string): string {
   }
   
   return result.toUpperCase();
+}
+
+function showDeriveError(container: HTMLElement, msg: string): void {
+  clearDeriveMessage(container);
+  const el = document.createElement('div');
+  el.className = 'derive-message derive-error';
+  el.textContent = msg;
+  el.style.color = '#E53935';
+  el.style.fontSize = '12px';
+  el.style.marginTop = '8px';
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function showDeriveSuccess(container: HTMLElement, msg: string): void {
+  clearDeriveMessage(container);
+  const el = document.createElement('div');
+  el.className = 'derive-message derive-success';
+  el.textContent = msg;
+  el.style.color = 'var(--primary-color)';
+  el.style.fontSize = '12px';
+  el.style.marginTop = '8px';
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function clearDeriveMessage(container: HTMLElement): void {
+  container.querySelectorAll('.derive-message').forEach(el => el.remove());
 }

@@ -2380,3 +2380,83 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* 质检报告区域样式 */
+.qc-section {
+  padding: 0 20px 20px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 16px;
+}
+
+.qc-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 16px 0 12px;
+  color: var(--header-font-color);
+}
+
+.qc-run-btn {
+  width: 100%;
+  height: 36px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  margin-bottom: 12px;
+}
+
+.qc-run-btn:hover {
+  background: var(--alter-color);
+}
+
+.qc-results {
+  font-size: 12px;
+}
+
+.qc-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.qc-item:last-child {
+  border-bottom: none;
+}
+
+.qc-pass {
+  color: #4CAF50;
+  font-weight: 500;
+}
+
+.qc-fail {
+  color: #E53935;
+  font-weight: 500;
+}
+
+.qc-label {
+  color: var(--header-font-color);
+}
+
+/* 对比模式样式 */
+.preview-content.compare-mode {
+  display: flex;
+  gap: 0;
+}
+
+.preview-content.compare-mode .preview-page {
+  display: flex !important;
+  width: 50% !important;
+  pointer-events: auto;
+  border-right: 2px solid var(--border-color);
+}
+
+.preview-content.compare-mode .preview-page + .preview-page {
+  border-right: none;
+  border-left: 2px solid var(--border-color);
+}

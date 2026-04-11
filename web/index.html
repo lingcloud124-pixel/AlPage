@@ -138,6 +138,7 @@
                     </div>
                 </div>
                 <div class="topbar-right">
+                    <button class="topbar-action-btn" id="compareToggleBtn">对比</button>
                     <button class="topbar-action-btn" id="panelToggleBtn">面板</button>
                     <button class="topbar-action-btn" id="packageBtn">打包</button>
                 </div>
@@ -170,6 +171,13 @@
             <button class="side-panel-close" id="sidePanelClose">&times;</button>
         </div>
         <div class="side-panel-body" id="colorEditor"></div>
+        
+        <!-- 质检报告区域 -->
+        <div class="qc-section" id="qcSection">
+            <h3 class="qc-title">质检报告</h3>
+            <button class="qc-run-btn" id="qcRunBtn">运行检查</button>
+            <div id="qcResults" class="qc-results"></div>
+        </div>
     </div>
 
     <!-- 打包选择弹窗 -->

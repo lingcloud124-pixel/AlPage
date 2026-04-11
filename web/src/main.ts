@@ -561,6 +561,8 @@ function initializeFeatureModules() {
   setupSettingsDialog();
   setupMainActions();
   setupResizableDivider();
+  setupQualityCheck();
+  setUpCompareMode();
 }
 
 function setupResizableDivider() {
@@ -897,6 +899,123 @@ function getAvailablePresets(): string[] {
     .filter(k => k.startsWith('theme-studio-colors-'))
     .map(k => k.replace('theme-studio-colors-', ''));
   return [...new Set([...KNOWN_PRESETS, ...saved])];
+}
+
+function setUpCompareMode() {
+  const compareBtn = document.getElementById('compareToggleBtn');
+  if (!compareBtn) return;
+
+  let compareMode = false;
+
+  compareBtn.addEventListener('click', () => {
+    compareMode = !compareMode;
+    const previewContent = document.querySelector('.preview-content');
+    if (!previewContent) return;
+
+    if (compareMode) {
+      previewContent.classList.add('compare-mode');
+      const pages = previewContent.querySelectorAll('.preview-page');
+      let shown = 0;
+      pages.forEach((page) => {
+        if (shown < 2) {
+          (page as HTMLElement).style.display = 'flex';
+          shown++;
+        } else {
+          (page as HTMLElement).style.display = 'none';
+        }
+      });
+      compareBtn.textContent = '退出对比';
+      showNotification('对比模式：显示前两个模板页');
+    } else {
+      previewContent.classList.remove('compare-mode');
+      const pages = previewContent.querySelectorAll('.preview-page');
+      pages.forEach((page) => {
+        (page as HTMLElement).style.display = '';
+      });
+      const active = previewContent.querySelector('.preview-page.active-preview');
+      if (active) (active as HTMLElement).style.display = 'flex';
+      compareBtn.textContent = '对比';
+      requestAnimationFrame(() => (window as any).resizePreview?.());
+    }
+  });
+}
+
+function setupQualityCheck() {
+  const qcRunBtn = document.getElementById('qcRunBtn');
+  if (!qcRunBtn) return;
+
+  qcRunBtn.addEventListener('click', runQualityCheck);
+}
+
+function runQualityCheck() {
+  const resultsContainer = document.getElementById('qcResults');
+  if (!resultsContainer) return;
+  resultsContainer.innerHTML = '';
+
+  const root = getComputedStyle(document.documentElement);
+  
+  const checks = [
+    { label: '主题文字对比 (primary on white)', fg: root.getPropertyValue('--primary-color').trim(), bg: '#FFFFFF' },
+    { label: '标题文字对比 (header-font on body-bg)', fg: root.getPropertyValue('--header-font-color').trim(), bg: root.getPropertyValue('--body-bg-color').trim() },
+    { label: '标题文字对比 (header-font on panel)', fg: root.getPropertyValue('--header-font-color').trim(), bg: root.getPropertyValue('--panel-bg-color').trim() || '#FFFFFF' },
+    { label: '辅助灰文字对比 (aux-gray on white)', fg: root.getPropertyValue('--auxiliary-gray').trim(), bg: '#FFFFFF' },
+    { label: '侧边栏文字对比 (sidebar-color on sidebar-bg)', fg: root.getPropertyValue('--sidebar-color').trim(), bg: root.getPropertyValue('--sidebar-panel-bg').trim() },
+    { label: '白色文字对比 (white on primary)', fg: '#FFFFFF', bg: root.getPropertyValue('--primary-color').trim() },
+    { label: '白色文字对比 (white on alter)', fg: '#FFFFFF', bg: root.getPropertyValue('--alter-color').trim() },
+  ];
+
+  let passCount = 0;
+  for (const check of checks) {
+    if (!check.fg || !check.bg) continue;
+    const ratio = getContrastRatio(check.fg, check.bg);
+    const pass = ratio >= 4.5;
+    if (pass) passCount++;
+
+    const item = document.createElement('div');
+    item.className = 'qc-item';
+    item.innerHTML = `
+      <span class="qc-label">${check.label}</span>
+      <span class="${pass ? 'qc-pass' : 'qc-fail'}">${ratio.toFixed(1)}:1 ${pass ? '✓' : '✗'}</span>
+    `;
+    resultsContainer.appendChild(item);
+  }
+
+  const summary = document.createElement('div');
+  summary.style.marginTop = '12px';
+  summary.style.fontWeight = '600';
+  summary.style.fontSize = '13px';
+  summary.style.color = passCount === checks.length ? '#4CAF50' : '#E53935';
+  summary.textContent = `${passCount}/${checks.length} 项通过 WCAG AA 标准`;
+  resultsContainer.appendChild(summary);
+}
+
+function getContrastRatio(color1: string, color2: string): number {
+  const rgb1 = parseColor(color1);
+  const rgb2 = parseColor(color2);
+  if (!rgb1 || !rgb2) return 0;
+  
+  const l1 = getRelativeLuminance(rgb1);
+  const l2 = getRelativeLuminance(rgb2);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function parseColor(color: string): { r: number; g: number; b: number } | null {
+  const hex = color.replace('#', '');
+  if (hex.length !== 6) return null;
+  return {
+    r: parseInt(hex.substring(0, 2), 16),
+    g: parseInt(hex.substring(2, 4), 16),
+    b: parseInt(hex.substring(4, 6), 16),
+  };
+}
+
+function getRelativeLuminance(rgb: { r: number; g: number; b: number }): number {
+  const [rs, gs, bs] = [rgb.r / 255, rgb.g / 255, rgb.b / 255].map(c =>
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  );
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
 }
 
 function setupCollapsibleColorPanel() {
