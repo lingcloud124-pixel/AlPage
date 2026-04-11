@@ -87,4 +87,14 @@ function extractAllImagePaths(doc: PenDocument): string[] {
   return Array.from(paths);
 }
 
+export function updateBackgroundImage(nodeId: string, imageUrl: string): void {
+  const elements = document.querySelectorAll(`[data-id="${nodeId}"]`);
+  const resolvedUrl = imageHandler?.resolveImageUrl(imageUrl) || imageUrl;
+  elements.forEach(el => {
+    (el as HTMLElement).style.backgroundImage = `url('${resolvedUrl}')`;
+    (el as HTMLElement).style.backgroundSize = 'cover';
+    (el as HTMLElement).style.backgroundPosition = 'center';
+  });
+}
+
 export { PenRenderer, VariableResolver, ImageHandler, PenParser };

@@ -1,5 +1,4 @@
 import type { ToolCall, ToolResult } from '../types';
-import { updateThemeColors as penUpdateThemeColors } from '../pen-renderer';
 
 const COLOR_VARS = [
   'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
@@ -22,7 +21,6 @@ function updateColors(colors: Record<string, string>): ToolResult {
       updated++;
     }
   }
-  penUpdateThemeColors(colors);
   return { success: true, data: { updated } };
 }
 

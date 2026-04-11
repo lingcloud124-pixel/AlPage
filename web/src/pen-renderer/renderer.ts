@@ -16,7 +16,7 @@ export class PenRenderer {
   ) {
     this.imageHandler = imageHandler || new ImageHandler();
     this.styleMapper = new StyleMapper(varResolver, this.imageHandler);
-    this.svgBuilder = new SvgBuilder();
+    this.svgBuilder = new SvgBuilder(this.imageHandler);
   }
 
   setDocument(doc: PenDocument): void {
@@ -51,12 +51,7 @@ export class PenRenderer {
   }
 
   renderTree(node: PenNode): string {
-    const selfHtml = this.renderNode(node);
-    const childrenHtml = this.renderChildren(node);
-    if (childrenHtml && (node.type === 'frame' || node.type === 'group' || node.type === 'ref')) {
-      return selfHtml.replace('</div>', childrenHtml + '</div>');
-    }
-    return selfHtml || childrenHtml;
+    return this.renderNode(node);
   }
 
   renderNodeById(nodeId: string): string {

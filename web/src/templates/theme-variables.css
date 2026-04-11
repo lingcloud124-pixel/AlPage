@@ -1,0 +1,93 @@
+/**
+ * Theme Studio — 共享 CSS 变量体系
+ * 所有模板页面共用这份变量定义
+ * 
+ * 21 个主题色变量 + 14 个 hover 状态变量 + 基础变量
+ */
+
+:host,
+:root {
+  /* ========================
+   * 主题色系 (4)
+   * ======================== */
+  --primary-color: #2C615C;
+  --primary-color-hover: #B2FFE6;
+  --alter-color: #144E48;
+  --alter-color-hover-on: #73CAA6;
+
+  /* ========================
+   * 透明度变体 (3)
+   * ======================== */
+  --primary-color-opacity-10: #E9F1EB;
+  --primary-color-opacity-20: #D3E2D8;
+  --primary-color-opacity-30: #BDD4C4;
+
+  /* ========================
+   * 文字色系 (4)
+   * ======================== */
+  --header-font-color: #333333;
+  --auxiliary-gray: #999999;
+  --auxiliary-gray-dark: #666666;
+  --white: #FFFFFF;
+
+  /* ========================
+   * 背景色系 (5)
+   * ======================== */
+  --body-bg-color: #F8F8F8;
+  --portal-header-bg-extend-color: #FBFCF2;
+  --portal-header-complex-bg-extend-color: #FBFCF2;
+  --login-bg-color: #144E48;
+  --panel-bg-color: #FFFFFF;
+
+  /* ========================
+   * 侧边栏 (3)
+   * ======================== */
+  --sidebar-panel-bg: #B8A9D9;
+  --sidebar-color: #333333;
+  --sidebar-icon-color: #9B8FC7;
+
+  /* ========================
+   * 边框 (2)
+   * ======================== */
+  --border-color: #E5E7EB;
+  --border-icon-color: #E5E7EB;
+
+  /* ========================
+   * 渐变组件色 (2)
+   * ======================== */
+  --gradient-start: #fdfff5;
+  --gradient-mid: #f7f3cd;
+
+  /* ========================
+   * 背景图变量
+   * ======================== */
+  --theme-bg-image: none;
+  --theme-login-bg-image: none;
+  --theme-header-bg-image: none;
+
+  /* ========================
+   * 基础变量
+   * ======================== */
+  --font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+
+  /* ========================
+   * Hover 状态变量 (14)
+   * ======================== */
+  --hover-sidebar-bg: var(--primary-color);
+  --hover-sidebar-bg-color: var(--primary-color-hover);
+  --hover-sidebar-text-color: #FFFFFF;
+  --hover-nav-text-color: var(--primary-color);
+  --hover-input-border-color: var(--primary-color);
+  --hover-search-btn-bg: var(--alter-color);
+  --hover-login-btn-bg: var(--alter-color);
+  --hover-card-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --hover-link-color: var(--primary-color);
+  --hover-icon-color: var(--primary-color);
+  --hover-tab-bg: var(--primary-color-opacity-10);
+  --hover-button-opacity: 0.85;
+  --hover-badge-bg: var(--alter-color);
+  --hover-close-color: var(--auxiliary-gray-dark);
+}

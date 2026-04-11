@@ -1,5 +1,3 @@
-import { updateThemeColors, getCurrentVariables } from '../pen-renderer';
-
 export interface ColorSetting {
   name: string;
   property: string;
@@ -48,6 +46,32 @@ const groupLabels: Record<string, string> = {
   gradient: '渐变组件色'
 };
 
+function getCSSVar(varName: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+function setCSSVar(varName: string, value: string): void {
+  document.documentElement.style.setProperty(varName, value);
+}
+
+export function updateThemeColors(colors: Record<string, string>): void {
+  for (const [name, value] of Object.entries(colors)) {
+    const varName = name.startsWith('--') ? name : `--${name}`;
+    setCSSVar(varName, value);
+  }
+}
+
+export function getCurrentVariables(): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const s of colorSettings) {
+    const val = getCSSVar(s.property);
+    if (val) {
+      result[s.property.substring(2)] = val;
+    }
+  }
+  return result;
+}
+
 /**
  * Initializes the color editor by generating all the necessary UI controls
  */
@@ -74,11 +98,9 @@ export function initializeColorEditor(): void {
   resetButton.classList.add('reset-button');
   
   resetButton.addEventListener('click', () => {
-    const defaults: Record<string, string> = {};
     for (const s of colorSettings) {
-      defaults[s.property.substring(2)] = s.defaultValue;
+      setCSSVar(s.property, s.defaultValue);
     }
-    updateThemeColors(defaults);
     initializeColorEditor();
   });
   
@@ -129,27 +151,13 @@ function createColorControl(setting: ColorSetting): HTMLElement {
   
   const colorInput = document.createElement('input');
   colorInput.type = 'color';
-  colorInput.value = setting.defaultValue;
   
-  // Get current value from pen-renderer variable system
-  try {
-    const currentVars = getCurrentVariables();
-    const varName = setting.property.substring(2);
-    if (varName in currentVars) {
-      const currentValue = currentVars[varName];
-      if (currentValue) {
-        colorInput.value = normalizeHexColor(currentValue.toString());
-      }
-    }
-  } catch (e) {
-    console.warn(`Could not get current value for ${setting.property}, using default`);
-    colorInput.value = normalizeHexColor(setting.defaultValue);
-  }
+  const currentVal = getCSSVar(setting.property);
+  colorInput.value = normalizeHexColor(currentVal || setting.defaultValue);
   
   colorInput.addEventListener('input', () => {
     const hexValue = colorInput.value;
-    const varName = setting.property.substring(2);
-    updateThemeColors({ [varName]: hexValue });
+    setCSSVar(setting.property, hexValue);
     
     const textInput = colorPickerContainer.querySelector('.hex-input') as HTMLInputElement;
     if (textInput) {
@@ -167,8 +175,7 @@ function createColorControl(setting: ColorSetting): HTMLElement {
     const normalizedValue = normalizeHexColor(hexInput.value);
     if (isValidHex(normalizedValue)) {
       colorInput.value = normalizedValue;
-      const varName = setting.property.substring(2);
-      updateThemeColors({ [varName]: normalizedValue });
+      setCSSVar(setting.property, normalizedValue);
     } else {
       hexInput.value = normalizeHexColor(colorInput.value);
     }

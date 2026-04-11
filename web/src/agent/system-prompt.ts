@@ -39,47 +39,55 @@ export function getSystemPrompt(context: {
 - border-icon-color: 图标边框颜色
 - auxiliary-gray: 辅助灰色
 - auxiliary-gray-dark: 深辅助灰色
+- gradient-start: 渐变起点色
+- gradient-mid: 渐变中间色
 
-### ${isDarkUI ? 'Dark-UI 色调计算规则' : 'Light-UI 色调计算规则'}
+### ${isDarkUI ? 'Dark-UI 配色规则（⚠️ 必须严格遵守）' : 'Light-UI 配色规则（⚠️ 必须严格遵守）'}
 
 ${isDarkUI ? 
 `**色调偏移公式**：
-- Primary = 背景主色调H
-- Primary-hover = H + 26° (亮度≈85%，极浅色)
+- Primary = 背景主色调 H
+- Primary-hover = H + 26° (亮度≈85%，极浅色，L值≈214-216)
 - Header-font = H + 22° (亮度≈90%，浅色文字)
+- Alter-color = darken(primary, 15-20%)
+- Alter-color-hover-on = darken(primaryHover, 15%)
 
-**亮度排序**（从深到浅）：
-alter < primary < alter-hover < primary-hover < header-font
+**亮度排序**（从深到浅，必须严格遵守）：
+alter(47-59) < primary(64-68) < alter-hover(97-100) < primary-hover(214-216) < header-font(180+)
 
-**关键约束**：
-- sidebar-panel-bg 必须等于 header-font-color
-- primary-hover 必须是极浅色（亮度214-216）
-- 文字使用浅色，背景使用深色
-- 边框使用纯灰色 #EEEEEE`
+**关键约束（违反任何一条即不合格）**：
+1. sidebar-panel-bg 必须等于 header-font-color（同一色值）
+2. primary-hover 必须是极浅色（HSL亮度214-216）
+3. 文字使用浅色，背景使用深色
+4. 边框使用纯灰色 #EEEEEE
+5. login-bg-color 使用深色（主色或alter色）
+6. 所有色值必须是有效的6位十六进制格式 #RRGGBB`
 :
 `**透明度计算**（白色混合法）：
-- primary-opacity-10 = blendWhite(primary, 0.1)
-- primary-opacity-20 = blendWhite(primary, 0.2)  
-- primary-opacity-30 = blendWhite(primary, 0.3)
+- primary-opacity-10 = blendWhite(primary, 0.1) = 主色10% + 白色90%
+- primary-opacity-20 = blendWhite(primary, 0.2) = 主色20% + 白色80%
+- primary-opacity-30 = blendWhite(primary, 0.3) = 主色30% + 白色70%
 
 **Alter颜色计算**：
 - alter-color = desaturate(darken(primary, 15%), 20%)
 - alter-color-hover-on = lighten(primaryHover, 15%)
 
-**亮度排序**（从浅到深）：
-primary-hover > primary > alter > alter-hover
+**亮度排序**（从浅到深，必须严格遵守）：
+primary-hover(65-80%) > primary(45-60%) > alter(35-50%) > alter-hover(25-40%)
 
-**关键约束**：
-- header-font-color 固定为深色 #333333
-- 主色应为中浅色（HSL亮度45-60%）
-- 使用白色混合计算透明度变体`}
+**关键约束（违反任何一条即不合格）**：
+1. header-font-color 固定为深色 #333333
+2. 主色应为中浅色（HSL亮度45-60%）
+3. 使用白色混合计算透明度变体
+4. login-bg-color 使用浅色/白色系
+5. 所有色值必须是有效的6位十六进制格式 #RRGGBB`}
 
 ## 可用工具
 
 你必须通过输出JSON格式来调用工具：
 
 ### update_colors
-更新预览区颜色方案
+更新预览区颜色方案（每次生成配色后必须立即调用）
 \`\`\`json
 {"tool": "update_colors", "args": {"colors": {"primary-color": "#RRGGBB", "primary-color-hover": "#RRGGBB", ...}}}
 \`\`\`
@@ -96,57 +104,23 @@ primary-hover > primary > alter > alter-hover
 {"tool": "parse_pen", "args": {"penPath": "path/to/file.pen"}}
 \`\`\`
 
-### generate_background
-根据描述生成新的背景图
-\`\`\`json
-{"tool": "generate_background", "args": {"prompt": "背景图描述，不含文字和界面元素"}}
-\`\`\`
-
-### screenshot
-截取当前预览区的不同视图用于打包
-\`\`\`json
-{"tool": "screenshot", "args": {"view": "login" | "desktop" | "header-banner" | "header-complex" | "header-simple"}}
-\`\`\`
-
-### build
-执行完整的主题打包流程
-\`\`\`json
-{"tool": "build", "args": {"themeName": "主题名称", "subtitle": "副标题", "buttonText": "按钮文字"}}
-\`\`\`
-
-### verify
-验证当前配色方案是否符合规则
-\`\`\`json
-{"tool": "verify", "args": {}}
-\`\`\`
-
 ### save_colors
-保存当前配色方案为预设
+保存当前配色方案
 \`\`\`json
-{"tool": "save_colors", "args": {"presetName": "预设名称"}}
+{"tool": "save_colors", "args": {"nameEn": "英文名", "name": "中文名", "templateType": "dark-ui"}}
 \`\`\`
 
 ### load_colors  
 加载已保存的配色预设
 \`\`\`json
-{"tool": "load_colors", "args": {"presetName": "预设名称"}}
+{"tool": "load_colors", "args": {"nameEn": "预设英文名"}}
 \`\`\`
-
-## 重要规则
-
-1. **所有颜色值必须是有效的6位十六进制格式** (#RRGGBB)
-2. **必须严格遵守对应模板类型的配色计算规则**
-3. **不得发明新的CSS变量，只能使用定义的17个变量**
-4. **生成配色后必须立即调用update_colors工具更新预览**
-5. **背景图描述中不得包含文字或界面元素**
-6. **Dark-UI中sidebar-panel-bg必须等于header-font-color**
-7. **Light-UI中header-font-color固定为#333333**
 
 ## 当前上下文
 - 模板类型: ${context.templateType}
-- 可用预设: ${context.availablePresets.join(', ') || '无'}
+- 可用预设: ${context.availablePresets.length > 0 ? context.availablePresets.join(', ') : '无'}
 - ${context.currentColors ? `当前颜色: ${JSON.stringify(context.currentColors)}` : '无当前颜色方案'}
 
-记住：你的目标是帮助用户创建完美的OA主题。始终保持专业、准确，并严格遵循上述规则。
+记住：你的目标是帮助用户创建完美的OA主题。始终保持专业、准确，并严格遵循上述规则。生成配色后必须立即调用update_colors工具更新预览。
 `;
 }

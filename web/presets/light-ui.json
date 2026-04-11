@@ -1,0 +1,49 @@
+{
+  "id": "light-ui",
+  "name": "浅色主题",
+  "description": "浅色背景主题，文字使用深色，默认通用主题风格",
+  "gradientStart": "#fdfff5",
+  "gradientMid": "#f7f3cd",
+  "headerOpacities": {
+    "default": 1.0,
+    "classic": 0.5,
+    "banner": 0.6,
+    "sidebar": 1.0
+  },
+  "gradientWidths": {
+    "leftSmall": 859,
+    "rightSmall": 920,
+    "leftLarge": 1145,
+    "rightLarge": 1226
+  },
+  "defaults": {
+    "primary-color": "#2C615C",
+    "primary-color-hover": "#B2FFE6",
+    "alter-color": "#144E48",
+    "alter-color-hover-on": "#73CAA6",
+    "primary-color-opacity-10": "#E9F1EB",
+    "primary-color-opacity-20": "#D3E2D8",
+    "primary-color-opacity-30": "#BDD4C4",
+    "header-font-color": "#333333",
+    "auxiliary-gray": "#999999",
+    "auxiliary-gray-dark": "#666666",
+    "body-bg-color": "#F8F8F8",
+    "portal-header-bg-extend-color": "#FBFCF2",
+    "portal-header-complex-bg-extend-color": "#FBFCF2",
+    "login-bg-color": "#144E48",
+    "sidebar-panel-bg": "#B8A9D9",
+    "sidebar-color": "#333333",
+    "sidebar-icon-color": "#9B8FC7",
+    "border-color": "#E5E7EB",
+    "border-icon-color": "#E5E7EB",
+    "gradient-start": "#fdfff5",
+    "gradient-mid": "#f7f3cd"
+  },
+  "colorRules": {
+    "headerFontColor": "#333333",
+    "opacityCalculation": "blendWhite(primary, percentage)",
+    "alterCalculation": "desaturate(darken(primary, 15%), 20%)",
+    "alterHoverCalculation": "lighten(primaryHover, 15%)",
+    "lightnessOrder": "primaryHover > primary > alter > alterHover"
+  }
+}

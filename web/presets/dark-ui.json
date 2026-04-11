@@ -1,0 +1,52 @@
+{
+  "id": "dark-ui",
+  "name": "深色主题",
+  "description": "深色背景主题，文字使用浅色，适合企业VI风格",
+  "gradientStart": "transparent",
+  "gradientMid": "transparent",
+  "headerOpacities": {
+    "default": 1.0,
+    "classic": 0.5,
+    "banner": 0.6,
+    "sidebar": 1.0
+  },
+  "gradientWidths": {
+    "leftSmall": 859,
+    "rightSmall": 920,
+    "leftLarge": 1145,
+    "rightLarge": 1226
+  },
+  "defaults": {
+    "primary-color": "#226F3B",
+    "primary-color-hover": "#B2FFE6",
+    "alter-color": "#1A5530",
+    "alter-color-hover-on": "#73CAA6",
+    "primary-color-opacity-10": "#E9F1EB",
+    "primary-color-opacity-20": "#D3E2D8",
+    "primary-color-opacity-30": "#BDD4C4",
+    "header-font-color": "#CCFEEB",
+    "auxiliary-gray": "#999999",
+    "auxiliary-gray-dark": "#666666",
+    "body-bg-color": "#F8F8F8",
+    "portal-header-bg-extend-color": "#FBFCF2",
+    "portal-header-complex-bg-extend-color": "#FBFCF2",
+    "login-bg-color": "#154726",
+    "sidebar-panel-bg": "#CCFEEB",
+    "sidebar-color": "#333333",
+    "sidebar-icon-color": "#9B8FC7",
+    "border-color": "#E5E7EB",
+    "border-icon-color": "#E5E7EB",
+    "gradient-start": "#154726",
+    "gradient-mid": "transparent"
+  },
+  "colorRules": {
+    "primaryHoverOffset": "+26°",
+    "primaryHoverLightness": "85%",
+    "headerFontOffset": "+22°",
+    "headerFontLightness": "90%",
+    "sidebarPanelBgEquals": "header-font-color",
+    "alterCalculation": "darken(primary, 15-20%)",
+    "alterHoverCalculation": "darken(primaryHover, 15%)",
+    "lightnessOrder": "alter < primary < alterHover < primaryHover < headerFont"
+  }
+}

@@ -7,7 +7,8 @@ import {
   PenStroke, 
   PenSideThickness,
   PenEffect,
-  PenTextNode
+  PenTextNode,
+  PenFrameNode
 } from './types';
 import { VariableResolver } from './variable-resolver';
 
@@ -47,7 +48,14 @@ export class StyleMapper {
     }
     
     if (node.type !== 'text' && node.fill) {
-      const fillStyle = this.mapFill(node.fill);
+      let fillStyle: string | null = null;
+      if (typeof node.fill === 'string') {
+        const resolvedColor = this.resolveColor(node.fill);
+        const parsedColor = this.parseHexColor(resolvedColor);
+        fillStyle = `background-color: ${parsedColor};`;
+      } else {
+        fillStyle = this.mapFill(node.fill);
+      }
       if (fillStyle) {
         styles.push(fillStyle);
       }
@@ -82,14 +90,80 @@ export class StyleMapper {
       }
     }
     
+    const transforms: string[] = [];
     if (node.rotation !== undefined && node.rotation !== 0) {
-      styles.push(`transform: rotate(${node.rotation}deg);`);
+      transforms.push(`rotate(${node.rotation}deg)`);
+    }
+    if (node.flipX === true) {
+      transforms.push('scaleX(-1)');
+    }
+    if (node.flipY === true) {
+      transforms.push('scaleY(-1)');
+    }
+    if (transforms.length > 0) {
+      styles.push(`transform: ${transforms.join(' ')};`);
     }
     
-    if (node.effect?.type === 'shadow' && node.effect.enabled !== false) {
-      const shadowStyle = this.mapShadow(node.effect);
-      if (shadowStyle) {
-        styles.push(shadowStyle);
+    if (node.effect) {
+      if (node.effect.type === 'shadow' && node.effect.enabled !== false) {
+        const shadowStyle = this.mapShadow(node.effect as any);
+        if (shadowStyle) {
+          styles.push(shadowStyle);
+        }
+      } else if (node.effect.type === 'blur' && node.effect.enabled !== false) {
+        const blurEffect = node.effect as { type: 'blur'; radius: number; enabled?: boolean };
+        styles.push(`filter: blur(${blurEffect.radius}px);`);
+      }
+    }
+    
+    if (node.type === 'frame') {
+      const frameNode = node as PenFrameNode;
+      
+      if ((frameNode as any).padding !== undefined) {
+        const pad = (frameNode as any).padding;
+        if (typeof pad === 'number') {
+          styles.push(`padding: ${pad}px;`);
+        } else if (Array.isArray(pad)) {
+          if (pad.length === 4) {
+            styles.push(`padding: ${pad[0]}px ${pad[1]}px ${pad[2]}px ${pad[3]}px;`);
+          } else if (pad.length === 2) {
+            styles.push(`padding: ${pad[0]}px ${pad[1]}px;`);
+          }
+        }
+      }
+      
+      if (frameNode.layout === 'horizontal' || frameNode.layout === 'vertical') {
+        styles.push('display: flex;');
+        if (frameNode.layout === 'horizontal') {
+          styles.push('flex-direction: row;');
+        } else {
+          styles.push('flex-direction: column;');
+        }
+        
+        if (frameNode.gap !== undefined) {
+          styles.push(`gap: ${frameNode.gap}px;`);
+        }
+        
+        if (frameNode.alignItems !== undefined) {
+          let alignItemsValue: string;
+          switch (frameNode.alignItems) {
+            case 'center':
+              alignItemsValue = 'center';
+              break;
+            case 'start':
+              alignItemsValue = 'flex-start';
+              break;
+            case 'end':
+              alignItemsValue = 'flex-end';
+              break;
+            case 'stretch':
+              alignItemsValue = 'stretch';
+              break;
+            default:
+              alignItemsValue = frameNode.alignItems;
+          }
+          styles.push(`align-items: ${alignItemsValue};`);
+        }
       }
     }
     
@@ -156,9 +230,17 @@ export class StyleMapper {
     if (!stroke.fill || stroke.thickness === undefined) return null;
     const resolvedColor = this.resolveColor(stroke.fill);
     const parsedColor = this.parseHexColor(resolvedColor);
+    const align = stroke.align || 'center';
     
     if (typeof stroke.thickness === 'number') {
-      return `border: ${stroke.thickness}px solid ${parsedColor};`;
+      const thickness = stroke.thickness;
+      if (align === 'inside') {
+        return `box-shadow: inset 0 0 0 ${thickness}px ${parsedColor};`;
+      } else if (align === 'outside') {
+        return `outline: ${thickness}px solid ${parsedColor}; outline-offset: ${thickness}px;`;
+      } else {
+        return `border: ${thickness}px solid ${parsedColor};`;
+      }
     } else {
       const sides = stroke.thickness as PenSideThickness;
       const sideStyles: string[] = [];
