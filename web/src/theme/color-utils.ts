@@ -244,10 +244,8 @@ export function deriveColorsFromPrimary(
   primaryHex: string,
   templateType: 'light-ui' | 'dark-ui'
 ): DerivedColors {
-  // 目前只实现 light-ui，dark-ui 返回相同结果（后续补充）
   if (templateType === 'dark-ui') {
-    // TODO: 实现 dark-ui 规则
-    return deriveLightUiColors(primaryHex);
+    return deriveDarkUiColors(primaryHex);
   }
   
   return deriveLightUiColors(primaryHex);
@@ -342,6 +340,89 @@ function deriveSidebarPanelBg(primaryHex: string): string {
   const sidebarL = Math.min(90, Math.max(80, hsl.l + 30));
   
   return hslToHex(sidebarH, sidebarS, sidebarL);
+}
+
+/**
+ * Dark-UI 模板的颜色推导逻辑
+ * 核心规则：色调偏移 primary → primary-hover(+26°) → header-font(+22°)
+ * 亮度排序：alter(47-59) < primary(64-68) < alter-hover(97-100) < primary-hover(214-216) < header-font(180+)
+ * @param primaryHex - 主色 hex 值（深色基准）
+ */
+function deriveDarkUiColors(primaryHex: string): DerivedColors {
+  const hsl = hexToHsl(primaryHex);
+  const baseH = hsl.h;
+  const baseS = Math.max(20, hsl.s);
+
+  // primary = 深色基准，确保亮度在 64-68 范围
+  const primaryColor = hslToHex(baseH, baseS, Math.min(68, Math.max(64, hsl.l)));
+
+  // primary-hover = H+26°, 极浅色 (L≈85)
+  const primaryColorHover = hslToHex((baseH + 26) % 360, baseS, 85);
+
+  // alter-color = darken(primary, 17)
+  const alterColor = darken(primaryColor, 17);
+
+  // alter-color-hover-on = darken(primaryHover, 15)
+  const alterColorHoverOn = darken(primaryColorHover, 15);
+
+  // opacity 变体 — 向黑色混合（深色系越深越暗）
+  const primaryColorOpacity10 = darken(primaryColor, 3);
+  const primaryColorOpacity20 = darken(primaryColor, 6);
+  const primaryColorOpacity30 = darken(primaryColor, 9);
+
+  // header-font = H+22°, 浅色文字 (L≈90)
+  const headerFontColor = hslToHex((baseH + 22) % 360, baseS, 90);
+
+  // 固定灰色系
+  const auxiliaryGray = '#999999';
+  const auxiliaryGrayDark = '#666666';
+
+  // 背景色 — 深色系
+  const bodyBgColor = '#F8F8F8';
+
+  // 登录背景 — 使用 alter 色（最深）
+  const loginBgColor = alterColor;
+
+  // panel 背景色
+  const panelBgColor = '#FFFFFF';
+
+  // sidebar-panel-bg = header-font-color（强制约束）
+  const sidebarPanelBg = headerFontColor;
+
+  // sidebar 相关
+  const sidebarColor = '#333333';
+  const sidebarIconColor = hslToHex((baseH + 22) % 360, baseS, 73);
+
+  // 边框色 — 纯灰
+  const borderColor = '#EEEEEE';
+  const borderIconColor = '#EEEEEE';
+
+  // 渐变色 — 从深到浅
+  const gradientStart = primaryColor;
+  const gradientMid = primaryColorHover;
+
+  return {
+    'primary-color': primaryColor,
+    'primary-color-hover': primaryColorHover,
+    'alter-color': alterColor,
+    'alter-color-hover-on': alterColorHoverOn,
+    'primary-color-opacity-10': primaryColorOpacity10,
+    'primary-color-opacity-20': primaryColorOpacity20,
+    'primary-color-opacity-30': primaryColorOpacity30,
+    'header-font-color': headerFontColor,
+    'auxiliary-gray': auxiliaryGray,
+    'auxiliary-gray-dark': auxiliaryGrayDark,
+    'body-bg-color': bodyBgColor,
+    'login-bg-color': loginBgColor,
+    'panel-bg-color': panelBgColor,
+    'sidebar-panel-bg': sidebarPanelBg,
+    'sidebar-color': sidebarColor,
+    'sidebar-icon-color': sidebarIconColor,
+    'border-color': borderColor,
+    'border-icon-color': borderIconColor,
+    'gradient-start': gradientStart,
+    'gradient-mid': gradientMid,
+  };
 }
 
 /**

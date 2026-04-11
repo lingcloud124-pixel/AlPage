@@ -1,5 +1,6 @@
 import type { ToolCall, ToolResult } from '../types';
 import { generateImage } from '../agent/chat-client';
+import { validateColorScheme } from './contrast-validator';
 
 const COLOR_VARS = [
   'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
@@ -35,6 +36,17 @@ function updateColors(colors: Record<string, string>): ToolResult {
     }
   }
   return { success: true, data: { updated } };
+}
+
+function getAllCurrentColors(): Record<string, string> {
+  const root = document.documentElement;
+  const computed = getComputedStyle(root);
+  const vars: Record<string, string> = {};
+  for (const v of COLOR_VARS) {
+    const val = computed.getPropertyValue(`--${v}`).trim();
+    if (val) vars[v] = val;
+  }
+  return vars;
 }
 
 export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
@@ -215,6 +227,19 @@ export async function executeTool(toolCall: ToolCall): Promise<ToolResult> {
         if (!bgPrompt) return { success: false, error: 'generate_background 需要 prompt 参数' };
         return await generateImage(bgPrompt);
       }
+
+      case 'validate_colors': {
+        const colors = (args.colors ?? {}) as Record<string, string>;
+        if (Object.keys(colors).length === 0) {
+          const currentVars = getAllCurrentColors();
+          if (Object.keys(currentVars).length === 0) return { success: false, error: '无当前配色方案' };
+          const result = validateColorScheme(currentVars);
+          return { success: result.passed, data: result };
+        }
+        const result = validateColorScheme(colors);
+        return { success: result.passed, data: result };
+      }
+
       case 'screenshot':
       case 'build':
       case 'verify':

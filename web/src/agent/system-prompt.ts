@@ -1,10 +1,12 @@
 import { getPreferenceSummary, type UserPreferences } from './user-preferences';
+import { formatKnowledgeForPrompt, findMatchingPresets } from './knowledge-base';
 
 export function getSystemPrompt(context: {
   templateType: 'light-ui' | 'dark-ui';
   currentColors?: Record<string, string>;
   availablePresets: string[];
   userPreferences?: UserPreferences;
+  userMessage?: string;
 }): string {
   const isDarkUI = context.templateType === 'dark-ui';
   
@@ -131,6 +133,18 @@ primary-hover(65-80%) > primary(45-60%) > alter(35-50%) > alter-hover(25-40%)
 {"tool": "load_colors", "args": {"nameEn": "预设英文名"}}
 \`\`\`
 
+### validate_colors
+校验当前配色方案的 WCAG 对比度（生成配色后建议调用）
+\`\`\`json
+{"tool": "validate_colors", "args": {}}
+\`\`\`
+
+### generate_background
+生成主题背景图
+\`\`\`json
+{"tool": "generate_background", "args": {"prompt": "背景图描述"}}
+\`\`\`
+
 ## 卡片标签系统
 
 你的回复可以包含特殊标签，系统会自动渲染为交互式卡片。每种标签必须独占一行。
@@ -156,6 +170,14 @@ primary-hover(65-80%) > primary(45-60%) > alter(35-50%) > alter-hover(25-40%)
 - 模板类型: ${context.templateType}
 - 可用预设: ${context.availablePresets.length > 0 ? context.availablePresets.join(', ') : '无'}
 - ${context.currentColors ? `当前颜色: ${JSON.stringify(context.currentColors)}` : '无当前颜色方案'}
+
+${(() => {
+  const knowledge = formatKnowledgeForPrompt({
+    userDescription: context.userMessage,
+    templateType: context.templateType,
+  });
+  return knowledge ? `\n## 智能推荐（基于知识库）\n${knowledge}\n` : '';
+})()}
 
 ${context.userPreferences ? (() => {
   const summary = getPreferenceSummary();

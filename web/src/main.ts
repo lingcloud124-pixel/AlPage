@@ -932,6 +932,7 @@ function setupChatInterface() {
       currentColors: getCurrentColors(),
       availablePresets,
       userPreferences: prefs,
+      userMessage,
     });
 
     const extracted = extractPreferencesFromMessage(userMessage);
