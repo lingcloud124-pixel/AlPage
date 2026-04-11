@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Theme Studio Smoke Tests', () => {
 
-  test('app loads with three-column layout', async ({ page }) => {
+  test('app loads with chat-only layout (preview hidden by default)', async ({ page }) => {
     await page.goto('/');
     
     const sidebar = page.locator('#projectSidebar');
@@ -10,7 +10,10 @@ test.describe('Theme Studio Smoke Tests', () => {
     expect(await sidebar.getAttribute('class')).toContain('collapsed');
     
     await expect(page.locator('#chatPanel')).toBeVisible();
-    await expect(page.locator('.preview-panel')).toBeVisible();
+    
+    const previewPanel = page.locator('#previewPanel');
+    await expect(previewPanel).toBeAttached();
+    expect(await previewPanel.getAttribute('class')).not.toContain('expanded');
     
     await expect(page).toHaveTitle(/主题/);
   });
@@ -43,12 +46,19 @@ test.describe('Theme Studio Smoke Tests', () => {
     await expect(page.locator('#messageInput')).toBeVisible({ timeout: 5000 });
   });
 
-  test('preview panel shows login page by default', async ({ page }) => {
+  test('preview panel shows login page when expanded', async ({ page }) => {
     await page.goto('/');
     
-    const loginPage = page.locator('#loginPage');
-    await expect(loginPage).toBeVisible({ timeout: 10000 });
-    await expect(loginPage).toHaveClass(/active-preview/);
+    const previewPanel = page.locator('#previewPanel');
+    await expect(previewPanel).toBeAttached();
+    expect(await previewPanel.getAttribute('class')).not.toContain('expanded');
+    
+    await page.evaluate(() => {
+      (window as any).expandPreview?.();
+    });
+    await page.waitForTimeout(500);
+    
+    expect(await previewPanel.getAttribute('class')).toContain('expanded');
   });
 
   test('preset color JSON files are accessible', async ({ page }) => {
@@ -96,19 +106,58 @@ test.describe('Theme Studio Smoke Tests', () => {
     await expect(chatInput).toHaveValue('我想要一个蓝色系主题');
   });
 
-  test('tab switching between login and desktop', async ({ page }) => {
+  test('tab switching works when preview is expanded', async ({ page }) => {
     await page.goto('/');
+    
+    await page.evaluate(() => {
+      (window as any).expandPreview?.();
+    });
+    await page.waitForTimeout(500);
     
     const loginTab = page.locator('#loginTab');
     const mainPageTab = page.locator('#mainPageTab');
     
-    await expect(loginTab).toBeVisible();
+    await expect(loginTab).toBeVisible({ timeout: 5000 });
     await expect(loginTab).toHaveClass(/active-tab/);
     
     await mainPageTab.click();
     await page.waitForTimeout(300);
     
     await expect(page.locator('#mainPage')).toHaveClass(/active-preview/);
+    
+    const headerSwitcher = page.locator('#headerSwitcher');
+    await expect(headerSwitcher).toBeVisible();
+  });
+
+  test('preview close button collapses panel', async ({ page }) => {
+    await page.goto('/');
+    
+    await page.evaluate(() => {
+      (window as any).expandPreview?.();
+    });
+    await page.waitForTimeout(500);
+    
+    const previewPanel = page.locator('#previewPanel');
+    expect(await previewPanel.getAttribute('class')).toContain('expanded');
+    
+    await page.locator('#previewCloseBtn').click();
+    await page.waitForTimeout(500);
+    
+    expect(await previewPanel.getAttribute('class')).not.toContain('expanded');
+  });
+
+  test('package modal shows product list when preview expanded', async ({ page }) => {
+    await page.goto('/');
+    
+    await page.evaluate(() => {
+      (window as any).expandPreview?.();
+    });
+    await page.waitForTimeout(500);
+    
+    await page.locator('#packageBtn').click();
+    await expect(page.locator('#packageModal')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('#packageSelectAll')).toBeVisible();
+    await expect(page.locator('#packageDeselectAll')).toBeVisible();
   });
 
   test('user preferences persist in localStorage', async ({ page }) => {
@@ -135,14 +184,5 @@ test.describe('Theme Studio Smoke Tests', () => {
     const parsed = JSON.parse(saved!);
     expect(parsed.preferredStyle).toBe('dark');
     expect(parsed.industry).toBe('tech');
-  });
-
-  test('package modal shows product list', async ({ page }) => {
-    await page.goto('/');
-    
-    await page.locator('#packageBtn').click();
-    await expect(page.locator('#packageModal')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('#packageSelectAll')).toBeVisible();
-    await expect(page.locator('#packageDeselectAll')).toBeVisible();
   });
 });

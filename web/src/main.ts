@@ -4,6 +4,7 @@ import { getSystemPrompt } from './agent/system-prompt';
 import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences, trackPresetUsage, trackProjectCreated } from './agent/user-preferences';
 import { executeTool } from './tools/executor';
 import { renderTemplate } from './templates/loader';
+import { buildPackages, downloadPackage } from './packaging/package-builder';
 import type { ChatMessage } from './types';
 
 declare global {
@@ -24,6 +25,11 @@ interface Project {
 
 const conversationHistory: ChatMessage[] = [];
 let currentProjectId: string | null = null;
+
+function safeJsonParse<T>(json: string | null, fallback: T): T {
+  if (!json) return fallback;
+  try { return JSON.parse(json) as T; } catch { return fallback; }
+}
 
 function saveChatHistory(): void {
   if (!currentProjectId) return;
@@ -64,7 +70,9 @@ function renderMessage(role: 'user' | 'ai', content: string): HTMLElement {
   
   const avatarDiv = document.createElement('div');
   avatarDiv.className = 'avatar';
-  avatarDiv.textContent = role === 'ai' ? '🤖' : '👤';
+  avatarDiv.innerHTML = role === 'ai' 
+    ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/><line x1="9" y1="19" x2="9" y2="19"/><line x1="15" y1="19" x2="15" y2="19"/></svg>'
+    : '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
   
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
@@ -80,13 +88,49 @@ function renderMessage(role: 'user' | 'ai', content: string): HTMLElement {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  runHealthCheck();
   initializeColorEditor();
   initializeFeatureModules();
   initializeRoutingModule();
-  loadDefaultTemplates();
 });
 
-const PROJECT_ROOT = '/Users/gulingfei/Desktop/APP（vibe-coding）/Topic Automation';
+function runHealthCheck() {
+  const checks: Array<{ name: string; ok: boolean; detail: string }> = [];
+
+  checks.push({
+    name: 'CSS 变量',
+    ok: !!getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+    detail: '主题色 CSS 变量未加载',
+  });
+
+  const chatInput = document.getElementById('chatInput');
+  checks.push({
+    name: '聊天输入框',
+    ok: !!chatInput,
+    detail: 'chatInput 元素缺失',
+  });
+
+  const previewPanel = document.getElementById('previewPanel');
+  checks.push({
+    name: '预览面板',
+    ok: !!previewPanel,
+    detail: 'previewPanel 元素缺失',
+  });
+
+  const modal = document.getElementById('packageModal');
+  checks.push({
+    name: '打包弹窗',
+    ok: !!modal,
+    detail: 'packageModal 元素缺失',
+  });
+
+  const failed = checks.filter(c => !c.ok);
+  if (failed.length > 0) {
+    console.warn('[Health Check] Failed:', failed.map(c => `${c.name}: ${c.detail}`).join('; '));
+  } else {
+    console.log('[Health Check] All passed');
+  }
+}
 
 function initializeRoutingModule() {
   showWorkspaceDirectly();
@@ -471,14 +515,14 @@ function createProject(name: string, templateType: 'light-ui' | 'dark-ui'): Proj
 }
 
 function loadProject(id: string): Project | null {
-  const projects = JSON.parse(localStorage.getItem('theme-studio-projects') || '[]') as Project[];
+  const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
   return projects.find(p => p.id === id) || null;
 }
 
 function saveProject(project: Project): Project | null {
   project.updatedAt = Date.now();
   
-  const projects = JSON.parse(localStorage.getItem('theme-studio-projects') || '[]') as Project[];
+  const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
   const existingIndex = projects.findIndex(p => p.id === project.id);
   
   if (existingIndex >= 0) {
@@ -497,13 +541,13 @@ function saveProject(project: Project): Project | null {
 }
 
 function listProjects(): Project[] {
-  const projects = JSON.parse(localStorage.getItem('theme-studio-projects') || '[]') as Project[];
+  const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
   return projects.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 function deleteProject(id: string): boolean {
   try {
-    const projects = JSON.parse(localStorage.getItem('theme-studio-projects') || '[]') as Project[];
+    const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
     const filteredProjects = projects.filter(p => p.id !== id);
     localStorage.setItem('theme-studio-projects', JSON.stringify(filteredProjects));
     
@@ -544,10 +588,12 @@ function populateHistoryProjects() {
     projectCard.innerHTML = `
       <div class="project-name">
         <span>🎨</span>
-        <span>${project.name}</span>
+        <span></span>
       </div>
       <div class="project-date">${new Date(project.updatedAt).toLocaleString('zh-CN')}</div>
     `;
+    const nameSpan = projectCard.querySelector('.project-name span:last-child');
+    if (nameSpan) nameSpan.textContent = project.name;
     
     projectCard.addEventListener('click', () => {
       showWorkspace(project.id);
@@ -615,6 +661,7 @@ function initializeFeatureModules() {
   setupMainActions();
   setupResizableDivider();
   setupQualityCheck();
+  setupPreviewPanel();
 }
 
 function setupResizableDivider() {
@@ -665,11 +712,77 @@ function setupResizableDivider() {
   });
 }
 
+let previewTemplatesLoaded = false;
+
+function setupPreviewPanel() {
+  const closeBtn = document.getElementById('previewCloseBtn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', collapsePreview);
+  }
+
+  const headerSelect = document.getElementById('headerSelect') as HTMLSelectElement | null;
+  if (headerSelect) {
+    headerSelect.addEventListener('change', (e) => {
+      const selectedHeader = (e.target as HTMLSelectElement).value;
+      loadHeaderIntoMainPage(selectedHeader);
+    });
+  }
+}
+
+function expandPreview() {
+  const previewPanel = document.getElementById('previewPanel');
+  const appContainer = document.querySelector('.app-container') as HTMLElement;
+  if (!previewPanel || !appContainer) return;
+
+  if (!previewPanel.classList.contains('expanded')) {
+    previewPanel.classList.add('expanded');
+    appContainer.classList.add('preview-open');
+    if (!previewTemplatesLoaded) {
+      loadDefaultTemplates();
+      previewTemplatesLoaded = true;
+    }
+    requestAnimationFrame(() => {
+      (window as any).resizePreview?.();
+    });
+  }
+}
+
+(window as any).expandPreview = expandPreview;
+(window as any).collapsePreview = collapsePreview;
+
+function collapsePreview() {
+  const previewPanel = document.getElementById('previewPanel');
+  const appContainer = document.querySelector('.app-container') as HTMLElement;
+  if (!previewPanel || !appContainer) return;
+
+  previewPanel.classList.remove('expanded');
+  appContainer.classList.remove('preview-open');
+}
+
+async function loadHeaderIntoMainPage(headerId: string) {
+  const mainPage = document.getElementById('mainPage');
+  if (!mainPage) return;
+
+  const firstChild = mainPage.firstElementChild as HTMLElement | null;
+  let targetContainer: HTMLElement = mainPage;
+
+  if (firstChild) {
+    const headerArea = firstChild.querySelector('.page-header-area, .header-slot, #headerArea') as HTMLElement | null;
+    if (headerArea) {
+      targetContainer = headerArea;
+    }
+  }
+
+  await renderTemplate(headerId, targetContainer);
+}
+
 function setupTabSwitching() {
   const TAB_MAP = [
     { btnId: 'loginTab', pageId: 'loginPage', templateId: 'login' },
     { btnId: 'mainPageTab', pageId: 'mainPage', templateId: 'desktop' },
   ];
+
+  const headerSwitcher = document.getElementById('headerSwitcher');
 
   let activeTabInfo = { btn: null as HTMLButtonElement | null, page: null as HTMLElement | null, templateId: '' };
 
@@ -678,10 +791,7 @@ function setupTabSwitching() {
     const btn = document.getElementById(btnId) as HTMLButtonElement;
     const page = document.getElementById(pageId) as HTMLElement;
 
-    if (!btn || !page) {
-      console.warn(`Required elements for tab ${btnId} not found`);
-      return;
-    }
+    if (!btn || !page) return;
 
     if (btnId === 'loginTab') {
       btn.classList.add('active-tab');
@@ -697,6 +807,10 @@ function setupTabSwitching() {
       page.classList.add('active-preview');
 
       activeTabInfo = { btn, page, templateId };
+
+      if (headerSwitcher) {
+        headerSwitcher.style.display = btnId === 'mainPageTab' ? 'flex' : 'none';
+      }
 
       await renderTemplate(templateId, page);
       requestAnimationFrame(() => {
@@ -894,6 +1008,10 @@ function setupChatInterface() {
         if (result.success) {
           const resultStr = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
           addMessageToChat('ai', `🔧 ${tc.tool}: ${resultStr}`);
+
+          if (tc.tool === 'update_colors') {
+            expandPreview();
+          }
         } else {
           addMessageToChat('ai', `⚠️ ${tc.tool}: ${result.error ?? '未知错误'}`);
         }
@@ -914,6 +1032,18 @@ function setupChatInterface() {
         saveChatHistory();
       }
     }
+
+    const backgroundCards = parseBackgroundRecommendations(fullResponse);
+    if (backgroundCards.length > 0) {
+      addBackgroundCardsMessage(backgroundCards);
+      saveChatHistory();
+    }
+
+    const guideOptions = parseGuideOptions(fullResponse);
+    if (guideOptions.length > 0) {
+      addGuideCardsMessage(guideOptions);
+      saveChatHistory();
+    }
   }
 
   function parsePresetRecommendations(content: string): string[] {
@@ -926,6 +1056,23 @@ function setupChatInterface() {
     return keys;
   }
 
+  function parseBackgroundRecommendations(content: string): string[] {
+    const keys: string[] = [];
+    const regex = /\[background:(\w[\w-]*)\]/g;
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      keys.push(match[1]);
+    }
+    return keys;
+  }
+
+  function parseGuideOptions(content: string): string[] {
+    const regex = /\[guide:(.+?)\]/;
+    const match = regex.exec(content);
+    if (!match) return [];
+    return match[1].split('|').map(s => s.trim()).filter(Boolean);
+  }
+
   function addPresetCardsMessage(cards: Array<{key: string; label: string; primary: string; type: string}>): HTMLElement {
     const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
     if (!messagesContainer) return document.createElement('div');
@@ -935,7 +1082,7 @@ function setupChatInterface() {
 
     const avatarDiv = document.createElement('div');
     avatarDiv.className = 'avatar';
-    avatarDiv.textContent = '🤖';
+    avatarDiv.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/><line x1="9" y1="19" x2="9" y2="19"/><line x1="15" y1="19" x2="15" y2="19"/></svg>';
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
@@ -986,6 +1133,7 @@ function setupChatInterface() {
             }
             trackPresetUsage(preset.key);
             applyPresetBackground(preset.key);
+            expandPreview();
             cardsContainer.querySelectorAll('.preset-card-chat').forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
             addMessageToChat('ai', `✅ 已应用「${preset.label}」配色方案`);
@@ -993,6 +1141,100 @@ function setupChatInterface() {
           }
         } catch {
           addMessageToChat('ai', `⚠️ 加载「${preset.label}」失败，请重试`);
+        }
+      });
+      cardsContainer.appendChild(card);
+    });
+
+    contentDiv.appendChild(cardsContainer);
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    return messageDiv;
+  }
+
+  function addBackgroundCardsMessage(bgKeys: string[]): HTMLElement {
+    const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
+    if (!messagesContainer) return document.createElement('div');
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ai-message';
+
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'avatar';
+    avatarDiv.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/><line x1="9" y1="19" x2="9" y2="19"/><line x1="15" y1="19" x2="15" y2="19"/></svg>';
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.textContent = '为您推荐以下背景图，点击即可应用：';
+
+    const cardsContainer = document.createElement('div');
+    cardsContainer.className = 'background-cards-container';
+
+    bgKeys.forEach(bgKey => {
+      const card = document.createElement('div');
+      card.className = 'background-card-chat';
+
+      const ext = (bgKey === 'winter-solstice' || bgKey === 'work-hard') ? 'jpg' : 'png';
+      const imgSrc = `/backgrounds/${bgKey}-bg.${ext}`;
+
+      card.innerHTML = `
+        <img class="background-card-img" src="${imgSrc}" alt="${bgKey}" loading="lazy" />
+        <div class="background-card-info">
+          <span class="background-card-name">${bgKey.replace(/-/g, ' ')}</span>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        const bgUrl = `/backgrounds/${bgKey}-bg.${ext}`;
+        document.documentElement.style.setProperty('--theme-login-bg-image', `url('${bgUrl}')`);
+        expandPreview();
+        cardsContainer.querySelectorAll('.background-card-chat').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        addMessageToChat('ai', `✅ 已应用背景图`);
+      });
+
+      cardsContainer.appendChild(card);
+    });
+
+    contentDiv.appendChild(cardsContainer);
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    return messageDiv;
+  }
+
+  function addGuideCardsMessage(options: string[]): HTMLElement {
+    const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
+    if (!messagesContainer) return document.createElement('div');
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ai-message';
+
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'avatar';
+    avatarDiv.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/><line x1="9" y1="19" x2="9" y2="19"/><line x1="15" y1="19" x2="15" y2="19"/></svg>';
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.textContent = '请选择您想要的主题风格方向：';
+
+    const cardsContainer = document.createElement('div');
+    cardsContainer.className = 'guide-cards-container';
+
+    options.forEach(option => {
+      const card = document.createElement('div');
+      card.className = 'guide-card-chat';
+      card.textContent = option;
+      card.addEventListener('click', () => {
+        const input = document.getElementById('messageInput') as HTMLInputElement;
+        if (input) {
+          input.value = `我想做一个${option}`;
+          sendUserMessage();
         }
       });
       cardsContainer.appendChild(card);
@@ -1273,7 +1515,7 @@ function setupSettingsDialog() {
   }
   
   function loadStoredSettings() {
-    const settings = JSON.parse(localStorage.getItem('themeStudioSettings') || '{}');
+    const settings = safeJsonParse<Record<string, string>>(localStorage.getItem('themeStudioSettings'), {});
     const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement;
     const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
     const modelNameInput = document.getElementById('modelName') as HTMLInputElement;
@@ -1325,23 +1567,12 @@ function setupMainActions() {
   initializePackageModal();
 }
 
-// 打包弹窗常量
 const PACKAGE_PRODUCTS = [
-  { id: 'mk-theme', label: 'MK 主题包' },
-  { id: 'mk-login', label: 'MK 登录包' },
-  { id: 'v12-theme', label: 'EKP V12 主题包' },
-  { id: 'v12-login', label: 'EKP V12 登录包' },
-  { id: 'v13_5-theme', label: 'EKP V13.5 主题包' },
-  { id: 'v13_5-login', label: 'EKP V13.5 登录包' },
-  { id: 'v13_5-login-variant', label: 'EKP V13.5 登录包(变体)' },
-  { id: 'v13_5-login-alt', label: 'EKP V13.5 登录包(备选)' },
-  { id: 'v14_16-theme', label: 'EKP V14.16 主题包' },
-  { id: 'v14-login', label: 'EKP V14 登录包' },
-  { id: 'v15-login', label: 'EKP V15 登录包' },
-  { id: 'v16-login', label: 'EKP V16 登录包' },
-  { id: 'v14_16-login', label: 'EKP V14.16 登录包' },
-  { id: 'v17-theme', label: 'EKP V17 主题包' },
-  { id: 'v17-login', label: 'EKP V17 登录包' },
+  { id: 'mk', label: 'MK（主题+登录）' },
+  { id: 'ekp_v12', label: 'EKP V12（主题+登录）' },
+  { id: 'ekp_v13_5', label: 'EKP V13~V13.5（主题+登录）' },
+  { id: 'ekp_v14_16', label: 'EKP V14~V16（主题+登录）' },
+  { id: 'ekp_v17', label: 'EKP V17（主题+登录）' },
 ];
 
 // 显示打包弹窗
@@ -1457,74 +1688,76 @@ function closePackageModal() {
 
 // 开始打包流程
 async function startPackagingProcess() {
-  const startBtn = document.getElementById('packageStartBtn') as HTMLButtonElement; 
-  if(startBtn) {
+  const startBtn = document.getElementById('packageStartBtn') as HTMLButtonElement;
+  if (startBtn) {
     startBtn.textContent = '打包中...';
     startBtn.disabled = true;
   }
-  
+
   try {
-    // 获取选中的产品
     const selectedProducts: string[] = [];
-    const checkboxes = document.querySelectorAll<HTMLInputElement>('input[type="checkbox"][id$="_cb"]'); 
-    
+    const checkboxes = document.querySelectorAll<HTMLInputElement>('input[type="checkbox"][id$="_cb"]');
+
     checkboxes.forEach(checkbox => {
       if (checkbox.checked) {
         selectedProducts.push(checkbox.value);
       }
     });
-    
+
     if (selectedProducts.length === 0) {
       showNotification('请至少选择一个产品进行打包');
+      if (startBtn) {
+        startBtn.textContent = '开始打包';
+        startBtn.disabled = false;
+      }
       return;
     }
-    
-    // 收集当前颜色配置
+
     const vars = getAllCSSVariables();
-    const primary = vars['primary-color'] || '#2C615C';
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    
-    // 生成构建YAML文件，使用自定义的产品列表
-    const yamlContent = generateBuildYaml({
-      name: '当前主题',
-      nameEng: 'current-theme',
-      themeColor: primary,
-      vars,
-      products: selectedProducts
+    const themeColor = vars['primary-color'] || '#2C615C';
+    const headerFont = vars['header-font-color'] || '#ffffff';
+
+    showNotification(`正在打包 ${selectedProducts.length} 个产品，请稍候...`);
+
+    const packages = await buildPackages({
+      title: currentProjectId
+        ? (safeJsonParse<Project[]>(localStorage.getItem('ts_projects'), [])).find(p => p.id === currentProjectId)?.name || '未命名主题'
+        : '未命名主题',
+      subtitle: '欢迎使用',
+      buttonText: '立即进入',
+      themeColor,
+      headerFont,
+      products: selectedProducts,
     });
-    
-    // 生成颜色配置JSON
-    const colorJson = JSON.stringify({
-      name: '当前主题',
-      nameEng: 'current-theme',
-      templateType: 'dark-ui',
-      ...Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, v])),
-    }, null, 2);
-    
-    // 创建并下载两个文件
-    const yamlBlob = new Blob([yamlContent], { type: 'text/yaml' });
-    const jsonBlob = new Blob([colorJson], { type: 'application/json' });
-    
-    downloadBlob(yamlBlob, `theme-build-request-${date}.yaml`);
-    downloadBlob(jsonBlob, `color-config-${date}.json`);
-    
-    showNotification(`✅ 打包配置已完成！已导出${selectedProducts.length}个产品的配置`);
-    
-    // 延迟一点时间再关闭，让用户看到通知
+
+    if (packages.length === 0) {
+      showNotification('打包失败：无法读取模板文件，请确认主题样例包目录存在');
+      if (startBtn) {
+        startBtn.textContent = '开始打包';
+        startBtn.disabled = false;
+      }
+      return;
+    }
+
+    for (const pkg of packages) {
+      downloadPackage(pkg.label, pkg.blob);
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    showNotification(`打包完成！已导出 ${packages.length} 个 zip 文件`);
+
     setTimeout(() => {
       closePackageModal();
-      const btn = document.getElementById('packageStartBtn') as HTMLButtonElement;
-      if(btn) {
-        btn.textContent = '开始打包';
-        btn.disabled = false;
+      if (startBtn) {
+        startBtn.textContent = '开始打包';
+        startBtn.disabled = false;
       }
-    }, 1000);
+    }, 1500);
   } catch (e) {
-    showNotification(`❌ 打包失败: ${(e as Error).message}`);
-    const btn = document.getElementById('packageStartBtn') as HTMLButtonElement;
-    if(btn) {
-      btn.textContent = '开始打包';
-      btn.disabled = false;
+    showNotification(`打包失败: ${(e as Error).message}`);
+    if (startBtn) {
+      startBtn.textContent = '开始打包';
+      startBtn.disabled = false;
     }
   }
 }
@@ -1547,54 +1780,6 @@ function getAllCSSVariables(): Record<string, string> {
     if (val) vars[v] = val;
   }
   return vars;
-}
-
-function generateBuildYaml(opts: { name: string; nameEng: string; themeColor: string; vars: Record<string, string>; products?: string[] }): string {
-  let yaml = '';
-  yaml += `title: "${opts.name}"\n`;
-  yaml += `subtitle: "${opts.name}"\n`;
-  yaml += `buttonText: "立即进入"\n`;
-  yaml += `themeColor: "${opts.themeColor}"\n`;
-  yaml += `products:\n`;
-  
-  // 使用传入的产品列表，如果未提供则使用默认列表
-  const products = opts.products || [
-    'mk',
-    'ekp_v12',
-    'ekp_v13_5', 
-    'ekp_v14_16',
-    'ekp_v17'
-  ];
-  
-  for (const product of products) {
-    yaml += `  - ${product}\n`;
-  }
-  
-  yaml += `images:\n`;
-  yaml += `  headerBanner: "header-banner.png"\n`;
-  yaml += `  headerClassic: "header_complex_frame_bg.png"\n`;
-  yaml += `  headerSimple: "header_tlayout_frame_bg.png"\n`;
-  yaml += `  headerTabs: "header_tlayout_frame_bg.png"\n`;
-  yaml += `  headerIcon: "header_tlayout_frame_bg.png"\n`;
-  yaml += `  headerSideheader: "header-sideheader.png"\n`;
-  yaml += `  loginBackground: "bg-login.jpg"\n`;
-  yaml += `  loginLogo: ""\n`;
-  yaml += `colors:\n`;
-
-  for (const [key, value] of Object.entries(opts.vars)) {
-    yaml += `  ${key}: "${value}"\n`;
-  }
-
-  return yaml;
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 function showNotification(message: string) {

@@ -131,6 +131,27 @@ primary-hover(65-80%) > primary(45-60%) > alter(35-50%) > alter-hover(25-40%)
 {"tool": "load_colors", "args": {"nameEn": "预设英文名"}}
 \`\`\`
 
+## 卡片标签系统
+
+你的回复可以包含特殊标签，系统会自动渲染为交互式卡片。每种标签必须独占一行。
+
+### 预设推荐卡 [preset:xxx]
+匹配已有预设时使用（最多4个）：
+[preset:national-day]
+[preset:christmas]
+
+### 引导卡 [guide:选项1|选项2|选项3]
+新项目首次对话时，用引导卡让用户选择风格方向：
+[guide:科技蓝主题|喜庆红主题|自然绿主题|暗色系主题]
+
+### 背景图卡 [background:xxx]
+当讨论背景图时，推荐可用背景：
+[background:cherry-blossom]
+[background:interstellar]
+[background:national-day]
+
+可用背景图：cherry-blossom, ice-wonderland, interstellar, maldives-vacation, mount-tai-summit, national-day, overtime-worker, panda-night, winter-solstice, qingming, work-hard, gaokao, childrens-day
+
 ## 当前上下文
 - 模板类型: ${context.templateType}
 - 可用预设: ${context.availablePresets.length > 0 ? context.availablePresets.join(', ') : '无'}

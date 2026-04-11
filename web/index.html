@@ -107,8 +107,15 @@
                 </div>
             </div>
 
-            <!-- Column 3: Preview Panel -->
-            <div class="preview-panel">
+            <!-- Column 3: Preview Panel (hidden by default, expands after AI generates theme) -->
+            <div class="preview-panel" id="previewPanel">
+                <!-- Close button -->
+                <button class="preview-close-btn" id="previewCloseBtn" title="关闭预览">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
                 <!-- Workspace Top Bar -->
                 <div class="workspace-topbar">
                     <div class="topbar-left">
@@ -119,6 +126,19 @@
                         </div>
                     </div>
                     <div class="topbar-right">
+                        <div class="header-switcher" id="headerSwitcher" style="display:none;">
+                            <span class="header-switcher-label">页眉：</span>
+                            <select id="headerSelect">
+                                <option value="header-default">默认</option>
+                                <option value="header-complex">复杂</option>
+                                <option value="header-menu">菜单</option>
+                                <option value="header-banner">横幅</option>
+                                <option value="header-v16-default">V16默认</option>
+                                <option value="header-simple">简洁</option>
+                                <option value="header-simple-multitab">简洁多标签</option>
+                                <option value="header-classic">经典</option>
+                            </select>
+                        </div>
                         <button class="topbar-action-btn" id="panelToggleBtn">面板</button>
                         <button class="topbar-action-btn" id="packageBtn">打包</button>
                     </div>
@@ -126,18 +146,10 @@
                 
                 <div class="preview-content">
                     <div id="loginPage" class="preview-page active-preview">
-                        <!-- .pen renderer fills this -->
                     </div>
                     
                     <div id="mainPage" class="preview-page">
-                        <!-- .pen renderer fills this -->
                     </div>
-                    
-                    <div id="headerDefaultPage" class="preview-page"></div>
-                    <div id="headerComplexPage" class="preview-page"></div>
-                    <div id="headerMenuPage" class="preview-page"></div>
-                    <div id="headerBannerPage" class="preview-page"></div>
-                    <div id="sidebarPage" class="preview-page"></div>
                 </div>
             </div> <!-- end preview-panel -->
 
