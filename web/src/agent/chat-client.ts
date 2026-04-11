@@ -6,9 +6,9 @@ const ZHIPU_DEFAULTS: AISettings = {
   apiEndpoint: 'https://open.bigmodel.cn/api/paas/v4',
   apiKey: import.meta.env.VITE_ZHIPU_API_KEY ?? '',
   model: 'GLM-4-Flash',
-  imageApiEndpoint: 'https://open.bigmodel.cn/api/paas/v4',
-  imageApiKey: '',
-  imageModel: 'CogView-4',
+  imageApiEndpoint: 'https://api.minimaxi.com/v1',
+  imageApiKey: import.meta.env.VITE_MINIMAX_API_KEY ?? '',
+  imageModel: 'image-01',
 };
 
 export function loadSettings(): AISettings {
@@ -31,7 +31,7 @@ export function getImageSettings(): { endpoint: string; apiKey: string; model: s
   return {
     endpoint: settings.imageApiEndpoint ?? settings.apiEndpoint,
     apiKey: settings.imageApiKey || settings.apiKey,
-    model: settings.imageModel || 'CogView-4',
+    model: settings.imageModel || 'image-01',
   };
 }
 
@@ -45,7 +45,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
   const timeoutId = setTimeout(() => controller.abort(), 60_000);
 
   try {
-    const response = await fetch(`${imgSettings.endpoint}/images/generations`, {
+    const response = await fetch(`${imgSettings.endpoint}/image_generation`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
       body: JSON.stringify({
         model: imgSettings.model,
         prompt,
-        size: '1792x1024',
+        aspect_ratio: '16:9',
       }),
       signal: controller.signal,
     });
@@ -65,11 +65,19 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
     }
 
     const data = await response.json();
-    const imageUrl = data.data?.[0]?.url;
-    if (!imageUrl) {
-      return { success: false, error: '图像生成返回为空' };
+
+    const base64Array = data.data?.image_base64;
+    if (base64Array && base64Array.length > 0) {
+      const dataUrl = `data:image/jpeg;base64,${base64Array[0]}`;
+      return { success: true, url: dataUrl };
     }
-    return { success: true, url: imageUrl };
+
+    const imageUrl = data.data?.[0]?.url;
+    if (imageUrl) {
+      return { success: true, url: imageUrl };
+    }
+
+    return { success: false, error: '图像生成返回为空' };
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
       return { success: false, error: '图像生成超时（60秒）' };
