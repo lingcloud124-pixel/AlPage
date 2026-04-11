@@ -22,6 +22,61 @@ interface Project {
 }
 
 const conversationHistory: ChatMessage[] = [];
+let currentProjectId: string | null = null;
+
+function saveChatHistory(): void {
+  if (!currentProjectId) return;
+  
+  try {
+    const key = `theme-studio-chat-${currentProjectId}`;
+    const toSave = conversationHistory.map(m => ({
+      role: m.role,
+      content: m.content,
+      timestamp: m.timestamp || Date.now(),
+    }));
+    localStorage.setItem(key, JSON.stringify(toSave));
+  } catch (e) {
+    console.warn('Failed to save chat history:', e);
+  }
+}
+
+function loadChatHistory(): Array<{ role: string; content: string; timestamp: number }> {
+  if (!currentProjectId) return [];
+  
+  try {
+    const key = `theme-studio-chat-${currentProjectId}`;
+    const stored = localStorage.getItem(key);
+    if (!stored) return [];
+    return JSON.parse(stored);
+  } catch (e) {
+    console.warn('Failed to load chat history:', e);
+    return [];
+  }
+}
+
+function renderMessage(role: 'user' | 'ai', content: string): HTMLElement {
+  const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
+  if (!messagesContainer) return document.createElement('div');
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${role}-message`;
+  
+  const avatarDiv = document.createElement('div');
+  avatarDiv.className = 'avatar';
+  avatarDiv.textContent = role === 'ai' ? '🤖' : '👤';
+  
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'message-content';
+  contentDiv.textContent = content;
+  
+  messageDiv.appendChild(avatarDiv);
+  messageDiv.appendChild(contentDiv);
+  
+  messagesContainer.appendChild(messageDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  
+  return messageDiv;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   initializeColorEditor();
@@ -58,7 +113,7 @@ function initializeRoutingModule() {
   populateHistoryProjects();
 }
 
-function showHomePage() {
+function showHomePage(): void {
   const homePage = document.getElementById('homePage');
   const workspaceView = document.getElementById('workspaceView');
   
@@ -68,13 +123,15 @@ function showHomePage() {
   populateHistoryProjects();
 }
 
-function showWorkspace(projectId: string) {
+function showWorkspace(projectId: string): void {
   const homePage = document.getElementById('homePage');
   const workspaceView = document.getElementById('workspaceView');
+  const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
   
   if (homePage) homePage.classList.add('view-hidden');
   if (workspaceView) workspaceView.classList.remove('view-hidden');
   
+  currentProjectId = projectId;
   localStorage.setItem('theme-studio-current-project', projectId);
   
   const project = loadProject(projectId);
@@ -95,6 +152,32 @@ function showWorkspace(projectId: string) {
         }
       });
     }
+  }
+  
+  loadAndRenderChatHistory(messagesContainer);
+}
+
+function loadAndRenderChatHistory(messagesContainer: HTMLElement | null): void {
+  if (!messagesContainer) return;
+  
+  messagesContainer.innerHTML = '';
+  conversationHistory.length = 0;
+  
+  const history = loadChatHistory();
+  
+  history.forEach(msg => {
+    const savedMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+      timestamp: msg.timestamp,
+    };
+    conversationHistory.push(savedMsg);
+    renderMessage(msg.role as 'user' | 'ai', msg.content);
+  });
+  
+  if (history.length === 0) {
+    renderMessage('ai', '👋 欢迎使用主题工作室！我是您的 AI 助手，可以帮您生成配色方案、调整主题样式。请告诉我您想要什么样的主题风格？');
   }
 }
 
@@ -425,12 +508,32 @@ async function loadDefaultTemplates() {
   try {
     const loginTarget = document.getElementById('loginPage');
     const mainTarget = document.getElementById('mainPage');
+    const headerDefaultTarget = document.getElementById('headerDefaultPage');
+    const headerComplexTarget = document.getElementById('headerComplexPage');
+    const headerMenuTarget = document.getElementById('headerMenuPage');
+    const headerBannerTarget = document.getElementById('headerBannerPage');
+    const sidebarTarget = document.getElementById('sidebarPage');
 
     if (loginTarget) {
       await renderTemplate('login', loginTarget);
     }
     if (mainTarget) {
       await renderTemplate('desktop', mainTarget);
+    }
+    if (headerDefaultTarget) {
+      await renderTemplate('header-default', headerDefaultTarget);
+    }
+    if (headerComplexTarget) {
+      await renderTemplate('header-complex', headerComplexTarget);
+    }
+    if (headerMenuTarget) {
+      await renderTemplate('header-menu', headerMenuTarget);
+    }
+    if (headerBannerTarget) {
+      await renderTemplate('header-banner', headerBannerTarget);
+    }
+    if (sidebarTarget) {
+      await renderTemplate('sidebar', sidebarTarget);
     }
 
     requestAnimationFrame(() => {
@@ -509,33 +612,48 @@ function setupResizableDivider() {
 }
 
 function setupTabSwitching() {
-  const loginTab = document.getElementById('loginTab') as HTMLButtonElement;
-  const mainPageTab = document.getElementById('mainPageTab') as HTMLButtonElement;
-  const loginPage = document.getElementById('loginPage') as HTMLElement;
-  const mainPage = document.getElementById('mainPage') as HTMLElement;
+  const TAB_MAP = [
+    { btnId: 'loginTab', pageId: 'loginPage', templateId: 'login' },
+    { btnId: 'mainPageTab', pageId: 'mainPage', templateId: 'desktop' },
+    { btnId: 'headerDefaultTab', pageId: 'headerDefaultPage', templateId: 'header-default' },
+    { btnId: 'headerComplexTab', pageId: 'headerComplexPage', templateId: 'header-complex' },
+    { btnId: 'headerMenuTab', pageId: 'headerMenuPage', templateId: 'header-menu' },
+    { btnId: 'headerBannerTab', pageId: 'headerBannerPage', templateId: 'header-banner' },
+    { btnId: 'sidebarTab', pageId: 'sidebarPage', templateId: 'sidebar' },
+  ];
 
-  if (!loginTab || !mainPageTab || !loginPage || !mainPage) {
-    console.error('Required elements for tab switching not found');
-    return;
-  }
+  let activeTabInfo = { btn: null as HTMLButtonElement | null, page: null as HTMLElement | null, templateId: '' };
 
-  loginTab.classList.add('active-tab');
-  loginPage.classList.add('active-preview');
+  TAB_MAP.forEach(tabInfo => {
+    const { btnId, pageId, templateId } = tabInfo;
+    const btn = document.getElementById(btnId) as HTMLButtonElement;
+    const page = document.getElementById(pageId) as HTMLElement;
 
-  loginTab.addEventListener('click', () => {
-    loginTab?.classList.add('active-tab');
-    mainPageTab?.classList.remove('active-tab');
-    
-    loginPage?.classList.add('active-preview');
-    mainPage?.classList.remove('active-preview');
-  });
+    if (!btn || !page) {
+      console.warn(`Required elements for tab ${btnId} not found`);
+      return;
+    }
 
-  mainPageTab.addEventListener('click', () => {
-    mainPageTab?.classList.add('active-tab');
-    loginTab?.classList.remove('active-tab');
-    
-    mainPage?.classList.add('active-preview');
-    loginPage?.classList.remove('active-preview');
+    if (btnId === 'loginTab') {
+      btn.classList.add('active-tab');
+      page.classList.add('active-preview');
+      activeTabInfo = { btn, page, templateId };
+    }
+
+    btn.addEventListener('click', async () => {
+      activeTabInfo.btn?.classList.remove('active-tab');
+      activeTabInfo.page?.classList.remove('active-preview');
+
+      btn.classList.add('active-tab');
+      page.classList.add('active-preview');
+
+      activeTabInfo = { btn, page, templateId };
+
+      await renderTemplate(templateId, page);
+      requestAnimationFrame(() => {
+        (window as any).resizePreview?.();
+      });
+    });
   });
 }
 
@@ -557,80 +675,68 @@ function setupChatInterface() {
     }
   });
   
-  const uploadImageBtn = document.getElementById('uploadImageBtn');
-  const uploadPenBtn = document.getElementById('uploadPenBtn');
-  
-  if (uploadImageBtn) {
-    uploadImageBtn.addEventListener('click', () => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = async () => {
-        const file = input.files?.[0];
-        if (file) {
-          addMessageToChat('user', `上传了参考图片: ${file.name}`);
-          
-          const reader = new FileReader();
-          reader.onload = async (e) => {
-            const dataUrl = e.target?.result as string;
+    const uploadImageBtn = document.getElementById('uploadImageBtn');
+    const uploadPenBtn = document.getElementById('uploadPenBtn');
+    
+    if (uploadImageBtn) {
+      uploadImageBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          if (file) {
+            renderMessage('user', `上传了参考图片：${file.name}`);
+            saveChatHistory();
             
-            try {
-              const { analyzeImageAsync } = await import('./tools/executor');
-              const result = await analyzeImageAsync(dataUrl);
-              if (result.success && result.data) {
-                const colors = result.data as { dominantColors: string[] };
-                addMessageToChat('ai', `🎨 图片分析完成，提取到主色调：${colors.dominantColors.join(', ')}\n\n请在对话中告诉 AI "基于这张图片生成配色方案"，AI 将自动计算完整的 OA 主题配色。`);
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+              const dataUrl = e.target?.result as string;
+              
+              try {
+                const { analyzeImageAsync } = await import('./tools/executor');
+                const result = await analyzeImageAsync(dataUrl);
+                if (result.success && result.data) {
+                  const colors = result.data as { dominantColors: string[] };
+                  renderMessage('ai', `🎨 图片分析完成，提取到主色调：${colors.dominantColors.join(', ')}\n\n请在对话中告诉 AI "基于这张图片生成配色方案"，AI 将自动计算完整的 OA 主题配色。`);
+                  saveChatHistory();
+                }
+              } catch {
+                renderMessage('ai', '⚠️ 图片已接收，但颜色分析失败。请直接描述您想要的配色风格。');
+                saveChatHistory();
               }
-            } catch {
-              addMessageToChat('ai', '⚠️ 图片已接收，但颜色分析失败。请直接描述您想要的配色风格。');
-            }
-          };
-          reader.readAsDataURL(file);
-        }
-      };
-      input.click();
-    });
-  }
-  
-  if (uploadPenBtn) {
-    uploadPenBtn.addEventListener('click', () => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.pen,.json';
-      input.onchange = async () => {
-        const file = input.files?.[0];
-        if (file) {
-          addMessageToChat('user', `上传了 Pen 文件: ${file.name}`);
-          await loadPenFromFile(file);
-          addMessageToChat('ai', '✅ .pen 文件已加载到预览区');
-        }
-      };
-      input.click();
-    });
-  }
-  
-  function addMessageToChat(role: 'user' | 'ai', content: string): HTMLElement {
-    if (!messagesContainer) return document.createElement('div');
+            };
+            reader.readAsDataURL(file);
+          }
+        };
+        input.click();
+      });
+    }
     
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${role}-message`;
+    if (uploadPenBtn) {
+      uploadPenBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.pen,.json';
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          if (file) {
+            renderMessage('user', `上传了 Pen 文件：${file.name}`);
+            saveChatHistory();
+            await loadPenFromFile(file);
+            renderMessage('ai', '✅ .pen 文件已加载到预览区');
+            saveChatHistory();
+          }
+        };
+        input.click();
+      });
+    }
     
-    const avatarDiv = document.createElement('div');
-    avatarDiv.className = 'avatar';
-    avatarDiv.textContent = role === 'ai' ? '🤖' : '👤';
-    
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-    contentDiv.textContent = content;
-    
-    messageDiv.appendChild(avatarDiv);
-    messageDiv.appendChild(contentDiv);
-    
-    messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    
-    return messageDiv;
-  }
+    function addMessageToChat(role: 'user' | 'ai', content: string): HTMLElement {
+      const messageEl = renderMessage(role, content);
+      saveChatHistory();
+      return messageEl;
+    }
 
   function sendUserMessage() {
     if (!messageInput || messageInput.value.trim() === '') return;
@@ -698,6 +804,7 @@ function setupChatInterface() {
       content: fullResponse,
       timestamp: Date.now(),
     });
+    saveChatHistory();
 
     const toolCalls = parseToolCallsFromContent(fullResponse);
     for (const tc of toolCalls) {
@@ -705,8 +812,10 @@ function setupChatInterface() {
         const result = await executeTool(tc);
         const resultStr = typeof result.data === 'string' ? result.data : JSON.stringify(result.data ?? result.error);
         addMessageToChat('ai', `🔧 ${tc.tool}: ${resultStr}`);
+        saveChatHistory();
       } catch (e) {
-        addMessageToChat('ai', `❌ ${tc.tool} 执行失败: ${(e as Error).message}`);
+        addMessageToChat('ai', `❌ ${tc.tool} 执行失败：${(e as Error).message}`);
+        saveChatHistory();
       }
     }
   }

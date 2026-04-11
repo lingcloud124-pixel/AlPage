@@ -26,6 +26,46 @@ const TEMPLATES: Record<string, TemplateConfig> = {
     width: 1920,
     height: 1079,
   },
+  'header-default': {
+    id: 'header-default',
+    name: '默认页眉',
+    htmlPath: '/src/templates/header-default.html',
+    cssPath: '/src/templates/header-default.css',
+    width: 1920,
+    height: 60,
+  },
+  'header-complex': {
+    id: 'header-complex',
+    name: '复杂页眉',
+    htmlPath: '/src/templates/header-complex.html',
+    cssPath: '/src/templates/header-complex.css',
+    width: 1920,
+    height: 90,
+  },
+  'header-menu': {
+    id: 'header-menu',
+    name: '菜单页眉',
+    htmlPath: '/src/templates/header-menu.html',
+    cssPath: '/src/templates/header-menu.css',
+    width: 1920,
+    height: 130,
+  },
+  'header-banner': {
+    id: 'header-banner',
+    name: '横幅页眉',
+    htmlPath: '/src/templates/header-banner.html',
+    cssPath: '/src/templates/header-banner.css',
+    width: 2560,
+    height: 480,
+  },
+  'sidebar': {
+    id: 'sidebar',
+    name: '侧边页眉',
+    htmlPath: '/src/templates/sidebar.html',
+    cssPath: '/src/templates/sidebar.css',
+    width: 200,
+    height: 900,
+  },
 };
 
 const loadedCSS = new Set<string>();
