@@ -1,6 +1,7 @@
 import { initializeColorEditor } from './components/color-editor';
 import { chatCompletion, loadSettings, parseToolCallsFromContent } from './agent/chat-client';
 import { getSystemPrompt } from './agent/system-prompt';
+import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences, trackPresetUsage, trackProjectCreated } from './agent/user-preferences';
 import { executeTool } from './tools/executor';
 import { renderTemplate } from './templates/loader';
 import type { ChatMessage } from './types';
@@ -88,39 +89,90 @@ document.addEventListener('DOMContentLoaded', () => {
 const PROJECT_ROOT = '/Users/gulingfei/Desktop/APP（vibe-coding）/Topic Automation';
 
 function initializeRoutingModule() {
+  showWorkspaceDirectly();
+  
+  const newProjectBtn = document.getElementById('newProjectBtn');
+  if (newProjectBtn) {
+    newProjectBtn.addEventListener('click', () => {
+      const project = createProject('未命名项目', 'light-ui');
+      if (project) {
+        showWorkspace(project.id);
+        populateSidebarProjects();
+      }
+    });
+  }
+  
+  const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+  const projectSidebar = document.getElementById('projectSidebar');
+  if (sidebarToggleBtn && projectSidebar) {
+    sidebarToggleBtn.addEventListener('click', () => {
+      projectSidebar.classList.toggle('collapsed');
+    });
+  }
+  
+  populateSidebarProjects();
+}
+
+function showWorkspaceDirectly(): void {
+  const homePage = document.getElementById('homePage');
+  const workspaceView = document.getElementById('workspaceView');
+  
+  if (homePage) homePage.classList.add('view-hidden');
+  if (workspaceView) workspaceView.classList.remove('view-hidden');
+
   const currentProjectId = localStorage.getItem('theme-studio-current-project');
   
   if (currentProjectId) {
     showWorkspace(currentProjectId);
   } else {
-    showHomePage();
+    const defaultProject = createProject('未命名项目', 'light-ui');
+    if (defaultProject) {
+      showWorkspace(defaultProject.id);
+    }
   }
-  
-  const newProjectCard = document.getElementById('newProjectCard');
-  if (newProjectCard) {
-    newProjectCard.addEventListener('click', () => {
-      showNewProjectDialog();
-    });
-  }
-  
-  const projectSwitcherBtn = document.getElementById('projectSwitcherBtn');
-  if (projectSwitcherBtn) {
-    projectSwitcherBtn.addEventListener('click', () => {
-      showHomePage();
-    });
-  }
-  
-  populateHistoryProjects();
 }
 
-function showHomePage(): void {
-  const homePage = document.getElementById('homePage');
-  const workspaceView = document.getElementById('workspaceView');
+function populateSidebarProjects() {
+  const sidebarProjectList = document.getElementById('sidebarProjectList');
+  if (!sidebarProjectList) return;
   
-  if (homePage) homePage.classList.remove('view-hidden');
-  if (workspaceView) workspaceView.classList.add('view-hidden');
+  sidebarProjectList.innerHTML = '';
   
-  populateHistoryProjects();
+  const projects = listProjects();
+  
+  if (projects.length === 0) {
+    const emptyMessage = document.createElement('p');
+    emptyMessage.textContent = '暂无历史项目';
+    emptyMessage.style.textAlign = 'center';
+    emptyMessage.style.color = 'rgba(255,255,255,0.5)';
+    emptyMessage.style.fontStyle = 'italic';
+    emptyMessage.style.margin = '20px 0';
+    sidebarProjectList.appendChild(emptyMessage);
+    return;
+  }
+  
+  projects.forEach(project => {
+    const projectItem = document.createElement('div');
+    projectItem.className = 'sidebar-project-item';
+    projectItem.title = project.name;
+    projectItem.textContent = project.name.length > 20 ? project.name.substring(0, 20) + '...' : project.name;
+    
+    const currentProjectId = localStorage.getItem('theme-studio-current-project');
+    if (currentProjectId === project.id) {
+      projectItem.classList.add('active');
+    }
+    
+    projectItem.addEventListener('click', () => {
+      document.querySelectorAll('.sidebar-project-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      projectItem.classList.add('active');
+      
+      showWorkspace(project.id);
+    });
+    
+    sidebarProjectList.appendChild(projectItem);
+  });
 }
 
 function showWorkspace(projectId: string): void {
@@ -411,9 +463,10 @@ function createProject(name: string, templateType: 'light-ui' | 'dark-ui'): Proj
     templateType,
     colors: getDefaultColors(),
     createdAt: Date.now(),
-    updatedAt: Date.now()
+    updatedAt: Date.now(),
   };
   
+  trackProjectCreated();
   return saveProject(newProject);
 }
 
@@ -562,7 +615,6 @@ function initializeFeatureModules() {
   setupMainActions();
   setupResizableDivider();
   setupQualityCheck();
-  setUpCompareMode();
 }
 
 function setupResizableDivider() {
@@ -617,11 +669,6 @@ function setupTabSwitching() {
   const TAB_MAP = [
     { btnId: 'loginTab', pageId: 'loginPage', templateId: 'login' },
     { btnId: 'mainPageTab', pageId: 'mainPage', templateId: 'desktop' },
-    { btnId: 'headerDefaultTab', pageId: 'headerDefaultPage', templateId: 'header-default' },
-    { btnId: 'headerComplexTab', pageId: 'headerComplexPage', templateId: 'header-complex' },
-    { btnId: 'headerMenuTab', pageId: 'headerMenuPage', templateId: 'header-menu' },
-    { btnId: 'headerBannerTab', pageId: 'headerBannerPage', templateId: 'header-banner' },
-    { btnId: 'sidebarTab', pageId: 'sidebarPage', templateId: 'sidebar' },
   ];
 
   let activeTabInfo = { btn: null as HTMLButtonElement | null, page: null as HTMLElement | null, templateId: '' };
@@ -765,11 +812,18 @@ function setupChatInterface() {
     }
 
     const availablePresets = getAvailablePresets();
+    const prefs = loadUserPreferences();
     const systemPrompt = getSystemPrompt({
       templateType: 'dark-ui',
       currentColors: getCurrentColors(),
       availablePresets,
+      userPreferences: prefs,
     });
+
+    const extracted = extractPreferencesFromMessage(userMessage);
+    if (extracted) {
+      saveUserPreferences(extracted);
+    }
 
     const messages = [
       { role: 'system' as const, content: systemPrompt },
@@ -783,11 +837,23 @@ function setupChatInterface() {
     const contentEl = aiMessageEl.querySelector('.message-content') as HTMLElement;
     let fullResponse = '';
 
+    if (contentEl) {
+      contentEl.classList.add('typing');
+      contentEl.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+    }
+
     try {
+      let firstToken = true;
       fullResponse = await chatCompletion(
         { messages, temperature: 0.7 },
         (token) => {
           if (contentEl) {
+            if (firstToken) {
+              contentEl.classList.remove('typing');
+              contentEl.classList.add('streaming');
+              contentEl.textContent = '';
+              firstToken = false;
+            }
             contentEl.textContent += token;
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
           }
@@ -795,9 +861,14 @@ function setupChatInterface() {
       );
     } catch (e) {
       if (contentEl) {
+        contentEl.classList.remove('typing', 'streaming');
         contentEl.textContent = `❌ 请求失败: ${(e as Error).message}`;
       }
       return;
+    }
+
+    if (contentEl) {
+      contentEl.classList.remove('streaming');
     }
 
     conversationHistory.push({
@@ -809,17 +880,131 @@ function setupChatInterface() {
     saveChatHistory();
 
     const toolCalls = parseToolCallsFromContent(fullResponse);
+    const TOOL_GLOBAL_TIMEOUT = 60_000;
+    const toolStartTime = Date.now();
+
     for (const tc of toolCalls) {
+      if (Date.now() - toolStartTime > TOOL_GLOBAL_TIMEOUT) {
+        addMessageToChat('ai', '⚠️ 工具执行总时长超限，剩余工具已跳过');
+        saveChatHistory();
+        break;
+      }
       try {
         const result = await executeTool(tc);
-        const resultStr = typeof result.data === 'string' ? result.data : JSON.stringify(result.data ?? result.error);
-        addMessageToChat('ai', `🔧 ${tc.tool}: ${resultStr}`);
+        if (result.success) {
+          const resultStr = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+          addMessageToChat('ai', `🔧 ${tc.tool}: ${resultStr}`);
+        } else {
+          addMessageToChat('ai', `⚠️ ${tc.tool}: ${result.error ?? '未知错误'}`);
+        }
         saveChatHistory();
       } catch (e) {
         addMessageToChat('ai', `❌ ${tc.tool} 执行失败：${(e as Error).message}`);
         saveChatHistory();
       }
     }
+
+    const recommendedPresets = parsePresetRecommendations(fullResponse);
+    if (recommendedPresets.length > 0) {
+      const presetCards = recommendedPresets
+        .filter(key => PRESET_DISPLAY[key])
+        .map(key => ({ key, ...PRESET_DISPLAY[key] }));
+      if (presetCards.length > 0) {
+        addPresetCardsMessage(presetCards);
+        saveChatHistory();
+      }
+    }
+  }
+
+  function parsePresetRecommendations(content: string): string[] {
+    const keys: string[] = [];
+    const regex = /\[preset:(\w[\w-]*)\]/g;
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      keys.push(match[1]);
+    }
+    return keys;
+  }
+
+  function addPresetCardsMessage(cards: Array<{key: string; label: string; primary: string; type: string}>): HTMLElement {
+    const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
+    if (!messagesContainer) return document.createElement('div');
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ai-message';
+
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'avatar';
+    avatarDiv.textContent = '🤖';
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.textContent = '为您推荐以下主题方案，点击即可应用：';
+
+    const cardsContainer = document.createElement('div');
+    cardsContainer.className = 'preset-cards-container';
+
+    cards.forEach(preset => {
+      const card = document.createElement('div');
+      card.className = 'preset-card-chat';
+      card.innerHTML = `
+        <div class="preset-card-swatch" style="background: ${preset.primary};"></div>
+        <div class="preset-card-info">
+          <span class="preset-card-label">${preset.label}</span>
+          <span class="preset-card-type">${preset.type === 'dark-ui' ? '暗色' : '亮色'}</span>
+        </div>
+      `;
+      card.addEventListener('click', async () => {
+        try {
+          const response = await fetch(`/colors/${preset.key}.json`);
+          if (response.ok) {
+            const presetColors = await response.json();
+            const mappedColors: Record<string, string> = {};
+            if (presetColors.colors) {
+              const c = presetColors.colors;
+              if (c.primary) mappedColors['primary-color'] = c.primary;
+              if (c.primaryHover) mappedColors['primary-color-hover'] = c.primaryHover;
+              if (c.alterColor) mappedColors['alter-color'] = c.alterColor;
+              if (c.alterColorHoverOn) mappedColors['alter-color-hover-on'] = c.alterColorHoverOn;
+              if (c.primaryOpacity10) mappedColors['primary-color-opacity-10'] = c.primaryOpacity10;
+              if (c.primaryOpacity20) mappedColors['primary-color-opacity-20'] = c.primaryOpacity20;
+              if (c.primaryOpacity30) mappedColors['primary-color-opacity-30'] = c.primaryOpacity30;
+              if (c.headerFont) mappedColors['header-font-color'] = c.headerFont;
+              if (c.sidebarPanelBg) mappedColors['sidebar-panel-bg'] = c.sidebarPanelBg;
+              if (c.loginBg) mappedColors['login-bg-color'] = c.loginBg;
+            }
+            for (const [k, v] of Object.entries(mappedColors)) {
+              document.documentElement.style.setProperty(`--${k}`, v);
+            }
+            if (currentProjectId) {
+              const project = loadProject(currentProjectId);
+              if (project) {
+                project.colors = { ...project.colors, ...mappedColors };
+                project.templateType = preset.type === 'dark-ui' ? 'dark-ui' : 'light-ui';
+                saveProject(project);
+              }
+            }
+            trackPresetUsage(preset.key);
+            applyPresetBackground(preset.key);
+            cardsContainer.querySelectorAll('.preset-card-chat').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            addMessageToChat('ai', `✅ 已应用「${preset.label}」配色方案`);
+            requestAnimationFrame(() => (window as any).resizePreview?.());
+          }
+        } catch {
+          addMessageToChat('ai', `⚠️ 加载「${preset.label}」失败，请重试`);
+        }
+      });
+      cardsContainer.appendChild(card);
+    });
+
+    contentDiv.appendChild(cardsContainer);
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    return messageDiv;
   }
 
   function getCurrentColors(): Record<string, string> {
@@ -894,50 +1079,55 @@ const PRESET_DISPLAY: Record<string, { label: string; primary: string; type: str
   'yellow-duck': { label: '🐥 小黄鸭', primary: '#FDD835', type: 'light-ui' },
 };
 
+const PRESET_BACKGROUNDS: Record<string, string> = {
+  'cherry-blossom': '/backgrounds/cherry-blossom-bg.png',
+  'peach-blossom': '/backgrounds/cherry-blossom-bg.png',
+  'ice-wonderland': '/backgrounds/ice-wonderland-bg.png',
+  'interstellar': '/backgrounds/interstellar-bg.png',
+  'maldives-vacation': '/backgrounds/maldives-vacation-bg.png',
+  'mount-tai-summit': '/backgrounds/mount-tai-summit-bg.png',
+  'national-day': '/backgrounds/national-day-bg.png',
+  'national-day-dark': '/backgrounds/national-day-bg.png',
+  'national-day-generated': '/backgrounds/national-day-bg.png',
+  'overtime-worker': '/backgrounds/overtime-worker-bg.png',
+  'panda-night': '/backgrounds/panda-night-bg.png',
+  'winter-solstice': '/backgrounds/winter-solstice-bg.jpg',
+  'qingming': '/backgrounds/qingming-bg.png',
+  'work-hard': '/backgrounds/work-hard-bg.jpg',
+  'gaokao': '/backgrounds/gaokao-bg.png',
+  'childrens-day': '/backgrounds/childrens-day-bg.png',
+  'summer-cool': '/backgrounds/maldives-vacation-bg.png',
+  'dark-ui-spring': '/backgrounds/panda-night-bg.png',
+  'dragon-boat': '/backgrounds/qingming-bg.png',
+  'dragon-boat-fresh': '/backgrounds/qingming-bg.png',
+  'spring-festival': '/backgrounds/national-day-bg.png',
+  'basketball-match': '/backgrounds/work-hard-bg.jpg',
+  'football-match': '/backgrounds/work-hard-bg.jpg',
+  'watermelon-harvest': '/backgrounds/maldives-vacation-bg.png',
+  'sanya': '/backgrounds/maldives-vacation-bg.png',
+  'happy-xishuangbanna': '/backgrounds/maldives-vacation-bg.png',
+  'women-day': '/backgrounds/cherry-blossom-bg.png',
+  'superman-superhero': '/backgrounds/interstellar-bg.png',
+  'corporate-blue': '/backgrounds/mount-tai-summit-bg.png',
+  'shenergy-enterprise': '/backgrounds/mount-tai-summit-bg.png',
+  '20th-anniversary': '/backgrounds/winter-solstice-bg.jpg',
+  '1024': '/backgrounds/interstellar-bg.png',
+  'yellow-duck': '/backgrounds/childrens-day-bg.png',
+};
+
+function applyPresetBackground(presetKey: string): void {
+  const bgUrl = PRESET_BACKGROUNDS[presetKey];
+  if (bgUrl) {
+    document.documentElement.style.setProperty('--theme-login-bg-image', `url('${bgUrl}')`);
+    document.documentElement.style.setProperty('--theme-header-bg-image', `url('${bgUrl}')`);
+  }
+}
+
 function getAvailablePresets(): string[] {
   const saved = Object.keys(localStorage)
     .filter(k => k.startsWith('theme-studio-colors-'))
     .map(k => k.replace('theme-studio-colors-', ''));
   return [...new Set([...KNOWN_PRESETS, ...saved])];
-}
-
-function setUpCompareMode() {
-  const compareBtn = document.getElementById('compareToggleBtn');
-  if (!compareBtn) return;
-
-  let compareMode = false;
-
-  compareBtn.addEventListener('click', () => {
-    compareMode = !compareMode;
-    const previewContent = document.querySelector('.preview-content');
-    if (!previewContent) return;
-
-    if (compareMode) {
-      previewContent.classList.add('compare-mode');
-      const pages = previewContent.querySelectorAll('.preview-page');
-      let shown = 0;
-      pages.forEach((page) => {
-        if (shown < 2) {
-          (page as HTMLElement).style.display = 'flex';
-          shown++;
-        } else {
-          (page as HTMLElement).style.display = 'none';
-        }
-      });
-      compareBtn.textContent = '退出对比';
-      showNotification('对比模式：显示前两个模板页');
-    } else {
-      previewContent.classList.remove('compare-mode');
-      const pages = previewContent.querySelectorAll('.preview-page');
-      pages.forEach((page) => {
-        (page as HTMLElement).style.display = '';
-      });
-      const active = previewContent.querySelector('.preview-page.active-preview');
-      if (active) (active as HTMLElement).style.display = 'flex';
-      compareBtn.textContent = '对比';
-      requestAnimationFrame(() => (window as any).resizePreview?.());
-    }
-  });
 }
 
 function setupQualityCheck() {
@@ -1087,23 +1277,35 @@ function setupSettingsDialog() {
     const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement;
     const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
     const modelNameInput = document.getElementById('modelName') as HTMLInputElement;
+    const imageApiEndpointInput = document.getElementById('imageApiEndpoint') as HTMLInputElement;
+    const imageApiKeyInput = document.getElementById('imageApiKey') as HTMLInputElement;
+    const imageModelNameInput = document.getElementById('imageModelName') as HTMLInputElement;
     
     if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || 'https://open.bigmodel.cn/api/paas/v4';
     if (apiKeyInput) apiKeyInput.value = settings.apiKey || '';
     if (modelNameInput) modelNameInput.value = settings.modelName || 'GLM-4-Flash';
+    if (imageApiEndpointInput) imageApiEndpointInput.value = settings.imageApiEndpoint || 'https://open.bigmodel.cn/api/paas/v4';
+    if (imageApiKeyInput) imageApiKeyInput.value = settings.imageApiKey || '';
+    if (imageModelNameInput) imageModelNameInput.value = settings.imageModelName || 'CogView-4';
   }
   
   function saveSettings() {
     const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement;
     const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
     const modelNameInput = document.getElementById('modelName') as HTMLInputElement;
+    const imageApiEndpointInput = document.getElementById('imageApiEndpoint') as HTMLInputElement;
+    const imageApiKeyInput = document.getElementById('imageApiKey') as HTMLInputElement;
+    const imageModelNameInput = document.getElementById('imageModelName') as HTMLInputElement;
     
     if (!apiEndpointInput || !apiKeyInput || !modelNameInput) return;
     
     const settings = {
       apiEndpoint: apiEndpointInput.value,
       apiKey: apiKeyInput.value, 
-      modelName: modelNameInput.value
+      modelName: modelNameInput.value,
+      imageApiEndpoint: imageApiEndpointInput?.value || 'https://open.bigmodel.cn/api/paas/v4',
+      imageApiKey: imageApiKeyInput?.value || '',
+      imageModelName: imageModelNameInput?.value || 'CogView-4',
     };
     
     localStorage.setItem('themeStudioSettings', JSON.stringify(settings));

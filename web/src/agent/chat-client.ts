@@ -6,6 +6,9 @@ const ZHIPU_DEFAULTS: AISettings = {
   apiEndpoint: 'https://open.bigmodel.cn/api/paas/v4',
   apiKey: import.meta.env.VITE_ZHIPU_API_KEY ?? '',
   model: 'GLM-4-Flash',
+  imageApiEndpoint: 'https://open.bigmodel.cn/api/paas/v4',
+  imageApiKey: '',
+  imageModel: 'CogView-4',
 };
 
 export function loadSettings(): AISettings {
@@ -23,6 +26,60 @@ export function saveSettings(settings: AISettings): void {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
+export function getImageSettings(): { endpoint: string; apiKey: string; model: string } {
+  const settings = loadSettings();
+  return {
+    endpoint: settings.imageApiEndpoint ?? settings.apiEndpoint,
+    apiKey: settings.imageApiKey || settings.apiKey,
+    model: settings.imageModel || 'CogView-4',
+  };
+}
+
+export async function generateImage(prompt: string): Promise<{ success: boolean; url?: string; error?: string }> {
+  const imgSettings = getImageSettings();
+  if (!imgSettings.apiKey) {
+    return { success: false, error: '未配置图像生成 API 密钥' };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60_000);
+
+  try {
+    const response = await fetch(`${imgSettings.endpoint}/images/generations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${imgSettings.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: imgSettings.model,
+        prompt,
+        size: '1792x1024',
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      return { success: false, error: `图像生成失败 (${response.status}): ${errorBody}` };
+    }
+
+    const data = await response.json();
+    const imageUrl = data.data?.[0]?.url;
+    if (!imageUrl) {
+      return { success: false, error: '图像生成返回为空' };
+    }
+    return { success: true, url: imageUrl };
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') {
+      return { success: false, error: '图像生成超时（60秒）' };
+    }
+    return { success: false, error: `图像生成失败: ${(e as Error).message}` };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function chatCompletion(
   request: ChatRequest,
   onToken?: (token: string) => void,
@@ -32,59 +89,72 @@ export async function chatCompletion(
     throw new Error('请先在设置中配置 API Key');
   }
 
-  const response = await fetch(`${settings.apiEndpoint}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${settings.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: settings.model,
-      messages: request.messages,
-      tools: request.tools,
-      temperature: request.temperature ?? 0.7,
-      stream: true,
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120_000);
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`API 错误 (${response.status}): ${errorBody}`);
-  }
+  try {
+    const response = await fetch(`${settings.apiEndpoint}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${settings.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        messages: request.messages,
+        tools: request.tools,
+        temperature: request.temperature ?? 0.7,
+        stream: true,
+      }),
+      signal: controller.signal,
+    });
 
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error('无法读取响应流');
-
-  const decoder = new TextDecoder();
-  let fullContent = '';
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith('data: ')) continue;
-      const data = trimmed.slice(6);
-      if (data === '[DONE]') continue;
-
-      try {
-        const parsed = JSON.parse(data);
-        const delta = parsed.choices?.[0]?.delta;
-        if (delta?.content) {
-          fullContent += delta.content;
-          onToken?.(delta.content);
-        }
-      } catch {}
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`API 错误 (${response.status}): ${errorBody}`);
     }
-  }
 
-  return fullContent;
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('无法读取响应流');
+
+    const decoder = new TextDecoder();
+    let fullContent = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') continue;
+
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta;
+          if (delta?.content) {
+            fullContent += delta.content;
+            onToken?.(delta.content);
+          }
+        } catch {}
+      }
+    }
+
+    return fullContent;
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') {
+      throw new Error('请求超时（120秒），请检查网络连接后重试');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export function parseToolCallsFromContent(content: string): Array<{ tool: string; args: Record<string, unknown> }> {

@@ -66,6 +66,38 @@ const TEMPLATES: Record<string, TemplateConfig> = {
     width: 200,
     height: 900,
   },
+  'header-v16-default': {
+    id: 'header-v16-default',
+    name: 'V16默认页眉',
+    htmlPath: '/src/templates/header-v16-default.html',
+    cssPath: '/src/templates/header-v16-default.css',
+    width: 2560,
+    height: 70,
+  },
+  'header-simple': {
+    id: 'header-simple',
+    name: '简洁页眉',
+    htmlPath: '/src/templates/header-simple.html',
+    cssPath: '/src/templates/header-simple.css',
+    width: 1920,
+    height: 60,
+  },
+  'header-simple-multitab': {
+    id: 'header-simple-multitab',
+    name: '简洁多标签页眉',
+    htmlPath: '/src/templates/header-simple-multitab.html',
+    cssPath: '/src/templates/header-simple-multitab.css',
+    width: 1920,
+    height: 90,
+  },
+  'header-classic': {
+    id: 'header-classic',
+    name: '经典页眉',
+    htmlPath: '/src/templates/header-classic.html',
+    cssPath: '/src/templates/header-classic.css',
+    width: 1920,
+    height: 70,
+  },
 };
 
 const loadedCSS = new Set<string>();
@@ -102,8 +134,14 @@ export async function renderTemplate(
   const html = await loadHTMLTemplate(config.htmlPath);
 
   targetElement.innerHTML = '';
-  targetElement.style.width = config.width + 'px';
-  targetElement.style.height = config.height + 'px';
+  const isAdaptive = config.id === 'login' || config.id === 'desktop';
+  if (isAdaptive) {
+    targetElement.style.width = '100%';
+    targetElement.style.height = '100%';
+  } else {
+    targetElement.style.width = config.width + 'px';
+    targetElement.style.height = config.height + 'px';
+  }
   targetElement.style.position = 'relative';
   targetElement.style.overflow = 'hidden';
   targetElement.style.flexShrink = '0';
@@ -111,8 +149,13 @@ export async function renderTemplate(
 
   const wrapper = document.createElement('div');
   wrapper.className = `template-${templateId}`;
-  wrapper.style.width = config.width + 'px';
-  wrapper.style.height = config.height + 'px';
+  if (isAdaptive) {
+    wrapper.style.width = '100%';
+    wrapper.style.height = '100%';
+  } else {
+    wrapper.style.width = config.width + 'px';
+    wrapper.style.height = config.height + 'px';
+  }
   wrapper.style.position = 'relative';
   wrapper.style.overflow = 'hidden';
   wrapper.innerHTML = html;

@@ -11,9 +11,13 @@ output/
 test-results/
 screenshots/
 web/node_modules/
+web/dist/
+web/test-screenshots/
+web/test-results/
 *.zip
 assets/references/samples/
 .playwright-cli/
+.ruff_cache/
 designs/backgrounds/generated-*.png
 designs/generated/
 assets/images/generated-*.png

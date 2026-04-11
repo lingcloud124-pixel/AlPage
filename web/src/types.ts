@@ -128,4 +128,7 @@ export interface AISettings {
   apiEndpoint: string;
   apiKey: string;
   model: string;
+  imageApiEndpoint?: string;
+  imageApiKey?: string;
+  imageModel?: string;
 }

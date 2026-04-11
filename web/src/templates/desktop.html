@@ -1,285 +1,491 @@
-<div class="template-desktop">
-  <header class="header-bar">
-    <div class="header-left">
-      <div class="logo-container">
-        <svg class="logo-icon" viewBox="0 0 24 24" fill="white">
-          <polygon points="12,2 21,6.5 21,13 12,17.5 3,13 3,6.5" />
-        </svg>
-        <span class="company-name">智慧办公平台</span>
-      </div>
+<div class="desktop-wrapper">
+  <!-- ====== 顶部导航栏 60px ====== -->
+  <header class="desktop-header">
+    <div class="header-logo">
+      <svg class="logo-mark" viewBox="0 0 32 32" width="28" height="28">
+        <rect width="32" height="32" rx="4" fill="var(--primary-color)"/>
+        <path d="M8 10h16v2H8zm0 5h12v2H8zm0 5h14v2H8z" fill="rgba(255,255,255,0.9)"/>
+      </svg>
     </div>
-    
+
     <nav class="header-nav">
-      <ul class="nav-tabs">
-        <li class="nav-tab"><a href="#" class="nav-link active">首页</a></li>
-        <li class="nav-tab"><a href="#" class="nav-link">协作</a></li>
-        <li class="nav-tab"><a href="#" class="nav-link">知识</a></li>
-        <li class="nav-tab"><a href="#" class="nav-link">流程</a></li>
-        <li class="nav-tab"><a href="#" class="nav-link">应用</a></li>
-      </ul>
+      <a href="#" class="nav-link active">首页</a>
+      <a href="#" class="nav-link">协作</a>
+      <a href="#" class="nav-link">知识</a>
+      <a href="#" class="nav-link">流程</a>
+      <a href="#" class="nav-link">应用</a>
     </nav>
-    
-    <div class="header-right">
-      <div class="header-icons">
-        <button class="header-icon-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="white" viewBox="0 0 16 16">
-            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
-          </svg>
-        </button>
-        
-        <button class="header-icon-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="white" viewBox="0 0 16 16">
-            <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2M8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.932 12 6c0-.773.089-1.396.304-1.886C3.425 3.78 3.59 3.457 3.78 3.17 4.76 2.126 5.73 1.918 8 1.918c2.27 0 3.24.208 4.22 1.25.19.287.355.61.476.944C12.911 4.604 13 5.227 13 6c0 .932-.604 3.678-.78 5"/>
-          </svg>
-          <span class="notification-badge"></span>
-        </button>
-        
-        <button class="header-icon-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="white" viewBox="0 0 16 16">
-            <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"/>
-            <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.901-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.32.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319Zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319Z"/>
-          </svg>
-        </button>
-        
-        <div class="user-profile">
-          <div class="avatar-circle">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="white" viewBox="0 0 16 16">
-              <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-6 1s-6-1-6-1v-1h12z"/>
-            </svg>
-          </div>
-          <span class="admin-text">管理员</span>
-        </div>
+
+    <div class="header-actions">
+      <!-- 搜索框 -->
+      <div class="header-search">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" opacity="0.5">
+          <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+        </svg>
+        <input type="text" class="search-input" placeholder="搜索"/>
+      </div>
+
+      <div class="header-divider"></div>
+
+      <!-- 消息 -->
+      <button class="header-icon-btn" title="消息提醒">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </button>
+
+      <!-- 企业 -->
+      <button class="header-icon-btn" title="企业">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/>
+          <path d="M9 9h1M9 13h1M9 17h1"/>
+        </svg>
+      </button>
+
+      <div class="header-divider"></div>
+
+      <!-- 文件夹 -->
+      <button class="header-icon-btn" title="文件">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
+
+      <!-- 退出 -->
+      <button class="header-icon-btn" title="退出">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16,17 21,12 16,7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+
+      <!-- 头像 -->
+      <div class="header-avatar" title="管理员">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+        </svg>
       </div>
     </div>
   </header>
-  
-  <main class="content-area">
-    <aside class="sidebar">
-      <nav class="sidebar-nav">
-        <ul>
-          <li class="sidebar-item active">
-            <span class="nav-icon">📊</span>
-            <span class="nav-text">工作台</span>
-          </li>
-          <li class="sidebar-item">
-            <span class="nav-icon">📋</span>
-            <span class="nav-text">待办事务</span>
-          </li>
-          <li class="sidebar-item">
-            <span class="nav-icon">📅</span>
-            <span class="nav-text">日程安排</span>
-          </li>
-          <li class="sidebar-item">
-            <span class="nav-icon">💬</span>
-            <span class="nav-text">消息中心</span>
-          </li>
-          <li class="sidebar-item">
-            <span class="nav-icon">👥</span>
-            <span class="nav-text">通讯录</span>
-          </li>
-          <li class="sidebar-item">
-            <span class="nav-icon">📁</span>
-            <span class="nav-text">知识文档</span>
-          </li>
-          <li class="sidebar-item">
-            <span class="nav-icon">⚙️</span>
-            <span class="nav-text">系统管理</span>
-          </li>
-        </ul>
-      </nav>
+
+  <!-- ====== 主体区域（侧边栏 + 内容区） ====== -->
+  <div class="desktop-body">
+    <!-- 左侧边栏 200px -->
+    <aside class="desktop-sidebar">
+      <!-- 侧边栏头部图片区域 -->
+      <div class="sidebar-header-img"></div>
+
+      <!-- 导航分组1 -->
+      <div class="sidebar-section">
+        <div class="sidebar-group-title">
+          <span>快捷导航</span>
+          <svg class="collapse-icon" width="10" height="6" viewBox="0 0 10 6" fill="currentColor">
+            <path d="M0 0l5 6 5-6z"/>
+          </svg>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-item">
+            <svg class="sidebar-item-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            <span>工作台</span>
+          </a>
+          <a href="#" class="sidebar-item active">
+            <svg class="sidebar-item-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+            <span>待办事务</span>
+          </a>
+          <a href="#" class="sidebar-item">
+            <svg class="sidebar-item-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <span>日程安排</span>
+          </a>
+          <a href="#" class="sidebar-item">
+            <svg class="sidebar-item-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>消息中心</span>
+          </a>
+          <a href="#" class="sidebar-item">
+            <svg class="sidebar-item-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>通讯录</span>
+          </a>
+          <a href="#" class="sidebar-item">
+            <svg class="sidebar-item-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span>知识文档</span>
+          </a>
+        </nav>
+      </div>
+
+      <!-- 导航分组2 -->
+      <div class="sidebar-section">
+        <div class="sidebar-group-title">
+          <span>流程管理</span>
+          <svg class="collapse-icon collapsed" width="10" height="6" viewBox="0 0 10 6" fill="currentColor">
+            <path d="M0 0l5 6 5-6z"/>
+          </svg>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-item">
+            <svg class="sidebar-item-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12h14"/></svg>
+            <span>发起流程</span>
+          </a>
+          <a href="#" class="sidebar-item">
+            <svg class="sidebar-item-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+            <span>我的流程</span>
+          </a>
+        </nav>
+      </div>
     </aside>
-    
-    <section class="main-content">
-      <div class="dashboard-grid">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">待办事务</h3>
-            <a href="#" class="view-more">更多 ></a>
+
+    <!-- 右侧内容区（自适应） -->
+    <main class="desktop-content">
+      <div class="content-container">
+        <!-- 快捷入口栏 -->
+        <div class="quick-links-bar">
+          <div class="quick-link-item">
+            <div class="quick-link-icon" style="background-color: var(--primary-color-opacity-20);">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="4" y="4" width="16" height="16" rx="2" fill="var(--primary-color)"/>
+                <path d="M2 8h20m-2-4h-3m3 4h-3m3 4h-3m3 4h-3m-5-8h-3m0 0V4" stroke="white"/>
+              </svg>
+            </div>
+            <span class="quick-link-label">法务管理</span>
           </div>
-          <div class="card-body">
-            <ul class="task-list">
-              <li class="task-item">
-                <div class="task-info">
-                  <span class="task-text">合同审批-张三</span>
-                  <span class="task-time">今天 09:30</span>
-                </div>
-              </li>
-              <li class="task-item">
-                <div class="task-info">
-                  <span class="task-text">出差申请-李四</span>
-                  <span class="task-time">今天 10:15</span>
-                </div>
-              </li>
-              <li class="task-item">
-                <div class="task-info">
-                  <span class="task-text">项目进度汇报</span>
-                  <span class="task-time">今天 14:00</span>
-                </div>
-              </li>
-              <li class="task-item">
-                <div class="task-info">
-                  <span class="task-text">采购申请审核</span>
-                  <span class="task-time">今天 16:30</span>
-                </div>
-              </li>
-            </ul>
+          <div class="quick-link-item">
+            <div class="quick-link-icon" style="background-color: var(--alter-color-hover-on);">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <rect x="2" y="4" width="20" height="14" rx="2" fill="var(--primary-color)"/>
+                <path d="M2 7l10 5 10-5M2 11l10 5 10-5" stroke="white" stroke-width="1.5"/>
+              </svg>
+            </div>
+            <span class="quick-link-label">内网邮箱</span>
           </div>
-        </div>
-        
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">日程安排</h3>
-            <a href="#" class="view-more">更多 ></a>
+          <div class="quick-link-item">
+            <div class="quick-link-icon" style="background-color: var(--primary-color-opacity-30);">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="2" y="7" width="20" height="12" rx="2" fill="var(--alter-color)"/>
+                <path d="M4 7l8 6 8-6M4 12l8 6 8-6" stroke="white"/>
+              </svg>
+            </div>
+            <span class="quick-link-label">外网邮箱</span>
           </div>
-          <div class="card-body">
-            <ul class="schedule-list">
-              <li class="schedule-item">
-                <div class="schedule-time">09:00</div>
-                <div class="schedule-info">
-                  <span class="schedule-text">部门周例会</span>
-                  <span class="schedule-location">会议室A</span>
-                </div>
-              </li>
-              <li class="schedule-item">
-                <div class="schedule-time">14:00</div>
-                <div class="schedule-info">
-                  <span class="schedule-text">项目评审会议</span>
-                  <span class="schedule-location">会议室B</span>
-                </div>
-              </li>
-              <li class="schedule-item">
-                <div class="schedule-time">16:00</div>
-                <div class="schedule-info">
-                  <span class="schedule-text">客户访问</span>
-                  <span class="schedule-location">接待室</span>
-                </div>
-              </li>
-            </ul>
+          <div class="quick-link-item">
+            <div class="quick-link-icon" style="background-color: var(--primary-color-hover);">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" fill="var(--primary-color)"/>
+                <path d="M8 12v6M12 10v8M16 7v11" stroke="white"/>
+              </svg>
+            </div>
+            <span class="quick-link-label">数据分析</span>
+          </div>
+          <div class="quick-link-item">
+            <div class="quick-link-icon" style="background-color: var(--primary-color-opacity-10);">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="2" y="2" width="20" height="20" rx="2" fill="var(--alter-color)"/>
+                <path d="M14 2v20M2 16h20M8 8h8M8 12h8" stroke="white"/>
+              </svg>
+            </div>
+            <span class="quick-link-label">企业云盘</span>
           </div>
         </div>
         
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">快速入口</h3>
-            <a href="#" class="view-more">更多 ></a>
+        <!-- 主网格区域 -->
+        <div class="desktop-grid">
+          <!-- 左侧列 -->
+          <div class="grid-left-column">
+            <!-- 待办事务面板 -->
+            <div class="widget-card">
+              <div class="widget-header">
+                <h3 class="widget-title">待办事务 <span class="badge">36</span></h3>
+                <a href="#" class="view-more-link">查看更多</a>
+              </div>
+              <div class="task-list">
+                <div class="task-item">
+                  <div class="avatar-circle" style="background-color: #FF6B6B;">
+                    <span>T</span>
+                  </div>
+                  <div class="task-content">
+                    <div class="task-text">审批请求需要处理</div>
+                    <div class="task-meta">
+                      <span class="task-date">今天 15:30</span>
+                      <span class="task-status">待处理</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="task-item">
+                  <div class="avatar-circle" style="background-color: #4ECDC4;">
+                    <span>H</span>
+                  </div>
+                  <div class="task-content">
+                    <div class="task-text">会议邀请回复</div>
+                    <div class="task-meta">
+                      <span class="task-date">昨天 10:15</span>
+                      <span class="task-status">未确认</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="task-item">
+                  <div class="avatar-circle" style="background-color: #FFD166;">
+                    <span>R</span>
+                  </div>
+                  <div class="task-content">
+                    <div class="task-text">报销单据审核</div>
+                    <div class="task-meta">
+                      <span class="task-date">今天 09:00</span>
+                      <span class="task-status">需审核</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="task-item">
+                  <div class="avatar-circle" style="background-color: #6A0572;">
+                    <span>P</span>
+                  </div>
+                  <div class="task-content">
+                    <div class="task-text">项目进度报告</div>
+                    <div class="task-meta">
+                      <span class="task-date">明天 14:00</span>
+                      <span class="task-status">即将到期</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 集团新闻/公告面板 -->
+            <div class="widget-card">
+              <div class="widget-header">
+                <div class="tabs">
+                  <button class="tab-btn active" data-tab="news">集团新闻</button>
+                  <button class="tab-btn" data-tab="notice">集团公告</button>
+                </div>
+              </div>
+              <div class="tab-content active" id="news-content">
+                <div class="announcement-item">
+                  <span class="announcement-type notice">通知</span>
+                  <div class="announcement-content">
+                    <div class="announcement-title">关于五一劳动节放假安排的通知</div>
+                    <div class="announcement-meta">
+                      <span class="announcement-date">2025-04-01</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="announcement-item">
+                  <span class="announcement-type">公告</span>
+                  <div class="announcement-content">
+                    <div class="announcement-title">公司年会筹备工作启动</div>
+                    <div class="announcement-meta">
+                      <span class="announcement-date">2025-04-01</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="announcement-item">
+                  <span class="announcement-type warning">重要</span>
+                  <div class="announcement-content">
+                    <div class="announcement-title">信息安全培训会议安排</div>
+                    <div class="announcement-meta">
+                      <span class="announcement-date">2025-03-31</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="card-body quick-access">
-            <div class="quick-access-grid">
-              <button class="quick-access-btn">
-                <span class="quick-icon">📧</span>
-                <span class="quick-label">邮件</span>
-              </button>
-              <button class="quick-access-btn">
-                <span class="quick-icon">📅</span>
-                <span class="quick-label">会议</span>
-              </button>
-              <button class="quick-access-btn">
-                <span class="quick-icon">📝</span>
-                <span class="quick-label">审批</span>
-              </button>
-              <button class="quick-access-btn">
-                <span class="quick-icon">📊</span>
-                <span class="quick-label">报表</span>
-              </button>
-              <button class="quick-access-btn">
-                <span class="quick-icon">📢</span>
-                <span class="quick-label">公告</span>
-              </button>
-              <button class="quick-access-btn">
-                <span class="quick-icon">⏱️</span>
-                <span class="quick-label">考勤</span>
-              </button>
+          
+          <!-- 右侧列 -->
+          <div class="grid-right-column">
+            <!-- 知识仓库面板 -->
+            <div class="widget-card">
+              <div class="widget-header">
+                <h3 class="widget-title">知识仓库</h3>
+                <a href="#" class="view-more-link">查看更多</a>
+              </div>
+              <div class="news-list">
+                <div class="news-item">
+                  <div class="news-thumbnail" style="background-color: #C3E7D9;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke-width="1.5"/>
+                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke-width="1.5"/>
+                    </svg>
+                  </div>
+                  <div class="news-content">
+                    <div class="news-title">最新技术架构指南发布</div>
+                    <div class="news-summary">介绍了新一代后端架构的最佳实践和部署策略...</div>
+                    <div class="news-meta">
+                      <span class="news-date">2025-04-02</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="news-item">
+                  <div class="news-thumbnail" style="background-color: #B8D4EF;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <circle cx="12" cy="12" r="10" stroke-width="1.5"/>
+                      <path d="M12 8v4M12 16h.01" stroke-width="1.5"/>
+                    </svg>
+                  </div>
+                  <div class="news-content">
+                    <div class="news-title">项目管理最佳实践分享</div>
+                    <div class="news-summary">总结了敏捷开发中常见问题的解决方案和改进思路...</div>
+                    <div class="news-meta">
+                      <span class="news-date">2025-04-01</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="news-item">
+                  <div class="news-thumbnail" style="background-color: #D9B8EF;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke-width="1.5"/>
+                      <polyline points="14,2 14,8 20,8" stroke-width="1.5"/>
+                    </svg>
+                  </div>
+                  <div class="news-content">
+                    <div class="news-title">2025Q1财务报告解读</div>
+                    <div class="news-summary">详细分析了第一季度财务表现和未来财务规划的重点...</div>
+                    <div class="news-meta">
+                      <span class="news-date">2025-04-01</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 日程面板 -->
+            <div class="widget-card">
+              <div class="widget-header">
+                <h3 class="widget-title">日程</h3>
+              </div>
+              <div class="calendar-container">
+                <div class="calendar-header">
+                  <button class="calendar-nav-btn" id="prev-month">
+                    <svg width="10" height="10" viewBox="0 0 10 6" fill="currentColor">
+                      <path d="M5 0l5 6-10-6z"/>
+                    </svg>
+                  </button>
+                  <div class="current-month">2025年4月</div>
+                  <button class="calendar-nav-btn" id="next-month">
+                    <svg width="10" height="10" viewBox="0 0 10 6" fill="currentColor">
+                      <path d="M5 6l-5-6 10 6z"/>
+                    </svg>
+                  </button>
+                </div>
+                
+                <div class="calendar-weekdays">
+                  <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                </div>
+                
+                <div class="calendar-grid">
+                  <!-- Generate days here with JS -->
+                </div>
+                
+                <div class="upcoming-events">
+                  <div class="event-item">
+                    <span class="event-time">10:00</span>
+                    <span class="event-title">部门周例会</span>
+                  </div>
+                  <div class="event-item">
+                    <span class="event-time">15:30</span>
+                    <span class="event-title">项目进度评审</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">集团新闻</h3>
-            <a href="#" class="view-more">更多 ></a>
-          </div>
-          <div class="card-body">
-            <ul class="news-list">
-              <li class="news-item">
-                <div class="news-info">
-                  <span class="news-title">关于年度股东大会的通知</span>
-                  <span class="news-date">2026-04-10</span>
-                </div>
-              </li>
-              <li class="news-item">
-                <div class="news-info">
-                  <span class="news-title">一季度业绩发布会安排</span>
-                  <span class="news-date">2026-04-09</span>
-                </div>
-              </li>
-              <li class="news-item">
-                <div class="news-info">
-                  <span class="news-title">新产品发布庆典活动</span>
-                  <span class="news-date">2026-04-08</span>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
-        
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">知识仓库</h3>
-            <a href="#" class="view-more">更多 ></a>
-          </div>
-          <div class="card-body">
-            <ul class="documents-list">
-              <li class="document-item">
-                <div class="document-info">
-                  <span class="document-icon">📁</span>
-                  <span class="document-title">员工手册2026版</span>
-                </div>
-              </li>
-              <li class="document-item">
-                <div class="document-info">
-                  <span class="document-icon">📋</span>
-                  <span class="document-title">项目管理标准流程</span>
-                </div>
-              </li>
-              <li class="document-item">
-                <div class="document-info">
-                  <span class="document-icon">📊</span>
-                  <span class="document-title">市场分析报告</span>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
-        
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">最新发文</h3>
-            <a href="#" class="view-more">更多 ></a>
-          </div>
-          <div class="card-body">
-            <ul class="documents-list">
-              <li class="document-item">
-                <div class="document-info">
-                  <span class="document-title">关于优化内部流程的通知</span>
-                  <span class="document-date">2026-04-10</span>
-                </div>
-              </li>
-              <li class="document-item">
-                <div class="document-info">
-                  <span class="document-title">新版考勤制度说明</span>
-                  <span class="document-date">2026-04-09</span>
-                </div>
-              </li>
-              <li class="document-item">
-                <div class="document-info">
-                  <span class="document-title">技术规范更新说明</span>
-                  <span class="document-date">2026-04-08</span>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
       </div>
-    </section>
-  </main>
+    </main>
+  </div>
+  
+  <script>
+    // Tab switching functionality
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabId = btn.dataset.tab;
+        
+        // Update active tab button
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+    
+    // Calendar functionality
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    
+    function renderCalendar(year, month) {
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - startDate.getDay() + 1); // Monday
+      
+      const calendarGrid = document.querySelector('.calendar-grid');
+      calendarGrid.innerHTML = '';
+      
+      const currentDate = new Date(startDate);
+      const todayDate = today.getDate();
+      const todayMonth = today.getMonth();
+      const todayYear = today.getFullYear();
+      
+      for (let i = 0; i < 42; i++) { // 6 weeks * 7 days
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        
+        if (currentDate.getMonth() === month) {
+          dayElement.textContent = currentDate.getDate();
+          
+          // Highlight today
+          if (currentDate.getDate() === todayDate && 
+              currentDate.getMonth() === todayMonth && 
+              currentDate.getFullYear() === todayYear) {
+            dayElement.classList.add('today');
+          }
+          
+          // Add event indicators randomly for demo
+          if ([5, 12, 18, 22].includes(currentDate.getDate())) {
+            const eventDot = document.createElement('div');
+            eventDot.className = 'event-dot';
+            dayElement.appendChild(eventDot);
+          }
+        } else {
+          dayElement.textContent = '';
+          dayElement.classList.add('other-month');
+        }
+        
+        calendarGrid.appendChild(dayElement);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+    
+    renderCalendar(currentYear, currentMonth);
+    
+    // Calendar navigation
+    let displayYear = currentYear;
+    let displayMonth = currentMonth;
+    
+    document.getElementById('prev-month').addEventListener('click', () => {
+      displayMonth--;
+      if (displayMonth < 0) {
+        displayMonth = 11;
+        displayYear--;
+      }
+      renderCalendar(displayYear, displayMonth);
+      document.querySelector('.current-month').textContent = `${displayYear}年${displayMonth + 1}月`;
+    });
+    
+    document.getElementById('next-month').addEventListener('click', () => {
+      displayMonth++;
+      if (displayMonth > 11) {
+        displayMonth = 0;
+        displayYear++;
+      }
+      renderCalendar(displayYear, displayMonth);
+      document.querySelector('.current-month').textContent = `${displayYear}年${displayMonth + 1}月`;
+    });
+    
+    // Sidebar collapsible sections
+    const sectionHeaders = document.querySelectorAll('.sidebar-group-title');
+    sectionHeaders.forEach(header => {
+      header.addEventListener('click', () => {
+        const icon = header.querySelector('.collapse-icon');
+        icon.classList.toggle('collapsed');
+      });
+    });
+  </script>
 </div>
