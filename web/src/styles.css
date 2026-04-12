@@ -1265,10 +1265,10 @@ body {
 
 .login-bg {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 2215px;
-    height: 1080px;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     background-color: var(--login-bg-color);
 }
 

@@ -8,6 +8,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import sharp from 'sharp';
+import { getExpectedExportSizes } from './lib/export-asset-rules.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -83,12 +84,11 @@ async function validatePhase(phaseNum, themeName) {
           results.push({ name: '素材包目录存在', pass: assetsExists, detail: assetsDir });
 
           if (assetsExists) {
-            const expectedSizes = {
-              'bg-login.jpg': { w: 2215, h: 1080 },
-              'header-banner.png': { w: 2560, h: 480 },
-              'header_tlayout_frame_bg.png': { w: 1920, h: 60 },
-              'login_thumb.jpg': { w: 960, h: 540 }
-            };
+            const colorsPath = path.join(rootDir, 'colors', `${themeName}.json`);
+            const templateType = await fs.pathExists(colorsPath)
+              ? ((await fs.readJson(colorsPath)).templateType || 'light-ui')
+              : 'light-ui';
+            const expectedSizes = getExpectedExportSizes(templateType);
 
             for (const [file, expected] of Object.entries(expectedSizes)) {
               const filePath = path.join(assetsDir, file);
@@ -98,11 +98,11 @@ async function validatePhase(phaseNum, themeName) {
                 continue;
               }
               const metadata = await sharp(filePath).metadata();
-              const sizeOk = metadata.width === expected.w && metadata.height === expected.h;
+              const sizeOk = metadata.width === expected.width && metadata.height === expected.height;
               results.push({ 
                 name: `${file} 尺寸`, 
                 pass: sizeOk, 
-                detail: `${metadata.width}×${metadata.height}（预期 ${expected.w}×${expected.h}）` 
+                detail: `${metadata.width}×${metadata.height}（预期 ${expected.width}×${expected.height}）` 
               });
             }
           }

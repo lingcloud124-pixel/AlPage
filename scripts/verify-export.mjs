@@ -14,19 +14,11 @@ import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+import { getExpectedExportSizes } from './lib/export-asset-rules.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, '..');
-
-const REQUIRED_IMAGES = {
-  'bg-login.jpg': { width: 2215, height: 1080 },
-  'header-banner.png': { width: 2560, height: 480 },
-  'header_tlayout_frame_bg.png': { width: 1920, height: 60 },
-  'header_complex_frame_bg.png': { width: 1920, height: 90 },
-  'header_menu_frame_bg.png': { width: 1920, height: 130 },
-  'header-sideheader.png': { width: 200, height: 488 },
-};
 
 async function getImageSize(filePath) {
   try {
@@ -47,8 +39,13 @@ async function verifyExport(themeName) {
   
   const outputDir = path.join(rootDir, 'output', themeName);
   let hasErrors = false;
+  const colorsPath = path.join(rootDir, 'colors', `${themeName}.json`);
+  const templateType = await fs.pathExists(colorsPath)
+    ? ((await fs.readJson(colorsPath)).templateType || 'light-ui')
+    : 'light-ui';
+  const requiredImages = getExpectedExportSizes(templateType);
 
-  for (const [image, expected] of Object.entries(REQUIRED_IMAGES)) {
+  for (const [image, expected] of Object.entries(requiredImages)) {
     const imagePath = path.join(outputDir, image);
     
     if (!await fs.pathExists(imagePath)) {

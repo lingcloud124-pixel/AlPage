@@ -17,29 +17,14 @@ Checks:
 
 import sys
 import zipfile
+import json
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 ROOT = Path(__file__).parent.parent
 REF_DIR = ROOT / "assets/references/samples/主题样例包"
-
-EXPECTED_ZIPS = [
-    ("主题-MK-", "主题-MK-2026清明主题.zip"),
-    ("登录-MK-", "登录-MK-2026清明.zip"),
-    ("主题-V12-", "主题-V12-2026清明主题.zip"),
-    ("登录-V12-", "登录-V12-2026清明.zip"),
-    ("主题-V13〜V13.5-", "主题-V13〜V13.5-2026清明主题.zip"),
-    ("登录-V13〜V13.5-", "登录-V13-2026清明.zip"),
-    ("登录-V13-", "登录-V13-2026清明.zip"),
-    ("登录-V13.5-", "登录-V13.5-2026清明.zip"),
-    ("主题-V14〜V16-", "主题-V14〜V16-2026清明主题.zip"),
-    ("登录-V14〜V16-", "登录-V16-2026清明.zip"),
-    ("登录-V14-", "登录-V14-2026清明.zip"),
-    ("登录-V15-", "登录-V15-2026清明.zip"),
-    ("登录-V16-", "登录-V16-2026清明.zip"),
-    ("主题-V17-", "主题-V17-2026清明主题.zip"),
-    ("登录-V17-", "登录-V17-2026清明.zip"),
-]
+VERIFY_RULES = json.loads((ROOT / "config" / "build-verification-rules.json").read_text(encoding="utf-8"))
+EXPECTED_ZIPS = [(item["prefix"], item["reference"]) for item in VERIFY_RULES["expectedZips"]]
 
 OLD_COLORS = {
     "#2c615c",
@@ -141,52 +126,8 @@ def verify_color_injection(gen_path):
     return True, []
 
 
-LOGIN_IMAGE_CHECKS = {
-    "登录-MK-": ["static/background.png"],
-    "登录-V12-": [
-        "login_26_festival_qingming/login_thumb.jpg",
-        "login_26_festival_qingming/images/bg_login_iframe.png",
-    ],
-    "登录-V13〜V13.5-": [
-        "login_thumb.jpg",
-        "login_bg/thumb-1.jpg",
-        "login_bg/thumb-2.jpg",
-    ],
-    "登录-V13-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
-    "登录-V13.5-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
-    "登录-V14〜V16-": [
-        "login_thumb.jpg",
-        "login_bg/thumb-1.jpg",
-        "login_bg/thumb-2.jpg",
-    ],
-    "登录-V14-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
-    "登录-V15-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
-    "登录-V16-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
-    "登录-V17-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
-}
-
-STRUCTURE_EXTRA_ALLOWED = {
-    "登录-V12-": [
-        "login_26_festival_qingming/login_bg/thumb-1.jpg",
-        "login_26_festival_qingming/login_bg/thumb-2.jpg",
-    ],
-    "主题-V12-": [
-        "images/image-style/header-banner.png",
-        "images/image-style/header-sideheader.png",
-    ],
-    "主题-V13〜V13.5-": [
-        "images/image-style/header-banner.png",
-        "images/image-style/header-sideheader.png",
-    ],
-    "主题-V14〜V16-": [
-        "images/image-style/header-banner.png",
-        "images/image-style/header-sideheader.png",
-    ],
-    "主题-V17-": [
-        "images/image-style/header-banner.png",
-        "images/image-style/header-sideheader.png",
-    ],
-}
+LOGIN_IMAGE_CHECKS = VERIFY_RULES["loginImageChecks"]
+STRUCTURE_EXTRA_ALLOWED = VERIFY_RULES["structureExtraAllowed"]
 
 
 def verify_image_replacement(gen_path, prefix):

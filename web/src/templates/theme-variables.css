@@ -29,6 +29,7 @@
   --auxiliary-gray: #999999;
   --auxiliary-gray-dark: #666666;
   --white: #FFFFFF;
+  --black: #000000;
 
   /* ========================
    * 背景色系 (5)
@@ -64,6 +65,9 @@
   --theme-bg-image: none;
   --theme-login-bg-image: none;
   --theme-header-bg-image: none;
+  --theme-sidebar-bg-image: none;
+  --theme-desktop-feature-image: none;
+  --theme-desktop-accent-image: none;
 
   /* ========================
    * 基础变量

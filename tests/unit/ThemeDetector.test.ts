@@ -1,8 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { beforeAll, describe, it, expect } from 'vitest';
 import { ThemeType, ThemeDetectionResult } from '../../src/types/ThemeType';
 import { detectThemeType } from '../../src/core/ThemeDetector';
+import { ensureLegacyZipFixtures } from '../helpers/fixtureZips';
 
 describe('ThemeDetector', () => {
+  beforeAll(async () => {
+    await ensureLegacyZipFixtures();
+  });
+
   describe('detectThemeType', () => {
     it('should detect MK_GREEN theme from meta.json with project mkworks', async () => {
       const result = await detectThemeType('tests/fixtures/zips/mk-green-test.zip');
@@ -22,10 +27,10 @@ describe('ThemeDetector', () => {
       expect(result.structure.keyFiles).toContain('scss/lib/vars.scss');
     }, 10000);
 
-    it('should detect SCSS theme from scss/lib/vars.scss', async () => {
+    it('should detect V17 SCSS theme when no legacy V12 asset pattern exists', async () => {
       const result = await detectThemeType('tests/fixtures/zips/v17-scss-test.zip');
       
-      expect(result.type).toBe(ThemeType.V12_SCSS);
+      expect(result.type).toBe(ThemeType.V17_SCSS);
       expect(result.hasScssSource).toBe(true);
       expect(result.structure.directories).toContain('scss');
       expect(result.structure.keyFiles).toContain('scss/lib/vars.scss');

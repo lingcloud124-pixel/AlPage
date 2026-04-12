@@ -1,0 +1,50 @@
+[
+  {
+    "id": "header-default",
+    "name": "默认页眉",
+    "description": "标准页眉布局，左侧LOGO右侧导航",
+    "suitableFor": ["通用", "企业办公", "常规布局"]
+  },
+  {
+    "id": "header-complex",
+    "name": "经典页眉/多页签页眉",
+    "description": "带搜索框和快捷操作的大型页眉",
+    "suitableFor": ["功能丰富", "大型系统", "需要搜索"]
+  },
+  {
+    "id": "header-menu",
+    "name": "菜单页眉",
+    "description": "顶部菜单导航+子菜单展开",
+    "suitableFor": ["多模块", "多层级导航", "大型系统"]
+  },
+  {
+    "id": "header-banner",
+    "name": "横幅页眉",
+    "description": "宽幅横幅背景+LOGO叠加",
+    "suitableFor": ["品牌展示", "活动页", "视觉突出"]
+  },
+  {
+    "id": "header-simple",
+    "name": "简洁页眉",
+    "description": "极简页眉，仅LOGO+少量操作",
+    "suitableFor": ["简洁风格", "轻量系统", "移动端友好"]
+  },
+  {
+    "id": "header-simple-multitab",
+    "name": "简洁多标签页眉",
+    "description": "简洁页眉+多标签页切换",
+    "suitableFor": ["多任务", "多页签", "高效办公"]
+  },
+  {
+    "id": "header-v16-default",
+    "name": "V16新默认页眉",
+    "description": "V16版本专属页眉样式",
+    "suitableFor": ["V16专属", "新版系统"]
+  },
+  {
+    "id": "sidebar",
+    "name": "侧边导航",
+    "description": "左侧侧边栏导航模式",
+    "suitableFor": ["侧边导航", "空间利用", "功能密集"]
+  }
+]

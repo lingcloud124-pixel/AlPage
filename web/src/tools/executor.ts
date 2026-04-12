@@ -2,6 +2,7 @@ import type { ToolCall, ToolResult } from '../types';
 import { generateImage } from '../agent/chat-client';
 import { validateColorScheme } from './contrast-validator';
 import { deriveColorsFromPrimary, hexToRgb, rgbToHsl } from '../theme/color-utils';
+import { buildThemeImageAssignments } from '../templates/theme-images';
 
 const COLOR_VARS = [
   'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
@@ -29,6 +30,13 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 
 function getThemeTarget(): HTMLElement {
   return document.getElementById('previewPanel') ?? document.documentElement;
+}
+
+function applyThemeImages(templateId: string, imageUrl: string): void {
+  const target = getThemeTarget();
+  for (const [name, value] of Object.entries(buildThemeImageAssignments(templateId, imageUrl))) {
+    target.style.setProperty(name, value);
+  }
 }
 
 function updateColors(colors: Record<string, string>): ToolResult {
@@ -248,7 +256,8 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           const fallbackHex = templateType === 'dark-ui' ? '#1A2845' : '#1565C0';
           const colors = deriveColorsFromPrimary(fallbackHex, templateType);
           updateColors({ ...colors });
-          getThemeTarget().style.setProperty('--theme-login-bg-image', `url('${imgResult.url}')`);
+          applyThemeImages('login', imgResult.url);
+          applyThemeImages('desktop', imgResult.url);
           return { success: true, data: { primaryColor: fallbackHex, imageUrl: imgResult.url, applied: true, fallbackUsed: true } };
         }
 
@@ -265,7 +274,8 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
 
         const derived = deriveColorsFromPrimary(bestColor, templateType);
         updateColors({ ...derived });
-        getThemeTarget().style.setProperty('--theme-login-bg-image', `url('${imgResult.url}')`);
+        applyThemeImages('login', imgResult.url);
+        applyThemeImages('desktop', imgResult.url);
 
         return { success: true, data: { primaryColor: bestColor, imageUrl: imgResult.url, applied: true } };
       }

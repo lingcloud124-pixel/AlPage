@@ -89,9 +89,9 @@ describe('ColorUpdater', () => {
       expect(result.errors).toHaveLength(0);
       
       const updatedContent = await fs.readFile(filePath, 'utf8');
-      expect(updatedContent).toContain('themeColor = "#FF0000"');
-      expect(updatedContent).toContain('sidebarBg = "#F0F0F0"');
-      expect(updatedContent).toContain('linkTextColor = "#FF0000"');
+      expect(updatedContent).toContain('themeColor:"#FF0000"');
+      expect(updatedContent).toContain('sidebarBg:"#F0F0F0"');
+      expect(updatedContent).toContain('linkTextColor:"#FF0000"');
     });
 
     it('should handle file not found error', async () => {
@@ -121,8 +121,7 @@ describe('ColorUpdater', () => {
       expect(updatedContent).toContain('$primary-color-hover: #CC0000;');
       expect(updatedContent).toContain('$secondary-color: #00FF00;');
       expect(updatedContent).toContain('$third-color: #0000FF;');
-      expect(updatedContent).toContain('$sidebar-bg-color: #F0F0F0;');
-      expect(updatedContent).toContain('$sidebar-panel-bg-color: #FFFFFF;');
+      expect(updatedContent).toContain('$sidebar-panel-bg: #FFFFFF;');
       expect(updatedContent).toContain('$link-text-color: #FF0000;');
       expect(updatedContent).toContain('$link-text-hover-color: #CC0000;');
     });

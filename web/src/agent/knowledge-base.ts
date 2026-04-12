@@ -3,6 +3,10 @@
  * 包含行业配色惯例、预设语义描述、页眉推荐、版本兼容性
  */
 
+import { getWebHeaderSemantics } from '../theme/header-semantics';
+import versionCompatibilityConfig from '../../../config/web-version-compatibility.json';
+import headerGuidesConfig from '../../../config/web-header-guides.json';
+
 // ============ 行业配色惯例 ============
 
 interface IndustryColorGuide {
@@ -158,16 +162,10 @@ interface HeaderGuide {
   suitableFor: string[];
 }
 
-const HEADER_GUIDES: HeaderGuide[] = [
-  { id: 'header-default', name: '经典页眉', description: '标准页眉布局，左侧LOGO右侧导航', suitableFor: ['通用', '企业办公', '常规布局'] },
-  { id: 'header-complex', name: '复杂框架页眉', description: '带搜索框和快捷操作的大型页眉', suitableFor: ['功能丰富', '大型系统', '需要搜索'] },
-  { id: 'header-menu', name: '菜单式页眉', description: '顶部菜单导航+子菜单展开', suitableFor: ['多模块', '多层级导航', '大型系统'] },
-  { id: 'header-banner', name: '横幅页眉', description: '宽幅横幅背景+LOGO叠加', suitableFor: ['品牌展示', '活动页', '视觉突出'] },
-  { id: 'header-simple', name: '简洁页眉', description: '极简页眉，仅LOGO+少量操作', suitableFor: ['简洁风格', '轻量系统', '移动端友好'] },
-  { id: 'header-simple-multitab', name: '多页签页眉', description: '简洁页眉+多标签页切换', suitableFor: ['多任务', '多页签', '高效办公'] },
-  { id: 'header-v16-default', name: 'V16默认页眉', description: 'V16版本专属页眉样式', suitableFor: ['V16专属', '新版系统'] },
-  { id: 'sidebar', name: '侧边导航', description: '左侧侧边栏导航模式', suitableFor: ['侧边导航', '空间利用', '功能密集'] },
-];
+const HEADER_GUIDES: HeaderGuide[] = (headerGuidesConfig as HeaderGuide[]).map((guide) => {
+  const semantics = getWebHeaderSemantics()[guide.id];
+  return semantics ? { ...guide, name: semantics.name } : guide;
+});
 
 // ============ 版本兼容性 ============
 
@@ -177,16 +175,7 @@ interface VersionInfo {
   notes: string;
 }
 
-const VERSION_COMPATIBILITY: VersionInfo[] = [
-  { version: 'MK', supportedHeaders: ['header-default', 'header-complex', 'header-menu', 'header-banner', 'sidebar'], notes: 'MK版本，支持大部分页眉类型' },
-  { version: 'V12', supportedHeaders: ['header-default', 'header-complex', 'sidebar'], notes: 'V12不支持菜单式、横幅、多页签页眉' },
-  { version: 'V13', supportedHeaders: ['header-default', 'header-complex', 'sidebar'], notes: '同V12' },
-  { version: 'V13.5', supportedHeaders: ['header-default', 'header-complex', 'header-menu', 'sidebar'], notes: 'V13.5新增菜单式页眉' },
-  { version: 'V14', supportedHeaders: ['header-default', 'header-complex', 'header-menu', 'header-banner', 'sidebar'], notes: 'V14开始全面支持各类页眉' },
-  { version: 'V15', supportedHeaders: ['header-default', 'header-complex', 'header-menu', 'header-banner', 'sidebar'], notes: '同V14' },
-  { version: 'V16', supportedHeaders: ['header-default', 'header-complex', 'header-menu', 'header-banner', 'header-v16-default', 'sidebar'], notes: 'V16新增专属页眉' },
-  { version: 'V17', supportedHeaders: ['header-default', 'header-complex', 'header-menu', 'header-banner', 'header-simple', 'header-simple-multitab', 'sidebar'], notes: 'V17全面支持，新增简洁和多页签页眉' },
-];
+const VERSION_COMPATIBILITY: VersionInfo[] = versionCompatibilityConfig as VersionInfo[];
 
 // ============ 搜索函数 ============
 
@@ -219,6 +208,10 @@ export function getRecommendedHeaders(scenario: string): HeaderGuide[] {
 
 export function getAllPresetDescriptions(): PresetDescription[] {
   return PRESET_DESCRIPTIONS;
+}
+
+export function getHeaderGuides(): HeaderGuide[] {
+  return HEADER_GUIDES;
 }
 
 export function getIndustryMap(): IndustryColorGuide[] {

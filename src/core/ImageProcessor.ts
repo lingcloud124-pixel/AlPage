@@ -12,6 +12,30 @@ export interface UpdateResult {
 }
 
 export class ImageProcessor {
+  private getConfiguredSourcePath(config: ImageConfig, sourceFile: string): string | undefined {
+    const extendedConfig = config as ImageConfig & Record<string, string | undefined>;
+
+    switch (sourceFile) {
+      case 'header-banner.png':
+        return config.headerBanner ?? extendedConfig.headerComplex ?? extendedConfig.headerClassic;
+      case 'header-simple.png':
+        return config.headerSimple ?? extendedConfig.headerSimpleFrame ?? extendedConfig.headerSingleMenuFrameBg;
+      case 'header-tabs.png':
+        return config.headerTabs ?? extendedConfig.headerZoneFrameBg ?? extendedConfig.headerZoneNavFrameBg;
+      case 'header-sideheader.png':
+        return config.headerSideheader;
+      case 'login-bg.png':
+      case 'login-bg.jpg':
+        return config.loginBg ?? extendedConfig.loginBackground;
+      case 'desktop.png':
+        return extendedConfig.desktop;
+      case 'layout-banner.jpg':
+        return extendedConfig.layoutBanner;
+      default:
+        return extendedConfig[sourceFile];
+    }
+  }
+
   async getImageSize(filePath: string): Promise<{ width: number; height: number }> {
     try {
       const metadata = await sharp(filePath).metadata();
@@ -75,24 +99,21 @@ export class ImageProcessor {
       const baseSourceDir = config.exportedImagesDir || path.dirname(config.loginBg || '');
 
       for (const mapping of mappings) {
-        let sourceFile: string | undefined;
-        if (mapping.sourceFile === 'header-banner.png') {
-          sourceFile = config.headerBanner;
-        } else if (mapping.sourceFile === 'header-simple.png') {
-          sourceFile = config.headerSimple;
-        } else if (mapping.sourceFile === 'header-tabs.png') {
-          sourceFile = config.headerTabs;
-        } else if (mapping.sourceFile === 'header-sideheader.png') {
-          sourceFile = config.headerSideheader;
-        } else if (mapping.sourceFile === 'login-bg.png' || mapping.sourceFile === 'login-bg.jpg') {
-          sourceFile = config.loginBg;
-        }
+        const configuredSourceFile = this.getConfiguredSourcePath(config, mapping.sourceFile);
+        let sourceFile = configuredSourceFile;
 
-        if (!sourceFile) {
+        if (!sourceFile && baseSourceDir) {
           sourceFile = path.join(baseSourceDir, mapping.sourceFile);
         }
 
+        if (!sourceFile) {
+          continue;
+        }
+
         if (!fs.existsSync(sourceFile)) {
+          if (!configuredSourceFile) {
+            continue;
+          }
           result.errors.push(`Source file not found: ${sourceFile}`);
           result.success = false;
           continue;

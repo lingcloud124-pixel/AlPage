@@ -19,11 +19,18 @@ import hashlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+PEN_EXPORT_RULES_PATH = ROOT / "config" / "pen-export-rules.json"
 
 
 def load_pen_file(filepath):
     """加载 .pen 文件"""
     with open(filepath, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_pen_export_rules():
+    """加载项目内统一的 Pen 导出规则"""
+    with open(PEN_EXPORT_RULES_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -56,31 +63,25 @@ def find_all_refs(data, ref_id=None):
     return refs
 
 
-def export_dark_ui_images(pen_data, output_dir):
-    """导出 Dark-UI 模板所需的所有素材"""
+def collect_template_export_nodes(pen_data, template_type):
+    """根据统一规则收集指定模板类型的导出节点"""
+    rules = load_pen_export_rules()
+    template_rules = rules[template_type]
 
-    # 根据 skill 定义的 Dark-UI 导出节点
-    EXPORT_NODES = {
-        "PAgAA": ("bg-login.jpg", "jpeg", 2215, 1080),
-        "K7n6g": ("header-banner.png", "png", 2560, 480),
-        "y6LPs": ("header_tlayout_frame_bg.png", "png", 1920, 60),
-        "CagmA": ("header_complex_frame_bg.png", "png", 1920, 90),
-        "KDpQp": ("header_menu_frame_bg.png", "png", 1920, 130),
-        "zmpSH": ("header-sideheader.png", "png", 200, 488),
-    }
+    export_nodes = {}
+    export_nodes[template_rules["loginBackground"]["full"]["nodeId"]] = template_rules["loginBackground"]["full"]
+    for header_rule in template_rules["headers"].values():
+        export_nodes[header_rule["nodeId"]] = header_rule
 
     # 找到所有节点
     nodes_found = {}
-    for node_id in EXPORT_NODES.keys():
+    for node_id in export_nodes.keys():
         node = find_node(pen_data, node_id)
         if node:
             nodes_found[node_id] = node
             print(f"  ✅ 找到节点 {node_id} ({node.get('name', '')})")
         else:
             print(f"  ⚠️  未找到节点 {node_id}")
-
-    # 找到登录页背景组件
-    login_bg = find_node(pen_data, "PAgAA")
 
     return nodes_found
 
@@ -102,7 +103,7 @@ def create_placeholder_images(output_dir):
 
 def main():
     if len(sys.argv) < 3:
-        print(f"用法: python3 {sys.argv[0]} {主题名} {模板类型}")
+        print(f"用法: python3 {sys.argv[0]} <主题名> <模板类型>")
         print(f"示例: python3 {sys.argv[0]} 企业 dark-ui")
         sys.exit(1)
 
@@ -127,7 +128,7 @@ def main():
     # 检查主题类型
     if is_dark:
         print(f"   导出 Dark-UI 素材...")
-        nodes = export_dark_ui_images(pen_data, None)
+        nodes = collect_template_export_nodes(pen_data, "dark-ui")
 
         # 检查 Pencil 连接
         try:
@@ -142,7 +143,7 @@ def main():
             pass
     else:
         print(f"   导出 Light-UI 素材...")
-        # Similar logic for light UI
+        nodes = collect_template_export_nodes(pen_data, "light-ui")
 
     print(f"\n完成！")
 

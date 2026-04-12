@@ -14,6 +14,8 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { REQUIRED_EXPORT_FILES, buildSourceImageFileMap } from './lib/export-asset-rules.mjs';
+import { buildGlobalColors } from './lib/build-global-colors.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,64 +53,7 @@ async function generateManifest(themeName) {
   const colors = await fs.readJson(colorsPath);
   const effectiveTemplateType = colors.templateType || 'light-ui';
   
-  const isDarkUI = effectiveTemplateType === 'dark-ui';
-
-  // 构建 globalColors - 支持 Light-UI 和 Dark-UI
-  const globalColors = {
-    templateType: effectiveTemplateType,
-    primary: colors.colors.primary,
-    primaryHover: colors.colors.primaryHover,
-    alterColor: colors.colors.alterColor,
-    alterColorHoverOn: colors.colors.alterColorHoverOn,
-    primaryOpacity10: colors.colors.primaryOpacity10 || (colors.colors.primary + '1A'),
-    primaryOpacity20: colors.colors.primaryOpacity20 || (colors.colors.primary + '33'),
-    primaryOpacity30: colors.colors.primaryOpacity30 || (colors.colors.primary + '4D'),
-    headerFontColor: colors.colors.headerFont || (isDarkUI ? '#FFE4CF' : '#333333'),
-    headerFontColorHover: '#ffffff',
-    portalHeaderBgExtendColor: colors.colors.alterColor,
-    portalHeaderPureExtendColor: colors.colors.alterColor,
-    portalHeaderComplexBgExtendColor: colors.colors.alterColor,
-    portalHeaderComplexPureExtendColor: isDarkUI ? colors.colors.primary : colors.colors.alterColor,
-    portalHeaderFontColor: '$header-font-color',
-    portalHeaderFontColorHover: '$primary-color',
-    portalHeaderSimpleBgExtendColor: isDarkUI ? '$portal-header-bg-extend-color' : colors.colors.alterColor,
-    portalHeaderSimpleFontColorHover: isDarkUI ? '$primary-color' : '#ffffff',
-    portalHeaderSimpleFontColorTop: isDarkUI ? '#FFE4CF' : '#333333',
-    portalHeaderSimplePureExtendColor: isDarkUI ? colors.colors.primary : colors.colors.alterColor,
-    portalHeaderZoneBgExtendColor: colors.colors.alterColor,
-    portalHeaderZoneFontColor: isDarkUI ? '$header-font-color' : '#333333',
-    portalHeaderZoneFontColorHover: isDarkUI ? '$primary-color' : '#cccccc',
-    loginBgColor: colors.colors.alterColor,
-    sidebarColor: '#2A2045',
-    sidebarIconColor: colors.colors.primaryHover,
-    sidebarIconColorHover: '#ffffff',
-    sidebarPanelBg: isDarkUI ? (colors.colors.headerFont || '#FFE4CF') : '#FFFFFF',
-    sidebarAccordionPanelFont: isDarkUI ? (colors.colors.headerFont || '#FFE4CF') : '#333333',
-    sidebarAccordionPanelHeaderBg: isDarkUI ? colors.colors.primary : 'transparent',
-    sidebarAccordionPanelHeaderBgOn: colors.colors.primary,
-    sidebarItemCurrentColor: isDarkUI ? '#fff' : '#333333',
-    sidebarItemCurrentHex: colors.colors.alterColor,
-    searchFontColor: isDarkUI ? (colors.colors.headerFont || '$header-font-color') : colors.colors.headerFont,
-    searchInputBorderColor: colors.colors.headerFont || colors.colors.primary,
-    searchPlaceholdFontColor: colors.colors.headerFont || colors.colors.primary,
-    auxiliaryGray: '#999999',
-    auxiliaryGrayDark: '#666666',
-    bodyBgColor: '#F8F8F8',
-    hoverBgColor: '#f8f8f8',
-    linkText: colors.colors.primary,
-    linkTextOn: colors.colors.alterColor,
-    borderColor: '#eeeeee',
-    borderIconColor: '#eeeeee',
-    loginPrimaryColor: colors.colors.primaryHover,
-    loginPrimaryHover: colors.colors.headerFont || '#ffffff',
-    lightPrimaryColorHover: isDarkUI ? '$primary-color-hover' : '$primary-color',
-    singleHeaderBgExtendColor: isDarkUI ? '$portal-header-bg-extend-color' : colors.colors.alterColor,
-    singleHeaderFontColor: isDarkUI ? '$header-font-color' : '#333333',
-    singleHeaderFontColorHover: isDarkUI ? '$primary-color' : '#ffffff',
-    tlayoutHeaderBgExtendColor: isDarkUI ? '$portal-header-bg-extend-color' : colors.colors.alterColor,
-    tlayoutHeaderFontColor: isDarkUI ? '$header-font-color' : '#333333',
-    tlayoutHeaderFontColorHover: isDarkUI ? '$primary-color' : '#cccccc',
-  };
+  const globalColors = buildGlobalColors(colors.colors, effectiveTemplateType);
 
   // 查找图片目录
   // 优先使用实际存在的目录，而不是硬编码推断
@@ -136,7 +81,7 @@ async function generateManifest(themeName) {
 
   console.log(`📂 素材包: ${imageBaseDir}`);
   // 验证关键素材是否存在
-  const requiredFiles = ['bg-login.jpg', 'header-banner.png', 'header_tlayout_frame_bg.png', 'header_complex_frame_bg.png', 'header_simple_frame_bg.png', 'header_menu_frame_bg.png', 'header-sideheader.png', 'header_single_menu_frame_bg.png', 'desktop.png', 'layout-banner.jpg', 'login_thumb.jpg', 'login_bg/thumb-1.jpg', 'login_bg/thumb-2.jpg'];
+  const requiredFiles = REQUIRED_EXPORT_FILES;
   const missingFiles = [];
   for (const f of requiredFiles) {
     if (!await fs.pathExists(path.join(imageBaseDir, f))) {
@@ -152,30 +97,31 @@ async function generateManifest(themeName) {
 
   // 构建 sourceImages
   const img = (name) => path.join(imageBaseDir, name);
+  const sourceImageFiles = buildSourceImageFileMap();
   const sourceImages = {
     templateType: effectiveTemplateType,
     nameEn: colors.nameEn,
     penFile: '', // Will be set when pen file is created
-    headerBanner: img('header-banner.png'),
-    headerComplex: img('header_complex_frame_bg.png'),
-    headerSimple: img('header_tlayout_frame_bg.png'),
-    headerSimpleFrame: img('header_simple_frame_bg.png'),
-    headerTabs: img('header_tlayout_frame_bg.png'),
-    headerSideheader: img('header-sideheader.png'),
-    headerSingleMenuFrameBg: img('header_single_menu_frame_bg.png'),
-    headerMenu: img('header_menu_frame_bg.png'),
-    headerZoneFrameBg: img('header_zone_frame_bg.png'),
-    headerZoneNavFrameBg: img('header_zone_nav_frame_bg.png'),
-    loginBg: img('bg-login.jpg'),
-    loginThumb: img('login_thumb.jpg'),
-    loginBgThumb1: img('login_bg/thumb-1.jpg'),
-    loginBgThumb2: img('login_bg/thumb-2.jpg'),
-    desktop: img('desktop.png'),
-    layoutBanner: img('layout-banner.jpg'),
-    headerClassic: img('header_complex_frame_bg.png'),
-    headerSimplePng: img('header_tlayout_frame_bg.png'),
-    headerIcon: img('header_tlayout_frame_bg.png'),
-    headerTabsPng: img('header_tlayout_frame_bg.png'),
+    headerBanner: img(sourceImageFiles.headerBanner),
+    headerComplex: img(sourceImageFiles.headerComplex),
+    headerSimple: img(sourceImageFiles.headerSimple),
+    headerSimpleFrame: img(sourceImageFiles.headerSimpleFrame),
+    headerTabs: img(sourceImageFiles.headerTabs),
+    headerSideheader: img(sourceImageFiles.headerSideheader),
+    headerSingleMenuFrameBg: img(sourceImageFiles.headerSingleMenuFrameBg),
+    headerMenu: img(sourceImageFiles.headerMenu),
+    headerZoneFrameBg: img(sourceImageFiles.headerZoneFrameBg),
+    headerZoneNavFrameBg: img(sourceImageFiles.headerZoneNavFrameBg),
+    loginBg: img(sourceImageFiles.loginBg),
+    loginThumb: img(sourceImageFiles.loginThumb),
+    loginBgThumb1: img(sourceImageFiles.loginBgThumb1),
+    loginBgThumb2: img(sourceImageFiles.loginBgThumb2),
+    desktop: img(sourceImageFiles.desktop),
+    layoutBanner: img(sourceImageFiles.layoutBanner),
+    headerClassic: img(sourceImageFiles.headerClassic),
+    headerSimplePng: img(sourceImageFiles.headerSimplePng),
+    headerIcon: img(sourceImageFiles.headerIcon),
+    headerTabsPng: img(sourceImageFiles.headerTabsPng),
   };
 
   // 构建 themes

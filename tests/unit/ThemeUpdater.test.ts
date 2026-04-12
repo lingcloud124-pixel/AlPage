@@ -1,12 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { ThemeUpdater } from '../../src/core/ThemeUpdater.js';
 import { ManifestConfig } from '../../src/types/ManifestTypes.js';
+import { ensureLegacyZipFixtures } from '../helpers/fixtureZips';
 
 describe('ThemeUpdater Integration Tests', () => {
   const testOutputDir = 'tests/output';
   const testManifestPath = 'tests/test-manifest.json';
+
+  beforeAll(async () => {
+    await ensureLegacyZipFixtures();
+  });
   
   beforeEach(async () => {
     if (fs.existsSync(testOutputDir)) {

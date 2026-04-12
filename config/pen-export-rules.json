@@ -1,0 +1,144 @@
+{
+  "light-ui": {
+    "loginBackground": {
+      "full": {
+        "nodeId": "LiN3g",
+        "outputFile": "bg-login.jpg",
+        "format": "jpg",
+        "width": 2215,
+        "height": 1080
+      },
+      "mkCrop": {
+        "nodeId": "LiN3g",
+        "outputFile": "background.png",
+        "format": "png",
+        "width": 1920,
+        "height": 1080,
+        "cropOffsetX": 147.5,
+        "cropOffsetY": 0
+      }
+    },
+    "headers": {
+      "default": {
+        "nodeId": "A7bgM",
+        "outputFile": "header_tlayout_frame_bg.png",
+        "format": "png",
+        "width": 1920,
+        "height": 60
+      },
+      "complex": {
+        "nodeId": "TdfhH",
+        "outputFile": "header_complex_frame_bg.png",
+        "format": "png",
+        "width": 1920,
+        "height": 90
+      },
+      "menu": {
+        "nodeId": "C0kVM",
+        "outputFile": "header_menu_frame_bg.png",
+        "format": "png",
+        "width": 1920,
+        "height": 130
+      },
+      "banner": {
+        "nodeId": "Nk9d0",
+        "outputFile": "header-banner.png",
+        "format": "png",
+        "width": 2560,
+        "height": 480
+      },
+      "sideHeader": {
+        "nodeId": "jTA4O",
+        "outputFile": "header-sideheader.png",
+        "format": "png",
+        "width": 200,
+        "height": 900
+      },
+      "gradientLeft": {
+        "nodeId": "Ffk1f",
+        "outputFile": "header-gradient-left.png",
+        "format": "png",
+        "width": 859,
+        "height": 60
+      },
+      "gradientRight": {
+        "nodeId": "w0ZQA",
+        "outputFile": "header-gradient-right.png",
+        "format": "png",
+        "width": 920,
+        "height": 60
+      }
+    }
+  },
+  "dark-ui": {
+    "loginBackground": {
+      "full": {
+        "nodeId": "PAgAA",
+        "outputFile": "bg-login.jpg",
+        "format": "jpg",
+        "width": 2215,
+        "height": 1080
+      },
+      "mkCrop": {
+        "nodeId": "PAgAA",
+        "outputFile": "background.png",
+        "format": "png",
+        "width": 1920,
+        "height": 1080,
+        "cropOffsetX": 147.5,
+        "cropOffsetY": 0
+      }
+    },
+    "headers": {
+      "default": {
+        "nodeId": "y6LPs",
+        "outputFile": "header_tlayout_frame_bg.png",
+        "format": "png",
+        "width": 1920,
+        "height": 60
+      },
+      "complex": {
+        "nodeId": "CagmA",
+        "outputFile": "header_complex_frame_bg.png",
+        "format": "png",
+        "width": 1920,
+        "height": 90
+      },
+      "menu": {
+        "nodeId": "KDpQp",
+        "outputFile": "header_menu_frame_bg.png",
+        "format": "png",
+        "width": 1920,
+        "height": 130
+      },
+      "banner": {
+        "nodeId": "K7n6g",
+        "outputFile": "header-banner.png",
+        "format": "png",
+        "width": 2560,
+        "height": 480
+      },
+      "sideHeader": {
+        "nodeId": "zmpSH",
+        "outputFile": "header-sideheader.png",
+        "format": "png",
+        "width": 200,
+        "height": 488
+      },
+      "gradientLeft": {
+        "nodeId": "Ckc3l",
+        "outputFile": "header-gradient-left.png",
+        "format": "png",
+        "width": 859,
+        "height": 60
+      },
+      "gradientRight": {
+        "nodeId": "XQPAz",
+        "outputFile": "header-gradient-right.png",
+        "format": "png",
+        "width": 920,
+        "height": 60
+      }
+    }
+  }
+}

@@ -75,6 +75,7 @@
     <aside class="desktop-sidebar">
       <!-- 侧边栏头部图片区域 -->
       <div class="sidebar-header-img"></div>
+      <div class="sidebar-theme-top" aria-hidden="true"></div>
 
       <!-- 导航分组1 -->
       <div class="sidebar-section">
@@ -131,6 +132,7 @@
           </a>
         </nav>
       </div>
+      <div class="sidebar-theme-bottom" aria-hidden="true"></div>
     </aside>
 
     <!-- 右侧内容区（自适应） -->
@@ -138,7 +140,7 @@
       <div class="content-container">
         <!-- 快捷入口栏 -->
         <div class="quick-links-bar">
-          <div class="quick-link-item">
+          <div class="quick-link-item active">
             <div class="quick-link-icon" style="background-color: var(--primary-color-opacity-20);">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <rect x="4" y="4" width="16" height="16" rx="2" fill="var(--primary-color)"/>
@@ -247,39 +249,49 @@
               </div>
             </div>
             
-            <!-- 集团新闻/公告面板 -->
-            <div class="widget-card">
+            <!-- 主题化新闻主视觉 -->
+            <div class="widget-card featured-story-card">
               <div class="widget-header">
                 <div class="tabs">
                   <button class="tab-btn active" data-tab="news">集团新闻</button>
                   <button class="tab-btn" data-tab="notice">集团公告</button>
                 </div>
+                <a href="#" class="view-more-link">查看更多</a>
               </div>
-              <div class="tab-content active" id="news-content">
-                <div class="announcement-item">
-                  <span class="announcement-type notice">通知</span>
-                  <div class="announcement-content">
-                    <div class="announcement-title">关于五一劳动节放假安排的通知</div>
-                    <div class="announcement-meta">
-                      <span class="announcement-date">2025-04-01</span>
-                    </div>
+              <div class="featured-story-body tab-content active" id="news-content">
+                <div class="featured-story-media">
+                  <div class="featured-story-overlay">
+                    <span class="featured-story-kicker">主题焦点</span>
+                    <h4 class="featured-story-headline">热血主场，点燃团队氛围</h4>
+                    <p class="featured-story-summary">主页主视觉直接使用主题图，让工作台从通用模板切回主题化场景。</p>
                   </div>
                 </div>
-                <div class="announcement-item">
-                  <span class="announcement-type">公告</span>
-                  <div class="announcement-content">
-                    <div class="announcement-title">公司年会筹备工作启动</div>
-                    <div class="announcement-meta">
-                      <span class="announcement-date">2025-04-01</span>
+                <div class="featured-story-list">
+                  <div class="featured-story-item">
+                    <span class="announcement-type notice">通知</span>
+                    <div class="announcement-content">
+                      <div class="announcement-title">关于篮球对抗赛主题活动正式启动的通知</div>
+                      <div class="announcement-meta">
+                        <span class="announcement-date">2025-04-01</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div class="announcement-item">
-                  <span class="announcement-type warning">重要</span>
-                  <div class="announcement-content">
-                    <div class="announcement-title">信息安全培训会议安排</div>
-                    <div class="announcement-meta">
-                      <span class="announcement-date">2025-03-31</span>
+                  <div class="featured-story-item">
+                    <span class="announcement-type">公告</span>
+                    <div class="announcement-content">
+                      <div class="announcement-title">赛场文化周视觉规范与宣传素材同步发布</div>
+                      <div class="announcement-meta">
+                        <span class="announcement-date">2025-04-01</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="featured-story-item">
+                    <span class="announcement-type warning">重要</span>
+                    <div class="announcement-content">
+                      <div class="announcement-title">主场活动日流程安排与各部门协同分工说明</div>
+                      <div class="announcement-meta">
+                        <span class="announcement-date">2025-03-31</span>
+                      </div>
                     </div>
                   </div>
                 </div>

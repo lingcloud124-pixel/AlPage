@@ -54,11 +54,11 @@ export class ThemeUpdater {
     try {
       await fs.ensureDir(outputDir);
 
-      const isDirectory = fsSync.statSync(zipPath).isDirectory();
-      
       if (!await fs.pathExists(zipPath)) {
         throw new Error(`Theme file not found: ${zipPath}`);
       }
+
+      const isDirectory = fsSync.statSync(zipPath).isDirectory();
       
       let themeType: ThemeType;
       let templateType: TemplateType;
@@ -192,22 +192,17 @@ export class ThemeUpdater {
     return result;
   }
 
-  private async cleanOutputForNewGeneration(themeFolder: string): Promise<void> {
-    const outputRoot = path.dirname(themeFolder);
-    const historyDir = path.join(outputRoot, 'history');
+  private async archiveExistingOutput(outputDir: string): Promise<void> {
+    await fs.ensureDir(outputDir);
 
-    await fs.ensureDir(path.join(themeFolder, '输出包'));
-    await fs.ensureDir(path.join(themeFolder, '素材包'));
+    const historyDateDir = path.join(outputDir, 'history', new Date().toISOString().split('T')[0]);
+    const existingItems = await fs.readdir(outputDir);
 
-    const existingFolders = await fs.readdir(outputRoot);
-    const dateRegex = /^\d{4}-?\d{2}-?\d{2}-/;
-    for (const folder of existingFolders) {
-      if (folder === 'history' || !dateRegex.test(folder) || folder === path.basename(themeFolder)) continue;
-      const srcPath = path.join(outputRoot, folder);
-      const stat = await fs.stat(srcPath);
-      if (!stat.isDirectory()) continue;
-      const archivePath = path.join(historyDir, folder);
-      await fs.move(srcPath, archivePath, { overwrite: true });
+    for (const item of existingItems) {
+      if (item === 'history') continue;
+      const srcPath = path.join(outputDir, item);
+      await fs.ensureDir(historyDateDir);
+      await fs.move(srcPath, path.join(historyDateDir, item), { overwrite: true });
     }
   }
 
@@ -235,14 +230,14 @@ export class ThemeUpdater {
       const enabledThemes = manifest.themes.filter(theme => theme.enabled);
       report.total = enabledThemes.length;
 
-      const outputBaseDir = path.isAbsolute(manifest.outputDir)
-        ? path.dirname(manifest.outputDir)
-        : path.isAbsolute(manifest.outputDir || 'output')
-          ? path.dirname(manifest.outputDir)
-          : path.join(path.dirname(manifestPath), path.dirname(manifest.outputDir || 'output'));
-      await this.cleanOutputForNewGeneration(outputBaseDir);
+      const configuredOutputDir = manifest.outputDir || 'output';
+      const zipOutputDir = path.isAbsolute(configuredOutputDir)
+        ? configuredOutputDir
+        : path.dirname(configuredOutputDir) === '.'
+          ? path.join(path.dirname(manifestPath), configuredOutputDir)
+          : configuredOutputDir;
 
-      const zipOutputDir = path.join(outputBaseDir, '输出包');
+      await this.archiveExistingOutput(zipOutputDir);
       await fs.ensureDir(zipOutputDir);
 
       const concurrency = Math.min(5, enabledThemes.length);

@@ -1,35 +1,10 @@
 import { chromium, type Browser, type Page } from 'playwright';
 import path from 'path';
 import fs from 'fs';
+import { getScreenshotTargets, type ScreenshotTarget } from '../src/export/screenshot-rules';
 
 const BASE_URL = 'http://localhost:5180';
-
-interface ScreenshotTarget {
-  selector: string;
-  outputName: string;
-  width: number;
-  height: number;
-  format: 'png' | 'jpeg';
-  clipY?: number;
-  clipHeight?: number;
-}
-
-const LOGIN_TARGETS: ScreenshotTarget[] = [
-  { selector: '#loginPage', outputName: 'bg-login', width: 2215, height: 1080, format: 'jpeg' },
-  { selector: '#loginPage', outputName: 'login_thumb', width: 2215, height: 1080, format: 'jpeg' },
-];
-
-const HEADER_TARGETS: ScreenshotTarget[] = [
-  { selector: '.header-default', outputName: 'header_tlayout_frame_bg', width: 1920, height: 60, format: 'png' },
-  { selector: '.header-complex', outputName: 'header_complex_frame_bg', width: 1920, height: 90, format: 'png' },
-  { selector: '.header-menu', outputName: 'header_menu_frame_bg', width: 1920, height: 130, format: 'png' },
-  { selector: '.header-banner', outputName: 'header-banner', width: 2560, height: 480, format: 'png' },
-  { selector: '.sidebar-panel', outputName: 'header-sideheader', width: 200, height: 900, format: 'png' },
-];
-
-const DESKTOP_TARGETS: ScreenshotTarget[] = [
-  { selector: '#main-preview', outputName: 'desktop', width: 1920, height: 1079, format: 'png' },
-];
+const { login: LOGIN_TARGETS, header: HEADER_TARGETS, desktop: DESKTOP_TARGETS } = getScreenshotTargets('light-ui');
 
 async function captureElement(page: Page, target: ScreenshotTarget, outputDir: string): Promise<string> {
   const element = await page.$(target.selector);
@@ -86,6 +61,14 @@ export async function screenshotAll(outputDir: string): Promise<Record<string, s
     await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 
     await page.evaluate(() => {
+      (window as any).expandPreview?.();
+      const root = document.getElementById('previewPanel') ?? document.documentElement;
+      const themedBg = "url('/backgrounds/work-hard-bg.jpg')";
+      root.style.setProperty('--theme-login-bg-image', themedBg);
+      root.style.setProperty('--theme-header-bg-image', themedBg);
+      root.style.setProperty('--theme-sidebar-bg-image', themedBg);
+      root.style.setProperty('--theme-desktop-feature-image', themedBg);
+      root.style.setProperty('--theme-desktop-accent-image', themedBg);
       document.body.style.overflow = 'visible';
       const app = document.querySelector('.app-container') as HTMLElement;
       if (app) app.style.overflow = 'visible';
@@ -105,6 +88,8 @@ export async function screenshotAll(outputDir: string): Promise<Record<string, s
       }
     });
 
+    await page.waitForTimeout(400);
+
     await page.setViewportSize({ width: 2215, height: 1080 });
 
     for (const target of LOGIN_TARGETS) {
@@ -117,7 +102,7 @@ export async function screenshotAll(outputDir: string): Promise<Record<string, s
       }
     }
 
-    await page.click('#mainPageTab');
+    await page.click('#mainPageTab', { force: true });
     await page.waitForTimeout(300);
 
     await page.evaluate(() => {

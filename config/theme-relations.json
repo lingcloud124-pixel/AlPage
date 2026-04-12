@@ -1,0 +1,74 @@
+{
+  "darkUiSpecialColors": {
+    "login": {
+      "primaryText": "#f8c28c",
+      "buttonBackground": "#f8c28c",
+      "buttonHoverBackground": "#fdd0a3"
+    }
+  },
+  "headerTypeRelations": {
+    "light-ui": {
+      "default": {
+        "pencilLabel": "默认页眉",
+        "outputFile": "header_tlayout_frame_bg.png",
+        "cssClass": ".lui_tlayout_header",
+        "pencilAvailable": true
+      },
+      "complex": {
+        "pencilLabel": "经典页眉/多页签页眉",
+        "outputFile": "header_complex_frame_bg.png",
+        "cssClass": ".lui_portal_header_complex_frame",
+        "pencilAvailable": true
+      },
+      "simple": {
+        "pencilLabel": "简洁页眉",
+        "outputFile": "header_zone_frame_bg.png",
+        "cssClass": ".lui_portal_header_zone_frame",
+        "pencilAvailable": true
+      },
+      "menu": {
+        "pencilLabel": "菜单页眉",
+        "outputFile": "header_menu_frame_bg.png",
+        "cssClass": ".lui_portal_header_menu_frame",
+        "pencilAvailable": true
+      },
+      "simpleMultiTab": {
+        "pencilLabel": "简洁多标签页眉",
+        "outputFile": "header_simple_frame_bg.png",
+        "cssClass": ".lui_portal_header_simple_frame",
+        "pencilAvailable": true
+      },
+      "singleMenu": {
+        "pencilLabel": "V16新默认页眉",
+        "outputFile": "header_single_menu_frame_bg.png",
+        "cssClass": ".lui_single_menu_header",
+        "pencilAvailable": false
+      },
+      "zoneNav": {
+        "pencilLabel": "简洁页眉导航变体",
+        "outputFile": "header_zone_nav_frame_bg.png",
+        "pencilAvailable": false
+      }
+    },
+    "dark-ui": {
+      "default": {
+        "pencilLabel": "默认页眉",
+        "outputFile": "header_tlayout_frame_bg.png",
+        "cssClass": ".lui_tlayout_header",
+        "pencilAvailable": true
+      },
+      "complex": {
+        "pencilLabel": "经典页眉/多页签页眉",
+        "outputFile": "header_complex_frame_bg.png",
+        "cssClass": ".lui_portal_header_complex_frame",
+        "pencilAvailable": true
+      },
+      "menu": {
+        "pencilLabel": "菜单页眉",
+        "outputFile": "header_menu_frame_bg.png",
+        "cssClass": ".lui_portal_header_menu_frame",
+        "pencilAvailable": true
+      }
+    }
+  }
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "version": "MK",
+    "supportedHeaders": ["header-default", "header-complex", "header-menu", "header-banner", "sidebar"],
+    "notes": "MK版本，支持大部分页眉类型"
+  },
+  {
+    "version": "V12",
+    "supportedHeaders": ["header-default", "header-complex", "sidebar"],
+    "notes": "V12不支持菜单式、横幅、多页签页眉"
+  },
+  {
+    "version": "V13",
+    "supportedHeaders": ["header-default", "header-complex", "sidebar"],
+    "notes": "同V12"
+  },
+  {
+    "version": "V13.5",
+    "supportedHeaders": ["header-default", "header-complex", "header-menu", "sidebar"],
+    "notes": "V13.5新增菜单式页眉"
+  },
+  {
+    "version": "V14",
+    "supportedHeaders": ["header-default", "header-complex", "header-menu", "header-banner", "sidebar"],
+    "notes": "V14开始全面支持各类页眉"
+  },
+  {
+    "version": "V15",
+    "supportedHeaders": ["header-default", "header-complex", "header-menu", "header-banner", "sidebar"],
+    "notes": "同V14"
+  },
+  {
+    "version": "V16",
+    "supportedHeaders": ["header-default", "header-complex", "header-menu", "header-banner", "header-v16-default", "sidebar"],
+    "notes": "V16新增专属页眉"
+  },
+  {
+    "version": "V17",
+    "supportedHeaders": ["header-default", "header-complex", "header-menu", "header-banner", "header-simple", "header-simple-multitab", "sidebar"],
+    "notes": "V17全面支持，新增简洁和多页签页眉"
+  }
+]

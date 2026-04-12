@@ -1,0 +1,56 @@
+{
+  "expectedZips": [
+    { "prefix": "主题-MK-", "reference": "主题-MK-2026清明主题.zip" },
+    { "prefix": "登录-MK-", "reference": "登录-MK-2026清明.zip" },
+    { "prefix": "主题-V12-", "reference": "主题-V12-2026清明主题.zip" },
+    { "prefix": "登录-V12-", "reference": "登录-V12-2026清明.zip" },
+    { "prefix": "主题-V13〜V13.5-", "reference": "主题-V13〜V13.5-2026清明主题.zip" },
+    { "prefix": "登录-V13〜V13.5-", "reference": "登录-V13-2026清明.zip" },
+    { "prefix": "登录-V13-", "reference": "登录-V13-2026清明.zip" },
+    { "prefix": "登录-V13.5-", "reference": "登录-V13.5-2026清明.zip" },
+    { "prefix": "主题-V14〜V16-", "reference": "主题-V14〜V16-2026清明主题.zip" },
+    { "prefix": "登录-V14〜V16-", "reference": "登录-V16-2026清明.zip" },
+    { "prefix": "登录-V14-", "reference": "登录-V14-2026清明.zip" },
+    { "prefix": "登录-V15-", "reference": "登录-V15-2026清明.zip" },
+    { "prefix": "登录-V16-", "reference": "登录-V16-2026清明.zip" },
+    { "prefix": "主题-V17-", "reference": "主题-V17-2026清明主题.zip" },
+    { "prefix": "登录-V17-", "reference": "登录-V17-2026清明.zip" }
+  ],
+  "loginImageChecks": {
+    "登录-MK-": ["static/background.png"],
+    "登录-V12-": [
+      "login_26_festival_qingming/login_thumb.jpg",
+      "login_26_festival_qingming/images/bg_login_iframe.png"
+    ],
+    "登录-V13〜V13.5-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
+    "登录-V13-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
+    "登录-V13.5-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
+    "登录-V14〜V16-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
+    "登录-V14-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
+    "登录-V15-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
+    "登录-V16-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"],
+    "登录-V17-": ["login_thumb.jpg", "login_bg/thumb-1.jpg", "login_bg/thumb-2.jpg"]
+  },
+  "structureExtraAllowed": {
+    "登录-V12-": [
+      "login_26_festival_qingming/login_bg/thumb-1.jpg",
+      "login_26_festival_qingming/login_bg/thumb-2.jpg"
+    ],
+    "主题-V12-": [
+      "images/image-style/header-banner.png",
+      "images/image-style/header-sideheader.png"
+    ],
+    "主题-V13〜V13.5-": [
+      "images/image-style/header-banner.png",
+      "images/image-style/header-sideheader.png"
+    ],
+    "主题-V14〜V16-": [
+      "images/image-style/header-banner.png",
+      "images/image-style/header-sideheader.png"
+    ],
+    "主题-V17-": [
+      "images/image-style/header-banner.png",
+      "images/image-style/header-sideheader.png"
+    ]
+  }
+}

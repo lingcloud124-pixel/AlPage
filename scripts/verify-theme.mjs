@@ -13,30 +13,11 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getExpectedExportSizes } from './lib/export-asset-rules.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, '..');
-
-const REQUIRED_IMAGES = [
-  'bg-login.jpg',
-  'background.png',
-  'header-banner.png',
-  'header_tlayout_frame_bg.png',
-  'header_complex_frame_bg.png',
-  'header_menu_frame_bg.png',
-  'header-sideheader.png',
-];
-
-const IMAGE_SIZES = {
-  'bg-login.jpg': { width: 2215, height: 1080 },
-  'background.png': { width: 1920, height: 1080 },
-  'header-banner.png': { width: 2560, height: 480 },
-  'header_tlayout_frame_bg.png': { width: 1920, height: 60 },
-  'header_complex_frame_bg.png': { width: 1920, height: 90 },
-  'header_menu_frame_bg.png': { width: 1920, height: 130 },
-  'header-sideheader.png': { width: 200, height: 900 },
-};
 
 async function getImageSize(filePath) {
   try {
@@ -59,6 +40,7 @@ async function verifyTheme(themeName) {
   let hasErrors = false;
   const outputDir = path.join(rootDir, 'output', themeName);
   const colorsFile = path.join(rootDir, 'colors', `${themeName}.json`);
+  let expectedImages = getExpectedExportSizes('light-ui');
   
   // 1. 检查配色文件
   console.log('📋 1. 检查配色文件...');
@@ -66,6 +48,7 @@ async function verifyTheme(themeName) {
     console.log('   ✅ colors/*.json 存在');
     const colors = await fs.readJson(colorsFile);
     console.log(`   ✅ 模板类型: ${colors.templateType}`);
+    expectedImages = getExpectedExportSizes(colors.templateType || 'light-ui');
     
     // 检查必要字段
     const requiredFields = ['name', 'templateType', 'colors'];
@@ -89,12 +72,12 @@ async function verifyTheme(themeName) {
     
     // 3. 检查必要文件
     console.log('\n📋 3. 检查必要文件...');
-    for (const image of REQUIRED_IMAGES) {
+    for (const image of Object.keys(expectedImages)) {
       const imagePath = path.join(outputDir, image);
       if (await fs.pathExists(imagePath)) {
         const size = await getImageSize(imagePath);
         if (size) {
-          const expected = IMAGE_SIZES[image];
+          const expected = expectedImages[image];
           if (expected && (size.width !== expected.width || size.height !== expected.height)) {
             console.log(`   ⚠️  ${image}: ${size.width}x${size.height} (期望 ${expected.width}x${expected.height})`);
           } else {

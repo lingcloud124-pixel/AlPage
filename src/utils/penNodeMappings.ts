@@ -1,63 +1,16 @@
 import { TemplatePenNodes, PenNodeMapping } from '../types/ConfigTypes.js';
 import { TemplateType } from '../types/ThemeType.js';
+import { PEN_EXPORT_RULES } from '../config/themeRuleRegistry.js';
 
 export const LIGHT_UI_NODES: TemplatePenNodes = {
-  loginBg: {
-    nodeId: 'LiN3g',
-    outputFile: 'bg-login.jpg',
-    format: 'jpg',
-    width: 2215,
-    height: 1080
-  },
-  gradientRight: {
-    nodeId: 'w0ZQA',
-    outputFile: 'header-gradient-right.png',
-    format: 'png',
-    width: 920,
-    height: 60
-  },
-  gradientLeft: {
-    nodeId: 'Ffk1f',
-    outputFile: 'header-gradient-left.png',
-    format: 'png',
-    width: 859,
-    height: 60
-  },
-  headerBg60: {
-    nodeId: 'A7bgM',
-    outputFile: 'header_tlayout_frame_bg.png',
-    format: 'png',
-    width: 1920,
-    height: 60
-  },
-  headerBg90: {
-    nodeId: 'TdfhH',
-    outputFile: 'header_complex_frame_bg.png',
-    format: 'png',
-    width: 1920,
-    height: 90
-  },
-  headerBg130: {
-    nodeId: 'C0kVM',
-    outputFile: 'header_menu_frame_bg.png',
-    format: 'png',
-    width: 1920,
-    height: 130
-  },
-  banner: {
-    nodeId: 'Nk9d0',
-    outputFile: 'header-banner.png',
-    format: 'png',
-    width: 2560,
-    height: 480
-  },
-  sideHeader: {
-    nodeId: 'jTA4O',
-    outputFile: 'header-sideheader.png',
-    format: 'png',
-    width: 200,
-    height: 900
-  },
+  loginBg: PEN_EXPORT_RULES['light-ui'].loginBackground.full,
+  gradientRight: PEN_EXPORT_RULES['light-ui'].headers.gradientRight,
+  gradientLeft: PEN_EXPORT_RULES['light-ui'].headers.gradientLeft,
+  headerBg60: PEN_EXPORT_RULES['light-ui'].headers.default,
+  headerBg90: PEN_EXPORT_RULES['light-ui'].headers.complex,
+  headerBg130: PEN_EXPORT_RULES['light-ui'].headers.menu,
+  banner: PEN_EXPORT_RULES['light-ui'].headers.banner,
+  sideHeader: PEN_EXPORT_RULES['light-ui'].headers.sideHeader,
   tabs: {
     nodeId: 'TdfhH',
     outputFile: 'header-tabs.png',
@@ -96,69 +49,14 @@ export const LIGHT_UI_NODES: TemplatePenNodes = {
 };
 
 export const DARK_UI_NODES: TemplatePenNodes = {
-  loginBg: {
-    nodeId: 'PAgAA',
-    outputFile: 'bg-login.jpg',
-    format: 'jpg',
-    width: 2215,
-    height: 1080
-  },
-  gradientRight: {
-    nodeId: 'XQPAz',
-    outputFile: 'header-gradient-right.png',
-    format: 'png',
-    width: 920,
-    height: 60
-  },
-  gradientLeft: {
-    nodeId: 'Ckc3l',
-    outputFile: 'header-gradient-left.png',
-    format: 'png',
-    width: 859,
-    height: 60
-  },
-  headerBg60: {
-    nodeId: 'y6LPs',
-    outputFile: 'header_tlayout_frame_bg.png',
-    format: 'png',
-    width: 1920,
-    height: 60
-  },
-  headerBg90: {
-    nodeId: 'CagmA',
-    outputFile: 'header_complex_frame_bg.png',
-    format: 'png',
-    width: 1920,
-    height: 90
-  },
-  headerBg130: {
-    nodeId: 'KDpQp',
-    outputFile: 'header_menu_frame_bg.png',
-    format: 'png',
-    width: 1920,
-    height: 130
-  },
-  banner: {
-    nodeId: 'K7n6g',
-    outputFile: 'header-banner.png',
-    format: 'png',
-    width: 2560,
-    height: 480,
-    crop: {
-      type: 'center',
-      cropWidth: 2560,
-      cropHeight: 480,
-      cropOffsetX: 0,
-      cropOffsetY: 30
-    }
-  },
-  sideHeader: {
-    nodeId: 'zmpSH',
-    outputFile: 'header-sideheader.png',
-    format: 'png',
-    width: 200,
-    height: 488
-  },
+  loginBg: PEN_EXPORT_RULES['dark-ui'].loginBackground.full,
+  gradientRight: PEN_EXPORT_RULES['dark-ui'].headers.gradientRight,
+  gradientLeft: PEN_EXPORT_RULES['dark-ui'].headers.gradientLeft,
+  headerBg60: PEN_EXPORT_RULES['dark-ui'].headers.default,
+  headerBg90: PEN_EXPORT_RULES['dark-ui'].headers.complex,
+  headerBg130: PEN_EXPORT_RULES['dark-ui'].headers.menu,
+  banner: PEN_EXPORT_RULES['dark-ui'].headers.banner,
+  sideHeader: PEN_EXPORT_RULES['dark-ui'].headers.sideHeader,
   tabs: {
     nodeId: 'TBCmd',
     outputFile: 'header-tabs.png',

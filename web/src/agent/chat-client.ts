@@ -3,7 +3,7 @@ import type { ChatRequest, ChatResponse, AISettings } from '../types';
 export const SETTINGS_KEY = 'themeStudioSettings';
 
 const ZHIPU_DEFAULTS: AISettings = {
-  apiEndpoint: import.meta.env.DEV ? '/api/chat' : 'https://coding.dashscope.aliyuncs.com/v1',
+  apiEndpoint: import.meta.env.DEV ? '/api/chat' : 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   apiKey: import.meta.env.VITE_DASHSCOPE_API_KEY ?? '',
   model: 'qwen3.6-plus',
   imageApiEndpoint: 'https://api.minimaxi.com/v1',
@@ -54,7 +54,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
       body: JSON.stringify({
         model: imgSettings.model,
         prompt,
-        aspect_ratio: '16:9',
+        aspect_ratio: '2:1',
         response_format: 'base64',
       }),
       signal: controller.signal,

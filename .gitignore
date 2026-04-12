@@ -22,3 +22,6 @@ designs/backgrounds/generated-*.png
 designs/generated/
 assets/images/generated-*.png
 extracted/
+.omx/
+temp/
+tests/fixtures/zips/

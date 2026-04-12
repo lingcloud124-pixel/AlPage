@@ -14,9 +14,9 @@ export default defineConfig({
     },
     proxy: {
       '/api/chat': {
-        target: 'https://coding.dashscope.aliyuncs.com',
+        target: 'https://dashscope.aliyuncs.com',
         changeOrigin: true,
-        rewrite: (path: string) => path.replace(/^\/api\/chat/, '/v1'),
+        rewrite: (path: string) => path.replace(/^\/api\/chat/, '/compatible-mode/v1'),
       },
     },
   },

@@ -4,11 +4,13 @@ import { DesignGenerator } from '../../src/theme-automation/core/DesignGenerator
 describe('DesignGenerator', () => {
   it('throws when applying color variables fails', async () => {
     const generator = new DesignGenerator() as DesignGenerator & {
-      initialize: () => Promise<void>;
+      generateNewPenFile: () => Promise<string>;
+      openDocument: () => Promise<void>;
       applyColorVariables: () => Promise<boolean>;
     };
 
-    generator.initialize = async () => {};
+    generator.generateNewPenFile = async () => 'fake.pen';
+    generator.openDocument = async () => {};
     generator.applyColorVariables = async () => false;
 
     await expect(
@@ -24,12 +26,14 @@ describe('DesignGenerator', () => {
 
   it('throws when updating theme text fails', async () => {
     const generator = new DesignGenerator() as DesignGenerator & {
-      initialize: () => Promise<void>;
+      generateNewPenFile: () => Promise<string>;
+      openDocument: () => Promise<void>;
       applyColorVariables: () => Promise<boolean>;
       updateThemeText: () => Promise<boolean>;
     };
 
-    generator.initialize = async () => {};
+    generator.generateNewPenFile = async () => 'fake.pen';
+    generator.openDocument = async () => {};
     generator.applyColorVariables = async () => true;
     generator.updateThemeText = async () => false;
 

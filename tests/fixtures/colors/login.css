@@ -1,28 +1,27 @@
 /* Login page CSS */
 body.login-page {
-  background: #2C615C; /* Primary background */
+  background: #2C615C;
   color: #FFFFFF;
 }
 
 .login-container {
-  border: 2px solid #2C615C; /* Primary border */
+  border: 2px solid #2C615C;
 }
 
 .login-button {
-  background-color: #2C615C; /* Primary button */
+  background-color: #2C615C;
   color: white;
 }
 
 .login-button:hover {
-  background-color: #234e48; /* Primary hover */
+  background-color: #228077;
 }
 
-/* Links in login page */
 .login-links a {
-  color: #2C615C; /* Link color */
+  color: #2C615C;
   text-decoration: none;
 }
 
 .login-links a:hover {
-  color: #234e48; /* Link hover */
+  color: #228077;
 }

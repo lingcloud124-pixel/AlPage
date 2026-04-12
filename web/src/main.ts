@@ -2,8 +2,10 @@ import { initializeColorEditor } from './components/color-editor';
 import { chatCompletion, loadSettings, parseToolCallsFromContent, SETTINGS_KEY } from './agent/chat-client';
 import { getSystemPrompt } from './agent/system-prompt';
 import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences, trackPresetUsage, trackProjectCreated } from './agent/user-preferences';
-import { executeTool } from './tools/executor';
+import { analyzeImageAsync, executeTool } from './tools/executor';
 import { renderTemplate } from './templates/loader';
+import { buildThemeImageAssignments } from './templates/theme-images';
+import { getTemplateSpecificThemeVars } from './theme/template-specific-vars';
 import { buildPackages, downloadPackage } from './packaging/package-builder';
 import { marked } from 'marked';
 import type { ChatMessage } from './types';
@@ -34,6 +36,23 @@ let activeAbortController: AbortController | null = null;
 function setThemeVar(name: string, value: string): void {
   const panel = document.getElementById('previewPanel');
   if (panel) panel.style.setProperty(name, value);
+}
+
+function applyThemeImageAssignments(templateId: string, imageUrl: string): void {
+  const assignments = buildThemeImageAssignments(templateId, imageUrl);
+  for (const [name, value] of Object.entries(assignments)) {
+    setThemeVar(name, value);
+  }
+}
+
+function applyTemplateSpecificThemeVars(templateType: 'light-ui' | 'dark-ui'): void {
+  const target = getThemeTarget();
+  target.style.removeProperty('--login-accent-color');
+  target.style.removeProperty('--login-accent-hover-color');
+
+  for (const [name, value] of Object.entries(getTemplateSpecificThemeVars(templateType))) {
+    target.style.setProperty(name, value);
+  }
 }
 
 function getThemeTarget(): HTMLElement {
@@ -380,6 +399,7 @@ function showWorkspace(projectId: string): void {
   
   const project = loadProject(projectId);
   if (project) {
+    applyTemplateSpecificThemeVars(project.templateType);
     const projectNameElement = document.getElementById('projectName');
     if (projectNameElement) {
       projectNameElement.textContent = project.themeName || project.name;
@@ -398,7 +418,8 @@ function showWorkspace(projectId: string): void {
         }
       }
       if (project.bgImageUrl) {
-        setThemeVar('--theme-login-bg-image', `url('${project.bgImageUrl}')`);
+        applyThemeImageAssignments('login', project.bgImageUrl);
+        applyThemeImageAssignments('desktop', project.bgImageUrl);
       }
       if (project.headerBgImageUrl) {
         setThemeVar('--theme-header-bg-image', `url('${project.headerBgImageUrl}')`);
@@ -1099,7 +1120,6 @@ function setupChatInterface() {
       
       imagesToSend.forEach(async (dataUrl) => {
         try {
-          const { analyzeImageAsync } = await import('./tools/executor');
           const result = await analyzeImageAsync(dataUrl);
           if (result.success && result.data) {
             const colors = result.data as { dominantColors: string[] };
@@ -1492,6 +1512,7 @@ function parsePresetRecommendations(content: string): string[] {
                 project.colors = { ...project.colors, ...mappedColors };
                 project.templateType = preset.type === 'dark-ui' ? 'dark-ui' : 'light-ui';
                 saveProject(project);
+                applyTemplateSpecificThemeVars(project.templateType);
               }
             }
             trackPresetUsage(preset.key);
@@ -1561,7 +1582,8 @@ function parsePresetRecommendations(content: string): string[] {
 
       card.addEventListener('click', () => {
         const bgUrl = `/backgrounds/${bgKey}-bg.${ext}`;
-        setThemeVar('--theme-login-bg-image', `url('${bgUrl}')`);
+        applyThemeImageAssignments('login', bgUrl);
+        applyThemeImageAssignments('desktop', bgUrl);
         expandPreview();
         cardsContainer.querySelectorAll('.background-card-chat').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
@@ -1732,8 +1754,8 @@ const PRESET_BACKGROUNDS: Record<string, string> = {
 function applyPresetBackground(presetKey: string): void {
   const bgUrl = PRESET_BACKGROUNDS[presetKey];
   if (bgUrl) {
-    setThemeVar('--theme-login-bg-image', `url('${bgUrl}')`);
-    setThemeVar('--theme-header-bg-image', `url('${bgUrl}')`);
+    applyThemeImageAssignments('login', bgUrl);
+    applyThemeImageAssignments('desktop', bgUrl);
   }
 }
 
@@ -1895,7 +1917,7 @@ function setupSettingsDialog() {
     const imageApiKeyInput = document.getElementById('imageApiKey') as HTMLInputElement;
     const imageModelNameInput = document.getElementById('imageModelName') as HTMLInputElement;
     
-    if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || '/api/chat';
+    if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
     if (apiKeyInput) apiKeyInput.value = settings.apiKey || '';
     if (modelNameInput) modelNameInput.value = settings.modelName || settings.model || 'qwen3.6-plus';
     if (imageApiEndpointInput) imageApiEndpointInput.value = settings.imageApiEndpoint || 'https://api.minimaxi.com/v1';
