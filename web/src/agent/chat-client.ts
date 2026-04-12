@@ -72,9 +72,14 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
       return { success: true, url: dataUrl };
     }
 
-    const imageUrl = data.data?.[0]?.url;
-    if (imageUrl) {
-      return { success: true, url: imageUrl };
+    const imageUrlFromUrls = data.data?.image_urls?.[0];
+    if (imageUrlFromUrls) {
+      return { success: true, url: imageUrlFromUrls };
+    }
+
+    const imageUrlFromArr = data.data?.[0]?.url;
+    if (imageUrlFromArr) {
+      return { success: true, url: imageUrlFromArr };
     }
 
     return { success: false, error: '图像生成返回为空' };

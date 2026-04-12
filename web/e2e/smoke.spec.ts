@@ -2,9 +2,15 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Theme Studio Smoke Tests', () => {
 
-  test('app loads with sidebar visible and preview hidden by default', async ({ page }) => {
+  test.beforeEach(async ({ page, context }) => {
+    await context.clearCookies();
     await page.goto('/');
-    
+    await page.evaluate(() => localStorage.clear());
+    await page.goto('/');
+    await page.waitForTimeout(800);
+  });
+
+  test('app loads with sidebar visible and preview hidden', async ({ page }) => {
     const sidebar = page.locator('#projectSidebar');
     await expect(sidebar).toBeAttached({ timeout: 10000 });
     expect(await sidebar.getAttribute('class')).not.toContain('collapsed');
@@ -19,8 +25,6 @@ test.describe('Theme Studio Smoke Tests', () => {
   });
 
   test('settings dialog opens with all 6 config fields', async ({ page }) => {
-    await page.goto('/');
-    
     await page.locator('#settingsBtn').click();
     await expect(page.locator('#settingsModal')).toBeVisible({ timeout: 5000 });
     
@@ -32,30 +36,24 @@ test.describe('Theme Studio Smoke Tests', () => {
     await expect(page.locator('#imageModelName')).toBeVisible();
   });
 
-  test('new project button is directly reachable (sidebar visible by default)', async ({ page }) => {
-    await page.goto('/');
-    
+  test('new project button creates new project and keeps sidebar open', async ({ page }) => {
     await expect(page.locator('#projectSidebar')).toBeVisible({ timeout: 5000 });
     
     const newProjectBtn = page.locator('#newProjectBtn');
     await expect(newProjectBtn).toBeVisible({ timeout: 5000 });
-    await newProjectBtn.click();
+    await newProjectBtn.click({ force: true });
     await expect(page.locator('#messageInput')).toBeVisible({ timeout: 5000 });
+
+    expect(await page.locator('#previewPanel').getAttribute('class')).not.toContain('expanded');
   });
 
-  test('preview panel shows login page when expanded', async ({ page }) => {
-    await page.goto('/');
-    
-    const previewPanel = page.locator('#previewPanel');
-    await expect(previewPanel).toBeAttached();
-    expect(await previewPanel.getAttribute('class')).not.toContain('expanded');
-    
+  test('preview panel expands via JS and shows content', async ({ page }) => {
     await page.evaluate(() => {
       (window as any).expandPreview?.();
     });
     await page.waitForTimeout(500);
     
-    expect(await previewPanel.getAttribute('class')).toContain('expanded');
+    expect(await page.locator('#previewPanel').getAttribute('class')).toContain('expanded');
   });
 
   test('preset color JSON files are accessible', async ({ page }) => {
@@ -76,36 +74,28 @@ test.describe('Theme Studio Smoke Tests', () => {
     }
   });
 
-  test('sidebar toggle collapses expanded sidebar', async ({ page }) => {
-    await page.goto('/');
-    
+  test('sidebar toggle button collapses sidebar', async ({ page }) => {
     const sidebar = page.locator('#projectSidebar');
     const toggleBtn = page.locator('#sidebarToggleBtn');
     
     await expect(sidebar).toBeAttached();
-    const initialClasses = await sidebar.getAttribute('class') || '';
-    expect(initialClasses).not.toContain('collapsed');
+    expect(await sidebar.getAttribute('class')).not.toContain('collapsed');
     
     await toggleBtn.click();
     await page.waitForTimeout(300);
     
-    const afterClickClasses = await sidebar.getAttribute('class') || '';
-    expect(afterClickClasses).toContain('collapsed');
+    expect(await sidebar.getAttribute('class')).toContain('collapsed');
   });
 
   test('chat input accepts text', async ({ page }) => {
-    await page.goto('/');
-    
     const chatInput = page.locator('#messageInput');
     await expect(chatInput).toBeVisible({ timeout: 5000 });
     
-    await chatInput.fill('我想要一个蓝色系主题');
-    await expect(chatInput).toHaveValue('我想要一个蓝色系主题');
+    await chatInput.fill('我想要一个春节主题');
+    await expect(chatInput).toHaveValue('我想要一个春节主题');
   });
 
   test('tab switching works when preview is expanded', async ({ page }) => {
-    await page.goto('/');
-    
     await page.evaluate(() => {
       (window as any).expandPreview?.();
     });
@@ -126,26 +116,17 @@ test.describe('Theme Studio Smoke Tests', () => {
     await expect(headerSwitcher).toBeVisible();
   });
 
-  test('preview close button collapses panel', async ({ page }) => {
-    await page.goto('/');
-    
+  test('preview close button is hidden', async ({ page }) => {
     await page.evaluate(() => {
       (window as any).expandPreview?.();
     });
     await page.waitForTimeout(500);
     
-    const previewPanel = page.locator('#previewPanel');
-    expect(await previewPanel.getAttribute('class')).toContain('expanded');
-    
-    await page.locator('#previewCloseBtn').click();
-    await page.waitForTimeout(500);
-    
-    expect(await previewPanel.getAttribute('class')).not.toContain('expanded');
+    expect(await page.locator('#previewPanel').getAttribute('class')).toContain('expanded');
+    await expect(page.locator('#previewCloseBtn')).toBeHidden();
   });
 
   test('package modal shows product list when preview expanded', async ({ page }) => {
-    await page.goto('/');
-    
     await page.evaluate(() => {
       (window as any).expandPreview?.();
     });
@@ -158,8 +139,6 @@ test.describe('Theme Studio Smoke Tests', () => {
   });
 
   test('user preferences persist in localStorage', async ({ page }) => {
-    await page.goto('/');
-    
     await page.evaluate(() => {
       const prefs = {
         preferredStyle: 'dark',

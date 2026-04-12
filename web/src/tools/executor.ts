@@ -1,6 +1,7 @@
 import type { ToolCall, ToolResult } from '../types';
 import { generateImage } from '../agent/chat-client';
 import { validateColorScheme } from './contrast-validator';
+import { deriveColorsFromPrimary, hexToRgb, rgbToHsl } from '../theme/color-utils';
 
 const COLOR_VARS = [
   'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
@@ -196,8 +197,7 @@ export async function executeTool(toolCall: ToolCall): Promise<ToolResult> {
     return { success: false, error: validationError };
   }
 
-  // 每个工具都有超时保护
-  const TOOL_TIMEOUT = 15_000; // 15 秒
+  const TOOL_TIMEOUT = tool === 'generate_theme_pipeline' ? 90_000 : 15_000;
 
   const execute = async (): Promise<ToolResult> => {
     switch (tool) {
@@ -221,6 +221,44 @@ export async function executeTool(toolCall: ToolCall): Promise<ToolResult> {
 
       case 'load_colors':
         return loadColors(args as { nameEn: string });
+
+      case 'generate_theme_pipeline': {
+        const bgPrompt = (args.prompt ?? args.description ?? '') as string;
+        const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
+        if (!bgPrompt) return { success: false, error: 'generate_theme_pipeline 需要 prompt 参数' };
+
+        const imgResult = await generateImage(bgPrompt);
+        if (!imgResult.success || !imgResult.url) {
+          return { success: false, error: imgResult.error ?? '背景图生成失败', fallback: 'direct-color-gen' } as ToolResult;
+        }
+
+        const analyzeResult = await analyzeImageAsync(imgResult.url);
+        const dominantColors = (analyzeResult.data as Record<string, unknown>)?.dominantColors as string[] | undefined;
+        if (!analyzeResult.success || !dominantColors || dominantColors.length === 0) {
+          const fallbackHex = templateType === 'dark-ui' ? '#1A2845' : '#1565C0';
+          const colors = deriveColorsFromPrimary(fallbackHex, templateType);
+          updateColors({ ...colors });
+          document.documentElement.style.setProperty('--theme-login-bg-image', `url('${imgResult.url}')`);
+          return { success: true, data: { primaryColor: fallbackHex, imageUrl: imgResult.url, applied: true, fallbackUsed: true } };
+        }
+
+        let bestColor = dominantColors[0];
+        let bestSat = -1;
+        for (const hex of dominantColors) {
+          const rgb = hexToRgb(hex);
+          const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+          if (hsl.s > bestSat) {
+            bestSat = hsl.s;
+            bestColor = hex;
+          }
+        }
+
+        const derived = deriveColorsFromPrimary(bestColor, templateType);
+        updateColors({ ...derived });
+        document.documentElement.style.setProperty('--theme-login-bg-image', `url('${imgResult.url}')`);
+
+        return { success: true, data: { primaryColor: bestColor, imageUrl: imgResult.url, applied: true } };
+      }
 
       case 'generate_background': {
         const bgPrompt = (args.prompt ?? args.description ?? '') as string;

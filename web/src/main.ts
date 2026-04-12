@@ -19,6 +19,7 @@ interface Project {
   templateType: 'light-ui' | 'dark-ui';
   colors: Record<string, string>;
   bgImage?: string;
+  pinned?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -92,6 +93,12 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeColorEditor();
   initializeFeatureModules();
   initializeRoutingModule();
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest('.sidebar-project-menu') && !target.closest('.sidebar-project-menu-btn')) {
+      closeAllProjectMenus();
+    }
+  });
 });
 
 function runHealthCheck() {
@@ -194,29 +201,108 @@ function populateSidebarProjects() {
     sidebarProjectList.appendChild(emptyMessage);
     return;
   }
+
+  const pinned = projects.filter(p => p.pinned);
+  const unpinned = projects.filter(p => !p.pinned);
+
+  if (pinned.length > 0) {
+    const pinnedHeader = document.createElement('div');
+    pinnedHeader.className = 'sidebar-section-label';
+    pinnedHeader.textContent = '📌 置顶项目';
+    sidebarProjectList.appendChild(pinnedHeader);
+    pinned.forEach(p => sidebarProjectList.appendChild(createProjectItem(p)));
+  }
+
+  if (unpinned.length > 0) {
+    const historyHeader = document.createElement('div');
+    historyHeader.className = 'sidebar-section-label';
+    historyHeader.textContent = '历史项目';
+    sidebarProjectList.appendChild(historyHeader);
+    unpinned.forEach(p => sidebarProjectList.appendChild(createProjectItem(p)));
+  }
+}
+
+function createProjectItem(project: Project): HTMLElement {
+  const projectItem = document.createElement('div');
+  projectItem.className = 'sidebar-project-item';
+  projectItem.title = project.name;
   
-  projects.forEach(project => {
-    const projectItem = document.createElement('div');
-    projectItem.className = 'sidebar-project-item';
-    projectItem.title = project.name;
-    projectItem.textContent = project.name.length > 20 ? project.name.substring(0, 20) + '...' : project.name;
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'sidebar-project-name';
+  nameSpan.textContent = project.name.length > 20 ? project.name.substring(0, 20) + '...' : project.name;
+  
+  const menuBtn = document.createElement('button');
+  menuBtn.className = 'sidebar-project-menu-btn';
+  menuBtn.textContent = '⋯';
+  menuBtn.title = '更多操作';
+  
+  const currentPid = localStorage.getItem('theme-studio-current-project');
+  if (currentPid === project.id) {
+    projectItem.classList.add('active');
+  }
+  
+  nameSpan.addEventListener('click', () => {
+    document.querySelectorAll('.sidebar-project-item').forEach(item => {
+      item.classList.remove('active');
+    });
+    projectItem.classList.add('active');
+    closeAllProjectMenus();
+    showWorkspace(project.id);
+  });
+  
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeAllProjectMenus();
+    const existing = projectItem.querySelector('.sidebar-project-menu');
+    if (existing) { existing.remove(); return; }
     
-    const currentProjectId = localStorage.getItem('theme-studio-current-project');
-    if (currentProjectId === project.id) {
-      projectItem.classList.add('active');
-    }
+    const menu = document.createElement('div');
+    menu.className = 'sidebar-project-menu';
     
-    projectItem.addEventListener('click', () => {
-      document.querySelectorAll('.sidebar-project-item').forEach(item => {
-        item.classList.remove('active');
-      });
-      projectItem.classList.add('active');
-      
-      showWorkspace(project.id);
+    const pinToggle = document.createElement('div');
+    pinToggle.className = 'sidebar-project-menu-item';
+    pinToggle.textContent = project.pinned ? '📌 取消置顶' : '📌 置顶';
+    pinToggle.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      project.pinned = !project.pinned;
+      saveProject(project);
+      closeAllProjectMenus();
+      populateSidebarProjects();
     });
     
-    sidebarProjectList.appendChild(projectItem);
+    const deleteBtn = document.createElement('div');
+    deleteBtn.className = 'sidebar-project-menu-item sidebar-project-menu-delete';
+    deleteBtn.textContent = '🗑️ 删除';
+    deleteBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (confirm(`确定删除「${project.name}」吗？`)) {
+        deleteProject(project.id);
+        closeAllProjectMenus();
+        if (currentPid === project.id) {
+          const remaining = listProjects();
+          if (remaining.length > 0) {
+            showWorkspace(remaining[0].id);
+          } else {
+            const newProj = createProject('未命名项目', 'light-ui');
+            if (newProj) showWorkspace(newProj.id);
+          }
+        }
+        populateSidebarProjects();
+      }
+    });
+    
+    menu.appendChild(pinToggle);
+    menu.appendChild(deleteBtn);
+    projectItem.appendChild(menu);
   });
+  
+  projectItem.appendChild(nameSpan);
+  projectItem.appendChild(menuBtn);
+  return projectItem;
+}
+
+function closeAllProjectMenus() {
+  document.querySelectorAll('.sidebar-project-menu').forEach(m => m.remove());
 }
 
 function showWorkspace(projectId: string): void {
@@ -247,6 +333,18 @@ function showWorkspace(projectId: string): void {
           projectNameElement.blur();
         }
       });
+    }
+
+    if (project.colors && Object.keys(project.colors).length > 0) {
+      for (const [key, value] of Object.entries(project.colors)) {
+        const cssVar = key.startsWith('--') ? key : `--${key}`;
+        if (/^#[0-9a-fA-F]{6}$/.test(value)) {
+          document.documentElement.style.setProperty(cssVar, value);
+        }
+      }
+      expandPreview();
+    } else {
+      collapsePreview();
     }
   }
   
@@ -505,7 +603,7 @@ function createProject(name: string, templateType: 'light-ui' | 'dark-ui'): Proj
     id,
     name,
     templateType,
-    colors: getDefaultColors(),
+    colors: {},
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -732,11 +830,15 @@ function setupPreviewPanel() {
 function expandPreview() {
   const previewPanel = document.getElementById('previewPanel');
   const appContainer = document.querySelector('.app-container') as HTMLElement;
+  const projectSidebar = document.getElementById('projectSidebar');
   if (!previewPanel || !appContainer) return;
 
   if (!previewPanel.classList.contains('expanded')) {
     previewPanel.classList.add('expanded');
     appContainer.classList.add('preview-open');
+    if (projectSidebar && !projectSidebar.classList.contains('collapsed')) {
+      projectSidebar.classList.add('collapsed');
+    }
     if (!previewTemplatesLoaded) {
       loadDefaultTemplates();
       previewTemplatesLoaded = true;
@@ -753,10 +855,14 @@ function expandPreview() {
 function collapsePreview() {
   const previewPanel = document.getElementById('previewPanel');
   const appContainer = document.querySelector('.app-container') as HTMLElement;
+  const projectSidebar = document.getElementById('projectSidebar');
   if (!previewPanel || !appContainer) return;
 
   previewPanel.classList.remove('expanded');
   appContainer.classList.remove('preview-open');
+  if (projectSidebar) {
+    projectSidebar.classList.remove('collapsed');
+  }
 }
 
 async function loadHeaderIntoMainPage(headerId: string) {
@@ -1026,11 +1132,16 @@ function setupChatInterface() {
       try {
         const result = await executeTool(tc);
         if (result.success) {
-          const resultStr = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
-          addMessageToChat('ai', `🔧 ${tc.tool}: ${resultStr}`);
-
-          if (tc.tool === 'update_colors') {
+          if (tc.tool === 'generate_theme_pipeline') {
+            addMessageToChat('ai', '🎨 主题已生成！背景图和配色方案已应用到预览。');
             expandPreview();
+          } else {
+            const resultStr = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+            addMessageToChat('ai', `🔧 ${tc.tool}: ${resultStr}`);
+
+            if (tc.tool === 'update_colors') {
+              expandPreview();
+            }
           }
         } else {
           addMessageToChat('ai', `⚠️ ${tc.tool}: ${result.error ?? '未知错误'}`);
@@ -1040,29 +1151,6 @@ function setupChatInterface() {
         addMessageToChat('ai', `❌ ${tc.tool} 执行失败：${(e as Error).message}`);
         saveChatHistory();
       }
-    }
-
-    const recommendedPresets = parsePresetRecommendations(fullResponse);
-    if (recommendedPresets.length > 0) {
-      const presetCards = recommendedPresets
-        .filter(key => PRESET_DISPLAY[key])
-        .map(key => ({ key, ...PRESET_DISPLAY[key] }));
-      if (presetCards.length > 0) {
-        addPresetCardsMessage(presetCards);
-        saveChatHistory();
-      }
-    }
-
-    const backgroundCards = parseBackgroundRecommendations(fullResponse);
-    if (backgroundCards.length > 0) {
-      addBackgroundCardsMessage(backgroundCards);
-      saveChatHistory();
-    }
-
-    const guideOptions = parseGuideOptions(fullResponse);
-    if (guideOptions.length > 0) {
-      addGuideCardsMessage(guideOptions);
-      saveChatHistory();
     }
   }
 

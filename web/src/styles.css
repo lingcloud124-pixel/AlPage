@@ -105,6 +105,14 @@ body {
   margin-bottom: 8px;
 }
 
+.sidebar-section-label {
+  color: rgba(255,255,255,0.35);
+  font-size: 11px;
+  padding: 10px 4px 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
 .sidebar-collapse-btn {
   background: none;
   border: none;
@@ -127,9 +135,66 @@ body {
   cursor: pointer;
   margin-bottom: 4px;
   transition: background 0.15s;
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+}
+
+.sidebar-project-name {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.sidebar-project-menu-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.sidebar-project-item:hover .sidebar-project-menu-btn {
+  opacity: 1;
+}
+
+.sidebar-project-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: #2a2a3e;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  z-index: 50;
+  min-width: 100px;
+  overflow: hidden;
+}
+
+.sidebar-project-menu-item {
+  padding: 8px 14px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.85);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sidebar-project-menu-item:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.sidebar-project-menu-delete {
+  color: #ff6b6b;
+}
+
+.sidebar-project-menu-delete:hover {
+  background: rgba(255,107,107,0.15);
 }
 
 .sidebar-project-item:hover {
@@ -155,10 +220,10 @@ body {
 }
 
 .app-container.preview-open .chat-panel {
-  max-width: 60%;
   flex: 0 0 auto;
   width: 400px;
   min-width: 320px;
+  max-width: none;
 }
 
 .resize-divider {
@@ -786,9 +851,9 @@ body {
 }
 
 .preview-panel.expanded {
-  max-width: 60%;
-  min-width: 400px;
   flex: 1;
+  max-width: none;
+  min-width: 400px;
   opacity: 1;
   pointer-events: auto;
   border-left: 1px solid var(--border-color);
@@ -857,21 +922,7 @@ body {
 }
 
 .preview-close-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 20;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid var(--border-color);
-  background: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--auxiliary-gray);
-  transition: all 0.2s;
+  display: none;
 }
 
 .preview-close-btn:hover {
