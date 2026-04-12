@@ -1,10 +1,11 @@
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
-const SAMPLES_BASE = '/../assets/references/samples/主题样例包';
+const SAMPLES_BASE = '/assets/references/samples/主题样例包';
 
 const COLOR_VARIANTS = [
   '#144e48', '#2c615c', '#36706a', '#56817d', '#228077', '#b72217', '#c92d24',
+  '#1a1a2e', '#0f3460', '#4a4a7e', '#3a3a6e',
 ];
 
 const BG_VARIANTS = ['#fbfcf2', '#fbf9eb'];

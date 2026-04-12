@@ -1,5 +1,5 @@
 import { initializeColorEditor } from './components/color-editor';
-import { chatCompletion, loadSettings, parseToolCallsFromContent } from './agent/chat-client';
+import { chatCompletion, loadSettings, parseToolCallsFromContent, SETTINGS_KEY } from './agent/chat-client';
 import { getSystemPrompt } from './agent/system-prompt';
 import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences, trackPresetUsage, trackProjectCreated } from './agent/user-preferences';
 import { executeTool } from './tools/executor';
@@ -110,11 +110,11 @@ function runHealthCheck() {
     detail: '主题色 CSS 变量未加载',
   });
 
-  const chatInput = document.getElementById('chatInput');
+  const chatInput = document.getElementById('messageInput');
   checks.push({
     name: '聊天输入框',
     ok: !!chatInput,
-    detail: 'chatInput 元素缺失',
+    detail: 'messageInput 元素缺失',
   });
 
   const previewPanel = document.getElementById('previewPanel');
@@ -1033,8 +1033,10 @@ function setupChatInterface() {
 
     const availablePresets = getAvailablePresets();
     const prefs = loadUserPreferences();
+    const currentProject = currentProjectId ? loadProject(currentProjectId) : null;
+    const templateType = currentProject?.templateType || 'light-ui';
     const systemPrompt = getSystemPrompt({
-      templateType: 'dark-ui',
+      templateType,
       currentColors: getCurrentColors(),
       availablePresets,
       userPreferences: prefs,
@@ -1122,7 +1124,7 @@ function setupChatInterface() {
     saveChatHistory();
 
     const toolCalls = parseToolCallsFromContent(fullResponse);
-    const TOOL_GLOBAL_TIMEOUT = 60_000;
+    const TOOL_GLOBAL_TIMEOUT = 120_000;
     const toolStartTime = Date.now();
 
     for (const tc of toolCalls) {
@@ -1132,15 +1134,29 @@ function setupChatInterface() {
         break;
       }
       try {
-        const result = await executeTool(tc);
+        const result = await executeTool(tc, (event) => {
+          if (event.type === 'image_generated' && tc.tool === 'generate_theme_pipeline') {
+            const imgData = event.data as { imageUrl: string };
+            addMessageToChat('ai', `🖼️ 背景图已生成，正在分析配色...`);
+            const imgMsg = addMessageToChat('ai', '');
+            const imgEl = document.createElement('img');
+            imgEl.src = imgData.imageUrl;
+            imgEl.style.cssText = 'max-width:100%;border-radius:8px;margin-top:4px;';
+            imgEl.crossOrigin = 'anonymous';
+            const contentEl = imgMsg.querySelector('.message-content') as HTMLElement;
+            if (contentEl) contentEl.appendChild(imgEl);
+            saveChatHistory();
+          }
+        });
         if (result.success) {
           if (tc.tool === 'generate_theme_pipeline') {
-            addMessageToChat('ai', '🎨 主题已生成！背景图和配色方案已应用到预览。');
+            const imgData = result.data as { imageUrl?: string; primaryColor?: string };
+            const colorTag = imgData?.primaryColor
+              ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${imgData.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
+              : '';
+            addMessageToChat('ai', `🎨 配色方案已生成！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`);
             expandPreview();
           } else {
-            const resultStr = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
-            addMessageToChat('ai', `🔧 ${tc.tool}: ${resultStr}`);
-
             if (tc.tool === 'update_colors') {
               expandPreview();
             }
@@ -1650,7 +1666,7 @@ function setupSettingsDialog() {
   }
   
   function loadStoredSettings() {
-    const settings = safeJsonParse<Record<string, string>>(localStorage.getItem('themeStudioSettings'), {});
+    const settings = safeJsonParse<Record<string, string>>(localStorage.getItem(SETTINGS_KEY), {});
     const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement;
     const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
     const modelNameInput = document.getElementById('modelName') as HTMLInputElement;
@@ -1658,12 +1674,12 @@ function setupSettingsDialog() {
     const imageApiKeyInput = document.getElementById('imageApiKey') as HTMLInputElement;
     const imageModelNameInput = document.getElementById('imageModelName') as HTMLInputElement;
     
-    if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || 'https://open.bigmodel.cn/api/paas/v4';
+    if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || '/api/chat';
     if (apiKeyInput) apiKeyInput.value = settings.apiKey || '';
-    if (modelNameInput) modelNameInput.value = settings.modelName || 'GLM-4-Flash';
-    if (imageApiEndpointInput) imageApiEndpointInput.value = settings.imageApiEndpoint || 'https://open.bigmodel.cn/api/paas/v4';
+    if (modelNameInput) modelNameInput.value = settings.modelName || settings.model || 'qwen3.6-plus';
+    if (imageApiEndpointInput) imageApiEndpointInput.value = settings.imageApiEndpoint || 'https://api.minimaxi.com/v1';
     if (imageApiKeyInput) imageApiKeyInput.value = settings.imageApiKey || '';
-    if (imageModelNameInput) imageModelNameInput.value = settings.imageModelName || 'CogView-4';
+    if (imageModelNameInput) imageModelNameInput.value = settings.imageModelName || settings.imageModel || 'image-01';
   }
   
   function saveSettings() {
@@ -1679,13 +1695,15 @@ function setupSettingsDialog() {
     const settings = {
       apiEndpoint: apiEndpointInput.value,
       apiKey: apiKeyInput.value, 
+      model: modelNameInput.value,
       modelName: modelNameInput.value,
-      imageApiEndpoint: imageApiEndpointInput?.value || 'https://open.bigmodel.cn/api/paas/v4',
+      imageApiEndpoint: imageApiEndpointInput?.value || 'https://api.minimaxi.com/v1',
       imageApiKey: imageApiKeyInput?.value || '',
-      imageModelName: imageModelNameInput?.value || 'CogView-4',
+      imageModel: imageModelNameInput?.value || 'image-01',
+      imageModelName: imageModelNameInput?.value || 'image-01',
     };
     
-    localStorage.setItem('themeStudioSettings', JSON.stringify(settings));
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     settingsModal.classList.remove('active');
     showNotification('设置已保存');
   }

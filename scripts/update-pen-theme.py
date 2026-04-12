@@ -75,6 +75,23 @@ VARIABLES_MAP = {
 # Gradient node IDs to update
 GRADIENT_IDS = {"RWYIx", "6U9v0", "wPSk8", "aRs7H"}
 
+HARDCODED_CLEANUP_DARK = {
+    "#a7160b": "$primary-color",
+    "#94170e": "$alter-color",
+    "#C41B00": "$alter-color",
+    "#c41a00": "$alter-color",
+    "#fdd0a3": "$primary-color-hover",
+    "#DCB496": "$header-font-color",
+    "#FFE4CF": "$header-font-color",
+    "#FBFCF2": "$sidebar-panel-bg",
+    "#FDFFF6": "$login-bg-color",
+}
+
+HARDCODED_CLEANUP_LIGHT = {
+    "#b72217": "$primary-color",
+    "#c92d24": "$alter-color",
+}
+
 # Patterns that identify background image nodes to replace
 BG_MATCH_PATTERNS = ["bg-login.jpg", "bg-login-spring.jpg", "图片生成", "ued"]
 
@@ -186,6 +203,49 @@ def apply_theme(pen_path: str, nameEn: str):
     for child in data.get("children", []):
         walk(child, update_text)
     print(f"  text hex: {text_updated} updated")
+
+    # === Step 3.5: Clean up hardcoded old colors ===
+    cleanup_map = (
+        HARDCODED_CLEANUP_DARK
+        if template_type == "dark-ui"
+        else HARDCODED_CLEANUP_LIGHT
+    )
+    cleanup_count = 0
+
+    def cleanup_hardcoded(obj):
+        nonlocal cleanup_count
+        fill = obj.get("fill")
+        if isinstance(fill, dict):
+            fill_color = fill.get("color")
+            if isinstance(fill_color, str) and fill_color.upper() in {
+                k.upper() for k in cleanup_map
+            }:
+                for old_hex, var_ref in cleanup_map.items():
+                    if fill_color.upper() == old_hex.upper():
+                        fill["color"] = var_ref
+                        cleanup_count += 1
+                        break
+            stroke = obj.get("stroke")
+            if isinstance(stroke, str):
+                for old_hex in cleanup_map:
+                    if stroke.upper() == old_hex.upper():
+                        obj["stroke"] = cleanup_map[old_hex]
+                        cleanup_count += 1
+                        break
+        if isinstance(obj.get("content"), str):
+            for old_hex in cleanup_map:
+                if old_hex in obj["content"] or old_hex.upper() in obj["content"]:
+                    obj["content"] = obj["content"].replace(
+                        old_hex, cleanup_map[old_hex]
+                    )
+                    obj["content"] = obj["content"].replace(
+                        old_hex.upper(), cleanup_map[old_hex]
+                    )
+                    cleanup_count += 1
+
+    for child in data.get("children", []):
+        walk(child, cleanup_hardcoded)
+    print(f"  hardcoded cleanup: {cleanup_count} replaced")
 
     # === Step 4: Update gradient fills ===
     primary_op30 = theme_colors.get("primaryOpacity30", "#F8D67A")

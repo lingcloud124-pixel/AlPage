@@ -1,6 +1,6 @@
 import type { ChatRequest, ChatResponse, AISettings } from '../types';
 
-const SETTINGS_KEY = 'theme-studio-settings';
+export const SETTINGS_KEY = 'themeStudioSettings';
 
 const ZHIPU_DEFAULTS: AISettings = {
   apiEndpoint: import.meta.env.DEV ? '/api/chat' : 'https://coding.dashscope.aliyuncs.com/v1',
@@ -55,6 +55,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
         model: imgSettings.model,
         prompt,
         aspect_ratio: '16:9',
+        response_format: 'base64',
       }),
       signal: controller.signal,
     });

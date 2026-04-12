@@ -76,6 +76,10 @@ COLOR_VARIANTS = {
     "#228077": None,
     "#b72217": None,
     "#c92d24": None,
+    "#1a1a2e": None,
+    "#0f3460": None,
+    "#4a4a7e": None,
+    "#3a3a6e": None,
 }
 
 BG_VARIANTS = {

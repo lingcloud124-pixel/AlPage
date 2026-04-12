@@ -364,7 +364,7 @@ sips -g pixelWidth -g pixelHeight "output/{date}-{nameEn}/素材包/"*.png "outp
 - header_tlayout_frame_bg.png: 1920×60
 - header_complex_frame_bg.png: 1920×90
 - header_menu_frame_bg.png: 1920×130
-- header-sideheader.png: 200×900
+- header-sideheader.png: 200×900（Light-UI）/ 200×488（Dark-UI）
 - login_bg/thumb-1.jpg: 800×390
 - login_bg/thumb-2.jpg: 800×390
 - desktop.png: 1440×800

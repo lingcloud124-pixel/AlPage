@@ -188,10 +188,11 @@ function validateToolArgs(tool: string, args: Record<string, unknown>): string |
   }
 }
 
-export async function executeTool(toolCall: ToolCall): Promise<ToolResult> {
+export type ProgressCallback = (event: { type: string; data?: unknown }) => void;
+
+export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallback): Promise<ToolResult> {
   const { tool, args } = toolCall;
 
-  // 全局参数验证
   const validationError = validateToolArgs(tool, args);
   if (validationError) {
     return { success: false, error: validationError };
@@ -227,10 +228,14 @@ export async function executeTool(toolCall: ToolCall): Promise<ToolResult> {
         const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
         if (!bgPrompt) return { success: false, error: 'generate_theme_pipeline 需要 prompt 参数' };
 
+        onProgress?.({ type: 'image_generating' });
+
         const imgResult = await generateImage(bgPrompt);
         if (!imgResult.success || !imgResult.url) {
           return { success: false, error: imgResult.error ?? '背景图生成失败', fallback: 'direct-color-gen' } as ToolResult;
         }
+
+        onProgress?.({ type: 'image_generated', data: { imageUrl: imgResult.url } });
 
         const analyzeResult = await analyzeImageAsync(imgResult.url);
         const dominantColors = (analyzeResult.data as Record<string, unknown>)?.dominantColors as string[] | undefined;
