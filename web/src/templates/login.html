@@ -20,7 +20,7 @@
   <div class="login-panel-wrapper">
     <!-- Language selector - top right of panel -->
     <div class="login-topbar">
-      <div class="login-lang-trigger" onclick="toggleLanguageDropdown()">
+       <div class="login-lang-trigger">
         <span id="currentLang">简体中文</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M7 10l5 5 5-5H7z"/>
@@ -43,15 +43,15 @@
         
         <!-- Tab navigation -->
         <div class="login-tabs" role="tablist">
-          <button class="login-tab active" data-tab="password" onclick="switchTab('password')">密码登录</button>
-          <button class="login-tab" data-tab="sms" onclick="switchTab('sms')">短信登录</button>
-          <button class="login-tab" data-tab="qr" onclick="switchTab('qr')">扫码登录</button>
+          <button class="login-tab active" data-tab="password">密码登录</button>
+          <button class="login-tab" data-tab="sms">短信登录</button>
+          <button class="login-tab" data-tab="qr">扫码登录</button>
           <div class="login-tab-line"></div>
           <div class="login-tab-indicator"></div>
         </div>
         
         <!-- Password tab content -->
-        <form class="login-form active" id="passwordForm" onsubmit="handleLogin(event)">
+        <form class="login-form active" id="passwordForm">
           <!-- Username input -->
           <div class="login-input-group">
             <input type="text" class="login-input" id="username" placeholder=" " autocomplete="off" required>
@@ -65,7 +65,7 @@
           <div class="login-input-group">
             <input type="password" class="login-input" id="password" placeholder=" " autocomplete="off" required>
             <label for="password">密码</label>
-            <svg class="login-eye-icon password-toggle" width="16" height="16" viewBox="0 0 24 24" fill="var(--auxiliary-gray)" onclick="togglePasswordVisibility()">
+            <svg class="login-eye-icon password-toggle" width="16" height="16" viewBox="0 0 24 24" fill="var(--auxiliary-gray)">
               <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.45C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
               <path d="M12 10a2 2 0 100 4 2 2 0 000-4z"/>
             </svg>
@@ -75,7 +75,7 @@
           <div class="login-captcha-row">
             <input type="text" class="login-input login-captcha-input" id="captchaInput" placeholder=" " maxlength="4" autocomplete="off" required>
             <label for="captchaInput">验证码</label>
-            <div class="login-captcha-img" onclick="refreshCaptcha()" title="刷新验证码">
+            <div class="login-captcha-img" title="刷新验证码">
               <span class="captcha-text">验证码</span>
             </div>
           </div>
@@ -88,7 +88,7 @@
         </form>
         
         <!-- SMS tab content -->
-        <form class="login-form" id="smsForm" onsubmit="handleSMSLogin(event)">
+        <form class="login-form" id="smsForm">
           <div class="login-input-group">
             <input type="tel" class="login-input" id="phoneNumber" placeholder=" " autocomplete="off" required>
             <label for="phoneNumber">手机号码</label>
@@ -97,7 +97,7 @@
           <div class="login-verification-row">
             <input type="text" class="login-input" id="verificationCode" placeholder=" " maxlength="6" autocomplete="off" required>
             <label for="verificationCode">验证码</label>
-            <button type="button" class="verification-btn" onclick="sendVerificationCode()">获取验证码</button>
+            <button type="button" class="verification-btn">获取验证码</button>
           </div>
           
           <button type="submit" class="login-submit-btn">
@@ -120,7 +120,7 @@
         </div>
         
         <!-- Forgot password (show on password tab) -->
-        <a class="login-forgot" href="#" onclick="window.open('#', '_blank')">忘记密码</a>
+        <a class="login-forgot" href="#">忘记密码</a>
       </div>
     </div>
     
@@ -129,261 +129,4 @@
       <p>©2001-2025 深圳市蓝凌软件股份有限公司 版权所有</p>
     </div>
   </div>
-  
-  <script>
-    // Current active tab
-    let currentActiveTab = 'password';
-    
-    // Toggle password visibility
-    function togglePasswordVisibility() {
-      const passwordInput = document.getElementById('password');
-      const eyeIcon = document.querySelector('.password-toggle');
-      
-      if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        eyeIcon.innerHTML = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/><path d="M12 10a2 2 0 100 4 2 2 0 000-4z"/>';
-      } else {
-        passwordInput.type = 'password';
-        eyeIcon.innerHTML = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.45C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>';
-      }
-    }
-    
-    // Switch between login tabs
-    function switchTab(tabName) {
-      if (currentActiveTab === tabName) return;
-      
-      // Update current active tab
-      currentActiveTab = tabName;
-      
-      // Update active tab button
-      document.querySelectorAll('.login-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.tab === tabName);
-      });
-      
-      // Calculate indicator position
-      const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
-      if (activeTab) {
-        const rect = activeTab.getBoundingClientRect();
-        const parentRect = document.querySelector('.login-tabs').getBoundingClientRect();
-        const indicator = document.querySelector('.login-tab-indicator');
-        
-        // Set indicator width and position relative to parent
-        const tabIndex = Array.from(activeTab.parentNode.children).indexOf(activeTab);
-        const tabWidth = rect.width;
-        indicator.style.transform = `translateX(${tabIndex * tabWidth}px)`;
-        indicator.style.width = `${tabWidth}px`;
-      }
-      
-      // Show only the active form
-      document.querySelectorAll('.login-form').forEach(form => {
-        form.classList.toggle('active', form.id === `${tabName}Form`);
-        form.classList.toggle('hidden', form.id !== `${tabName}Form`);
-      });
-      
-      // Toggle forgot password link visibility based on active tab
-      const forgotLink = document.querySelector('.login-forgot');
-      forgotLink.style.display = tabName === 'password' ? 'block' : 'none';
-    }
-    
-    // Refresh captcha
-    function refreshCaptcha() {
-      // In a real app, this would fetch a new captcha from the server
-      // For this template, just change the placeholder text with an animation
-      const captchaImg = document.querySelector('.login-captcha-img');
-      captchaImg.classList.add('refreshing');
-      setTimeout(() => {
-        captchaImg.classList.remove('refreshing');
-      }, 500);
-    }
-    
-    // Send SMS verification code
-    let countdownInterval = null;
-    function sendVerificationCode() {
-      const phoneInput = document.getElementById('phoneNumber');
-      if (!phoneInput.value.length) {
-        showToast('请输入手机号码');
-        return;
-      }
-      
-      // Start countdown
-      const verificationBtn = document.querySelector('.verification-btn');
-      let timeLeft = 60;
-      verificationBtn.disabled = true;
-      verificationBtn.textContent = `重新发送 (${timeLeft}s)`;
-      
-      countdownInterval = setInterval(() => {
-        timeLeft--;
-        verificationBtn.textContent = `重新发送 (${timeLeft}s)`;
-        
-        if (timeLeft <= 0) {
-          clearInterval(countdownInterval);
-          verificationBtn.disabled = false;
-          verificationBtn.textContent = '获取验证码';
-        }
-      }, 1000);
-      
-      // In a real application, this would send an HTTP request
-      console.log('Sending verification code to:', phoneInput.value);
-      showToast('验证码已发送');
-    }
-    
-    // Toggle language dropdown
-    function toggleLanguageDropdown() {
-      const dropdown = document.querySelector('.login-lang-dropdown');
-      dropdown.classList.toggle('hidden');
-      
-      // Close dropdown when clicking outside
-      if (!dropdown.classList.contains('hidden')) {
-        document.addEventListener('click', closeLanguageDropdownOnClickOutside);
-      }
-    }
-    
-    function closeLanguageDropdownOnClickOutside(e) {
-      const langTrigger = document.querySelector('.login-lang-trigger');
-      const dropdown = document.querySelector('.login-lang-dropdown');
-      
-      if (!langTrigger.contains(e.target) && !dropdown.contains(e.target)) {
-        dropdown.classList.add('hidden');
-        document.removeEventListener('click', closeLanguageDropdownOnClickOutside);
-      }
-      
-      // Handle language selection
-      if (dropdown.contains(e.target) && e.target.classList.contains('login-lang-option')) {
-        const selectedLang = e.target.textContent;
-        document.getElementById('currentLang').textContent = selectedLang;
-        dropdown.classList.add('hidden');
-        document.removeEventListener('click', closeLanguageDropdownOnClickOutside);
-      }
-    }
-    
-    // Handle login
-    function handleLogin(e) {
-      e.preventDefault();
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      const captcha = document.getElementById('captchaInput').value;
-      
-      // Validate inputs
-      if (!username || !password || !captcha) {
-        showToast('请填写所有必填字段');
-        return;
-      }
-      
-      // Show loading state
-      const submitBtn = document.getElementById('loginButton');
-      const buttonText = submitBtn.querySelector('.button-text');
-      const spinner = submitBtn.querySelector('.button-spinner');
-      
-      submitBtn.disabled = true;
-      buttonText.classList.add('hidden');
-      spinner.classList.remove('hidden');
-      
-      // Simulate login API call
-      setTimeout(() => {
-        // Reset button state
-        submitBtn.disabled = false;
-        buttonText.classList.remove('hidden');
-        spinner.classList.add('hidden');
-        
-        // In a real app, you would process actual authentication here
-        if (username && password) {
-          showToast('登录成功！', 'success');
-        } else {
-          showToast('用户名或密码错误，请重试');
-        }
-      }, 2000);
-    }
-    
-    function handleSMSLogin(e) {
-      e.preventDefault();
-      const phoneNumber = document.getElementById('phoneNumber').value;
-      const verificationCode = document.getElementById('verificationCode').value;
-      
-      if (!phoneNumber || !verificationCode) {
-        showToast('请填写所有必填字段');
-        return;
-      }
-      
-      // Simulate login API call
-      const submitBtn = document.querySelector('#smsForm .login-submit-btn');
-      const buttonText = submitBtn.querySelector('.button-text');
-      const spinner = submitBtn.querySelector('.button-spinner');
-      
-      submitBtn.disabled = true;
-      buttonText.classList.add('hidden');
-      spinner.classList.remove('hidden');
-      
-      setTimeout(() => {
-        // Reset button state
-        submitBtn.disabled = false;
-        buttonText.classList.remove('hidden');
-        spinner.classList.add('hidden');
-        
-        showToast('验证码登录成功！', 'success');
-      }, 2000);
-    }
-    
-    // Simple toast notification function
-    function showToast(message, type = 'error') {
-      // Create toast element if it doesn't exist
-      let toast = document.querySelector('.toast-notification');
-      if (!toast) {
-        toast = document.createElement('div');
-        toast.className = 'toast-notification';
-        document.body.appendChild(toast);
-      }
-      
-      toast.textContent = message;
-      toast.className = `toast-notification ${type}`;
-      toast.classList.add('show');
-      
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
-    }
-    
-    // Initialize the tab indicator position to the first active tab
-    document.addEventListener('DOMContentLoaded', () => {
-      // Set initial indicator position for the active tab
-      const activeTab = document.querySelector('.login-tab.active');
-      if (activeTab) {
-        const rect = activeTab.getBoundingClientRect();
-        const parentRect = document.querySelector('.login-tabs').getBoundingClientRect();
-        const indicator = document.querySelector('.login-tab-indicator');
-        
-        const tabIndex = Array.from(activeTab.parentNode.children).indexOf(activeTab);
-        const tabWidth = rect.width;
-        indicator.style.transform = `translateX(${tabIndex * tabWidth}px)`;
-        indicator.style.width = `${tabWidth}px`;
-      }
-      
-      // Hide forgot password link initially (will show when on password tab)
-      document.querySelector('.login-forgot').style.display = 'block';
-    });
-    
-    // Close dropdown when clicking anywhere on the window
-    window.addEventListener('click', function(e) {
-      const langTrigger = document.querySelector('.login-lang-trigger');
-      const dropdown = document.querySelector('.login-lang-dropdown');
-      
-      if (langTrigger && !langTrigger.contains(e.target) && 
-          dropdown && !dropdown.classList.contains('hidden') && 
-          !dropdown.contains(e.target)) {
-        dropdown.classList.add('hidden');
-      }
-    });
-    
-    // Handle input focus animations
-    document.querySelectorAll('.login-input').forEach(input => {
-      input.addEventListener('focus', function() {
-        this.parentElement.classList.add('focused');
-      });
-      
-      input.addEventListener('blur', function() {
-        if (!this.value) {
-          this.parentElement.classList.remove('focused');
-        }
-      });
-    });
-  </script>
 </div>

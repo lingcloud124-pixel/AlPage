@@ -1,4 +1,5 @@
 import type { ColorSetting } from '../components/color-editor';
+import { initLoginBehavior } from './login-behavior';
 
 export interface TemplateConfig {
   id: string;
@@ -169,6 +170,10 @@ export async function renderTemplate(
   wrapper.innerHTML = html;
 
   targetElement.appendChild(wrapper);
+
+  if (config.id === 'login') {
+    initLoginBehavior(wrapper);
+  }
 }
 
 function getThemeTarget(): HTMLElement {
