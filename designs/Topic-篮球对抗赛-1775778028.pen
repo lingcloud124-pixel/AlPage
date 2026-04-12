@@ -221,10 +221,10 @@
                     {
                       "type": "frame",
                       "id": "8cz6V",
-                      "x": 21.436241121124354,
+                      "x": 21.580261600694975,
                       "y": 0,
                       "name": "[通用类-指针&导航&方向]iconCommon_line_24_navigation.svg",
-                      "width": 30.478301091493027,
+                      "width": 30.68307111226727,
                       "height": 24,
                       "layout": "none",
                       "children": [
@@ -272,10 +272,10 @@
                     {
                       "type": "frame",
                       "id": "wC7vJ",
-                      "x": 16.81879921424752,
+                      "x": 16.931797174801847,
                       "y": 0,
                       "name": "[通用类-账单&单据&信息]iconCommon_line_24_billInformation.svg",
-                      "width": 32.81382791533655,
+                      "width": 33.0342892922268,
                       "height": 24,
                       "layout": "none",
                       "children": [
@@ -331,10 +331,10 @@
                     {
                       "type": "frame",
                       "id": "LBB4W",
-                      "x": 546.9198383838374,
+                      "x": 550.594347219862,
                       "y": 0,
                       "name": "[通用类-稿件&草稿]iconCommon_line_24_draft.svg",
-                      "width": "fill_container(30.478301091492902)",
+                      "width": "fill_container(30.683071112267115)",
                       "height": "fill_container(24)",
                       "layout": "none",
                       "children": [
@@ -364,7 +364,7 @@
                     {
                       "type": "text",
                       "id": "UlDt9",
-                      "x": 515.1897392409659,
+                      "x": 518.651067787146,
                       "y": 32,
                       "fill": "$header-font-color",
                       "content": "个人工作台",
@@ -382,11 +382,11 @@
                     {
                       "type": "frame",
                       "id": "Z6rSM",
-                      "x": 23.85889931858112,
+                      "x": 24.019196550846477,
                       "y": 0,
                       "name": "[通用类-组织&部门]iconCommon_line_24_department.svg",
                       "clip": true,
-                      "width": 32.81382791533655,
+                      "width": 33.034289292226795,
                       "height": 24,
                       "layout": "none",
                       "children": [
@@ -416,7 +416,7 @@
                     {
                       "type": "text",
                       "id": "PqE0a",
-                      "x": 1.2683981148007013,
+                      "x": 1.2769199122440062,
                       "y": 32,
                       "fill": "$header-font-color",
                       "content": "导航名称",
@@ -434,10 +434,10 @@
                     {
                       "type": "frame",
                       "id": "jzlaA",
-                      "x": 25.388250606308556,
+                      "x": 25.5588228632224,
                       "y": 0,
                       "name": "[通用类-考评]iconCommon_line_24_evaluation.svg",
-                      "width": 31.499977413168182,
+                      "width": 31.711611618431785,
                       "height": 24,
                       "layout": "none",
                       "children": [
@@ -477,7 +477,7 @@
                     {
                       "type": "text",
                       "id": "F2pry",
-                      "x": 3.1763230660399167,
+                      "x": 3.1976633546034505,
                       "y": 32,
                       "fill": "$header-font-color",
                       "content": "导航名称",
@@ -495,10 +495,10 @@
                     {
                       "type": "frame",
                       "id": "ezz5B",
-                      "x": 26.151866541751243,
+                      "x": 26.327569191284244,
                       "y": 0,
                       "name": "[通用类-工作台&分析&运营系统]iconCommon_line_24_systemsAnalysis.svg",
-                      "width": 32.813827915336546,
+                      "width": 33.0342892922268,
                       "height": 24,
                       "layout": "none",
                       "children": [
@@ -528,7 +528,7 @@
                     {
                       "type": "text",
                       "id": "jbpCi",
-                      "x": 4.854607782028269,
+                      "x": 4.887223712076097,
                       "y": 32,
                       "fill": "$header-font-color",
                       "content": "导航名称",
@@ -546,7 +546,7 @@
                     {
                       "type": "text",
                       "id": "sSNGW",
-                      "x": 3.4262758230912467,
+                      "x": 3.449295432004702,
                       "y": 32,
                       "fill": "$header-font-color",
                       "content": "导航名称",
@@ -558,10 +558,10 @@
                     {
                       "type": "frame",
                       "id": "0fbJb",
-                      "x": 24.467003281939096,
+                      "x": 24.631386091705505,
                       "y": 0,
                       "name": "[通用类-稿件&草稿&督办事项&查询]iconCommon_line_24_contentQuery.svg",
-                      "width": 34.44747904800649,
+                      "width": 34.678916193374455,
                       "height": 24,
                       "layout": "none",
                       "children": [
@@ -766,10 +766,10 @@
                                     {
                                       "type": "frame",
                                       "id": "ytDd3",
-                                      "x": 339.20932085526096,
+                                      "x": 392.4593255113518,
                                       "y": 4,
                                       "name": "[指示类-箭头下]iconCommon_surface_12_arrowDown.svg",
-                                      "width": 20.612940965932893,
+                                      "width": 23.848816677261,
                                       "height": 12,
                                       "layout": "none",
                                       "children": [
@@ -1390,10 +1390,10 @@
                         {
                           "type": "rectangle",
                           "id": "f5qI7",
-                          "x": 11.095644790242385,
+                          "x": 17.107682300863182,
                           "y": 26.026933427770928,
                           "fill": "$primary-color",
-                          "width": 212.35263301705945,
+                          "width": 327.41327341358425,
                           "height": 1
                         },
                         {
@@ -1441,7 +1441,7 @@
                       "id": "5gpoT",
                       "fill": "$header-font-color",
                       "textGrowth": "fixed-width-height",
-                      "width": 1060.076073767077,
+                      "width": 1634.4651462438703,
                       "height": 22,
                       "content": "行政管理",
                       "fontFamily": "PingFang SC",
@@ -1615,10 +1615,10 @@
                                     {
                                       "type": "frame",
                                       "id": "SRaOj",
-                                      "x": 276.5165139924972,
+                                      "x": 316.42593426538656,
                                       "y": 4,
                                       "name": "[指示类-箭头下]iconCommon_surface_12_arrowDown.svg",
-                                      "width": 115.56250503886419,
+                                      "width": 132.2415543831253,
                                       "height": 12,
                                       "layout": "none",
                                       "children": [
@@ -3741,10 +3741,10 @@
                                     {
                                       "type": "frame",
                                       "id": "Y8jV9",
-                                      "x": 339.20932085526096,
+                                      "x": 392.4593255113518,
                                       "y": 4,
                                       "name": "[指示类-箭头下]iconCommon_surface_12_arrowDown.svg",
-                                      "width": 20.612940965932893,
+                                      "width": 23.848816677261,
                                       "height": 12,
                                       "layout": "none",
                                       "children": [
@@ -4978,10 +4978,10 @@
                                     {
                                       "type": "frame",
                                       "id": "mBWib",
-                                      "x": 288.5892423138516,
+                                      "x": 326.29277135213573,
                                       "y": 4,
                                       "name": "[指示类-箭头下]iconCommon_surface_12_arrowDown.svg",
-                                      "width": 145.4231535128381,
+                                      "width": 164.42235822105516,
                                       "height": 12,
                                       "layout": "none",
                                       "children": [
@@ -11083,7 +11083,7 @@
                       "x": 0,
                       "y": 0,
                       "name": "矩形",
-                      "opacity": 9.999999747378752e-05,
+                      "opacity": 0.00009999999747378752,
                       "fill": "$sidebar-color",
                       "width": 23,
                       "height": 23
@@ -13109,7 +13109,7 @@
                       "x": 0,
                       "y": 0,
                       "name": "矩形",
-                      "opacity": 9.999999747378752e-05,
+                      "opacity": 0.00009999999747378752,
                       "fill": "$sidebar-color",
                       "width": 16,
                       "height": 16
@@ -13141,7 +13141,7 @@
                       "x": 0,
                       "y": 0,
                       "name": "矩形",
-                      "opacity": 9.999999747378752e-05,
+                      "opacity": 0.00009999999747378752,
                       "fill": "$sidebar-color",
                       "width": 23,
                       "height": 23
@@ -13549,7 +13549,7 @@
                       "x": 0,
                       "y": 0,
                       "name": "矩形",
-                      "opacity": 9.999999747378752e-05,
+                      "opacity": 0.00009999999747378752,
                       "fill": "$sidebar-color",
                       "width": 23,
                       "height": 23
@@ -15367,7 +15367,7 @@
                       "type": "frame",
                       "id": "91oNS",
                       "name": "[指示类-箭头下]iconCommon_line_16_arrowDown.svg",
-                      "width": 16,
+                      "width": 32.52736677493085,
                       "height": 16,
                       "layout": "none",
                       "children": [

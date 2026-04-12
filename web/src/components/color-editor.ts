@@ -48,12 +48,16 @@ const groupLabels: Record<string, string> = {
   gradient: '渐变组件色'
 };
 
+function getThemeTarget(): HTMLElement {
+  return document.getElementById('previewPanel') ?? document.documentElement;
+}
+
 function getCSSVar(varName: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  return getComputedStyle(getThemeTarget()).getPropertyValue(varName).trim();
 }
 
 function setCSSVar(varName: string, value: string): void {
-  document.documentElement.style.setProperty(varName, value);
+  getThemeTarget().style.setProperty(varName, value);
 }
 
 export function updateThemeColors(colors: Record<string, string>): void {

@@ -36,7 +36,7 @@ const TEMPLATES: Record<string, TemplateConfig> = {
   },
   'header-complex': {
     id: 'header-complex',
-    name: '复杂页眉',
+    name: '多页签页眉',
     htmlPath: '/src/templates/header-complex.html',
     cssPath: '/src/templates/header-complex.css',
     width: 1920,
@@ -97,6 +97,14 @@ const TEMPLATES: Record<string, TemplateConfig> = {
     cssPath: '/src/templates/header-classic.css',
     width: 1920,
     height: 70,
+  },
+  'header-v16-search': {
+    id: 'header-v16-search',
+    name: 'V16搜索页眉',
+    htmlPath: '/src/templates/header-v16-search.html',
+    cssPath: '/src/templates/header-v16-search.css',
+    width: 1920,
+    height: 60,
   },
 };
 
@@ -163,11 +171,15 @@ export async function renderTemplate(
   targetElement.appendChild(wrapper);
 }
 
+function getThemeTarget(): HTMLElement {
+  return document.getElementById('previewPanel') ?? document.documentElement;
+}
+
 export function applyThemeVariables(colors: Record<string, string>): void {
-  const root = document.documentElement;
+  const target = getThemeTarget();
   for (const [key, value] of Object.entries(colors)) {
     const varName = key.startsWith('--') ? key : `--${key}`;
-    root.style.setProperty(varName, value);
+    target.style.setProperty(varName, value);
   }
 }
 
@@ -179,7 +191,7 @@ export function updateTemplateBackground(templateId: string, imageUrl: string): 
 
   const varName = bgVarMap[templateId];
   if (varName) {
-    document.documentElement.style.setProperty(varName, `url('${imageUrl}')`);
+    getThemeTarget().style.setProperty(varName, `url('${imageUrl}')`);
     applyThemeVariables({ [varName]: `url('${imageUrl}')` });
   }
 }

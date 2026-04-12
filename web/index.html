@@ -15,13 +15,18 @@
         <div class="app-container">
             <!-- Column 1: Project Sidebar (collapsible) -->
             <aside class="project-sidebar" id="projectSidebar">
-                <div class="sidebar-new-btn" id="newProjectBtn">+ 新建项目</div>
-                <div class="sidebar-section-header">
-                    <span>历史项目</span>
+                <div class="sidebar-brand-header">
+                    <div class="sidebar-brand-icon"></div>
+                    <div class="sidebar-brand-info">
+                        <div class="sidebar-brand-title">Theme Studio</div>
+                        <div class="sidebar-brand-subtitle">AI 主题设计助手</div>
+                    </div>
                 </div>
+                <div class="sidebar-new-btn" id="newProjectBtn">+ 新建项目</div>
                 <div class="sidebar-project-list" id="sidebarProjectList">
                     <!-- JS fills this -->
                 </div>
+                <div class="sidebar-settings-btn" id="sidebarSettingsBtn">⚙ 设置</div>
             </aside>
 
             <!-- Column 2: Chat Panel -->
@@ -35,18 +40,18 @@
                                 <line x1="3" y1="18" x2="21" y2="18"/>
                             </svg>
                         </button>
-                        <div class="brand-icon"></div>
-                        <div class="brand-info">
-                            <div class="brand-title">Theme Studio</div>
-                            <div class="brand-subtitle">AI 主题设计助手</div>
-                        </div>
+                        <span class="chat-project-name" id="chatProjectName">未命名项目</span>
                     </div>
-                    <button id="settingsBtn" class="settings-btn" title="设置">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
-                            <path d="M19.005 13.5C19.0098 13.759 19.0098 14.019 19.005 14.279C18.9477 16.7227 18.8524 17.9445 18.353 18.8814C17.9101 19.712 17.212 20.4093 16.3811 20.8532C15.4446 21.3524 14.2222 21.4477 11.7789 21.505C9.335 21.5624 8.665 21.5624 6.221 21.505C3.77783 21.4477 2.55543 21.3524 1.61894 20.8532C0.787989 20.4093 0.0898875 19.712 0.0330015 18.8814C-0.0624285 17.9445 -0.0523286 16.7227 -0.0523286 14.279C-0.0523286 13.759 -0.0523286 13.241 0.005 12.721C0.0624284 11.2773 0.157743 10.0555 0.657058 9.11863C1.08989 8.28799 1.78799 7.59072 2.61894 7.14679C3.55543 6.64757 4.77783 6.55225 7.221 6.495C8.886 6.495 10.115 6.495 11 6.495C11.885 6.495 13.114 6.495 14.779 6.495C17.222 6.55225 18.444 6.64757 19.381 7.14679C20.212 7.59072 20.91 8.28799 21.343 9.11863C21.842 10.0555 21.938 11.2773 21.995 12.721C22.048 13.241 22.048 13.759 21.995 14.279C21.938 15.7227 21.842 16.9445 21.343 17.8814C20.91 18.712 20.212 19.4093 19.381 19.8532C18.444 20.3524 17.222 20.4477 14.779 20.505" stroke="currentColor" stroke-width="2"/>
+                    <button id="projectActionBtn" class="settings-btn" title="项目操作">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
                         </svg>
                     </button>
+                    <div class="project-action-menu" id="projectActionMenu">
+                        <button id="actionRename" class="plus-menu-item">重命名</button>
+                        <button id="actionPin" class="plus-menu-item">置顶</button>
+                        <button id="actionDelete" class="plus-menu-item">删除</button>
+                    </div>
                 </div>
                 
                 <div class="messages-container">
@@ -77,30 +82,20 @@
                 <div class="attachments-preview" id="attachmentsPreview"></div>
                 
                 <div class="input-area">
+                    <div class="image-preview-bar" id="imagePreviewBar"></div>
                     <div class="input-row">
-                        <input type="text" id="messageInput" placeholder="描述您需要的活动/节日主题..." />
+                        <div class="chat-input-wrapper">
+                            <input type="text" id="messageInput" placeholder="描述您需要的活动/节日主题..." />
+                            <button id="plusBtn" class="plus-btn" title="添加图片">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                            </button>
+                        </div>
                         <button id="sendBtn" title="发送">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="attachment-buttons">
-                        <button id="uploadImageBtn" class="icon-btn" title="上传图片">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M16 13H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M16 17H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M10 9H9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            </svg>
-                        </button>
-                        <button id="uploadPenBtn" class="icon-btn" title="上传Pen文件">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                <polyline points="16,13 10,13 10,21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                             </svg>
                         </button>
                     </div>
@@ -130,13 +125,14 @@
                             <span class="header-switcher-label">页眉：</span>
                             <select id="headerSelect">
                                 <option value="header-default">默认</option>
-                                <option value="header-complex">复杂</option>
+                                <option value="header-simple">简洁</option>
+                                <option value="header-classic">经典</option>
+                                <option value="header-simple-multitab">简洁多标签</option>
+                                <option value="header-complex">多页签</option>
                                 <option value="header-menu">菜单</option>
                                 <option value="header-banner">横幅</option>
                                 <option value="header-v16-default">V16默认</option>
-                                <option value="header-simple">简洁</option>
-                                <option value="header-simple-multitab">简洁多标签</option>
-                                <option value="header-classic">经典</option>
+                                <option value="header-v16-search">V16搜索</option>
                             </select>
                         </div>
                         <button class="topbar-action-btn" id="panelToggleBtn">面板</button>

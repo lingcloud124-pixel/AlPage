@@ -27,12 +27,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   ]);
 }
 
+function getThemeTarget(): HTMLElement {
+  return document.getElementById('previewPanel') ?? document.documentElement;
+}
+
 function updateColors(colors: Record<string, string>): ToolResult {
   let updated = 0;
+  const target = getThemeTarget();
   for (const [key, value] of Object.entries(colors)) {
     const cssVar = CSS_VAR_MAP[key] ?? (key.startsWith('--') ? key : `--${key}`);
     if (/^#[0-9a-fA-F]{6}$/.test(value)) {
-      document.documentElement.style.setProperty(cssVar, value);
+      target.style.setProperty(cssVar, value);
       updated++;
     }
   }
@@ -40,8 +45,8 @@ function updateColors(colors: Record<string, string>): ToolResult {
 }
 
 function getAllCurrentColors(): Record<string, string> {
-  const root = document.documentElement;
-  const computed = getComputedStyle(root);
+  const target = getThemeTarget();
+  const computed = getComputedStyle(target);
   const vars: Record<string, string> = {};
   for (const v of COLOR_VARS) {
     const val = computed.getPropertyValue(`--${v}`).trim();
@@ -243,7 +248,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           const fallbackHex = templateType === 'dark-ui' ? '#1A2845' : '#1565C0';
           const colors = deriveColorsFromPrimary(fallbackHex, templateType);
           updateColors({ ...colors });
-          document.documentElement.style.setProperty('--theme-login-bg-image', `url('${imgResult.url}')`);
+          getThemeTarget().style.setProperty('--theme-login-bg-image', `url('${imgResult.url}')`);
           return { success: true, data: { primaryColor: fallbackHex, imageUrl: imgResult.url, applied: true, fallbackUsed: true } };
         }
 
@@ -260,7 +265,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
 
         const derived = deriveColorsFromPrimary(bestColor, templateType);
         updateColors({ ...derived });
-        document.documentElement.style.setProperty('--theme-login-bg-image', `url('${imgResult.url}')`);
+        getThemeTarget().style.setProperty('--theme-login-bg-image', `url('${imgResult.url}')`);
 
         return { success: true, data: { primaryColor: bestColor, imageUrl: imgResult.url, applied: true } };
       }

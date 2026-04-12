@@ -8,11 +8,24 @@
 .login-bg {
   position: absolute;
   inset: 0;
-  background-size: cover;
+  background-size: 100% auto;
   background-position: center;
   background-repeat: no-repeat;
-  background-attachment: fixed;
   background-color: var(--login-bg-color, #e8f5e9);
+}
+
+.login-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    transparent 55%,
+    rgba(255,255,255,0.85) 70%,
+    rgba(255,255,255,0.95) 100%
+  );
+  pointer-events: none;
 }
 
 .login-logo {

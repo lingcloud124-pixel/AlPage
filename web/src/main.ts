@@ -5,6 +5,7 @@ import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences
 import { executeTool } from './tools/executor';
 import { renderTemplate } from './templates/loader';
 import { buildPackages, downloadPackage } from './packaging/package-builder';
+import { marked } from 'marked';
 import type { ChatMessage } from './types';
 
 declare global {
@@ -16,9 +17,11 @@ declare global {
 interface Project {
   id: string;
   name: string;
+  themeName?: string;
   templateType: 'light-ui' | 'dark-ui';
   colors: Record<string, string>;
-  bgImage?: string;
+  bgImageUrl?: string;
+  headerBgImageUrl?: string;
   pinned?: boolean;
   createdAt: number;
   updatedAt: number;
@@ -26,6 +29,58 @@ interface Project {
 
 const conversationHistory: ChatMessage[] = [];
 let currentProjectId: string | null = null;
+let activeAbortController: AbortController | null = null;
+
+function setThemeVar(name: string, value: string): void {
+  const panel = document.getElementById('previewPanel');
+  if (panel) panel.style.setProperty(name, value);
+}
+
+function getThemeTarget(): HTMLElement {
+  return document.getElementById('previewPanel') ?? document.documentElement;
+}
+
+function saveCurrentColorsToProject(): void {
+  if (!currentProjectId) return;
+  const project = loadProject(currentProjectId);
+  if (!project) return;
+  const target = getThemeTarget();
+  const computed = getComputedStyle(target);
+  const varNames = [
+    'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
+    'primary-color-opacity-10', 'primary-color-opacity-20', 'primary-color-opacity-30',
+    'header-font-color', 'auxiliary-gray', 'auxiliary-gray-dark',
+    'body-bg-color', 'login-bg-color', 'panel-bg-color',
+    'sidebar-panel-bg', 'sidebar-color', 'sidebar-icon-color',
+    'border-color', 'border-icon-color',
+    'gradient-start', 'gradient-mid',
+  ];
+  const colors: Record<string, string> = {};
+  for (const v of varNames) {
+    const val = computed.getPropertyValue(`--${v}`).trim();
+    if (val) colors[v] = val;
+  }
+  project.colors = colors;
+
+  const loginBgRaw = target.style.getPropertyValue('--theme-login-bg-image').trim();
+  const loginBgMatch = loginBgRaw.match(/url\(['"]?([^'")\s]+)['"]?\)/);
+  if (loginBgMatch) project.bgImageUrl = loginBgMatch[1];
+
+  const headerBgRaw = target.style.getPropertyValue('--theme-header-bg-image').trim();
+  const headerBgMatch = headerBgRaw.match(/url\(['"]?([^'")\s]+)['"]?\)/);
+  if (headerBgMatch) project.headerBgImageUrl = headerBgMatch[1];
+
+  saveProject(project);
+}
+
+function updateProjectNameDisplay(project: Project): void {
+  const displayName = project.themeName || project.name;
+  const projectNameElement = document.getElementById('projectName');
+  if (projectNameElement) projectNameElement.textContent = displayName;
+  const chatProjectName = document.getElementById('chatProjectName');
+  if (chatProjectName) chatProjectName.textContent = project.name;
+  populateSidebarProjects();
+}
 
 function safeJsonParse<T>(json: string | null, fallback: T): T {
   if (!json) return fallback;
@@ -77,7 +132,11 @@ function renderMessage(role: 'user' | 'ai', content: string): HTMLElement {
   
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
-  contentDiv.textContent = content;
+  if (role === 'ai') {
+    contentDiv.innerHTML = marked.parse(content) as string;
+  } else {
+    contentDiv.textContent = content;
+  }
   
   messageDiv.appendChild(avatarDiv);
   messageDiv.appendChild(contentDiv);
@@ -315,32 +374,34 @@ function showWorkspace(projectId: string): void {
   
   currentProjectId = projectId;
   localStorage.setItem('theme-studio-current-project', projectId);
+
+  const previewPanel = document.getElementById('previewPanel');
+  if (previewPanel) previewPanel.removeAttribute('style');
   
   const project = loadProject(projectId);
   if (project) {
     const projectNameElement = document.getElementById('projectName');
     if (projectNameElement) {
-      projectNameElement.textContent = project.name;
-      
-      projectNameElement.setAttribute('contenteditable', 'true');
-      projectNameElement.addEventListener('blur', () => {
-        project.name = projectNameElement.textContent || projectNameElement.textContent || '未命名项目';
-        saveProject(project);
-      });
-      projectNameElement.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          projectNameElement.blur();
-        }
-      });
+      projectNameElement.textContent = project.themeName || project.name;
+    }
+
+    const chatProjectName = document.getElementById('chatProjectName');
+    if (chatProjectName) {
+      chatProjectName.textContent = project.name;
     }
 
     if (project.colors && Object.keys(project.colors).length > 0) {
       for (const [key, value] of Object.entries(project.colors)) {
         const cssVar = key.startsWith('--') ? key : `--${key}`;
         if (/^#[0-9a-fA-F]{6}$/.test(value)) {
-          document.documentElement.style.setProperty(cssVar, value);
+          setThemeVar(cssVar, value);
         }
+      }
+      if (project.bgImageUrl) {
+        setThemeVar('--theme-login-bg-image', `url('${project.bgImageUrl}')`);
+      }
+      if (project.headerBgImageUrl) {
+        setThemeVar('--theme-header-bg-image', `url('${project.headerBgImageUrl}')`);
       }
       expandPreview();
     } else {
@@ -580,7 +641,7 @@ function createProjectWithPreset(name: string, templateType: 'light-ui' | 'dark-
   
   // 从预设中获取主色调更新页面样式
   const primaryColor = colors['--primary-color'] || '#2C615C';
-  document.documentElement.style.setProperty('--primary-color', primaryColor);
+  setThemeVar('--primary-color', primaryColor);
   
   const newProject: Project = {
     id,
@@ -756,6 +817,7 @@ function initializeFeatureModules() {
   setupChatInterface();
   setupCollapsibleColorPanel();
   setupSettingsDialog();
+  setupProjectActionMenu();
   setupMainActions();
   setupResizableDivider();
   setupQualityCheck();
@@ -869,17 +931,20 @@ async function loadHeaderIntoMainPage(headerId: string) {
   const mainPage = document.getElementById('mainPage');
   if (!mainPage) return;
 
-  const firstChild = mainPage.firstElementChild as HTMLElement | null;
-  let targetContainer: HTMLElement = mainPage;
+  const headerEl = mainPage.querySelector('.desktop-header, .page-header-area, .header-slot, #headerArea') as HTMLElement | null;
+  if (!headerEl) return;
 
-  if (firstChild) {
-    const headerArea = firstChild.querySelector('.page-header-area, .header-slot, #headerArea') as HTMLElement | null;
-    if (headerArea) {
-      targetContainer = headerArea;
-    }
+  const parent = headerEl.parentElement;
+  if (!parent) return;
+
+  const wrapper = document.createElement('div');
+  await renderTemplate(headerId, wrapper);
+
+  const newHeader = wrapper.firstElementChild as HTMLElement | null;
+  if (newHeader) {
+    parent.replaceChild(newHeader, headerEl);
+    requestAnimationFrame(() => (window as any).resizePreview?.());
   }
-
-  await renderTemplate(headerId, targetContainer);
 }
 
 function setupTabSwitching() {
@@ -895,7 +960,7 @@ function setupTabSwitching() {
   TAB_MAP.forEach(tabInfo => {
     const { btnId, pageId, templateId } = tabInfo;
     const btn = document.getElementById(btnId) as HTMLButtonElement;
-    const page = document.getElementById(pageId) as HTMLElement;
+    const page = document.getElementById(pageId) as HTMLButtonElement;
 
     if (!btn || !page) return;
 
@@ -906,6 +971,8 @@ function setupTabSwitching() {
     }
 
     btn.addEventListener('click', async () => {
+      if (activeTabInfo.btn === btn) return;
+
       activeTabInfo.btn?.classList.remove('active-tab');
       activeTabInfo.page?.classList.remove('active-preview');
 
@@ -918,7 +985,9 @@ function setupTabSwitching() {
         headerSwitcher.style.display = btnId === 'mainPageTab' ? 'flex' : 'none';
       }
 
-      await renderTemplate(templateId, page);
+      if (!page.firstElementChild) {
+        await renderTemplate(templateId, page);
+      }
       requestAnimationFrame(() => {
         (window as any).resizePreview?.();
       });
@@ -944,62 +1013,59 @@ function setupChatInterface() {
     }
   });
   
-    const uploadImageBtn = document.getElementById('uploadImageBtn');
-    const uploadPenBtn = document.getElementById('uploadPenBtn');
-    
-    if (uploadImageBtn) {
-      uploadImageBtn.addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = async () => {
-          const file = input.files?.[0];
-          if (file) {
-            renderMessage('user', `上传了参考图片：${file.name}`);
-            saveChatHistory();
-            
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-              const dataUrl = e.target?.result as string;
-              
-              try {
-                const { analyzeImageAsync } = await import('./tools/executor');
-                const result = await analyzeImageAsync(dataUrl);
-                if (result.success && result.data) {
-                  const colors = result.data as { dominantColors: string[] };
-                  renderMessage('ai', `🎨 图片分析完成，提取到主色调：${colors.dominantColors.join(', ')}\n\n请在对话中告诉 AI "基于这张图片生成配色方案"，AI 将自动计算完整的 OA 主题配色。`);
-                  saveChatHistory();
-                }
-              } catch {
-                renderMessage('ai', '⚠️ 图片已接收，但颜色分析失败。请直接描述您想要的配色风格。');
-                saveChatHistory();
-              }
-            };
-            reader.readAsDataURL(file);
-          }
-        };
-        input.click();
-      });
+  const pendingImages: string[] = [];
+  const imagePreviewBar = document.getElementById('imagePreviewBar') as HTMLElement;
+  
+  const plusBtn = document.getElementById('plusBtn');
+  if (plusBtn) {
+    plusBtn.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.multiple = true;
+      input.onchange = () => {
+        const files = input.files;
+        if (!files) return;
+        for (const file of Array.from(files)) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const dataUrl = e.target?.result as string;
+            if (!dataUrl) return;
+            pendingImages.push(dataUrl);
+            renderImagePreviewBar();
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    });
+  }
+  
+  function renderImagePreviewBar() {
+    if (!imagePreviewBar) return;
+    imagePreviewBar.innerHTML = '';
+    if (pendingImages.length === 0) {
+      imagePreviewBar.classList.remove('has-images');
+      return;
     }
-    
-    if (uploadPenBtn) {
-      uploadPenBtn.addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.pen,.json';
-        input.onchange = async () => {
-          const file = input.files?.[0];
-          if (file) {
-            renderMessage('user', `上传了 Pen 文件：${file.name}`);
-            saveChatHistory();
-            await loadPenFromFile(file);
-            renderMessage('ai', '✅ .pen 文件已加载到预览区');
-            saveChatHistory();
-          }
-        };
-        input.click();
+    imagePreviewBar.classList.add('has-images');
+    pendingImages.forEach((src, idx) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'preview-thumb';
+      const img = document.createElement('img');
+      img.src = src;
+      thumb.appendChild(img);
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = '×';
+      removeBtn.addEventListener('click', () => {
+        pendingImages.splice(idx, 1);
+        renderImagePreviewBar();
       });
-    }
+      thumb.appendChild(removeBtn);
+      imagePreviewBar.appendChild(thumb);
+    });
+  }
     
     function addMessageToChat(role: 'user' | 'ai', content: string): HTMLElement {
       const messageEl = renderMessage(role, content);
@@ -1008,13 +1074,67 @@ function setupChatInterface() {
     }
 
   function sendUserMessage() {
-    if (!messageInput || messageInput.value.trim() === '') return;
+    const hasText = messageInput && messageInput.value.trim() !== '';
+    const hasImages = pendingImages.length > 0;
+    if (!hasText && !hasImages) return;
     
-    const content = messageInput.value.trim();
-    addMessageToChat('user', content);
-    messageInput.value = '';
+    const content = messageInput ? messageInput.value.trim() : '';
     
-    callAI(content);
+    if (hasImages) {
+      const imagesToSend = [...pendingImages];
+      pendingImages.length = 0;
+      renderImagePreviewBar();
+      
+      const msgEl = addMessageToChat('user', content || '上传了参考图片');
+      const contentEl = msgEl.querySelector('.message-content') as HTMLElement;
+      if (contentEl) {
+        imagesToSend.forEach(src => {
+          const img = document.createElement('img');
+          img.src = src;
+          img.style.cssText = 'max-width:200px;border-radius:8px;margin-top:4px;display:block;';
+          contentEl.appendChild(img);
+        });
+      }
+      saveChatHistory();
+      
+      imagesToSend.forEach(async (dataUrl) => {
+        try {
+          const { analyzeImageAsync } = await import('./tools/executor');
+          const result = await analyzeImageAsync(dataUrl);
+          if (result.success && result.data) {
+            const colors = result.data as { dominantColors: string[] };
+            conversationHistory.push({
+              id: Date.now().toString(),
+              role: 'user',
+              content: `[图片参考] 主色调: ${colors.dominantColors.join(', ')}`,
+              timestamp: Date.now(),
+            });
+          }
+        } catch {}
+      });
+    } else {
+      addMessageToChat('user', content);
+    }
+    
+    if (messageInput) messageInput.value = '';
+    if (content) callAI(content);
+
+    if (content && currentProjectId) {
+      const project = loadProject(currentProjectId);
+      if (project && project.name === '未命名项目') {
+        const autoName = content.length > 20 ? content.substring(0, 20) + '...' : content;
+        project.name = autoName;
+        saveProject(project);
+
+        const chatProjectName = document.getElementById('chatProjectName');
+        if (chatProjectName) chatProjectName.textContent = autoName;
+
+        const projectNameEl = document.getElementById('projectName');
+        if (projectNameEl) projectNameEl.textContent = autoName;
+
+        populateSidebarProjects();
+      }
+    }
   }
   
   async function callAI(userMessage: string) {
@@ -1065,6 +1185,29 @@ function setupChatInterface() {
       contentEl.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
     }
 
+    const sendBtn = document.getElementById('sendBtn');
+    const setSendBtnStop = (isStop: boolean) => {
+      if (!sendBtn) return;
+      if (isStop) {
+        sendBtn.classList.add('stop-mode');
+        sendBtn.title = '停止生成';
+      } else {
+        sendBtn.classList.remove('stop-mode');
+        sendBtn.title = '发送';
+      }
+    };
+
+    activeAbortController = new AbortController();
+    setSendBtnStop(true);
+
+    const stopHandler = () => {
+      activeAbortController?.abort();
+      setSendBtnStop(false);
+    };
+    sendBtn?.addEventListener('click', stopHandler);
+
+    let thinkingText = '';
+
     try {
       let firstToken = true;
       fullResponse = await chatCompletion(
@@ -1079,6 +1222,7 @@ function setupChatInterface() {
             }
             if (token) {
               if (token.startsWith('\u200B')) {
+                thinkingText += token.slice(1);
                 const indicator = contentEl.querySelector('.thinking-indicator');
                 if (indicator) indicator.remove();
                 const thinkEl = contentEl.querySelector('.thinking-content') as HTMLElement ?? (() => {
@@ -1100,19 +1244,50 @@ function setupChatInterface() {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
           }
         },
+        activeAbortController.signal,
       );
     } catch (e) {
+      sendBtn?.removeEventListener('click', stopHandler);
+      activeAbortController = null;
+      setSendBtnStop(false);
       if (contentEl) {
         contentEl.classList.remove('typing', 'streaming');
-        contentEl.textContent = `❌ 请求失败: ${(e as Error).message}`;
+        if ((e as Error).name === 'AbortError' || (e as Error).message?.includes('aborted')) {
+          const partial = contentEl.textContent || '';
+          contentEl.innerHTML = '';
+          if (thinkingText) {
+            contentEl.appendChild(buildThinkingToggle(thinkingText));
+          }
+          if (partial) {
+            const span = document.createElement('span');
+            span.textContent = partial;
+            contentEl.appendChild(span);
+          }
+          contentEl.appendChild(Object.assign(document.createElement('div'), {
+            textContent: '⏹ 生成已停止',
+            style: 'color:var(--auxiliary-gray);font-size:12px;margin-top:6px;',
+          }));
+        } else {
+          contentEl.textContent = `❌ 请求失败: ${(e as Error).message}`;
+        }
       }
       return;
     }
 
+    sendBtn?.removeEventListener('click', stopHandler);
+    activeAbortController = null;
+    setSendBtnStop(false);
+
     if (contentEl) {
       contentEl.classList.remove('streaming');
       const cleaned = stripToolCallsFromDisplay(fullResponse);
-      contentEl.textContent = cleaned || '';
+      contentEl.innerHTML = '';
+      if (thinkingText) {
+        contentEl.appendChild(buildThinkingToggle(thinkingText));
+      }
+      const mdSpan = document.createElement('span');
+      mdSpan.innerHTML = marked.parse(cleaned || '') as string;
+      contentEl.appendChild(mdSpan);
     }
 
     conversationHistory.push({
@@ -1155,11 +1330,33 @@ function setupChatInterface() {
               ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${imgData.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
               : '';
             addMessageToChat('ai', `🎨 配色方案已生成！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`);
-            expandPreview();
-          } else {
-            if (tc.tool === 'update_colors') {
-              expandPreview();
+            saveCurrentColorsToProject();
+            if (currentProjectId) {
+              const proj = loadProject(currentProjectId);
+              if (proj && !proj.themeName && conversationHistory.length > 0) {
+                const firstUserMsg = conversationHistory.find(m => m.role === 'user');
+                if (firstUserMsg) {
+                  const raw = firstUserMsg.content.replace(/[\n\r]/g, ' ').trim();
+                  proj.themeName = raw.length > 15 ? raw.substring(0, 15) + '...' : raw;
+                  saveProject(proj);
+                  updateProjectNameDisplay(proj);
+                }
+              }
             }
+            expandPreview();
+          } else if (tc.tool === 'save_colors') {
+            const saveData = tc.args as { name?: string };
+            if (currentProjectId && saveData?.name) {
+              const proj = loadProject(currentProjectId);
+              if (proj) {
+                proj.themeName = saveData.name;
+                saveProject(proj);
+                updateProjectNameDisplay(proj);
+              }
+            }
+          } else if (tc.tool === 'update_colors') {
+            saveCurrentColorsToProject();
+            expandPreview();
           }
         } else {
           addMessageToChat('ai', `⚠️ ${tc.tool}: ${result.error ?? '未知错误'}`);
@@ -1172,10 +1369,34 @@ function setupChatInterface() {
     }
   }
 
+  function buildThinkingToggle(text: string): HTMLElement {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'thinking-toggle';
+
+    const btn = document.createElement('button');
+    btn.className = 'thinking-toggle-btn';
+    btn.textContent = '▶ 思考过程';
+
+    const body = document.createElement('div');
+    body.className = 'thinking-toggle-body';
+    body.textContent = text;
+    body.style.display = 'none';
+
+    btn.addEventListener('click', () => {
+      const expanded = body.style.display !== 'none';
+      body.style.display = expanded ? 'none' : 'block';
+      btn.textContent = expanded ? '▶ 思考过程' : '▼ 思考过程';
+    });
+
+    wrapper.appendChild(btn);
+    wrapper.appendChild(body);
+    return wrapper;
+  }
+
   function stripToolCallsFromDisplay(content: string): string {
   let cleaned = content;
-  cleaned = cleaned.replace(/```json\s*\n[\s\S]*?\n```/g, '');
-  cleaned = cleaned.replace(/\{"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{[^}]*\}\s*\}/g, '');
+  cleaned = cleaned.replace(/```json\s*\{[\s\S]*?\}\s*```/g, '');
+  cleaned = cleaned.replace(/\{"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{[\s\S]*?\}\s*\}/g, '');
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   return cleaned.trim();
 }
@@ -1263,7 +1484,7 @@ function parsePresetRecommendations(content: string): string[] {
               if (c.loginBg) mappedColors['login-bg-color'] = c.loginBg;
             }
             for (const [k, v] of Object.entries(mappedColors)) {
-              document.documentElement.style.setProperty(`--${k}`, v);
+              setThemeVar(`--${k}`, v);
             }
             if (currentProjectId) {
               const project = loadProject(currentProjectId);
@@ -1340,7 +1561,7 @@ function parsePresetRecommendations(content: string): string[] {
 
       card.addEventListener('click', () => {
         const bgUrl = `/backgrounds/${bgKey}-bg.${ext}`;
-        document.documentElement.style.setProperty('--theme-login-bg-image', `url('${bgUrl}')`);
+        setThemeVar('--theme-login-bg-image', `url('${bgUrl}')`);
         expandPreview();
         cardsContainer.querySelectorAll('.background-card-chat').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
@@ -1401,8 +1622,8 @@ function parsePresetRecommendations(content: string): string[] {
   }
 
   function getCurrentColors(): Record<string, string> {
-    const root = document.documentElement;
-    const computed = getComputedStyle(root);
+    const target = getThemeTarget();
+    const computed = getComputedStyle(target);
     const vars: Record<string, string> = {};
     const varNames = [
       'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
@@ -1511,8 +1732,8 @@ const PRESET_BACKGROUNDS: Record<string, string> = {
 function applyPresetBackground(presetKey: string): void {
   const bgUrl = PRESET_BACKGROUNDS[presetKey];
   if (bgUrl) {
-    document.documentElement.style.setProperty('--theme-login-bg-image', `url('${bgUrl}')`);
-    document.documentElement.style.setProperty('--theme-header-bg-image', `url('${bgUrl}')`);
+    setThemeVar('--theme-login-bg-image', `url('${bgUrl}')`);
+    setThemeVar('--theme-header-bg-image', `url('${bgUrl}')`);
   }
 }
 
@@ -1634,7 +1855,7 @@ function setupCollapsibleColorPanel() {
 }
 
 function setupSettingsDialog() {
-  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsBtn = document.getElementById('sidebarSettingsBtn');
   const settingsModal = document.getElementById('settingsModal') as HTMLElement;
   const closeModalBtn = document.querySelector('.modal-close-btn') as HTMLElement;
   const saveBtn = document.getElementById('saveSettings') as HTMLButtonElement;
@@ -1916,8 +2137,8 @@ async function startPackagingProcess() {
 }
 
 function getAllCSSVariables(): Record<string, string> {
-  const root = document.documentElement;
-  const computed = getComputedStyle(root);
+  const target = getThemeTarget();
+  const computed = getComputedStyle(target);
   const vars: Record<string, string> = {};
   const varNames = [
     'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
@@ -1963,4 +2184,76 @@ function showNotification(message: string) {
       }
     }, 300);
   }, 3000);
+}
+
+function setupProjectActionMenu() {
+  const actionBtn = document.getElementById('projectActionBtn');
+  const actionMenu = document.getElementById('projectActionMenu');
+  const actionRename = document.getElementById('actionRename');
+  const actionPin = document.getElementById('actionPin');
+  const actionDelete = document.getElementById('actionDelete');
+
+  if (!actionBtn || !actionMenu) return;
+
+  actionBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const project = currentProjectId ? loadProject(currentProjectId) : null;
+    if (actionPin && project) {
+      actionPin.textContent = project.pinned ? '取消置顶' : '置顶';
+    }
+    actionMenu.classList.toggle('active');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!actionMenu.contains(e.target as Node) && e.target !== actionBtn) {
+      actionMenu.classList.remove('active');
+    }
+  });
+
+  if (actionRename) {
+    actionRename.addEventListener('click', () => {
+      actionMenu.classList.remove('active');
+      if (!currentProjectId) return;
+      const project = loadProject(currentProjectId);
+      if (!project) return;
+      const newName = prompt('重命名项目', project.name);
+      if (newName && newName.trim()) {
+        project.name = newName.trim();
+        const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
+        const idx = projects.findIndex(p => p.id === currentProjectId);
+        if (idx >= 0) { projects[idx] = project; localStorage.setItem('theme-studio-projects', JSON.stringify(projects)); }
+        populateSidebarProjects();
+      }
+    });
+  }
+
+  if (actionPin) {
+    actionPin.addEventListener('click', () => {
+      actionMenu.classList.remove('active');
+      if (!currentProjectId) return;
+      const project = loadProject(currentProjectId);
+      if (!project) return;
+      project.pinned = !project.pinned;
+      const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
+      const idx = projects.findIndex(p => p.id === currentProjectId);
+      if (idx >= 0) { projects[idx] = project; localStorage.setItem('theme-studio-projects', JSON.stringify(projects)); }
+      populateSidebarProjects();
+    });
+  }
+
+  if (actionDelete) {
+    actionDelete.addEventListener('click', () => {
+      actionMenu.classList.remove('active');
+      if (!currentProjectId) return;
+      const project = loadProject(currentProjectId);
+      if (!project) return;
+      if (!confirm(`确定删除项目「${project.name}」？`)) return;
+      deleteProject(currentProjectId);
+      const projects = listProjects();
+      if (projects.length > 0) {
+        showWorkspace(projects[0].id);
+      }
+      populateSidebarProjects();
+    });
+  }
 }

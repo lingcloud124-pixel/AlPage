@@ -97,6 +97,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
 export async function chatCompletion(
   request: ChatRequest,
   onToken?: (token: string) => void,
+  externalSignal?: AbortSignal,
 ): Promise<string> {
   const settings = loadSettings();
   if (!settings.apiKey) {
@@ -105,6 +106,10 @@ export async function chatCompletion(
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 120_000);
+
+  if (externalSignal) {
+    externalSignal.addEventListener('abort', () => controller.abort());
+  }
 
   try {
     const response = await fetch(`${settings.apiEndpoint}/chat/completions`, {
