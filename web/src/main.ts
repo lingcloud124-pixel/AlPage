@@ -966,10 +966,29 @@ function setupChatInterface() {
             if (firstToken) {
               contentEl.classList.remove('typing');
               contentEl.classList.add('streaming');
-              contentEl.textContent = '';
+              contentEl.innerHTML = '<span class="thinking-indicator">🤔 思考中...</span>';
               firstToken = false;
             }
-            contentEl.textContent += token;
+            if (token) {
+              if (token.startsWith('\u200B')) {
+                const indicator = contentEl.querySelector('.thinking-indicator');
+                if (indicator) indicator.remove();
+                const thinkEl = contentEl.querySelector('.thinking-content') as HTMLElement ?? (() => {
+                  const el = document.createElement('span');
+                  el.className = 'thinking-content';
+                  contentEl.appendChild(el);
+                  return el;
+                })();
+                if (!thinkEl.parentElement) contentEl.appendChild(thinkEl);
+                thinkEl.textContent += token.slice(1);
+              } else {
+                const indicator = contentEl.querySelector('.thinking-indicator');
+                if (indicator) indicator.remove();
+                const thinkEl = contentEl.querySelector('.thinking-content');
+                if (thinkEl) thinkEl.remove();
+                contentEl.textContent += token;
+              }
+            }
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
           }
         },
@@ -1101,7 +1120,15 @@ function setupChatInterface() {
           <span class="preset-card-label">${preset.label}</span>
           <span class="preset-card-type">${preset.type === 'dark-ui' ? '暗色' : '亮色'}</span>
         </div>
+        <button class="preset-card-view-btn" title="查看预览">查看</button>
       `;
+      const viewBtn = card.querySelector('.preset-card-view-btn');
+      if (viewBtn) {
+        viewBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          expandPreview();
+        });
+      }
       card.addEventListener('click', async () => {
         try {
           const response = await fetch(`/colors/${preset.key}.json`);
@@ -1185,8 +1212,17 @@ function setupChatInterface() {
         <img class="background-card-img" src="${imgSrc}" alt="${bgKey}" loading="lazy" />
         <div class="background-card-info">
           <span class="background-card-name">${bgKey.replace(/-/g, ' ')}</span>
+          <button class="preset-card-view-btn" title="查看预览">查看</button>
         </div>
       `;
+
+      const viewBtn = card.querySelector('.preset-card-view-btn');
+      if (viewBtn) {
+        viewBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          expandPreview();
+        });
+      }
 
       card.addEventListener('click', () => {
         const bgUrl = `/backgrounds/${bgKey}-bg.${ext}`;

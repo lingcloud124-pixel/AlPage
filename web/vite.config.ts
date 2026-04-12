@@ -12,6 +12,13 @@ export default defineConfig({
       strict: false,
       allow: ['..'],
     },
+    proxy: {
+      '/api/chat': {
+        target: 'https://coding.dashscope.aliyuncs.com',
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/api\/chat/, '/v1'),
+      },
+    },
   },
   build: {
     outDir: 'dist',

@@ -703,6 +703,39 @@ body {
   transform: scale(1.05);
 }
 
+.thinking-indicator {
+  color: var(--auxiliary-gray, #999);
+  font-size: 13px;
+}
+
+.thinking-content {
+  color: var(--auxiliary-gray, #999);
+  font-size: 13px;
+  display: block;
+  margin-bottom: 6px;
+  white-space: pre-wrap;
+  border-left: 2px solid var(--border-color, #E5E7EB);
+  padding-left: 8px;
+}
+
+.preset-card-view-btn {
+  background: var(--primary-color, #2C615C);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 6px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.preset-card-chat:hover .preset-card-view-btn,
+.background-card-chat:hover .preset-card-view-btn {
+  opacity: 1;
+}
+
 .attachment-buttons {
   display: flex;
   gap: 8px;
@@ -755,6 +788,7 @@ body {
 .preview-panel.expanded {
   max-width: 60%;
   min-width: 400px;
+  flex: 1;
   opacity: 1;
   pointer-events: auto;
   border-left: 1px solid var(--border-color);
@@ -825,7 +859,7 @@ body {
 .preview-close-btn {
   position: absolute;
   top: 10px;
-  left: 10px;
+  right: 10px;
   z-index: 20;
   width: 28px;
   height: 28px;

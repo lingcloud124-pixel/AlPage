@@ -2,12 +2,12 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Theme Studio Smoke Tests', () => {
 
-  test('app loads with chat-only layout (preview hidden by default)', async ({ page }) => {
+  test('app loads with sidebar visible and preview hidden by default', async ({ page }) => {
     await page.goto('/');
     
     const sidebar = page.locator('#projectSidebar');
     await expect(sidebar).toBeAttached({ timeout: 10000 });
-    expect(await sidebar.getAttribute('class')).toContain('collapsed');
+    expect(await sidebar.getAttribute('class')).not.toContain('collapsed');
     
     await expect(page.locator('#chatPanel')).toBeVisible();
     
@@ -32,11 +32,8 @@ test.describe('Theme Studio Smoke Tests', () => {
     await expect(page.locator('#imageModelName')).toBeVisible();
   });
 
-  test('new project button exists and is reachable after sidebar expand', async ({ page }) => {
+  test('new project button is directly reachable (sidebar visible by default)', async ({ page }) => {
     await page.goto('/');
-    
-    await page.locator('#sidebarToggleBtn').click();
-    await page.waitForTimeout(300);
     
     await expect(page.locator('#projectSidebar')).toBeVisible({ timeout: 5000 });
     
@@ -79,7 +76,7 @@ test.describe('Theme Studio Smoke Tests', () => {
     }
   });
 
-  test('sidebar toggle expands collapsed sidebar', async ({ page }) => {
+  test('sidebar toggle collapses expanded sidebar', async ({ page }) => {
     await page.goto('/');
     
     const sidebar = page.locator('#projectSidebar');
@@ -87,13 +84,13 @@ test.describe('Theme Studio Smoke Tests', () => {
     
     await expect(sidebar).toBeAttached();
     const initialClasses = await sidebar.getAttribute('class') || '';
-    expect(initialClasses).toContain('collapsed');
+    expect(initialClasses).not.toContain('collapsed');
     
     await toggleBtn.click();
     await page.waitForTimeout(300);
     
     const afterClickClasses = await sidebar.getAttribute('class') || '';
-    expect(afterClickClasses).not.toContain('collapsed');
+    expect(afterClickClasses).toContain('collapsed');
   });
 
   test('chat input accepts text', async ({ page }) => {

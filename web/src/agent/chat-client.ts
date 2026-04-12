@@ -3,7 +3,7 @@ import type { ChatRequest, ChatResponse, AISettings } from '../types';
 const SETTINGS_KEY = 'theme-studio-settings';
 
 const ZHIPU_DEFAULTS: AISettings = {
-  apiEndpoint: 'https://coding.dashscope.aliyuncs.com/v1',
+  apiEndpoint: import.meta.env.DEV ? '/api/chat' : 'https://coding.dashscope.aliyuncs.com/v1',
   apiKey: import.meta.env.VITE_DASHSCOPE_API_KEY ?? '',
   model: 'qwen3.6-plus',
   imageApiEndpoint: 'https://api.minimaxi.com/v1',
@@ -127,7 +127,9 @@ export async function chatCompletion(
 
     const decoder = new TextDecoder();
     let fullContent = '';
+    let reasoningContent = '';
     let buffer = '';
+    let contentStarted = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -146,7 +148,12 @@ export async function chatCompletion(
         try {
           const parsed = JSON.parse(data);
           const delta = parsed.choices?.[0]?.delta;
+          if (delta?.reasoning_content && !contentStarted) {
+            reasoningContent += delta.reasoning_content;
+            onToken?.(`\u200B${delta.reasoning_content}`);
+          }
           if (delta?.content) {
+            contentStarted = true;
             fullContent += delta.content;
             onToken?.(delta.content);
           }
