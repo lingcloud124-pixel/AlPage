@@ -3,9 +3,9 @@ import type { ChatRequest, ChatResponse, AISettings } from '../types';
 const SETTINGS_KEY = 'theme-studio-settings';
 
 const ZHIPU_DEFAULTS: AISettings = {
-  apiEndpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+  apiEndpoint: 'https://coding.dashscope.aliyuncs.com/v1',
   apiKey: import.meta.env.VITE_DASHSCOPE_API_KEY ?? '',
-  model: 'qwen-plus',
+  model: 'qwen3.6-plus',
   imageApiEndpoint: 'https://api.minimaxi.com/v1',
   imageApiKey: import.meta.env.VITE_MINIMAX_API_KEY ?? '',
   imageModel: 'image-01',
