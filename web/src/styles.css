@@ -2601,6 +2601,11 @@ body {
   display: none;
 }
 
+.app-container.panel-open .preview-panel {
+  margin-right: 360px;
+  transition: margin-right 0.3s ease;
+}
+
 .drawer-header {
   display: flex;
   justify-content: space-between;

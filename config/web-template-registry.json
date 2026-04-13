@@ -1,0 +1,107 @@
+{
+  "login": {
+    "id": "login",
+    "name": "登录页",
+    "htmlPath": "/src/templates/login.html",
+    "cssPath": "/src/templates/login.css",
+    "width": 2215,
+    "height": 1080
+  },
+  "desktop": {
+    "id": "desktop",
+    "name": "主页",
+    "htmlPath": "/src/templates/desktop.html",
+    "cssPath": "/src/templates/desktop.css",
+    "width": 1920,
+    "height": 1079
+  },
+  "header-default": {
+    "id": "header-default",
+    "name": "默认页眉",
+    "htmlPath": "/src/templates/header-default.html",
+    "cssPath": "/src/templates/header-default.css",
+    "width": 1920,
+    "height": 60,
+    "headerSelectable": true
+  },
+  "header-complex": {
+    "id": "header-complex",
+    "name": "经典页眉/多页签页眉",
+    "htmlPath": "/src/templates/header-complex.html",
+    "cssPath": "/src/templates/header-complex.css",
+    "width": 1920,
+    "height": 90,
+    "headerSelectable": true
+  },
+  "header-menu": {
+    "id": "header-menu",
+    "name": "菜单页眉",
+    "htmlPath": "/src/templates/header-menu.html",
+    "cssPath": "/src/templates/header-menu.css",
+    "width": 1920,
+    "height": 130,
+    "headerSelectable": true
+  },
+  "header-banner": {
+    "id": "header-banner",
+    "name": "横幅页眉",
+    "htmlPath": "/src/templates/header-banner.html",
+    "cssPath": "/src/templates/header-banner.css",
+    "width": 2560,
+    "height": 480,
+    "headerSelectable": true
+  },
+  "sidebar": {
+    "id": "sidebar",
+    "name": "侧边页眉",
+    "htmlPath": "/src/templates/sidebar.html",
+    "cssPath": "/src/templates/sidebar.css",
+    "width": 200,
+    "height": 900
+  },
+  "header-v16-default": {
+    "id": "header-v16-default",
+    "name": "V16新默认页眉",
+    "htmlPath": "/src/templates/header-v16-default.html",
+    "cssPath": "/src/templates/header-v16-default.css",
+    "width": 2560,
+    "height": 70,
+    "headerSelectable": true
+  },
+  "header-simple": {
+    "id": "header-simple",
+    "name": "简洁页眉",
+    "htmlPath": "/src/templates/header-simple.html",
+    "cssPath": "/src/templates/header-simple.css",
+    "width": 1920,
+    "height": 60,
+    "headerSelectable": true
+  },
+  "header-simple-multitab": {
+    "id": "header-simple-multitab",
+    "name": "简洁多标签页眉",
+    "htmlPath": "/src/templates/header-simple-multitab.html",
+    "cssPath": "/src/templates/header-simple-multitab.css",
+    "width": 1920,
+    "height": 90,
+    "headerSelectable": true
+  },
+  "header-classic": {
+    "id": "header-classic",
+    "name": "经典页眉",
+    "htmlPath": "/src/templates/header-classic.html",
+    "cssPath": "/src/templates/header-classic.css",
+    "width": 1920,
+    "height": 70,
+    "headerSelectable": true
+  },
+  "header-v16-search": {
+    "id": "header-v16-search",
+    "name": "V16搜索页眉",
+    "htmlPath": "/src/templates/header-v16-search.html",
+    "cssPath": "/src/templates/header-v16-search.css",
+    "width": 1920,
+    "height": 60,
+    "headerSelectable": true
+  }
+}

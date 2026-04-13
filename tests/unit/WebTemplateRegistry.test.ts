@@ -1,9 +1,13 @@
 import { describe, expect, test } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { getTemplateConfig, getTemplateRegistry } from '../../web/src/theme/template-registry';
 import { getWebHeaderSemantics } from '../../web/src/theme/header-semantics';
 
 describe('web template registry', () => {
+  const projectRoot = process.cwd();
+
   test('contains core page templates and header templates with shared semantic names', () => {
     const registry = getTemplateRegistry();
 
@@ -32,5 +36,14 @@ describe('web template registry', () => {
 
   test('getTemplateConfig returns undefined for unknown template ids', () => {
     expect(getTemplateConfig('unknown-template')).toBeUndefined();
+  });
+
+  test('template registry structure is sourced from shared config', () => {
+    const config = JSON.parse(
+      fs.readFileSync(path.join(projectRoot, 'config', 'web-template-registry.json'), 'utf8'),
+    );
+
+    expect(Object.keys(getTemplateRegistry())).toEqual(Object.keys(config));
+    expect(getTemplateConfig('desktop')?.htmlPath).toBe(config.desktop.htmlPath);
   });
 });

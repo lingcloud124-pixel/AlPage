@@ -2,9 +2,14 @@ import { chromium, type Browser, type Page } from 'playwright';
 import path from 'path';
 import fs from 'fs';
 import { getScreenshotTargets, type ScreenshotTarget } from '../src/export/screenshot-rules';
+import { buildScreenshotThemeImageAssignments } from '../src/export/theme-image-overrides';
 
-const BASE_URL = 'http://localhost:5180';
-const { login: LOGIN_TARGETS, header: HEADER_TARGETS, desktop: DESKTOP_TARGETS } = getScreenshotTargets('light-ui');
+const BASE_URL = 'http://localhost:5173';
+
+interface ScreenshotOptions {
+  themeImageUrl?: string;
+  templateType?: 'light-ui' | 'dark-ui';
+}
 
 async function captureElement(page: Page, target: ScreenshotTarget, outputDir: string): Promise<string> {
   const element = await page.$(target.selector);
@@ -47,46 +52,76 @@ async function captureFullSize(page: Page, target: ScreenshotTarget, outputDir: 
   return filePath;
 }
 
-export async function screenshotAll(outputDir: string): Promise<Record<string, string>> {
+async function applyScreenshotLayout(page: Page, themeImageAssignments: Record<string, string>): Promise<void> {
+  await page.evaluate((assignments) => {
+    (window as any).expandPreview?.();
+    const root = document.getElementById('previewPanel') ?? document.documentElement;
+
+    Object.entries(assignments).forEach(([name, value]) => {
+      root.style.setProperty(name, value);
+    });
+
+    document.body.style.overflow = 'visible';
+    const app = document.querySelector('.app-container') as HTMLElement | null;
+    if (app) app.style.overflow = 'visible';
+
+    const previewContent = document.querySelector('.preview-content') as HTMLElement | null;
+    if (previewContent) {
+      previewContent.style.overflow = 'visible';
+      previewContent.style.display = 'block';
+    }
+
+    const loginPage = document.getElementById('loginPage');
+    if (loginPage) {
+      loginPage.style.transform = 'none';
+      loginPage.style.width = '2215px';
+      loginPage.style.height = '1080px';
+      loginPage.style.minWidth = '2215px';
+      loginPage.style.overflow = 'visible';
+      loginPage.style.position = 'relative';
+    }
+  }, themeImageAssignments);
+}
+
+async function normalizeMainPage(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const mainPage = document.getElementById('mainPage');
+    if (mainPage) {
+      mainPage.style.transform = 'none';
+      mainPage.style.width = 'auto';
+      mainPage.style.height = 'auto';
+      mainPage.style.overflow = 'visible';
+    }
+
+    const container = mainPage?.querySelector('.header-variants-container') as HTMLElement | null;
+    if (container) {
+      container.style.overflow = 'visible';
+    }
+  });
+}
+
+async function selectHeaderVariant(page: Page, templateId: string): Promise<void> {
+  await page.selectOption('#headerSelect', templateId);
+  await page.waitForTimeout(250);
+}
+
+export async function screenshotAll(outputDir: string, options: ScreenshotOptions = {}): Promise<Record<string, string>> {
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
   let browser: Browser | undefined;
   const results: Record<string, string> = {};
+  const templateType = options.templateType ?? 'light-ui';
+  const { login: LOGIN_TARGETS, header: HEADER_TARGETS, desktop: DESKTOP_TARGETS } = getScreenshotTargets(templateType);
+  const themeImageUrl = options.themeImageUrl ?? process.env.THEME_STUDIO_SCREENSHOT_BG ?? '';
+  const themeImageAssignments = buildScreenshotThemeImageAssignments(themeImageUrl);
 
   try {
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
     await page.goto(BASE_URL, { waitUntil: 'networkidle' });
-
-    await page.evaluate(() => {
-      (window as any).expandPreview?.();
-      const root = document.getElementById('previewPanel') ?? document.documentElement;
-      const themedBg = "url('/backgrounds/work-hard-bg.jpg')";
-      root.style.setProperty('--theme-login-bg-image', themedBg);
-      root.style.setProperty('--theme-header-bg-image', themedBg);
-      root.style.setProperty('--theme-sidebar-bg-image', themedBg);
-      root.style.setProperty('--theme-desktop-feature-image', themedBg);
-      root.style.setProperty('--theme-desktop-accent-image', themedBg);
-      document.body.style.overflow = 'visible';
-      const app = document.querySelector('.app-container') as HTMLElement;
-      if (app) app.style.overflow = 'visible';
-      const previewContent = document.querySelector('.preview-content') as HTMLElement;
-      if (previewContent) {
-        previewContent.style.overflow = 'visible';
-        previewContent.style.display = 'block';
-      }
-      const loginPage = document.getElementById('loginPage');
-      if (loginPage) {
-        loginPage.style.transform = 'none';
-        loginPage.style.width = '2215px';
-        loginPage.style.height = '1080px';
-        loginPage.style.minWidth = '2215px';
-        loginPage.style.overflow = 'visible';
-        loginPage.style.position = 'relative';
-      }
-    });
+    await applyScreenshotLayout(page, themeImageAssignments);
 
     await page.waitForTimeout(400);
 
@@ -104,23 +139,24 @@ export async function screenshotAll(outputDir: string): Promise<Record<string, s
 
     await page.click('#mainPageTab', { force: true });
     await page.waitForTimeout(300);
+    await normalizeMainPage(page);
 
-    await page.evaluate(() => {
-      const mainPage = document.getElementById('mainPage');
-      if (mainPage) {
-        mainPage.style.transform = 'none';
-        mainPage.style.width = 'auto';
-        mainPage.style.height = 'auto';
-        mainPage.style.overflow = 'visible';
-      }
-      const container = mainPage?.querySelector('.header-variants-container') as HTMLElement | null;
-      if (container) {
-        container.style.overflow = 'visible';
-      }
-    });
-
-    for (const target of [...HEADER_TARGETS, ...DESKTOP_TARGETS]) {
+    for (const target of DESKTOP_TARGETS) {
       try {
+        const filePath = await captureElement(page, target, outputDir);
+        results[target.outputName] = filePath;
+        console.log(`✅ ${target.outputName}: ${path.basename(filePath)}`);
+      } catch (e) {
+        console.error(`❌ ${target.outputName}: ${(e as Error).message}`);
+      }
+    }
+
+    for (const target of HEADER_TARGETS) {
+      try {
+        if (target.templateId) {
+          await selectHeaderVariant(page, target.templateId);
+          await normalizeMainPage(page);
+        }
         const filePath = await captureElement(page, target, outputDir);
         results[target.outputName] = filePath;
         console.log(`✅ ${target.outputName}: ${path.basename(filePath)}`);
@@ -178,7 +214,9 @@ async function generateDerivedImages(outputDir: string, results: Record<string, 
 
 if (process.argv[1]?.endsWith('screenshot.ts')) {
   const outputDir = process.argv[2] ?? './output/screenshot';
-  screenshotAll(outputDir).then(results => {
+  const themeImageUrl = process.argv[3] ?? process.env.THEME_STUDIO_SCREENSHOT_BG;
+  const templateType = (process.argv[4] ?? 'light-ui') as 'light-ui' | 'dark-ui';
+  screenshotAll(outputDir, { themeImageUrl, templateType }).then(results => {
     console.log(`\n截图完成: ${Object.keys(results).length} 个文件`);
   }).catch(err => {
     console.error('截图失败:', err);

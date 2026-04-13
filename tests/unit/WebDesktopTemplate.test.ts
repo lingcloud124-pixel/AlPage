@@ -71,4 +71,34 @@ describe('web desktop template structure', () => {
     expect(desktopCss).toContain('color-mix(in srgb, var(--primary-color)');
     expect(desktopCss).toContain('color-mix(in srgb, var(--header-font-color)');
   });
+
+  test('default header gradient matches the pen export geometry and theme gradient tokens', () => {
+    const defaultHeaderCss = fs.readFileSync(
+      path.join(projectRoot, 'web/src/templates/header-default.css'),
+      'utf8',
+    );
+
+    expect(defaultHeaderCss).toContain('width: 859px;');
+    expect(defaultHeaderCss).toContain('width: 920px;');
+    expect(defaultHeaderCss).toContain('var(--gradient-mid)');
+  });
+
+  test('exported header variants all support themed background images', () => {
+    const classicHeaderCss = fs.readFileSync(
+      path.join(projectRoot, 'web/src/templates/header-classic.css'),
+      'utf8',
+    );
+    const complexHeaderCss = fs.readFileSync(
+      path.join(projectRoot, 'web/src/templates/header-complex.css'),
+      'utf8',
+    );
+    const menuHeaderCss = fs.readFileSync(
+      path.join(projectRoot, 'web/src/templates/header-menu.css'),
+      'utf8',
+    );
+
+    expect(classicHeaderCss).toContain('var(--theme-header-bg-image');
+    expect(complexHeaderCss).toContain('var(--theme-header-bg-image');
+    expect(menuHeaderCss).toContain('var(--theme-header-bg-image');
+  });
 });

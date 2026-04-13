@@ -211,7 +211,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
     return { success: false, error: validationError };
   }
 
-  const TOOL_TIMEOUT = tool === 'generate_theme_pipeline' ? 90_000 : 15_000;
+  const TOOL_TIMEOUT = tool === 'generate_theme_pipeline' ? 300_000 : 15_000;
 
   const execute = async (): Promise<ToolResult> => {
     switch (tool) {

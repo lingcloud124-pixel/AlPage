@@ -2,6 +2,9 @@
   width: 1920px;
   height: 60px;
   background-color: var(--primary-color);
+  background-image: var(--theme-header-bg-image, none);
+  background-size: cover;
+  background-position: center;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -9,6 +12,7 @@
   box-sizing: border-box;
   color: white;
   position: relative;
+  overflow: hidden;
 }
 
 .header-simple-content {

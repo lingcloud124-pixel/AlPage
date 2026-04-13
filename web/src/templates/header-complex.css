@@ -4,11 +4,29 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
+  background-color: var(--primary-color);
+  background-image: var(--theme-header-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  isolation: isolate;
+}
+
+.template-header-complex::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary-color) 16%, transparent) 0%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+  z-index: 0;
 }
 
 .header-primary {
   height: 60px;
-  background-color: var(--primary-color);
+  background-color: color-mix(in srgb, var(--primary-color) 82%, transparent);
   color: white;
   display: flex;
   align-items: center;
@@ -16,11 +34,13 @@
   padding: 0 20px;
   box-sizing: border-box;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .header-secondary {
   height: 30px;
-  background-color: var(--primary-color-opacity-10);
+  background-color: color-mix(in srgb, var(--primary-color-opacity-10) 86%, white);
   border-top: 1px solid var(--border-color);
   display: flex;
   align-items: center;
@@ -28,6 +48,8 @@
   padding: 0 20px;
   box-sizing: border-box;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .logo-section {

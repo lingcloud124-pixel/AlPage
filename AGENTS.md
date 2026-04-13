@@ -1,7 +1,7 @@
 # AGENTS.md — Theme Studio 项目 AI 持久记忆
 
 > **本项目 AI 助手（OpenCode/Sisyphus）在每次新对话时自动加载此文件。**
-> **最后更新**: 2026-04-12
+> **最后更新**: 2026-04-13
 
 ---
 
@@ -36,46 +36,88 @@
 | `theme_builder.py` | 统一打包工具（生成 15 个 zip） |
 | `scripts/update-pen-theme.py` | Pen 文件颜色/图片自动更新 |
 | `scripts/verify-build.py` | 打包后验证 |
+| `scripts/deep-verify.py` | 深度验证脚本 |
 | `designs/sources/Light-UI-模板.pen` | Light 模板（勿删改） |
 | `designs/sources/Dark-UI-模板.pen` | Dark 模板（勿删改，实验性） |
 | `rules/*.md` | 4 个技术规则文件（铁律，每次必须遵守） |
 | `workflows/*.md` | 5 个流程文档 |
+| `config/*.json` | 8 个配置文件（驱动 CLI + Web 的"配置即数据"层） |
 
 **输入输出**：
 - 输入：`colors/{nameEn}.json`（配色方案）
 - 输出：`output/{日期}-{nameEn}/输出包/`（15 个 zip）
 
-### 产品线 B：Theme Studio Web 应用（前端，纯 HTML+CSS+TS）
+### 产品线 B：Theme Studio Web 应用（前端，HTML + CSS + TS + Tailwind v4）
 
 一个 AI 驱动的 Web 界面，让用户通过对话方式生成主题：
 
 ```
 web/
-├── index.html              # 主入口
-├── src/
-│   ├── main.ts             # 应用初始化
-│   ├── styles.css          # 全局样式
-│   ├── types.ts            # 类型定义
-│   ├── agent/              # AI 对话（OpenAI 兼容 API）
-│   │   ├── chat-client.ts  # SSE 流式客户端
-│   │   ├── system-prompt.ts
-│   │   ├── knowledge-base.ts
-│   │   └── user-preferences.ts
-│   ├── preview/            # 主题预览
-│   │   └── theme-renderer.ts
-│   ├── components/         # UI 组件
-│   │   └── color-editor.ts
-│   ├── packaging/          # 打包功能
-│   │   └── package-builder.ts
-│   ├── templates/          # HTML 模板（登录页/工作台/Header变体/Sidebar）
-│   ├── theme/              # 颜色工具
-│   │   └── color-utils.ts
-│   └── tools/              # Tool Calling 执行器
-│       ├── executor.ts
-│       └── contrast-validator.ts
+├── index.html                      # 主入口（三列布局：侧边栏 + 对话 + 预览）
+├── desktop-preview.html            # 独立桌面预览页（截图用）
+├── login-preview.html              # 独立登录预览页（截图用）
+├── vite.config.ts                  # Vite + Tailwind v4 插件 + MiniMax proxy
+├── package.json                    # theme-studio v0.1.0
+├── tsconfig.json                   # ES2022 + bundler 模块解析
+├── playwright.config.ts            # E2E 测试配置
+├── .env                            # VITE_DASHSCOPE_API_KEY, VITE_ZHIPU_API_KEY
+├── .env.example                    # 环境变量示例
+├── UI_GUIDELINES.md                # UI 指南
+├── presets/                        # 预设配色（light-ui.json, dark-ui.json）
+├── public/
+│   ├── backgrounds/                # 14 张预设背景图
+│   ├── colors/                     # 35 个配色 JSON（镜像自根 colors/）
+│   ├── logo.png                    # 应用 Logo
+│   └── assets/references/          # Symlink 到样例包
+├── scripts/                        # Playwright 截图 + 构建脚本
+│   ├── screenshot.ts
+│   ├── build.ts
+│   ├── run-screenshot.sh
+│   └── run-build.sh
+├── e2e/                            # Playwright E2E 测试
+│   └── smoke.spec.ts
+├── screenshots/                    # 截图产物
+└── src/
+    ├── main.ts                     # ⚠️ 2301 行上帝模块（项目 CRUD + 聊天 + AI + 工具 + 打包 + QC）
+    ├── types.ts                    # TypeScript 类型定义
+    ├── styles.css                  # 全局样式（与 Tailwind 共存）
+    ├── tailwind.css                # Tailwind v4 设计令牌（21 CSS vars → 语义名）
+    ├── agent/                      # AI 对话层
+    │   ├── chat-client.ts          # SSE 流式客户端（MiniMax-M2.7 + MiniMax image-01）
+    │   ├── system-prompt.ts        # 动态 System Prompt（Light/Dark 规则 + 知识库 + 偏好）
+    │   ├── knowledge-base.ts       # 34 预设描述 + 12 行业色板 + Header 指南
+    │   └── user-preferences.ts     # 跨项目偏好记忆（localStorage）
+    ├── preview/
+    │   └── theme-renderer.ts       # CSS 变量管理器（⚠️ 基本未使用，main.ts 直接操作）
+    ├── components/
+    │   └── color-editor.ts         # 21 色编辑面板 + 品牌色派生功能
+    ├── packaging/
+    │   └── package-builder.ts      # 客户端打包（JSZip：fetch 样例包 → 注入 CSS → 下载）
+    ├── export/
+    │   └── screenshot-rules.ts     # 截图目标定义（读取 config/pen-export-rules.json）
+    ├── templates/                  # HTML/CSS 模板（28 文件）
+    │   ├── loader.ts               # 动态模板加载器
+    │   ├── login-behavior.ts       # 登录页交互（Tab 切换、表单、验证码）
+    │   ├── theme-images.ts         # 模板 ID → CSS 图片变量映射
+    │   ├── theme-variables.css     # CSS 变量定义
+    │   ├── login.html + login.css
+    │   ├── desktop.html + desktop.css
+    │   ├── sidebar.html + sidebar.css
+    │   └── 9 种 Header 变体（HTML+CSS 配对）：
+    │       header-banner, header-classic, header-complex, header-default,
+    │       header-menu, header-simple, header-simple-multitab,
+    │       header-v16-default, header-v16-search
+    ├── theme/                      # 颜色与模板逻辑
+    │   ├── color-utils.ts          # HSL/RGB 数学 + deriveColorsFromPrimary（Light+Dark）
+    │   ├── header-semantics.ts     # Header ID → 显示名映射
+    │   ├── template-registry.ts    # 模板配置（读取 config/web-template-registry.json）
+    │   └── template-specific-vars.ts # Dark-UI 特殊 CSS 变量
+    └── tools/                      # Tool Calling
+        ├── executor.ts             # 工具调度（7 个工具含 generate_theme_pipeline）
+        └── contrast-validator.ts   # WCAG 2.1 对比度校验
 ```
 
-**技术约束**：纯 HTML + CSS + TypeScript，无框架（不用 React/Vue），不用 CSS 库。
+**技术约束**：纯 HTML + CSS + TypeScript（不用 React/Vue），Tailwind CSS v4 仅用于设计令牌映射（不是组件库），中文 UI，CSS 变量驱动颜色。
 
 ---
 
@@ -110,6 +152,7 @@ web/
 ### 背景图生成
 
 - API：MiniMax（`api.minimaxi.com`，注意不是 `.io`）
+- 模型：`image-01`
 - `response_format` 必须 `base64`
 - **禁止** `prompt_optimizer` 参数
 - Prompt 必须包含："no text", "no UI elements"
@@ -124,6 +167,7 @@ web/
 
 - 15 个 zip：MK(2) + V12(2) + V13_5(4) + V14_16(5) + V17(2)
 - 验证命令：`python3 scripts/verify-build.py "output/{date}-{nameEn}/输出包"`
+- 深度验证：`python3 scripts/deep-verify.py`
 
 ---
 
@@ -177,6 +221,7 @@ web/
 | 渐变组件被清空 | 脚本匹配太宽泛 | 只更新精确节点 RWYIx/6U9v0 |
 | 找不到模板目录 | 目录名不一致 | `assets/references/samples/主题样例包` 是 symlink |
 | `npm run update` 失败 | 已弃用 | 用 `python3 theme_builder.py` |
+| CI workflow 反复被删 | PAT scope 问题 | 目前无 CI，不要重建 |
 
 ---
 
@@ -191,33 +236,123 @@ Topic Automation/
 ├── PROJECT.md             # 项目简介
 ├── README.md              # 使用说明
 ├── 操作说明书.md           # 用户操作手册
+├── TEST-PLAN.md           # 测试计划（~85 个用例）
 ├── theme_builder.py       # 统一打包工具（15 zip）
-├── .env                   # API Keys（MINIMAX_API_KEY, VITE_ZHIPU_API_KEY）
+├── manifest.json          # 旧工具链 manifest（已废弃，保留参考）
+├── theme-build-request.yaml # CLI 打包配置
+├── package.json           # Root Node 项目（vitest + 依赖）
+├── vite.config.ts         # Root vitest 配置（仅测试，非 Web 构建）
+├── tsconfig.json          # Root TS 编译配置（NodeNext → dist/）
+├── .env                   # API Keys（MINIMAX_API_KEY）
+│
+├── config/                # ⭐ 配置即数据层（8 JSON，驱动 CLI + Web）
+│   ├── build-verification-rules.json
+│   ├── header-mapping-light-ui.json
+│   ├── pen-export-rules.json
+│   ├── theme-relations.json
+│   ├── variable-mapping.json
+│   ├── web-header-guides.json
+│   ├── web-template-registry.json
+│   └── web-version-compatibility.json
+│
 ├── rules/                 # ⭐ 技术规则铁律
 │   ├── dark-ui-color-rules.md
 │   ├── light-ui-color-rules.md
 │   ├── image-generation-rules.md
 │   └── export-rules.md
-├── workflows/             # 流程文档
-├── scripts/               # 自动化脚本
-│   ├── update-pen-theme.py
-│   ├── verify-build.py
-│   └── install-skill.sh
-├── colors/                # 配色方案 JSON
+│
+├── workflows/             # 流程文档（5 个）
+├── docs/                  # 项目文档（9 个）
+│   ├── PRD-产品使用流程.md
+│   ├── 三阶段演进计划.md
+│   ├── 专项技术方案-Pencil到HTML预览与截图打包.md
+│   ├── 外部资料整理-主题规则切图打包映射.md
+│   ├── 实施路线图-开发任务拆分表.md
+│   ├── 开发者系统流程图.md
+│   ├── 用户操作说明书.md
+│   └── plans/             # 历史实施计划
+│
+├── scripts/               # 自动化脚本（17 个 + lib/）
+│   ├── update-pen-theme.py    # Pen 文件颜色/图片更新
+│   ├── verify-build.py        # 打包后验证
+│   ├── deep-verify.py         # 深度验证
+│   ├── export-pen-images.py   # Pencil 图片导出
+│   ├── install-skill.sh       # Skill 安装
+│   ├── image_gen.py           # 图片生成 CLI
+│   ├── validate-colors.py     # 色值验证
+│   ├── apply-theme.mjs        # 主题应用
+│   ├── generate-manifest.mjs  # Manifest 生成
+│   ├── verify-export.mjs      # 导出验证
+│   ├── verify-theme.mjs       # 主题验证
+│   ├── validate-phase.mjs     # 阶段验证
+│   ├── e2e-test.mjs           # E2E 测试运行器
+│   ├── check-dark-ui-colors.sh # Dark-UI 色值检查
+│   ├── run-updater.mjs        # 已弃用
+│   ├── generate_sample_image.py # 样例图片生成
+│   └── lib/                   # 共享库
+│       ├── build-global-colors.mjs
+│       └── export-asset-rules.mjs
+│
+├── colors/                # 配色方案 JSON（35 个）
 ├── designs/
 │   ├── sources/           # 模板（勿删改）
-│   └── Topic-*.pen        # 生成的主题文件
+│   │   ├── Light-UI-模板.pen
+│   │   └── Dark-UI-模板.pen
+│   ├── backgrounds/       # 背景图（10 张）
+│   ├── assets/            # avatars/ + news/
+│   └── Topic-*.pen        # 生成的主题文件（9+）
+│
 ├── assets/references/samples/主题样例包/  # 官方样例包（symlink）
-├── output/                # 输出
-│   └── {日期}-{nameEn}/
-│       ├── 素材包/
-│       └── 输出包/
+│
+├── src/                   # TypeScript 源码（27 文件，活跃维护）
+│   ├── core/              # 核心模块
+│   │   ├── ThemeDetector.ts    # 主题类型检测（V12~V17）
+│   │   ├── ColorUpdater.ts     # CSS 颜色更新
+│   │   ├── ImageProcessor.ts   # 图片处理
+│   │   ├── MetadataUpdater.ts  # 元数据更新
+│   │   ├── PencilMCPClient.ts  # Pencil MCP 客户端
+│   │   ├── ScssCompiler.ts     # SCSS 编译
+│   │   ├── ThemeUpdater.ts     # 主题更新编排
+│   │   └── VariableMapper.ts   # CSS 变量映射
+│   ├── config/
+│   │   └── themeRuleRegistry.ts # 主题规则注册表
+│   ├── types/             # 类型定义
+│   │   ├── ConfigTypes.ts
+│   │   ├── DesktopAI.ts
+│   │   ├── ManifestTypes.ts
+│   │   └── ThemeType.ts
+│   ├── utils/
+│   │   ├── imageMappings.ts
+│   │   └── penNodeMappings.ts
+│   └── theme-automation/  # 工作流自动化
+│       ├── core/          # AssetExtractor, ColorSchemeGenerator, DesignGenerator, WorkflowOrchestrator
+│       ├── types/         # AssetTypes, ColorScheme, DesignAssets, WorkflowTypes
+│       └── utils/         # colorUtils, namingUtils, penpotUtils
+│
+├── dist/                  # 编译产物（tsconfig.json → dist/）
+│
+├── tests/                 # Vitest 测试套件（63 文件）
+│   ├── unit/              # 25 个单元测试
+│   ├── integration/       # 1 个集成测试
+│   ├── fixtures/          # 测试数据（zips, colors, images, SCSS）
+│   ├── helpers/           # 测试工具（fixtureZips.ts）
+│   ├── latest/            # 最新测试输出
+│   └── history/           # 历史测试输出
+│
 ├── web/                   # Theme Studio Web 应用
-│   ├── index.html
-│   ├── src/               # 纯 TS，无框架
-│   └── scripts/           # Playwright 截图 + 构建脚本
-├── src/                   # 旧 TS 代码（已弃用）
-└── templates/             # 主题模板目录
+│   ├── index.html         # 主入口（三列布局）
+│   ├── src/               # 源码（详见第二节产品线 B）
+│   ├── scripts/           # Playwright 截图 + 构建
+│   ├── e2e/               # Playwright E2E
+│   ├── presets/           # 预设配色
+│   ├── public/            # 静态资源（背景图、颜色、Logo）
+│   └── dist/              # 构建产物
+│
+├── templates/             # 主题模板（仅 manifest-template.json）
+└── output/                # 输出
+    └── {日期}-{nameEn}/
+        ├── 素材包/
+        └── 输出包/
 ```
 
 ---
@@ -245,37 +380,80 @@ Topic Automation/
 ### Web 应用开发时
 
 1. 遵循 `DESIGN.md` 的设计规范
-2. 纯 HTML + CSS + TypeScript，不用框架
-3. 中文 UI
-4. CSS 变量驱动颜色，不硬编码
+2. HTML + CSS + TypeScript，不用框架（React/Vue）
+3. Tailwind CSS v4 仅用于设计令牌映射（`tailwind.css` 中 21 个 CSS vars → 语义名），不用于组件样式
+4. 中文 UI
+5. CSS 变量驱动颜色，不硬编码
+6. 注意 `main.ts` 是 2301 行上帝模块，修改时需格外小心
 
 ### 技术栈
 
 | 层 | 技术 |
 |----|------|
 | 主题包 | Python（theme_builder.py, update-pen-theme.py） |
-| Web 前端 | 纯 HTML + CSS + TypeScript（Vite 开发服务器） |
-| AI API | 智谱 GLM-4-Flash（Web 端）/ OpenCode（命令行端） |
-| 图片生成 | MiniMax Image API |
+| Web 前端 | HTML + CSS + TypeScript + Tailwind v4（Vite 开发服务器） |
+| AI 聊天 | 通义千问 qwen3.6-plus（via DashScope API） |
+| 图片生成 | MiniMax image-01（`api.minimaxi.com`） |
 | 设计文件 | Pencil（.pen 格式，通过 MCP 操作） |
 | 截图 | Playwright |
 | 图片处理 | ImageMagick（convert） |
-| 测试 | Vitest（单元）+ Playwright（E2E） |
+| 测试 | Vitest（单元，63 文件）+ Playwright（E2E） |
+| 构建 | Vite（Web）+ tsc（src/ → dist/） |
+
+### Web 端 AI 数据流
+
+```
+用户消息 → main.ts::callAI()
+  → chat-client.ts [SSE to qwen3.6-plus via Vite proxy → dashscope.aliyuncs.com]
+  ← 响应中嵌入 tool calls
+  → executor.ts::executeTool()
+     ├─ generate_theme_pipeline → 生图(MiniMax image-01) + 提色(Canvas) + deriveColorsFromPrimary()
+     ├─ update_colors → 直接操作 CSS vars（绕过 theme-renderer.ts）
+     ├─ validate_colors → contrast-validator.ts
+     └─ save/load_colors → localStorage
+  → main.ts 应用颜色、展开预览、保存项目
+```
+
+### API 配置
+
+| 配置 | 值 |
+|------|-----|
+| 聊天 API（dev） | `/api/chat` → Vite proxy → `dashscope.aliyuncs.com` |
+| 聊天 API（prod） | `dashscope.aliyuncs.com/compatible-mode/v1` |
+| 聊天模型 | `qwen3.6-plus` |
+| 图片 API | `api.minimaxi.com/v1` |
+| 图片模型 | `image-01` |
+| 环境变量 | `VITE_DASHSCOPE_API_KEY`, `VITE_MINIMAX_API_KEY` |
 
 ---
 
 ## 九、环境依赖
 
 - **Node.js**: `npm install`（项目根目录 + web/ 目录）
-- **Python 3**: theme_builder.py, update-pen-theme.py
+- **Python 3**: theme_builder.py, update-pen-theme.py, deep-verify.py
 - **ImageMagick**: `convert` 命令（切图裁剪）
 - **Pencil**: .pen 文件编辑器（MCP 连接）
-- **Playwright**: Web 端截图
-- **API Keys**: `.env` 文件中 `MINIMAX_API_KEY`, `VITE_ZHIPU_API_KEY`
+- **Playwright**: Web 端截图 + E2E 测试
+- **API Keys**:
+  - 根 `.env`: `MINIMAX_API_KEY`
+  - `web/.env`: `VITE_DASHSCOPE_API_KEY`, `VITE_ZHIPU_API_KEY`
 
 ---
 
-## 十、历史决策记录
+## 十、已知技术债
+
+| 问题 | 严重性 | 说明 |
+|------|--------|------|
+| `web/src/main.ts` 上帝模块 | 🔴 高 | 2301 行，含项目 CRUD、聊天、AI 调用、工具执行、打包、QC，急需拆分 |
+| `theme-renderer.ts` 名存实亡 | 🟡 中 | main.ts 直接操作 CSS vars 绕过此模块，职责不清 |
+| `styles.css` 与 Tailwind 共存 | 🟡 中 | 两者职责边界不清，需明确分工 |
+| 配色 JSON 双份存储 | 🟡 中 | `colors/` 和 `web/public/colors/` 内容相同，应考虑 symlink |
+| `src/` 状态模糊 | 🟡 中 | AGENTS.md 曾标"已弃用"但实际 27 文件活跃维护 + 编译到 dist/ |
+| 无 CI | 🟢 低 | CI workflow 已被删 3 次，暂不需要重建 |
+
+---
+
+## 十一、历史决策记录
 
 | 日期 | 决策 | 原因 |
 |------|------|------|
@@ -284,5 +462,14 @@ Topic Automation/
 | 2026-04-09 | 强制阶段锁定机制 | 防止 AI 跳步 |
 | 2026-04-10 | 阶段从 5 阶段简化为 4 阶段 | 合并冗余步骤 |
 | 2026-04-11 | Web 端架构重构：原生 HTML 模板替代 .pen 渲染引擎 | 性能和可维护性 |
+| 2026-04-11 | 删除 `web/src/pen-renderer/`（8 文件） | 渲染从 pen-renderer 迁移到原生 HTML 模板 |
 | 2026-04-12 | Web 端三列布局（豆包风格）+ 跨项目偏好记忆 | 产品体验升级 |
 | 2026-04-12 | 创建 AGENTS.md 持久记忆 | 解决新对话丢失上下文问题 |
+| 2026-04-12 | 引入 Tailwind CSS v4（仅设计令牌） | 21 CSS vars → 语义 token 映射 |
+| 2026-04-12 | AI 模型从 GLM-4-Flash 切换到 qwen3.6-plus | 模型能力升级 |
+| 2026-04-12 | 图片生成从智谱切换到 MiniMax image-01 | 专用图片模型质量更好 |
+| 2026-04-12 | 引入 `deep-verify.py` 深度验证 | 更严格的打包后校验 |
+| 2026-04-13 | 引入 `config/` 配置即数据层 | 集中管理硬编码配置，CLI + Web 共享 |
+| 2026-04-13 | Header 模板扩展到 9 种变体 | 覆盖更多 OA 版本布局需求 |
+| 2026-04-13 | `src/` 从"已弃用"升级为活跃维护 | 新增 theme-automation 工作流 + 25 单元测试 |
+| 2026-04-13 | AGENTS.md 全面更新 | 反映 Codex 修改后的实际项目状态 |

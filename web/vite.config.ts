@@ -14,9 +14,15 @@ export default defineConfig({
     },
     proxy: {
       '/api/chat': {
-        target: 'https://dashscope.aliyuncs.com',
+        target: 'https://coding.dashscope.aliyuncs.com',
         changeOrigin: true,
-        rewrite: (path: string) => path.replace(/^\/api\/chat/, '/compatible-mode/v1'),
+        rewrite: (proxyPath: string) => proxyPath.replace(/^\/api\/chat/, '/v1'),
+      },
+      '/api/image': {
+        target: 'https://47.100.184.181',
+        changeOrigin: true,
+        rewrite: (proxyPath: string) => proxyPath.replace(/^\/api\/image/, '/v1'),
+        headers: { Host: 'api.minimaxi.com' },
       },
     },
   },

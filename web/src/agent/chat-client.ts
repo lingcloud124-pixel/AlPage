@@ -1,25 +1,38 @@
 import type { ChatRequest, ChatResponse, AISettings } from '../types';
 
 export const SETTINGS_KEY = 'themeStudioSettings';
+export const DEFAULT_CHAT_ENDPOINT = '/api/chat';
 
 const ZHIPU_DEFAULTS: AISettings = {
-  apiEndpoint: import.meta.env.DEV ? '/api/chat' : 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+  apiEndpoint: DEFAULT_CHAT_ENDPOINT,
   apiKey: import.meta.env.VITE_DASHSCOPE_API_KEY ?? '',
   model: 'qwen3.6-plus',
-  imageApiEndpoint: 'https://api.minimaxi.com/v1',
+  imageApiEndpoint: '/api/image',
   imageApiKey: import.meta.env.VITE_MINIMAX_API_KEY ?? '',
   imageModel: 'image-01',
 };
 
+function migrateEndpoint(endpoint?: string): string | undefined {
+  if (!endpoint) return endpoint;
+  if (endpoint.includes('dashscope.aliyuncs.com')) return '/api/chat';
+  if (endpoint.includes('api.minimaxi.com')) return '/api/image';
+  return endpoint;
+}
+
 export function loadSettings(): AISettings {
   try {
-    const stored = localStorage.getItem(SETTINGS_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return { ...ZHIPU_DEFAULTS, ...parsed };
-    }
-  } catch {}
-  return { ...ZHIPU_DEFAULTS };
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return { ...ZHIPU_DEFAULTS };
+    const parsed = JSON.parse(raw) as Partial<AISettings>;
+    return {
+      ...ZHIPU_DEFAULTS,
+      ...parsed,
+      apiEndpoint: migrateEndpoint(parsed.apiEndpoint) ?? ZHIPU_DEFAULTS.apiEndpoint,
+      imageApiEndpoint: migrateEndpoint(parsed.imageApiEndpoint) ?? ZHIPU_DEFAULTS.imageApiEndpoint,
+    };
+  } catch {
+    return { ...ZHIPU_DEFAULTS };
+  }
 }
 
 export function saveSettings(settings: AISettings): void {
@@ -42,7 +55,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60_000);
+  const timeoutId = setTimeout(() => controller.abort(), 180_000);
 
   try {
     const response = await fetch(`${imgSettings.endpoint}/image_generation`, {
@@ -54,8 +67,8 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
       body: JSON.stringify({
         model: imgSettings.model,
         prompt,
-        aspect_ratio: '2:1',
-        response_format: 'base64',
+        aspect_ratio: '16:9',
+        response_format: 'url',
       }),
       signal: controller.signal,
     });

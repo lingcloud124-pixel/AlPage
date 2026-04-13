@@ -5,6 +5,10 @@
   flex-direction: column;
   position: relative;
   background-color: var(--primary-color);
+  background-image: var(--theme-header-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
 }
 
 .header-simple-multitab-content {

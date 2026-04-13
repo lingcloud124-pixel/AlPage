@@ -1,14 +1,21 @@
 import { initializeColorEditor } from './components/color-editor';
-import { chatCompletion, loadSettings, parseToolCallsFromContent, SETTINGS_KEY } from './agent/chat-client';
+import {
+  chatCompletion,
+  DEFAULT_CHAT_ENDPOINT,
+  loadSettings,
+  parseToolCallsFromContent,
+  saveSettings as persistSettings,
+} from './agent/chat-client';
 import { getSystemPrompt } from './agent/system-prompt';
 import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences, trackPresetUsage, trackProjectCreated } from './agent/user-preferences';
 import { analyzeImageAsync, executeTool } from './tools/executor';
 import { renderTemplate } from './templates/loader';
 import { buildThemeImageAssignments } from './templates/theme-images';
 import { getTemplateSpecificThemeVars } from './theme/template-specific-vars';
+import { getHeaderSelectOptions } from './theme/template-registry';
 import { buildPackages, downloadPackage } from './packaging/package-builder';
 import { marked } from 'marked';
-import type { ChatMessage } from './types';
+import type { AISettings, ChatMessage } from './types';
 
 declare global {
   interface Window {
@@ -166,8 +173,27 @@ function renderMessage(role: 'user' | 'ai', content: string): HTMLElement {
   return messageDiv;
 }
 
+function hydrateHeaderSelectOptions() {
+  const headerSelect = document.getElementById('headerSelect') as HTMLSelectElement | null;
+  if (!headerSelect) return;
+
+  const currentValue = headerSelect.value;
+  headerSelect.innerHTML = '';
+
+  for (const option of getHeaderSelectOptions()) {
+    const el = document.createElement('option');
+    el.value = option.id;
+    el.textContent = option.name;
+    if (option.id === currentValue) {
+      el.selected = true;
+    }
+    headerSelect.appendChild(el);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   runHealthCheck();
+  hydrateHeaderSelectOptions();
   initializeColorEditor();
   initializeFeatureModules();
   initializeRoutingModule();
@@ -1909,7 +1935,10 @@ function setupSettingsDialog() {
   }
   
   function loadStoredSettings() {
-    const settings = safeJsonParse<Record<string, string>>(localStorage.getItem(SETTINGS_KEY), {});
+    const settings = loadSettings() as AISettings & {
+      modelName?: string;
+      imageModelName?: string;
+    };
     const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement;
     const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
     const modelNameInput = document.getElementById('modelName') as HTMLInputElement;
@@ -1917,7 +1946,7 @@ function setupSettingsDialog() {
     const imageApiKeyInput = document.getElementById('imageApiKey') as HTMLInputElement;
     const imageModelNameInput = document.getElementById('imageModelName') as HTMLInputElement;
     
-    if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+    if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || DEFAULT_CHAT_ENDPOINT;
     if (apiKeyInput) apiKeyInput.value = settings.apiKey || '';
     if (modelNameInput) modelNameInput.value = settings.modelName || settings.model || 'qwen3.6-plus';
     if (imageApiEndpointInput) imageApiEndpointInput.value = settings.imageApiEndpoint || 'https://api.minimaxi.com/v1';
@@ -1936,7 +1965,7 @@ function setupSettingsDialog() {
     if (!apiEndpointInput || !apiKeyInput || !modelNameInput) return;
     
     const settings = {
-      apiEndpoint: apiEndpointInput.value,
+      apiEndpoint: apiEndpointInput.value || DEFAULT_CHAT_ENDPOINT,
       apiKey: apiKeyInput.value, 
       model: modelNameInput.value,
       modelName: modelNameInput.value,
@@ -1946,7 +1975,7 @@ function setupSettingsDialog() {
       imageModelName: imageModelNameInput?.value || 'image-01',
     };
     
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    persistSettings(settings as any);
     settingsModal.classList.remove('active');
     showNotification('设置已保存');
   }

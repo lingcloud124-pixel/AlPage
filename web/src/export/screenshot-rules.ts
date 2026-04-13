@@ -7,6 +7,7 @@ export interface ScreenshotTarget {
   width: number;
   height: number;
   format: 'png' | 'jpeg';
+  templateId?: string;
   clipY?: number;
   clipHeight?: number;
 }
@@ -39,11 +40,36 @@ export function getScreenshotTargets(templateType: 'light-ui' | 'dark-ui') {
 
   const header: ScreenshotTarget[] = [
     {
-      selector: '.desktop-header',
+      selector: '.template-header-default',
       outputName: stripExtension(config.headers.default.outputFile),
       width: config.headers.default.width,
       height: config.headers.default.height,
       format: 'png',
+      templateId: 'header-default',
+    },
+    {
+      selector: '.template-header-complex',
+      outputName: stripExtension(config.headers.complex.outputFile),
+      width: config.headers.complex.width,
+      height: config.headers.complex.height,
+      format: 'png',
+      templateId: 'header-complex',
+    },
+    {
+      selector: '.template-header-menu',
+      outputName: stripExtension(config.headers.menu.outputFile),
+      width: config.headers.menu.width,
+      height: config.headers.menu.height,
+      format: 'png',
+      templateId: 'header-menu',
+    },
+    {
+      selector: '.template-header-banner',
+      outputName: stripExtension(config.headers.banner.outputFile),
+      width: config.headers.banner.width,
+      height: config.headers.banner.height,
+      format: 'png',
+      templateId: 'header-banner',
     },
     {
       selector: '.desktop-sidebar',

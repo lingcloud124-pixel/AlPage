@@ -11,9 +11,10 @@
   top: 0;
   width: 100%;
   height: 100%;
-  background-image: url('./header_complex_frame_bg.png'), var(--primary-color);
+  background-image: var(--theme-header-bg-image, url('./header_complex_frame_bg.png'));
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
   z-index: -2;
 }
 
