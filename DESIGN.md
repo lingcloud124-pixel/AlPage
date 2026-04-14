@@ -1,6 +1,6 @@
 # Theme Studio — 设计系统文档
 
-> **版本**: v1.3 | **更新日期**: 2026-04-13
+> **版本**: v2.0 | **更新日期**: 2026-04-14
 > **本文档是 Theme Studio Web 应用的视觉设计规范，所有 UI 开发以此为准。**
 > **Web 应用使用原生 HTML + CSS + TypeScript，预览通过 CSS 变量实时驱动。**
 
@@ -18,11 +18,31 @@ Theme Studio 是一个 **AI 驱动的 OA 主题设计工具**。视觉上传达"
 - **清晰**：层次分明，重要操作一目了然
 - **响应式**：所有操作即时反馈，流式输出、实时预览
 
+### 设计原则（选择性采纳 x.ai）
+
+基于 x.ai 视觉规范的选择性采纳策略：
+
+| 原则 | 采纳 | 具体实现 |
+|------|------|---------|
+| 暖化 dark 背景 | ✅ | `#111318` 而非纯黑 `#000000` |
+| Surface 分层体系 | ✅ | 5 级 surface（bg → surface-0~3） |
+| 零阴影 | ✅ | shell 元素一律 `box-shadow: none` |
+| 无装饰 | ✅ | 无渐变按钮、无大面积动效 |
+| 边框策略 | ✅ | subtle(0.10) / strong(0.18) 两级 |
+| 颜色层级 | ✅ | 4 级文字（primary → secondary → muted → tertiary） |
+| 0px 圆角 | ❌ | 保留 6-16px 圆角体系 |
+| 等宽字体 | ❌ | 使用系统字体栈 |
+| 大写按钮 | ❌ | 保持正常大小写 |
+| hover 变暗 | ❌ | hover 只能变亮，不能变暗 |
+
 ### 不做什么
 
-- 不使用渐变按钮、毛玻璃、大面积动效等消费级 UI 手法
+- 不使用渐变按钮、大面积动效等消费级 UI 手法
 - 不使用 emoji 作为 UI 图标（对话消息中的 emoji 头像除外）
 - Tailwind CSS v4 仅用于设计令牌映射（`tailwind.css`），不用于组件样式
+- 不在 `:root` / light-theme 变量块之外硬编码任何颜色值（`rgba(...)` / `#xxxxxx`）
+- 不用 `opacity` 降低来实现 hover 效果（只能变亮）
+- shell 元素不使用 `box-shadow`
 
 ---
 
@@ -71,17 +91,58 @@ Theme Studio 是一个 **AI 驱动的 OA 主题设计工具**。视觉上传达"
 | 品牌色深 | `#144E48` | CSS 变量 `--alter-color` |
 | 品牌色浅 | `#B2FFE6` | CSS 变量 `--primary-color-hover` |
 
-### 中性色
+### Shell UI 色彩体系（CSS 变量驱动）
 
-| 用途 | 色值 | CSS 变量 |
-|------|------|---------|
-| 标题文字 | `#333333` | `--header-font-color` |
-| 正文辅助 | `#666666` | `--auxiliary-gray-dark` |
-| 占位文字 | `#999999` | `--auxiliary-gray` |
-| 页面背景 | `#F8F8F8` | `--body-bg-color` |
-| 面板背景 | `#FFFFFF` | `--panel-bg-color` |
-| 对话区背景 | `#F9FAFB` | `--chat-bg-color` |
-| 边框 | `#E5E7EB` | `--border-color` |
+工作台外壳（sidebar、chat、topbar、modal）使用独立的 shell token 体系，与右侧 OA 预览主题完全隔离：
+
+```css
+/* Dark 模式（默认） */
+:root {
+  --app-bg: #111318;          /* 暖化近黑背景 */
+  --surface-0: #161920;       /* 主面板背景（sidebar、chat、modal） */
+  --surface-1: #1a1d25;       /* 次级背景（输入框、卡片） */
+  --surface-2: #1f2228;       /* 三级背景（按钮组、菜单） */
+  --surface-3: #252830;       /* 四级背景（hover 强调） */
+  --text-primary: #F5F5F5;    /* 主文字 */
+  --text-secondary: rgba(255,255,255,0.68);  /* 次要文字 */
+  --text-muted: rgba(255,255,255,0.42);      /* 辅助文字 */
+  --text-tertiary: rgba(255,255,255,0.28);   /* 占位/标签 */
+  --border-subtle: rgba(255,255,255,0.10);   /* 轻边框 */
+  --border-strong: rgba(255,255,255,0.18);   /* 强边框/hover */
+  --accent-ui: #EDEDED;       /* 强调色（按钮背景） */
+  --accent-ui-soft: rgba(255,255,255,0.12);  /* 柔和强调（hover 背景） */
+  --surface-hover: rgba(255,255,255,0.06);   /* hover 微背景 */
+  --surface-msg: rgba(255,255,255,0.03);     /* 消息微背景 */
+  --surface-btn: rgba(255,255,255,0.04);     /* 按钮微背景 */
+  --border-accent: rgba(255,255,255,0.40);   /* 按钮边框 */
+}
+
+/* Light 模式 */
+body[data-ui-theme="light"] {
+  --app-bg: #F5F5F5;
+  --surface-0: #FFFFFF;
+  --surface-1: #F7F7F7;
+  --surface-2: #EFEFEF;
+  --surface-3: #E7E7E7;
+  --text-primary: #111111;
+  --text-secondary: rgba(17,17,17,0.72);
+  --text-muted: rgba(17,17,17,0.5);
+  --text-tertiary: rgba(17,17,17,0.34);
+  --border-subtle: rgba(17,17,17,0.10);
+  --border-strong: rgba(17,17,17,0.18);
+  --accent-ui: #111111;
+  --accent-ui-soft: rgba(17,17,17,0.06);
+  --surface-hover: rgba(17,17,17,0.06);
+  --surface-msg: rgba(17,17,17,0.03);
+  --surface-btn: rgba(17,17,17,0.04);
+  --border-accent: rgba(17,17,17,0.30);
+}
+```
+
+**核心规则**：
+- Light Mode 只影响 Theme Studio 工作台外壳，**不影响右侧 OA 预览主题**
+- 所有颜色必须通过 CSS 变量引用，禁止在 `:root`/light-theme 块之外硬编码
+- 如需新色值，先在 `:root` + `body[data-ui-theme="light"]` 中定义新 token
 
 ### 主题色值体系（20 个变量）
 
@@ -143,23 +204,23 @@ font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 
 不引入任何 Web 字体，使用系统字体栈。
 
-### 字号层级
+### Shell 字号层级（CSS 变量驱动）
 
-| 级别 | 大小 | 行高 | 用途 |
-|------|------|------|------|
-| H1 | 24px | 1.3 | 登录页标题 |
-| H2 | 20px | 1.4 | banner 大标题 |
-| H3 | 16px | 1.4 | 面板标题、卡片标题 |
-| Body | 14px | 1.5 | 正文、消息内容、表单 |
-| Caption | 12px | 1.4 | 辅助说明、时间戳、footer |
+| Token | 大小 | 用途 |
+|-------|------|------|
+| `--font-size-display` | 28px | 欢迎页标题 |
+| `--font-size-title` | 16px | 面板标题、按钮文字 |
+| `--font-size-body` | 14px | 正文、消息内容、表单、sidebar 项目 |
+| `--font-size-meta` | 12px | 辅助说明、时间戳 |
+| `--font-size-micro` | 11px | 标签、副标题 |
 
 ### 字重
 
 | 用途 | 字重 |
 |------|------|
-| 标题 | 500 (Medium) |
+| 标题 | 600 (Semi-bold) |
 | 正文 | 400 (Regular) |
-| 强调 | 700 (Bold) |
+| 强调/按钮 | 700 (Bold) |
 
 ---
 
@@ -184,94 +245,136 @@ font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 
 ## 六、组件规范
 
-### 6.1 对话面板
+### 6.1 Shell 组件通用规则
+
+- **圆角体系**：6px（紧凑）/ 8px（标准）/ 10px（按钮）/ 12-16px（卡片/modal）
+- **阴影**：一律 `box-shadow: none`
+- **hover**：只能变亮（更亮背景或更亮文字色），不能变暗（不用 `opacity` 降低）
+- **分隔线**：chat-header 底部和 input-area 顶部使用 8px 渐变消融（`var(--surface-0)` → `transparent`），不用硬线
+
+### 6.2 对话面板
 
 #### Chat Header
 
-- 高度：auto（约 48px）
-- 内边距：12px 16px
-- 底部边框：1px solid var(--border-color)
-- 背景：var(--panel-bg-color)
-- 品牌标识区域：标题 + 副标题
+- 高度：70px
+- 内边距：14px 18px
+- 底部分隔：8px 渐变消融（`::after` pseudo-element），无硬线
+- 背景：`var(--surface-0)` + `backdrop-filter: blur(16px)`
 
 #### 消息气泡
 
 | 属性 | AI 消息 | 用户消息 |
 |------|---------|---------|
 | 对齐 | 左对齐 | 右对齐 |
-| 背景 | var(--message-ai-bg) | 品牌色背景 / var(--message-user-bg) |
-| 边框 | 1px solid var(--border-color) | 无 |
-| 圆角 | 18px 18px 18px 4px | 18px 4px 18px 18px |
-| 内边距 | 10px 12px | 10px 12px |
-| 最大宽度 | 80% | 80% |
+| 背景 | `var(--accent-ui-soft)` | `var(--border-strong)` |
+| 边框 | `1px solid var(--border-subtle)` | `1px solid var(--border-subtle)` |
+| 圆角 | 12px | 12px |
+| 内边距 | 12px 14px | 12px 14px |
+| 字色 | `var(--text-primary)` | `var(--text-primary)` |
 
 #### 头像
 
 | 属性 | 值 |
 |------|-----|
-| 尺寸 | 32×32px |
-| 圆角 | 50% |
-| 背景 | #E5F0FF |
-| 字号 | 16px |
+| 尺寸 | 28×28px |
+| 圆角 | 6px |
+| 背景 | `var(--surface-2)` |
+| 边框 | `1px solid var(--border-subtle)` |
 
 #### 输入框
 
 | 属性 | 值 |
 |------|-----|
-| 高度 | 40px |
-| 内边距 | 10px 12px |
-| 边框 | 1px solid var(--border-color) |
-| 圆角 | 20px |
-| focus 边框 | var(--primary-color) |
+| 内边距 | 14px 52px 14px 16px |
+| 边框 | `1px solid var(--border-subtle)` |
+| 圆角 | 14px |
+| 背景 | `var(--surface-1)` |
+| focus 边框 | `var(--border-strong)` |
+| 最小高度 | 52px |
 
 #### 发送按钮
 
 | 属性 | 值 |
 |------|-----|
-| 尺寸 | 40×40px |
-| 圆角 | 50% |
-| 背景 | var(--primary-color) |
-| 文字色 | 白色 |
-| 左边距 | 8px |
+| 尺寸 | 46×46px |
+| 圆角 | 12px |
+| 背景 | `var(--accent-ui)` |
+| 文字色 | `var(--app-bg)` |
+| 边框 | `1px solid var(--border-strong)` |
+| hover | `background: var(--text-primary)` |
 
-### 6.2 预览面板
+#### 输入区域（.input-area）
 
-#### Tab 切换
+- 顶部：8px 渐变消融（`::before` pseudo-element），无硬线
+- 背景：transparent
+- 内边距：18px 20px 24px
 
-| 状态 | 文字色 | 底边框 |
-|------|--------|--------|
-| 默认 | var(--auxiliary-gray) | 无 |
-| 激活 | var(--primary-color) | 2px solid var(--primary-color) |
-| 背景 | 白色 | — |
+### 6.3 侧边栏
 
-#### 预览页面
+#### 项目列表
 
-- 渲染尺寸：1920×1079（登录页 2215×1080）
-- 显示缩放：transform: scale(0.5)
-- 背景：var(--body-bg-color)
+- 滚动条：4px 宽，`var(--accent-ui-soft)` 色，hover `var(--border-strong)`
+- 列表右侧 padding：4px（与滚动条间距）
 
-#### 底部操作按钮
-
-| 按钮 | 背景 | 文字色 |
-|------|------|--------|
-| 截图 | var(--primary-color) | 白色 |
-| 打包 | var(--alter-color) | 白色 |
-
-### 6.3 色值编辑器（折叠面板）
-
-- 位置：固定在底部，从右下角展开
-- 触发按钮：品牌色背景，圆角上半部分
-- 展开高度：max-height 60vh
-- 每个 color picker = 色块(30×30) + hex 输入框(80px 宽)
-
-### 6.4 设置弹窗
+#### 项目项（.sidebar-project-item）
 
 | 属性 | 值 |
 |------|-----|
-| 宽度 | 400px |
-| 圆角 | 8px |
-| 遮罩 | rgba(0,0,0,0.5) |
-| z-index | 200 |
+| 圆角 | 6px |
+| 字色 | `var(--text-secondary)` |
+| hover 背景 | `var(--accent-ui-soft)` |
+| active 背景 | `var(--border-strong)` |
+| active 字色 | `var(--text-primary)` |
+
+#### 设置按钮（#sidebarSettingsBtn）
+
+- hover：仅变色（`var(--text-primary)`），**无底色**
+
+### 6.4 Topbar
+
+#### Tab 切换（胶囊控件）
+
+- 外框：`var(--surface-2)` 背景，7px 圆角，35px 高
+- 滑块（tab-indicator）：`var(--surface-3)` 背景 + `1px solid var(--border-subtle)`，5px 圆角
+- 按钮：transparent 背景，10px 宽，10px 字号
+- 激活态字色：`var(--text-primary)`
+- 未激活态字色：dark `var(--text-secondary)` / light `var(--text-muted)`
+
+#### 操作按钮（topbar-action-btn）
+
+- 背景：`var(--accent-ui-soft)`
+- 边框：`1px solid var(--border-subtle)`
+- 圆角：10px
+- hover：`background: var(--border-strong)` + `color: var(--text-primary)`
+
+### 6.5 设置弹窗
+
+| 属性 | 值 |
+|------|-----|
+| 宽度 | auto（section 卡片布局） |
+| 圆角 | 20px |
+| 遮罩 | `rgba(0,0,0,0.72)` + `backdrop-filter: blur(10px)` |
+| 背景 | `var(--surface-0)` |
+| 边框 | `1px solid var(--border-subtle)` |
+| 内部卡片 | `var(--surface-1)` 背景，16px 圆角 |
+
+### 6.6 打包弹窗
+
+| 属性 | 值 |
+|------|-----|
+| 圆角 | 16px |
+| 背景 | `var(--surface-0)` |
+| 边框 | `1px solid var(--border-subtle)` |
+| 产品选项 | 10px 圆角，hover `var(--accent-ui-soft)` |
+| 开始打包按钮 | `var(--accent-ui)` 背景，hover `var(--text-primary)` |
+
+### 6.7 Toast
+
+- 圆角：8px
+- 背景：`var(--surface-1)`
+- 边框：`1px solid var(--border-subtle)`
+- `backdrop-filter: blur(20px)`
+- `box-shadow: none`
 
 ---
 
@@ -474,7 +577,11 @@ web/
 | 无框架 | 不使用 React/Vue/Angular，纯 HTML + CSS + TypeScript |
 | Tailwind v4 仅设计令牌 | 仅用于 `tailwind.css` 中 21 个 CSS vars → 语义名映射，不用于组件样式 |
 | 中文 UI | 所有界面文字使用中文 |
-| CSS 变量驱动 | 所有颜色通过 :root 变量控制，不硬编码 |
+| CSS 变量驱动 | 所有颜色通过 :root 变量控制，禁止在变量块外硬编码色值 |
+| 零阴影 | shell 元素一律 `box-shadow: none` |
+| hover 只变亮 | hover 状态只能变亮（更亮背景/文字），不能通过 opacity 变暗 |
+| 渐变分隔 | chat-header 底部和 input-area 顶部使用渐变消融，不用硬线 |
+| Light Mode 隔离 | Light Mode 只影响工作台外壳，不影响右侧 OA 预览主题 |
 | Playwright 截图 | 打包输出必须通过截图，不能直接导出 DOM |
 | 本地导出桥接 | Web 端只创建导出任务，本地桥接负责执行截图与打包 |
 | Vite Proxy | 所有 API 调用走 `/api/chat` 和 `/api/image` 代理，避免 CORS |

@@ -113,7 +113,7 @@ body[data-ui-theme="light"] .topbar-tabs .tab-indicator {
 
 body[data-ui-theme="light"] .chat-header {
   background: var(--surface-0);
-  border-bottom-color: var(--border-subtle);
+  border-bottom: none;
 }
 
 body[data-ui-theme="light"] .input-area {
@@ -276,14 +276,17 @@ body[data-ui-theme="light"] .theme-studio-toast {
 
 .sidebar-new-btn {
   background: var(--accent-ui-soft);
-  color: #FFFFFF;
+  color: var(--text-primary);
   border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  padding: 10px 14px;
-  font-size: 14px;
-  cursor: pointer;
+  border-radius: 6px;
+  padding: 11px 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  width: 100%;
   text-align: center;
   margin-bottom: 16px;
+  box-sizing: border-box;
+  cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 
@@ -374,6 +377,7 @@ body[data-ui-theme="light"] .theme-studio-toast {
   flex: 1;
   overflow-y: auto;
   scrollbar-gutter: stable;
+  padding-right: 0;
 }
 
 .sidebar-project-list::-webkit-scrollbar {
@@ -382,6 +386,40 @@ body[data-ui-theme="light"] .theme-studio-toast {
 
 .sidebar-project-list::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.sidebar-project-list::-webkit-scrollbar-thumb {
+  background: var(--accent-ui-soft);
+  border-radius: 4px;
+}
+
+.sidebar-project-list::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+.sidebar-project-item {
+  padding: 7px 11px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  margin-bottom: 2px;
+  margin-right: 8px;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.sidebar-project-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-project-list::-webkit-scrollbar-track {
+  background: transparent;
+  margin-left: 0;
 }
 
 .sidebar-project-list::-webkit-scrollbar-thumb {
@@ -403,16 +441,18 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
 
 .sidebar-project-item {
   padding: 7px 11px;
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
   margin-bottom: 2px;
+  margin-right: 8px;
   transition: background 0.15s;
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: relative;
+  border: 1px solid transparent;
 }
 
 .sidebar-project-name {
@@ -708,7 +748,7 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
 }
 .sidebar-settings-btn:hover {
   color: var(--text-primary);
-  background: var(--accent-ui-soft);
+  background: transparent;
 }
 
 .project-action-menu {
@@ -716,9 +756,10 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
   position: absolute;
   top: 44px;
   right: 0;
-  background: white;
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  box-shadow: none;
   padding: 4px 0;
   z-index: 100;
   min-width: 120px;
@@ -734,7 +775,7 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
   padding: 8px 16px;
   border: none;
   background: none;
-  color: #333;
+  color: var(--text-secondary);
   font-size: 14px;
   text-align: left;
   cursor: pointer;
@@ -742,7 +783,7 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
 }
 
 .project-action-menu .plus-menu-item:hover {
-  background: #f5f5f5;
+  background: var(--accent-ui-soft);
 }
 
 .chat-header {
@@ -3713,23 +3754,6 @@ body,
   background: var(--border-strong);
 }
 
-.sidebar-project-item {
-  border: 1px solid transparent;
-  border-radius: 6px;
-  color: var(--text-secondary);
-  margin-bottom: 2px;
-  padding: 7px 11px;
-}
-
-.sidebar-project-item:hover {
-  background: var(--accent-ui-soft);
-}
-
-.sidebar-project-item.active {
-  background: var(--border-strong);
-  color: var(--text-primary);
-}
-
 .sidebar-project-menu {
   background: var(--surface-2);
   border: 1px solid var(--border-subtle);
@@ -3761,12 +3785,21 @@ body,
   height: 70px;
   padding: 14px 18px;
   background: var(--surface-0);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none;
   backdrop-filter: blur(16px);
+  position: relative;
 }
 
 .chat-header::after {
-  display: none;
+  display: block;
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: linear-gradient(to bottom, var(--surface-0), transparent);
+  pointer-events: none;
 }
 
 .chat-project-name,
@@ -3783,10 +3816,15 @@ body,
   border-radius: 6px;
 }
 
-.sidebar-toggle-btn:hover,
-.settings-btn:hover {
+.sidebar-toggle-btn:hover {
   background: var(--accent-ui-soft);
   border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.settings-btn:hover {
+  background: transparent;
+  border-color: transparent;
   color: var(--text-primary);
 }
 
@@ -3799,13 +3837,6 @@ body,
 
 .sidebar-toggle-btn svg.flipped {
   transform: scaleX(-1);
-}
-
-.project-action-menu {
-  background: var(--surface-2);
-  border: 1px solid var(--border-subtle);
-  box-shadow: none;
-  gap: 6px;
 }
 
 .messages-container {
@@ -3978,7 +4009,20 @@ body,
   max-width: 920px;
   padding: 18px 20px 24px;
   background: transparent;
-  border-top: 1px solid var(--border-subtle);
+  border-top: none;
+  position: relative;
+}
+
+.input-area::before {
+  display: block;
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: linear-gradient(to bottom, transparent, var(--surface-0));
+  pointer-events: none;
 }
 
 .chat-input-wrapper input {
