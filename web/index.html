@@ -26,18 +26,26 @@
                 <div class="sidebar-project-list" id="sidebarProjectList">
                     <!-- JS fills this -->
                 </div>
-                <div class="sidebar-settings-btn" id="sidebarSettingsBtn">⚙ 设置</div>
+                <button class="sidebar-settings-btn ui-icon-button ui-icon-button-inline" id="sidebarSettingsBtn" title="打开设置">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.64 0 1.22.26 1.64.68.42.42.68 1 .68 1.64s-.26 1.22-.68 1.64c-.42.42-1 .68-1.64.68h-.09A1.65 1.65 0 0 0 19.4 15z"></path>
+                    </svg>
+                    <span>设置</span>
+                </button>
             </aside>
+            <div class="pane-divider pane-divider-sidebar" id="sidebarDivider" aria-hidden="true"></div>
 
             <!-- Column 2: Chat Panel -->
             <div class="chat-panel" id="chatPanel">
                 <div class="chat-header">
                     <div class="brand-header">
                         <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="展开/收起项目列表">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="3" y1="6" x2="21" y2="6"/>
-                                <line x1="3" y1="12" x2="21" y2="12"/>
-                                <line x1="3" y1="18" x2="21" y2="18"/>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="7 9 3 12 7 15"/>
+                                <line x1="9" y1="7" x2="21" y2="7"/>
+                                <line x1="9" y1="12" x2="21" y2="12"/>
+                                <line x1="9" y1="17" x2="21" y2="17"/>
                             </svg>
                         </button>
                         <span class="chat-project-name" id="chatProjectName">未命名项目</span>
@@ -70,29 +78,29 @@
                             <h4 class="welcome-title">欢迎使用 Theme Studio</h4>
                             <p class="welcome-text">告诉我您需要什么场景的主题，例如 "做一套春节主题" 或 "端午节活动页"：</p>
                             <div class="theme-suggestions">
-                                <button class="theme-btn">🧧 春节主题</button>
-                                <button class="theme-btn">🐲 端午节主题</button>
-                                <button class="theme-btn">🌙 中秋节主题</button>
-                                <button class="theme-btn">🎊 国庆节主题</button>
+                                <button class="theme-btn">春节主题</button>
+                                <button class="theme-btn">端午主题</button>
+                                <button class="theme-btn">中秋主题</button>
+                                <button class="theme-btn">国庆主题</button>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="attachments-preview" id="attachmentsPreview"></div>
+                <div class="attachments-preview chat-shell-attachments" id="attachmentsPreview"></div>
                 
                 <div class="input-area">
                     <div class="image-preview-bar" id="imagePreviewBar"></div>
                     <div class="input-row">
                         <div class="chat-input-wrapper">
                             <input type="text" id="messageInput" placeholder="描述您需要的活动/节日主题..." />
-                            <button id="plusBtn" class="plus-btn" title="添加图片">
+                            <button id="plusBtn" class="plus-btn ui-icon-button chat-shell-plus" title="添加图片">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                                 </svg>
                             </button>
                         </div>
-                        <button id="sendBtn" title="发送">
+                        <button id="sendBtn" class="ui-icon-button chat-shell-send" title="发送">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -101,6 +109,7 @@
                     </div>
                 </div>
             </div>
+            <div class="pane-divider pane-divider-preview" id="previewDivider" aria-hidden="true"></div>
 
             <!-- Column 3: Preview Panel (hidden by default, expands after AI generates theme) -->
             <div class="preview-panel" id="previewPanel">
@@ -169,6 +178,12 @@
                     <div id="packageProductList" class="package-product-list">
                         <!-- 由 JS 动态生成 -->
                     </div>
+                    <div style="margin-top: 20px;">
+                        <h4 style="margin: 0 0 8px; font-size: 14px; color: var(--header-font-color);">最近导出批次</h4>
+                        <div id="packageExportHistory" style="max-height: 180px; overflow:auto; border:1px solid var(--border-color); border-radius:8px; padding:8px; background: var(--panel-bg-color);">
+                            <div style="font-size:12px; color: var(--auxiliary-gray);">暂无导出记录</div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button id="packageStartBtn" style="background-color: var(--primary-color); color: white;">开始打包</button>
@@ -188,15 +203,15 @@
                 <div class="modal-body">
                     <div class="form-field">
                         <label for="apiEndpoint">API端点：</label>
-                        <input type="text" id="apiEndpoint" placeholder="https://open.bigmodel.cn/api/paas/v4" />
+                        <input type="text" id="apiEndpoint" placeholder="coding.dashscope.aliyuncs.com/v1（留空使用默认代理）" />
                     </div>
                     <div class="form-field">
                         <label for="apiKey">API密钥：</label>
-                        <input type="password" id="apiKey" placeholder="智谱 API Key" />
+                        <input type="password" id="apiKey" placeholder="DashScope API Key（留空使用默认）" />
                     </div>
                     <div class="form-field">
                         <label for="modelName">模型名称：</label>
-                        <input type="text" id="modelName" placeholder="GLM-4-Flash" />
+                        <input type="text" id="modelName" placeholder="qwen3.6-plus（留空使用默认）" />
                     </div>
                     <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:16px 0;">
                     <h4 style="margin:0 0 12px;color:rgba(255,255,255,0.7);font-size:13px;">图像生成模型 — MiniMax image-01（用于生成主题背景图）</h4>
@@ -211,6 +226,19 @@
                     <div class="form-field">
                         <label for="imageModelName">图像模型名称：</label>
                         <input type="text" id="imageModelName" placeholder="image-01" />
+                    </div>
+                    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:16px 0;">
+                    <h4 style="margin:0 0 12px;color:rgba(255,255,255,0.7);font-size:13px;">导出设置</h4>
+                    <div class="form-field">
+                        <label for="exportRoot">导出根目录：</label>
+                        <input type="text" id="exportRoot" placeholder="例如：/Users/你的名字/Documents/Theme Studio" />
+                    </div>
+                    <div class="form-field">
+                        <label for="uiThemeMode">工作台界面模式：</label>
+                        <select id="uiThemeMode">
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">

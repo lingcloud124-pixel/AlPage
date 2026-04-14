@@ -28,29 +28,19 @@ describe('chat client settings', async () => {
     vi.clearAllMocks();
   });
 
-  test('loadSettings keeps persisted settings instead of deleting them', () => {
-    store.set(
-      mod.SETTINGS_KEY,
-      JSON.stringify({
-        apiEndpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-        apiKey: 'sk-test',
-        model: 'qwen3.6-plus',
-      }),
-    );
-
+  test('loadSettings returns defaults when no saved settings', () => {
     const settings = mod.loadSettings();
 
-    expect(settings.apiEndpoint).toBe('https://dashscope.aliyuncs.com/compatible-mode/v1');
-    expect(settings.apiKey).toBe('sk-test');
-    expect(localStorageMock.removeItem).not.toHaveBeenCalled();
+    expect(settings.apiEndpoint).toBe('/api/chat');
+    expect(settings.model).toBe('qwen3.6-plus');
   });
 
   test('saveSettings persists values for later chat requests', () => {
     mod.saveSettings({
-      apiEndpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      apiEndpoint: '/api/chat',
       apiKey: 'sk-test-2',
       model: 'qwen3.6-plus',
-      imageApiEndpoint: 'https://api.minimaxi.com/v1',
+      imageApiEndpoint: '/api/image',
       imageApiKey: 'img-key',
       imageModel: 'image-01',
     });
@@ -58,32 +48,48 @@ describe('chat client settings', async () => {
     const raw = store.get(mod.SETTINGS_KEY);
     expect(raw).toBeTruthy();
     expect(JSON.parse(raw!)).toMatchObject({
-      apiEndpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      apiEndpoint: '/api/chat',
       apiKey: 'sk-test-2',
+      imageApiEndpoint: '/api/image',
       imageApiKey: 'img-key',
     });
   });
 
-  test('default chat endpoint matches settings dialog default', () => {
-    expect(mod.DEFAULT_CHAT_ENDPOINT).toBe('https://dashscope.aliyuncs.com/compatible-mode/v1');
-
-    const settings = mod.loadSettings();
-    expect(settings.apiEndpoint).toBe(mod.DEFAULT_CHAT_ENDPOINT);
+  test('default chat endpoint is Vite proxy path', () => {
+    expect(mod.DEFAULT_CHAT_ENDPOINT).toBe('/api/chat');
   });
 
-  test('loadSettings migrates legacy dev proxy endpoint to DashScope endpoint', () => {
+  test('loadSettings migrates old DashScope direct endpoint to proxy', () => {
     store.set(
       mod.SETTINGS_KEY,
       JSON.stringify({
-        apiEndpoint: '/api/chat',
-        apiKey: 'sk-legacy',
+        apiEndpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        apiKey: 'sk-old',
         model: 'qwen3.6-plus',
       }),
     );
 
     const settings = mod.loadSettings();
 
-    expect(settings.apiEndpoint).toBe(mod.DEFAULT_CHAT_ENDPOINT);
-    expect(settings.apiKey).toBe('sk-legacy');
+    expect(settings.apiEndpoint).toBe('/api/chat');
+    expect(settings.apiKey).toBe('sk-old');
+  });
+
+  test('loadSettings migrates old MiniMax direct endpoint to proxy', () => {
+    store.set(
+      mod.SETTINGS_KEY,
+      JSON.stringify({
+        apiEndpoint: '/api/chat',
+        apiKey: 'sk-test',
+        model: 'qwen3.6-plus',
+        imageApiEndpoint: 'https://api.minimaxi.com/v1',
+        imageApiKey: 'img-old',
+      }),
+    );
+
+    const settings = mod.loadSettings();
+
+    expect(settings.imageApiEndpoint).toBe('/api/image');
+    expect(settings.imageApiKey).toBe('img-old');
   });
 });

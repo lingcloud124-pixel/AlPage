@@ -3,8 +3,10 @@ import path from 'path';
 import fs from 'fs';
 import { getScreenshotTargets, type ScreenshotTarget } from '../src/export/screenshot-rules';
 import { buildScreenshotThemeImageAssignments } from '../src/export/theme-image-overrides';
+import { getTemplateConfig } from '../src/theme/template-registry';
 
 const BASE_URL = 'http://localhost:5173';
+const WEB_ROOT = path.resolve(import.meta.dirname, '..');
 
 interface ScreenshotOptions {
   themeImageUrl?: string;
@@ -31,78 +33,90 @@ async function captureElement(page: Page, target: ScreenshotTarget, outputDir: s
   return filePath;
 }
 
-async function captureFullSize(page: Page, target: ScreenshotTarget, outputDir: string): Promise<string> {
-  const ext = target.format === 'jpeg' ? 'jpg' : 'png';
-  const filePath = path.join(outputDir, `${target.outputName}.${ext}`);
+function requireTemplateId(target: ScreenshotTarget): string {
+  if (!target.templateId) throw new Error(`截图目标缺少 templateId: ${target.outputName}`);
+  return target.templateId;
+}
 
-  await page.setViewportSize({ width: target.width, height: target.height });
+function buildThemeVarCss(assignments: Record<string, string>): string {
+  return Object.entries(assignments)
+    .map(([name, value]) => `${name}: ${value};`)
+    .join('\n');
+}
 
-  const clip = target.clipY !== undefined
-    ? { x: 0, y: target.clipY, width: target.width, height: target.clipHeight ?? target.height }
-    : undefined;
+function readTemplateHtml(templateId: string): string {
+  const template = getTemplateConfig(templateId);
+  if (!template) throw new Error(`未知模板: ${templateId}`);
 
-  await page.screenshot({
-    path: filePath,
-    type: target.format,
-    quality: target.format === 'jpeg' ? 95 : undefined,
-    clip,
-    fullPage: false,
+  const relativePath = template.htmlPath.replace(/^\//, '');
+  return fs.readFileSync(path.join(WEB_ROOT, relativePath), 'utf-8');
+}
+
+function buildTemplateDocument(target: ScreenshotTarget, themeImageAssignments: Record<string, string>): string {
+  const templateId = requireTemplateId(target);
+  const template = getTemplateConfig(templateId);
+  if (!template) throw new Error(`未知模板: ${templateId}`);
+
+  const html = readTemplateHtml(templateId);
+  const themeVarCss = buildThemeVarCss(themeImageAssignments);
+
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="${BASE_URL}/src/templates/theme-variables.css">
+  <link rel="stylesheet" href="${BASE_URL}${template.cssPath}">
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: ${target.width}px;
+      height: ${target.height}px;
+      overflow: hidden;
+      background: transparent;
+    }
+    :root {
+      ${themeVarCss}
+    }
+  </style>
+</head>
+<body>
+  ${html}
+</body>
+</html>`;
+}
+
+async function renderTemplateTarget(browser: Browser, target: ScreenshotTarget, themeImageAssignments: Record<string, string>): Promise<Page> {
+  const page = await browser.newPage({
+    viewport: { width: target.width, height: target.height },
   });
 
-  return filePath;
-}
-
-async function applyScreenshotLayout(page: Page, themeImageAssignments: Record<string, string>): Promise<void> {
-  await page.evaluate((assignments) => {
-    (window as any).expandPreview?.();
-    const root = document.getElementById('previewPanel') ?? document.documentElement;
-
-    Object.entries(assignments).forEach(([name, value]) => {
-      root.style.setProperty(name, value);
-    });
-
-    document.body.style.overflow = 'visible';
-    const app = document.querySelector('.app-container') as HTMLElement | null;
-    if (app) app.style.overflow = 'visible';
-
-    const previewContent = document.querySelector('.preview-content') as HTMLElement | null;
-    if (previewContent) {
-      previewContent.style.overflow = 'visible';
-      previewContent.style.display = 'block';
-    }
-
-    const loginPage = document.getElementById('loginPage');
-    if (loginPage) {
-      loginPage.style.transform = 'none';
-      loginPage.style.width = '2215px';
-      loginPage.style.height = '1080px';
-      loginPage.style.minWidth = '2215px';
-      loginPage.style.overflow = 'visible';
-      loginPage.style.position = 'relative';
-    }
-  }, themeImageAssignments);
-}
-
-async function normalizeMainPage(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const mainPage = document.getElementById('mainPage');
-    if (mainPage) {
-      mainPage.style.transform = 'none';
-      mainPage.style.width = 'auto';
-      mainPage.style.height = 'auto';
-      mainPage.style.overflow = 'visible';
-    }
-
-    const container = mainPage?.querySelector('.header-variants-container') as HTMLElement | null;
-    if (container) {
-      container.style.overflow = 'visible';
-    }
+  await page.setContent(buildTemplateDocument(target, themeImageAssignments), {
+    waitUntil: 'load',
   });
-}
 
-async function selectHeaderVariant(page: Page, templateId: string): Promise<void> {
-  await page.selectOption('#headerSelect', templateId);
-  await page.waitForTimeout(250);
+  await page.waitForLoadState('networkidle').catch(() => {});
+  await page.evaluate(({ selector, width, height }) => {
+    const element = document.querySelector(selector) as HTMLElement | null;
+    if (!element) return;
+    element.style.width = `${width}px`;
+    element.style.height = `${height}px`;
+    element.style.minWidth = `${width}px`;
+    element.style.minHeight = `${height}px`;
+    element.style.maxWidth = `${width}px`;
+    element.style.maxHeight = `${height}px`;
+    element.style.overflow = 'hidden';
+    element.style.transform = 'none';
+    element.style.margin = '0';
+  }, {
+    selector: target.selector,
+    width: target.width,
+    height: target.height,
+  });
+
+  return page;
 }
 
 export async function screenshotAll(outputDir: string, options: ScreenshotOptions = {}): Promise<Record<string, string>> {
@@ -119,49 +133,43 @@ export async function screenshotAll(outputDir: string, options: ScreenshotOption
 
   try {
     browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
-    await page.goto(BASE_URL, { waitUntil: 'networkidle' });
-    await applyScreenshotLayout(page, themeImageAssignments);
-
-    await page.waitForTimeout(400);
-
-    await page.setViewportSize({ width: 2215, height: 1080 });
 
     for (const target of LOGIN_TARGETS) {
-      try {
-        const filePath = await captureFullSize(page, { ...target, width: 2215, height: 1080 }, outputDir);
-        results[target.outputName] = filePath;
-        console.log(`✅ ${target.outputName}: ${path.basename(filePath)}`);
-      } catch (e) {
-        console.error(`❌ ${target.outputName}: ${(e as Error).message}`);
-      }
-    }
-
-    await page.click('#mainPageTab', { force: true });
-    await page.waitForTimeout(300);
-    await normalizeMainPage(page);
-
-    for (const target of DESKTOP_TARGETS) {
+      const page = await renderTemplateTarget(browser, target, themeImageAssignments);
       try {
         const filePath = await captureElement(page, target, outputDir);
         results[target.outputName] = filePath;
         console.log(`✅ ${target.outputName}: ${path.basename(filePath)}`);
       } catch (e) {
         console.error(`❌ ${target.outputName}: ${(e as Error).message}`);
+      } finally {
+        await page.close();
+      }
+    }
+
+    for (const target of DESKTOP_TARGETS) {
+      const page = await renderTemplateTarget(browser, target, themeImageAssignments);
+      try {
+        const filePath = await captureElement(page, target, outputDir);
+        results[target.outputName] = filePath;
+        console.log(`✅ ${target.outputName}: ${path.basename(filePath)}`);
+      } catch (e) {
+        console.error(`❌ ${target.outputName}: ${(e as Error).message}`);
+      } finally {
+        await page.close();
       }
     }
 
     for (const target of HEADER_TARGETS) {
+      const page = await renderTemplateTarget(browser, target, themeImageAssignments);
       try {
-        if (target.templateId) {
-          await selectHeaderVariant(page, target.templateId);
-          await normalizeMainPage(page);
-        }
         const filePath = await captureElement(page, target, outputDir);
         results[target.outputName] = filePath;
         console.log(`✅ ${target.outputName}: ${path.basename(filePath)}`);
       } catch (e) {
         console.error(`❌ ${target.outputName}: ${(e as Error).message}`);
+      } finally {
+        await page.close();
       }
     }
 

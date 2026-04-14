@@ -131,4 +131,37 @@ export interface AISettings {
   imageApiEndpoint?: string;
   imageApiKey?: string;
   imageModel?: string;
+  exportRoot?: string;
+  uiTheme?: 'dark' | 'light';
+}
+
+export type ExportBatchStatus =
+  | 'queued'
+  | 'bridge_unavailable'
+  | 'capturing'
+  | 'packaging'
+  | 'verifying'
+  | 'completed'
+  | 'failed';
+
+export interface ExportProjectSnapshot {
+  projectId: string;
+  name: string;
+  nameEn: string;
+  templateType: 'light-ui' | 'dark-ui';
+  colors: Record<string, string>;
+  bgImageUrl?: string;
+  headerBgImageUrl?: string;
+}
+
+export interface ExportBatch {
+  id: string;
+  createdAt: number;
+  status: ExportBatchStatus;
+  selectedProducts: string[];
+  exportRoot?: string;
+  projectDir?: string;
+  exportDir?: string;
+  error?: string;
+  projectSnapshot: ExportProjectSnapshot;
 }

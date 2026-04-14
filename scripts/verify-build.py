@@ -5,9 +5,10 @@ Verify theme build output against reference samples.
 Usage:
   python3 scripts/verify-build.py <output_dir>
   python3 scripts/verify-build.py output/20260409-超级英雄超人/输出包
+  python3 scripts/verify-build.py <output_dir> --products mk,ekp_v17
 
 Checks:
-   1. Exactly 15 zip files generated
+   1. Exactly expected zip files generated (all 15 by default, or selected subset)
    2. Each zip's file structure matches its reference sample
    3. Color injection: new theme color appears in theme CSS files
    4. No old template colors (#2C615C, #144E48) remain in theme CSS
@@ -25,6 +26,13 @@ ROOT = Path(__file__).parent.parent
 REF_DIR = ROOT / "assets/references/samples/主题样例包"
 VERIFY_RULES = json.loads((ROOT / "config" / "build-verification-rules.json").read_text(encoding="utf-8"))
 EXPECTED_ZIPS = [(item["prefix"], item["reference"]) for item in VERIFY_RULES["expectedZips"]]
+PRODUCT_TO_PREFIXES = {
+    "mk": ["主题-MK-", "登录-MK-"],
+    "ekp_v12": ["主题-V12-", "登录-V12-"],
+    "ekp_v13_5": ["主题-V13〜V13.5-", "登录-V13〜V13.5-", "登录-V13-", "登录-V13.5-"],
+    "ekp_v14_16": ["主题-V14〜V16-", "登录-V14〜V16-", "登录-V14-", "登录-V15-", "登录-V16-"],
+    "ekp_v17": ["主题-V17-", "登录-V17-"],
+}
 
 OLD_COLORS = {
     "#2c615c",
@@ -186,22 +194,36 @@ def main():
         sys.exit(1)
 
     output_dir = Path(sys.argv[1])
+    selected_products = None
+    if len(sys.argv) >= 4 and sys.argv[2] == "--products":
+        selected_products = [item.strip() for item in sys.argv[3].split(",") if item.strip()]
     if not output_dir.exists():
         print(f"❌ Output directory not found: {output_dir}")
         sys.exit(1)
 
     print(f"🔍 Verifying build: {output_dir}\n")
 
+    expected_zips = EXPECTED_ZIPS
+    if selected_products:
+        selected_prefixes = {
+            prefix
+            for product in selected_products
+            for prefix in PRODUCT_TO_PREFIXES.get(product, [])
+        }
+        expected_zips = [
+            (prefix, ref) for prefix, ref in EXPECTED_ZIPS if prefix in selected_prefixes
+        ]
+
     all_zips = list(output_dir.glob("*.zip"))
-    print(f"📦 Found {len(all_zips)} zip files (expected 15)")
-    if len(all_zips) != 15:
-        print(f"   ⚠️  Expected 15, got {len(all_zips)}")
+    print(f"📦 Found {len(all_zips)} zip files (expected {len(expected_zips)})")
+    if len(all_zips) != len(expected_zips):
+        print(f"   ⚠️  Expected {len(expected_zips)}, got {len(all_zips)}")
 
     passed = 0
     failed = 0
     skipped = 0
 
-    for prefix, ref_name in EXPECTED_ZIPS:
+    for prefix, ref_name in expected_zips:
         gen_path = find_gen_zip(output_dir, prefix)
         if not gen_path:
             print(f"❌ Missing: {prefix}*.zip")
@@ -227,7 +249,7 @@ def main():
             failed += 1
 
     print(f"\n{'=' * 60}")
-    print(f"Results: {passed} passed, {failed} failed (of {len(EXPECTED_ZIPS)})")
+    print(f"Results: {passed} passed, {failed} failed (of {len(expected_zips)})")
     if failed == 0:
         print("✅ ALL CHECKS PASSED")
     else:

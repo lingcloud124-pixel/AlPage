@@ -1,5 +1,6 @@
 import penExportRules from '../../../config/pen-export-rules.json';
 import { getTemplateConfig } from '../theme/template-registry';
+import themeRelations from '../../../config/theme-relations.json';
 
 export interface ScreenshotTarget {
   selector: string;
@@ -20,21 +21,28 @@ export function getScreenshotTargets(templateType: 'light-ui' | 'dark-ui') {
   const config = penExportRules[templateType];
   const loginTemplate = getTemplateConfig('login');
   const desktopTemplate = getTemplateConfig('desktop');
+  const relationSet = themeRelations.headerTypeRelations;
+  const relations = {
+    ...relationSet['light-ui'],
+    ...(relationSet[templateType] ?? {}),
+  };
 
   const login: ScreenshotTarget[] = [
     {
-      selector: '#loginPage',
+      selector: '.template-login',
       outputName: stripExtension(config.loginBackground.full.outputFile),
       width: loginTemplate?.width ?? config.loginBackground.full.width,
       height: loginTemplate?.height ?? config.loginBackground.full.height,
       format: 'jpeg',
+      templateId: 'login',
     },
     {
-      selector: '#loginPage',
+      selector: '.template-login',
       outputName: 'login_thumb',
       width: loginTemplate?.width ?? config.loginBackground.full.width,
       height: loginTemplate?.height ?? config.loginBackground.full.height,
       format: 'jpeg',
+      templateId: 'login',
     },
   ];
 
@@ -72,21 +80,55 @@ export function getScreenshotTargets(templateType: 'light-ui' | 'dark-ui') {
       templateId: 'header-banner',
     },
     {
-      selector: '.desktop-sidebar',
+      selector: '.template-sidebar',
       outputName: stripExtension(config.headers.sideHeader.outputFile),
       width: config.headers.sideHeader.width,
       height: config.headers.sideHeader.height,
       format: 'png',
+      templateId: 'sidebar',
+    },
+    {
+      selector: '.template-header-simple-multitab',
+      outputName: stripExtension(relations.simpleMultiTab.outputFile),
+      width: getTemplateConfig('header-simple-multitab')?.width ?? config.headers.complex.width,
+      height: getTemplateConfig('header-simple-multitab')?.height ?? config.headers.complex.height,
+      format: 'png',
+      templateId: 'header-simple-multitab',
+    },
+    {
+      selector: '.template-header-simple',
+      outputName: stripExtension(relations.simple.outputFile),
+      width: getTemplateConfig('header-simple')?.width ?? config.headers.default.width,
+      height: getTemplateConfig('header-simple')?.height ?? config.headers.default.height,
+      format: 'png',
+      templateId: 'header-simple',
+    },
+    {
+      selector: '.template-header-v16-default',
+      outputName: stripExtension(relations.singleMenu.outputFile),
+      width: getTemplateConfig('header-v16-default')?.width ?? config.headers.default.width,
+      height: getTemplateConfig('header-v16-default')?.height ?? config.headers.default.height,
+      format: 'png',
+      templateId: 'header-v16-default',
+    },
+    {
+      selector: '.template-header-v16-search',
+      outputName: stripExtension(relations.zoneNav.outputFile),
+      width: getTemplateConfig('header-v16-search')?.width ?? config.headers.default.width,
+      height: getTemplateConfig('header-v16-search')?.height ?? config.headers.default.height,
+      format: 'png',
+      templateId: 'header-v16-search',
     },
   ];
 
   const desktop: ScreenshotTarget[] = [
     {
-      selector: '#mainPage',
+      selector: '.desktop-wrapper',
       outputName: 'desktop',
       width: desktopTemplate?.width ?? 1920,
       height: desktopTemplate?.height ?? 1079,
       format: 'png',
+      templateId: 'desktop',
     },
   ];
 

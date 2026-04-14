@@ -4,18 +4,19 @@ import { getScreenshotTargets } from '../../web/src/export/screenshot-rules';
 import { getTemplateConfig } from '../../web/src/theme/template-registry';
 
 describe('web screenshot rules', () => {
-  test('derives login and header capture targets from shared config rules', () => {
+  test('derives login and packaging-aligned header capture targets from shared config rules', () => {
     const rules = getScreenshotTargets('light-ui');
     const headerTargetsByName = Object.fromEntries(
       rules.header.map((target) => [target.outputName, target]),
     );
 
     expect(rules.login[0]).toMatchObject({
-      selector: '#loginPage',
+      selector: '.template-login',
       outputName: 'bg-login',
       width: 2215,
       height: 1080,
       format: 'jpeg',
+      templateId: 'login',
     });
 
     expect(headerTargetsByName.header_tlayout_frame_bg).toMatchObject({
@@ -55,11 +56,48 @@ describe('web screenshot rules', () => {
     });
 
     expect(headerTargetsByName['header-sideheader']).toMatchObject({
-      selector: '.desktop-sidebar',
+      selector: '.template-sidebar',
       outputName: 'header-sideheader',
       width: 200,
       height: 900,
       format: 'png',
+      templateId: 'sidebar',
+    });
+
+    expect(headerTargetsByName.header_simple_frame_bg).toMatchObject({
+      selector: '.template-header-simple-multitab',
+      outputName: 'header_simple_frame_bg',
+      width: 1920,
+      height: 90,
+      format: 'png',
+      templateId: 'header-simple-multitab',
+    });
+
+    expect(headerTargetsByName.header_zone_frame_bg).toMatchObject({
+      selector: '.template-header-simple',
+      outputName: 'header_zone_frame_bg',
+      width: 1920,
+      height: 60,
+      format: 'png',
+      templateId: 'header-simple',
+    });
+
+    expect(headerTargetsByName.header_single_menu_frame_bg).toMatchObject({
+      selector: '.template-header-v16-default',
+      outputName: 'header_single_menu_frame_bg',
+      width: 2560,
+      height: 70,
+      format: 'png',
+      templateId: 'header-v16-default',
+    });
+
+    expect(headerTargetsByName.header_zone_nav_frame_bg).toMatchObject({
+      selector: '.template-header-v16-search',
+      outputName: 'header_zone_nav_frame_bg',
+      width: 1920,
+      height: 60,
+      format: 'png',
+      templateId: 'header-v16-search',
     });
   });
 

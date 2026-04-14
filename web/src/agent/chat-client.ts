@@ -10,6 +10,8 @@ const ZHIPU_DEFAULTS: AISettings = {
   imageApiEndpoint: '/api/image',
   imageApiKey: import.meta.env.VITE_MINIMAX_API_KEY ?? '',
   imageModel: 'image-01',
+  exportRoot: '',
+  uiTheme: 'dark',
 };
 
 function migrateEndpoint(endpoint?: string): string | undefined {
@@ -99,7 +101,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
     return { success: false, error: '图像生成返回为空' };
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
-      return { success: false, error: '图像生成超时（60秒）' };
+      return { success: false, error: '图像生成超时（180秒）' };
     }
     return { success: false, error: `图像生成失败: ${(e as Error).message}` };
   } finally {

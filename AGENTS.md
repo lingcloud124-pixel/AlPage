@@ -11,7 +11,7 @@
 
 - **项目名**: Theme Studio（主题自动化 / Topic Automation）
 - **项目路径**: `/Users/gulingfei/Desktop/APP（vibe-coding）/Topic Automation`
-- **核心用途**: 用户描述需求 → AI 生成背景图 → 提取配色 → 编辑 .pen 设计文件 → 切图导出 → 打包生成 15 个 OA 主题 zip 包
+- **核心用途**: 用户在 Web 界面描述需求 → AI 生成背景图 → 提取配色 → HTML 模板实时预览 → 用户按需选择产品 → 后台截图打包 → 生成 15 个 OA 主题 zip 包
 - **目标产品**: EKp / MK / KK 等 OA 系统（版本 V12 ~ V17）
 - **Skill 名称**: `theme-automation`
 
@@ -19,35 +19,13 @@
 
 ## 二、架构概览
 
-本项目有 **两条独立的产品线**，共享配色和模板资源但技术栈完全不同：
+本项目以 **Path B（Web 浏览器流程）** 为主，Path A（Pencil MCP CLI）已弃用：
 
-### 产品线 A：主题包生成（核心，Python + Pencil MCP）
+### 产品线 A：CLI + Pencil MCP（已弃用，仅供参考）
 
-这是主要工作流，用户通过对话生成 OA 主题包：
+> ⚠️ 此路径已不再使用。`SKILL.md` 和 `rules/` 中描述的 4 阶段 Pencil MCP 流程仅作历史参考。
 
-```
-用户描述 → MiniMax 生图 → 从图提取配色 → 编辑 .pen 文件 → Pencil 切图 → theme_builder.py 打包 → 15 个 zip
-```
-
-**关键文件**：
-| 文件 | 作用 |
-|------|------|
-| `SKILL.md` | AI 操作手册（4 阶段流程，每次必须读取） |
-| `theme_builder.py` | 统一打包工具（生成 15 个 zip） |
-| `scripts/update-pen-theme.py` | Pen 文件颜色/图片自动更新 |
-| `scripts/verify-build.py` | 打包后验证 |
-| `scripts/deep-verify.py` | 深度验证脚本 |
-| `designs/sources/Light-UI-模板.pen` | Light 模板（勿删改） |
-| `designs/sources/Dark-UI-模板.pen` | Dark 模板（勿删改，实验性） |
-| `rules/*.md` | 4 个技术规则文件（铁律，每次必须遵守） |
-| `workflows/*.md` | 5 个流程文档 |
-| `config/*.json` | 8 个配置文件（驱动 CLI + Web 的"配置即数据"层） |
-
-**输入输出**：
-- 输入：`colors/{nameEn}.json`（配色方案）
-- 输出：`output/{日期}-{nameEn}/输出包/`（15 个 zip）
-
-### 产品线 B：Theme Studio Web 应用（前端，HTML + CSS + TS + Tailwind v4）
+### 产品线 B：Theme Studio Web 应用（当前活跃，HTML + CSS + TS + Tailwind v4）
 
 一个 AI 驱动的 Web 界面，让用户通过对话方式生成主题：
 
@@ -56,11 +34,11 @@ web/
 ├── index.html                      # 主入口（三列布局：侧边栏 + 对话 + 预览）
 ├── desktop-preview.html            # 独立桌面预览页（截图用）
 ├── login-preview.html              # 独立登录预览页（截图用）
-├── vite.config.ts                  # Vite + Tailwind v4 插件 + MiniMax proxy
+├── vite.config.ts                  # Vite + Tailwind v4 插件 + chat/image/export proxy
 ├── package.json                    # theme-studio v0.1.0
 ├── tsconfig.json                   # ES2022 + bundler 模块解析
 ├── playwright.config.ts            # E2E 测试配置
-├── .env                            # VITE_DASHSCOPE_API_KEY, VITE_ZHIPU_API_KEY
+├── .env                            # VITE_DASHSCOPE_API_KEY, VITE_MINIMAX_API_KEY
 ├── .env.example                    # 环境变量示例
 ├── UI_GUIDELINES.md                # UI 指南
 ├── presets/                        # 预设配色（light-ui.json, dark-ui.json）
@@ -69,32 +47,40 @@ web/
 │   ├── colors/                     # 35 个配色 JSON（镜像自根 colors/）
 │   ├── logo.png                    # 应用 Logo
 │   └── assets/references/          # Symlink 到样例包
-├── scripts/                        # Playwright 截图 + 构建脚本
+├── scripts/                        # Playwright 截图 + 构建 + 本地导出桥接
 │   ├── screenshot.ts
 │   ├── build.ts
+│   ├── export-bridge.ts
 │   ├── run-screenshot.sh
 │   └── run-build.sh
 ├── e2e/                            # Playwright E2E 测试
 │   └── smoke.spec.ts
 ├── screenshots/                    # 截图产物
 └── src/
-    ├── main.ts                     # ⚠️ 2301 行上帝模块（项目 CRUD + 聊天 + AI + 工具 + 打包 + QC）
+    ├── main.ts                     # 精简入口（143行）— 初始化 + showWorkspace + 路由
+    ├── project-manager.ts          # 项目 CRUD + localStorage + 侧边栏 + 预设数据（509行）
+    ├── theme-engine.ts             # CSS 变量管理 + 颜色操作 + QC + 模板加载（192行）
+    ├── chat-manager.ts             # 聊天 UI + AI 调用 + 工具执行 + 流式响应（678行）
+    ├── package-manager.ts          # 打包模态框 + 导出任务创建（146行）
+    ├── ui-setup.ts                 # DOM 事件 + 设置对话框 + 布局 + 预览面板（291行）
     ├── types.ts                    # TypeScript 类型定义
     ├── styles.css                  # 全局样式（与 Tailwind 共存）
     ├── tailwind.css                # Tailwind v4 设计令牌（21 CSS vars → 语义名）
     ├── agent/                      # AI 对话层
-    │   ├── chat-client.ts          # SSE 流式客户端（MiniMax-M2.7 + MiniMax image-01）
+    │   ├── chat-client.ts          # SSE 流式客户端（Coding Plan qwen3.6-plus + MiniMax image-01）
     │   ├── system-prompt.ts        # 动态 System Prompt（Light/Dark 规则 + 知识库 + 偏好）
     │   ├── knowledge-base.ts       # 34 预设描述 + 12 行业色板 + Header 指南
     │   └── user-preferences.ts     # 跨项目偏好记忆（localStorage）
-    ├── preview/
-    │   └── theme-renderer.ts       # CSS 变量管理器（⚠️ 基本未使用，main.ts 直接操作）
     ├── components/
     │   └── color-editor.ts         # 21 色编辑面板 + 品牌色派生功能
     ├── packaging/
-    │   └── package-builder.ts      # 客户端打包（JSZip：fetch 样例包 → 注入 CSS → 下载）
+    │   └── package-builder.ts      # 旧浏览器打包实现（保留参考，非产品主链）
     ├── export/
-    │   └── screenshot-rules.ts     # 截图目标定义（读取 config/pen-export-rules.json）
+    │   ├── screenshot-rules.ts     # 截图目标定义（读取 config/pen-export-rules.json）
+    │   ├── build-config.ts         # theme_builder 请求生成
+    │   ├── export-job.ts           # 导出任务与批次快照
+    │   ├── export-paths.ts         # 导出根目录/项目目录/批次目录
+    │   └── export-bridge.ts        # 本地导出桥接契约
     ├── templates/                  # HTML/CSS 模板（28 文件）
     │   ├── loader.ts               # 动态模板加载器
     │   ├── login-behavior.ts       # 登录页交互（Tab 切换、表单、验证码）
@@ -103,10 +89,7 @@ web/
     │   ├── login.html + login.css
     │   ├── desktop.html + desktop.css
     │   ├── sidebar.html + sidebar.css
-    │   └── 9 种 Header 变体（HTML+CSS 配对）：
-    │       header-banner, header-classic, header-complex, header-default,
-    │       header-menu, header-simple, header-simple-multitab,
-    │       header-v16-default, header-v16-search
+    │   └── 9 种 Header 变体（HTML+CSS 配对）
     ├── theme/                      # 颜色与模板逻辑
     │   ├── color-utils.ts          # HSL/RGB 数学 + deriveColorsFromPrimary（Light+Dark）
     │   ├── header-semantics.ts     # Header ID → 显示名映射
@@ -121,22 +104,25 @@ web/
 
 ---
 
-## 三、核心工作流（4 阶段）
+## 三、核心工作流
 
-用户说"生成主题"时，按以下 4 阶段严格执行：
+**产品模型是 创建 → 迭代 → 导出，不是线性流水线。**
 
-| 阶段 | 任务 | 输出 | 锁定验证 |
-|------|------|------|---------|
-| **1** | 配色方案生成（从图片分析） | `colors/{nameEn}.json` | 颜色规则校验 |
-| **2** | 背景图生成 + Pen 文件更新 | Pen 文件 + 背景图 | **必须用户在 Pencil 中确认** |
-| **3** | Pencil 切图导出 | `output/{date}-{nameEn}/素材包/` | 尺寸校验 |
-| **4** | 批量打包 | `output/{date}-{nameEn}/输出包/*.zip` | 15 个包全部成功 |
+| 环节 | 描述 | 触发方式 | 实现 |
+|------|------|---------|------|
+| **① 创建** | AI 对话生成背景图 → 提取配色 → 实时预览 | 用户发起对话 | `chat-manager.ts` → `executor.ts` → MiniMax API → `theme-engine.ts` |
+| **② 迭代** | 用户继续对话微调，或通过颜色面板手动修改 | 用户主动操作 | `chat-manager.ts` + `color-editor.ts` + `theme-engine.ts` |
+| **③ 导出** | 用户选择产品 → 创建导出批次 → 后台截图 + 打包 → 输出到用户配置目录 | 用户点击打包按钮 | 产品功能，本地桥接 + `screenshot.ts` + `theme_builder.py` |
+
+**Agent 职责边界**：到用户满意预览为止（①②）。导出（③）是产品功能，Agent 不参与。
 
 **核心原则**：
 1. 先出图，再配色，保证主题色与背景图色调匹配
-2. `rules/` 目录下规则是最高权威，不能跳步
-3. 整个流程中**只有阶段 2 完成后需要暂停等用户确认** Pen 文件效果
-4. 颜色必须由图片决定，不能凭空编造
+2. `rules/` 目录下规则是最高权威
+3. 颜色必须由图片决定，不能凭空编造
+4. CSS 变量驱动所有颜色，不硬编码
+5. 项目持久化（localStorage），用户可随时打开历史项目继续编辑或重新打包
+6. 导出根目录由用户在设置中配置，导出路径固定为 `导出根目录/projects/{projectId}-{nameEn}/exports/{timestamp}/`
 
 ---
 
@@ -153,7 +139,7 @@ web/
 
 - API：MiniMax（`api.minimaxi.com`，注意不是 `.io`）
 - 模型：`image-01`
-- `response_format` 必须 `base64`
+- `response_format` 必须 `url`（不是 `base64`，Token Plan 密钥用 base64 会返回 1033 错误）
 - **禁止** `prompt_optimizer` 参数
 - Prompt 必须包含："no text", "no UI elements"
 
@@ -166,14 +152,15 @@ web/
 ### 打包
 
 - 15 个 zip：MK(2) + V12(2) + V13_5(4) + V14_16(5) + V17(2)
-- 验证命令：`python3 scripts/verify-build.py "output/{date}-{nameEn}/输出包"`
+- 前端只负责创建导出任务，不直接拼 zip
+- 本地桥接层负责执行 `web/scripts/screenshot.ts`、`web/scripts/build.ts`、`theme_builder.py`
 - 深度验证：`python3 scripts/deep-verify.py`
 
 ---
 
-## 五、20 个 CSS 变量体系
+## 五、21 个 CSS 变量体系
 
-所有主题颜色由 20 个 CSS 变量驱动，这是核心数据结构：
+所有主题颜色由 21 个 CSS 变量驱动，这是核心数据结构：
 
 ```css
 :root {
@@ -196,6 +183,7 @@ web/
   --portal-header-bg-extend-color
   --portal-header-complex-bg-extend-color
   --login-bg-color
+  --panel-bg-color
 
   /* 其他 */
   --sidebar-panel-bg
@@ -215,10 +203,8 @@ web/
 | 问题 | 原因 | 解决 |
 |------|------|------|
 | 背景图一闪消失 | 用了相对路径 | **必须用绝对路径** |
-| 打包图片是模板原始图 | 没执行阶段 2 插入背景图 | 背景图生成后必须立即插入 Pen |
-| 硬编码旧色值残留 | update-pen-theme.py 只更新变量 | 需手动检查清理硬编码色值 |
-| V12/V13 登录包丢根文件 | `find_first_subdir` 逻辑错 | 从 extract root 打包 |
-| 渐变组件被清空 | 脚本匹配太宽泛 | 只更新精确节点 RWYIx/6U9v0 |
+| 打包图片是模板原始图 | 截图链没有使用当前项目快照 | 背景图与色值必须从当前项目快照注入截图模板 |
+| 硬编码旧色值残留 | 脚本只更新变量 | 需手动检查清理硬编码色值 |
 | 找不到模板目录 | 目录名不一致 | `assets/references/samples/主题样例包` 是 symlink |
 | `npm run update` 失败 | 已弃用 | 用 `python3 theme_builder.py` |
 | CI workflow 反复被删 | PAT scope 问题 | 目前无 CI，不要重建 |
@@ -230,7 +216,7 @@ web/
 ```
 Topic Automation/
 ├── AGENTS.md              # ← 你正在读的文件（AI 持久记忆）
-├── SKILL.md               # AI 操作手册（4 阶段流程）
+├── SKILL.md               # Agent 操作手册（创建 + 迭代，不含导出）
 ├── PRODUCT.md             # 产品定义（Web 应用规划）
 ├── DESIGN.md              # 设计系统文档
 ├── PROJECT.md             # 项目简介
@@ -364,18 +350,10 @@ Topic Automation/
 当用户打开新对话时，你应该：
 
 1. **读取此文件**（AGENTS.md）了解项目
-2. 根据用户意图判断走哪条产品线：
-   - 主题包生成 → 读 `SKILL.md` + `rules/` 全部规则
+2. 根据用户意图判断需要什么上下文：
    - Web 应用开发 → 读 `DESIGN.md` + `PRODUCT.md`
+   - 配色规则 → 读 `rules/` 全部规则
 3. 向用户简要报告你了解的上下文
-
-### 主题包生成时
-
-1. **必须**先读 `SKILL.md`（完整 4 阶段流程）
-2. **必须**读 `rules/` 下全部 4 个规则文件
-3. 严格遵守阶段锁定机制，不能跳步
-4. 配色必须从图片提取，不能凭空编造
-5. 背景图路径用绝对路径
 
 ### Web 应用开发时
 
@@ -384,7 +362,12 @@ Topic Automation/
 3. Tailwind CSS v4 仅用于设计令牌映射（`tailwind.css` 中 21 个 CSS vars → 语义名），不用于组件样式
 4. 中文 UI
 5. CSS 变量驱动颜色，不硬编码
-6. 注意 `main.ts` 是 2301 行上帝模块，修改时需格外小心
+6. `main.ts` 已拆分为 5 个模块，修改时找对模块：
+   - 项目 CRUD → `project-manager.ts`
+   - 聊天/AI → `chat-manager.ts`
+   - 主题/颜色 → `theme-engine.ts`
+   - 打包 → `package-manager.ts`
+   - UI/设置 → `ui-setup.ts`
 
 ### 技术栈
 
@@ -392,9 +375,9 @@ Topic Automation/
 |----|------|
 | 主题包 | Python（theme_builder.py, update-pen-theme.py） |
 | Web 前端 | HTML + CSS + TypeScript + Tailwind v4（Vite 开发服务器） |
-| AI 聊天 | 通义千问 qwen3.6-plus（via DashScope API） |
-| 图片生成 | MiniMax image-01（`api.minimaxi.com`） |
-| 设计文件 | Pencil（.pen 格式，通过 MCP 操作） |
+| AI 聊天 | 通义千问 qwen3.6-plus（via DashScope Coding Plan API） |
+| 图片生成 | MiniMax image-01（via Token Plan API） |
+| 设计文件 | Pencil（.pen 格式，仅作 HTML 模板参考） |
 | 截图 | Playwright |
 | 图片处理 | ImageMagick（convert） |
 | 测试 | Vitest（单元，63 文件）+ Playwright（E2E） |
@@ -403,23 +386,23 @@ Topic Automation/
 ### Web 端 AI 数据流
 
 ```
-用户消息 → main.ts::callAI()
-  → chat-client.ts [SSE to qwen3.6-plus via Vite proxy → dashscope.aliyuncs.com]
+用户消息 → chat-manager.ts::callAI()
+  → chat-client.ts [SSE to qwen3.6-plus via Vite proxy → coding.dashscope.aliyuncs.com]
   ← 响应中嵌入 tool calls
   → executor.ts::executeTool()
      ├─ generate_theme_pipeline → 生图(MiniMax image-01) + 提色(Canvas) + deriveColorsFromPrimary()
-     ├─ update_colors → 直接操作 CSS vars（绕过 theme-renderer.ts）
+     ├─ update_colors → 直接操作 CSS vars（通过 theme-engine.ts）
      ├─ validate_colors → contrast-validator.ts
      └─ save/load_colors → localStorage
-  → main.ts 应用颜色、展开预览、保存项目
+  → theme-engine.ts 应用颜色、chat-manager.ts 展开预览、project-manager.ts 保存项目
 ```
 
 ### API 配置
 
 | 配置 | 值 |
 |------|-----|
-| 聊天 API（dev） | `/api/chat` → Vite proxy → `dashscope.aliyuncs.com` |
-| 聊天 API（prod） | `dashscope.aliyuncs.com/compatible-mode/v1` |
+| 聊天 API（dev） | `/api/chat` → Vite proxy → `coding.dashscope.aliyuncs.com` |
+| 聊天 API（prod） | `coding.dashscope.aliyuncs.com/v1` |
 | 聊天模型 | `qwen3.6-plus` |
 | 图片 API | `api.minimaxi.com/v1` |
 | 图片模型 | `image-01` |
@@ -434,9 +417,10 @@ Topic Automation/
 - **ImageMagick**: `convert` 命令（切图裁剪）
 - **Pencil**: .pen 文件编辑器（MCP 连接）
 - **Playwright**: Web 端截图 + E2E 测试
+- **导出根目录**: 用户在设置中配置，本地桥接层必须有写权限
 - **API Keys**:
   - 根 `.env`: `MINIMAX_API_KEY`
-  - `web/.env`: `VITE_DASHSCOPE_API_KEY`, `VITE_ZHIPU_API_KEY`
+  - `web/.env`: `VITE_DASHSCOPE_API_KEY`, `VITE_MINIMAX_API_KEY`
 
 ---
 
@@ -444,8 +428,6 @@ Topic Automation/
 
 | 问题 | 严重性 | 说明 |
 |------|--------|------|
-| `web/src/main.ts` 上帝模块 | 🔴 高 | 2301 行，含项目 CRUD、聊天、AI 调用、工具执行、打包、QC，急需拆分 |
-| `theme-renderer.ts` 名存实亡 | 🟡 中 | main.ts 直接操作 CSS vars 绕过此模块，职责不清 |
 | `styles.css` 与 Tailwind 共存 | 🟡 中 | 两者职责边界不清，需明确分工 |
 | 配色 JSON 双份存储 | 🟡 中 | `colors/` 和 `web/public/colors/` 内容相同，应考虑 symlink |
 | `src/` 状态模糊 | 🟡 中 | AGENTS.md 曾标"已弃用"但实际 27 文件活跃维护 + 编译到 dist/ |
@@ -473,3 +455,9 @@ Topic Automation/
 | 2026-04-13 | Header 模板扩展到 9 种变体 | 覆盖更多 OA 版本布局需求 |
 | 2026-04-13 | `src/` 从"已弃用"升级为活跃维护 | 新增 theme-automation 工作流 + 25 单元测试 |
 | 2026-04-13 | AGENTS.md 全面更新 | 反映 Codex 修改后的实际项目状态 |
+| 2026-04-13 | `main.ts` 上帝模块拆分（2310→143行） | 拆分为 5 个模块：project-manager, theme-engine, chat-manager, package-manager, ui-setup |
+| 2026-04-13 | 删除死代码 `preview/theme-renderer.ts` | 零引用，已被 theme-engine.ts 替代 |
+| 2026-04-13 | API 端点修正：Coding Plan + MiniMax Token Plan | dashscope→coding.dashscope, minimax response_format→url, IP 直连 47.100.184.181 |
+| 2026-04-13 | 测试修复：ChatClientSettings.test.ts | 更新端点断言从旧 dashscope 直连到 /api/chat proxy |
+| 2026-04-13 | SKILL.md v9.0：Agent 职责边界重定义 | 从 4 阶段流水线改为创建→迭代→导出，导出归产品功能 |
+| 2026-04-13 | 文档全面更新 | AGENTS.md、开发者系统流程图、实施路线图同步新模型 |

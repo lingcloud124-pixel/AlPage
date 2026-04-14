@@ -1,8 +1,8 @@
 # Theme Studio — 设计系统文档
 
-> **版本**: v1.2 | **更新日期**: 2026-04-11
+> **版本**: v1.3 | **更新日期**: 2026-04-13
 > **本文档是 Theme Studio Web 应用的视觉设计规范，所有 UI 开发以此为准。**
-> **原生 HTML 模板参照 .pen 设计稿创建，模板页完成后 .pen 文件不再参与流程。**
+> **Web 应用使用原生 HTML + CSS + TypeScript，预览通过 CSS 变量实时驱动。**
 
 ---
 
@@ -22,7 +22,7 @@ Theme Studio 是一个 **AI 驱动的 OA 主题设计工具**。视觉上传达"
 
 - 不使用渐变按钮、毛玻璃、大面积动效等消费级 UI 手法
 - 不使用 emoji 作为 UI 图标（对话消息中的 emoji 头像除外）
-- 不引入任何 CSS 框架或组件库
+- Tailwind CSS v4 仅用于设计令牌映射（`tailwind.css`），不用于组件样式
 
 ---
 
@@ -54,8 +54,8 @@ Theme Studio 是一个 **AI 驱动的 OA 主题设计工具**。视觉上传达"
 | 对话面板 | 320px（可拖动，260~50%） | 100vh | 拖动分隔条调整 |
 | 预览面板 | 剩余空间 | 100vh | flex: 1, min-width: 400px |
 | 预览渲染 | 自适应缩放（cover 模式） | — | Math.max(scaleX, scaleY) 完全填满 |
-| 登录页原始尺寸 | 2215×1080 | — | .pen 渲染 |
-| 主页原始尺寸 | 1920×1079 | — | .pen 渲染 |
+| 登录页原始尺寸 | 2215×1080 | — | HTML 模板 |
+| 主页原始尺寸 | 1920×1079 | — | HTML 模板 |
 
 ---
 
@@ -85,7 +85,7 @@ Theme Studio 是一个 **AI 驱动的 OA 主题设计工具**。视觉上传达"
 
 ### 主题色值体系（20 个变量）
 
-这是 OA 主题渲染用的完整色值体系，所有预览区颜色由这 20 个 CSS 变量驱动：
+这是 OA 主题渲染用的完整色值体系，所有预览区颜色由这 21 个 CSS 变量驱动：
 
 ```css
 :root {
@@ -329,14 +329,14 @@ Playwright 截图必须输出的图片清单：
 
 | 文件名 | 尺寸 | 格式 | 来源元素 |
 |--------|------|------|---------|
-| bg-login.jpg | 2215×1080 | JPEG | #loginPage |
+| bg-login.jpg | 2215×1080 | JPEG | .template-login |
 | login_thumb.jpg | 960×540 | JPEG | bg-login 派生 |
-| header_tlayout_frame_bg.png | 1920×60 | PNG | .header-default |
-| header_complex_frame_bg.png | 1920×90 | PNG | .header-complex |
-| header_menu_frame_bg.png | 1920×130 | PNG | .header-menu |
-| header-banner.png | 2560×480 | PNG | .header-banner |
-| header-sideheader.png | 200×900 | PNG | .sidebar-panel |
-| desktop.png | 1920×1079 | PNG | #main-preview |
+| header_tlayout_frame_bg.png | 1920×60 | PNG | .template-header-default |
+| header_complex_frame_bg.png | 1920×90 | PNG | .template-header-complex |
+| header_menu_frame_bg.png | 1920×130 | PNG | .template-header-menu |
+| header-banner.png | 2560×480 | PNG | .template-header-banner |
+| header-sideheader.png | 200×900(light) / 200×488(dark) | PNG | .template-sidebar |
+| desktop.png | 1920×1079 | PNG | .desktop-wrapper |
 
 ### 派生图（9 张，ImageMagick 生成）
 
@@ -368,7 +368,7 @@ Playwright 截图必须输出的图片清单：
 1. 用户输入文字 → 按 Enter 或点击发送 → AI 流式回复
 2. AI 回复过程中，消息逐 token 追加显示
 3. AI 输出 JSON 格式的 tool call → 前端解析执行 → 显示执行结果
-4. 对话历史保存在内存中，刷新页面后清空（后续 Phase 3 做持久化）
+4. 对话历史保存在 localStorage 中（按项目隔离）
 
 ### 预览交互
 
@@ -380,24 +380,22 @@ Playwright 截图必须输出的图片清单：
 ### 截图流程
 
 ```
-点击"打包" → 检查 dev server → 切换 tab 截取所有元素 → 生成派生图 → 
-写入 theme-build-request.yaml → 调 theme_builder.py → 输出 15 zip → 
-调 verify-build.py → 打开 Finder
+点击"打包" → 校验导出根目录 → 创建导出批次 → 交给本地桥接层 →
+Playwright 按模板直接截图（不依赖页面控件切换）→ 生成派生图 →
+写入 theme-build-request.yaml → 调 theme_builder.py → 输出 15 zip →
+调 verify-build.py
 ```
 
 ### Tool Calling 接口
 
 | Tool | 输入 | 动作 |
 |------|------|------|
+| generate_theme_pipeline | prompt + templateType | 生图(MiniMax) + 提色(Canvas) + deriveColorsFromPrimary() |
 | update_colors | 色值 JSON | 更新 CSS 变量 → 刷新预览 |
-| analyze_image | 图片 URL | Canvas 色值提取 |
-| parse_pen | .pen 文件内容 | JSON 解析 → 提取色值 |
-| generate_background | prompt | 需要 Node 后端 |
-| screenshot | 组件列表 | 需要 Node 后端 |
-| build | YAML 配置 | 需要 Node 后端 |
-| verify | zip 目录 | 需要 Node 后端 |
-| save_colors | 色值 + 名称 | localStorage |
-| load_colors | 名称 | localStorage |
+| validate_colors | — | WCAG 2.1 对比度校验 |
+| save_colors | 色值 + 名称 + templateType | localStorage 持久化 |
+| load_colors | 名称 | 从 localStorage 加载 |
+| analyze_image | 图片 dataURL | Canvas 色值提取 |
 
 ---
 
@@ -405,31 +403,45 @@ Playwright 截图必须输出的图片清单：
 
 ```
 web/
-├── index.html              # 主入口 HTML
+├── index.html              # 主入口 HTML（三列布局：侧边栏 + 对话 + 预览）
+├── desktop-preview.html    # 独立桌面预览页（截图用）
+├── login-preview.html      # 独立登录预览页（截图用）
 ├── src/
-│   ├── styles.css          # 全部样式（CSS 变量 + 组件样式）
-│   ├── main.ts             # 应用初始化 + 对话逻辑
+│   ├── main.ts             # 精简入口（143行）— 初始化 + showWorkspace
+│   ├── project-manager.ts  # 项目 CRUD + localStorage + 侧边栏 + 预设（509行）
+│   ├── theme-engine.ts     # CSS 变量管理 + 颜色操作 + QC（192行）
+│   ├── chat-manager.ts     # 聊天 UI + AI 调用 + 工具执行（678行）
+│   ├── package-manager.ts  # 打包模态框 + 导出任务创建（146行）
+│   ├── ui-setup.ts         # DOM 事件 + 设置对话框 + 布局（291行）
 │   ├── types.ts            # TypeScript 类型定义
-│   ├── preview/
-│   │   └── theme-renderer.ts  # 主题渲染（CSS 变量操作）
+│   ├── styles.css          # 全局样式
+│   ├── tailwind.css        # Tailwind v4 设计令牌（21 CSS vars → 语义名）
 │   ├── components/
-│   │   └── color-editor.ts    # 色值编辑面板
+│   │   └── color-editor.ts # 21 色编辑面板
 │   ├── agent/
-│   │   ├── chat-client.ts     # OpenAI 兼容 API 客户端（SSE 流式）
-│   │   └── system-prompt.ts   # AI 对话 System Prompt
-│   └── tools/
-│       └── executor.ts        # Tool Calling 执行器
+│   │   ├── chat-client.ts  # SSE 流式客户端（Coding Plan + MiniMax）
+│   │   ├── system-prompt.ts # 动态 System Prompt
+│   │   ├── knowledge-base.ts # 34 预设描述 + 12 行业色板
+│   │   └── user-preferences.ts # 跨项目偏好记忆
+│   ├── tools/
+│   │   ├── executor.ts     # Tool Calling 执行器
+│   │   └── contrast-validator.ts # WCAG 对比度校验
+│   ├── templates/          # HTML/CSS 模板（28 文件）
+│   ├── theme/              # 颜色与模板逻辑
+│   ├── packaging/          # 旧浏览器打包参考实现
+│   └── export/             # 截图规则 + 导出任务 + 导出路径 + 桥接契约
 ├── scripts/
 │   ├── screenshot.ts       # Playwright 截图脚本
 │   ├── build.ts            # 一键构建脚本
-│   ├── run-screenshot.sh   # 截图包装脚本
-│   └── run-build.sh        # 构建包装脚本
-├── .env                    # API Key（不提交）
-├── .env.example            # 示例环境变量
-├── .gitignore
+│   └── export-bridge.ts    # 本地导出桥接服务
+├── presets/                # 预设配色（light-ui.json, dark-ui.json）
+├── public/
+│   ├── backgrounds/        # 14 张预设背景图
+│   └── colors/             # 35 个配色 JSON
+├── .env                    # API Keys
 ├── package.json
 ├── tsconfig.json
-└── vite.config.ts
+└── vite.config.ts          # Vite + Tailwind v4 + chat/image/export Proxy
 ```
 
 ---
@@ -440,16 +452,18 @@ web/
 
 | 配置 | 值 |
 |------|-----|
-| API 端点 | `https://open.bigmodel.cn/api/paas/v4` |
-| 默认模型 | `GLM-4-Flash` |
-| API Key 来源 | `.env` 文件 → `VITE_ZHIPU_API_KEY` |
-| 备选模型 | `GLM-5.1`（需 API 余额） |
+| 聊天 API（dev） | `/api/chat` → Vite proxy → `coding.dashscope.aliyuncs.com` |
+| 聊天模型 | `qwen3.6-plus`（DashScope Coding Plan） |
+| 图片 API（dev） | `/api/image` → Vite proxy → `api.minimaxi.com`（IP 直连） |
+| 图片模型 | `image-01`（MiniMax Token Plan） |
+| API Key 来源 | `.env` → `VITE_DASHSCOPE_API_KEY`, `VITE_MINIMAX_API_KEY` |
 
 ### 设置存储
 
-- localStorage key: `theme-studio-settings`
-- 字段: apiEndpoint, apiKey, model
+- localStorage key: `themeStudioSettings`
+- 字段: apiEndpoint, apiKey, model, imageApiEndpoint, imageApiKey, imageModel, exportRoot
 - 环境变量 API Key 为默认值，用户设置面板可覆盖
+- `migrateEndpoint()` 自动迁移旧的直连端点到 Vite proxy 路径
 
 ---
 
@@ -458,11 +472,12 @@ web/
 | 约束 | 说明 |
 |------|------|
 | 无框架 | 不使用 React/Vue/Angular，纯 HTML + CSS + TypeScript |
-| 无 CSS 库 | 不使用 Tailwind/Bootstrap/Ant Design |
-| 无 JS 库 | 不使用 jQuery/Lodash/Moment |
+| Tailwind v4 仅设计令牌 | 仅用于 `tailwind.css` 中 21 个 CSS vars → 语义名映射，不用于组件样式 |
 | 中文 UI | 所有界面文字使用中文 |
 | CSS 变量驱动 | 所有颜色通过 :root 变量控制，不硬编码 |
 | Playwright 截图 | 打包输出必须通过截图，不能直接导出 DOM |
+| 本地导出桥接 | Web 端只创建导出任务，本地桥接负责执行截图与打包 |
+| Vite Proxy | 所有 API 调用走 `/api/chat` 和 `/api/image` 代理，避免 CORS |
 
 ---
 
@@ -475,6 +490,7 @@ web/
 | 配色规则(Light) | `rules/light-ui-color-rules.md` | Light-UI 色值计算规则 |
 | 切图导出规则 | `rules/export-rules.md` | 截图尺寸、格式、命名规范 |
 | 图片生成规则 | `rules/image-generation-rules.md` | AI 背景图生成规则 |
-| AI 对话 SOP | `SKILL.md` | 4 阶段主题生成流程 |
+| AI 对话 SOP | `SKILL.md` | Agent 专注创建 + 迭代，导出归产品功能 |
+| AI 持久记忆 | `AGENTS.md` | 项目状态、架构、技术债、决策记录 |
 | 打包脚本 | `theme_builder.py` | 生成 15 个 zip 包 |
 | 验证脚本 | `scripts/verify-build.py` | 验证包结构和色值 |

@@ -24,7 +24,7 @@
 
 用户在对话面板输入需求（如 "做一个篮球主题"）：
 - AI 流式回复，展示推理过程
-- 自动调用工具：update_colors / analyze_image / parse_pen
+- 自动调用工具：generate_theme_pipeline / update_colors / analyze_image
 - 配色生成后，右侧预览实时更新
 - AI 同时推荐相关预设配色方案
 
@@ -46,9 +46,11 @@ AI 回复中包含 `[preset:xxx]` 标签时自动渲染为可点击卡片：
 ### 2.5 打包导出
 
 点击打包按钮：
-- 弹窗选择 15 个产品包（MK/V12/V13.5/V14/V17 等）
-- 生成 YAML + JSON 配置文件
-- 下载主题包到本地
+- 弹窗选择要导出的产品版本（按需，不默认全量）
+- 第一次导出前要求配置导出根目录
+- 创建新的导出批次
+- 后台执行截图、打包、验证
+- 将结果写入用户导出目录
 
 ---
 
@@ -105,7 +107,7 @@ AI 回复中包含 `[preset:xxx]` 标签时自动渲染为可点击卡片：
 AI 可调用以下工具：
 - **update_colors**: 更新 CSS 变量颜色
 - **analyze_image**: 分析图片提取主色调
-- **parse_pen**: 解析 .pen 文件
+- **generate_theme_pipeline**: 生图 + 提色 + 完整配色推导
 - **save_colors**: 保存配色到 localStorage
 - **load_colors**: 加载历史配色
 
@@ -145,17 +147,18 @@ AI 回复中 `[preset:xxx]` 标签处理：
 - 5 个 widget：待办事项、新闻资讯、公告通知、日程安排、快捷入口
 - 卡片式布局，完整交互态
 
-### 5.3 页眉变体（8种）
+### 5.3 页眉变体（9种）
 
-Header 提供 8 种布局变体：
+Header 提供 9 种布局变体：
 - default：默认页眉
 - v16-default：V16 风格默认页眉
 - simple：简约页眉
 - simple-multitab：简约多标签页眉
-- multitab：多标签页眉
+- complex：经典页眉 / 多页签页眉
 - banner：横幅页眉
 - classic：经典页眉
 - menu：菜单页眉
+- v16-search：V16 搜索页眉
 
 ### 5.4 侧边栏
 
@@ -199,8 +202,10 @@ Header 提供 8 种布局变体：
 
 打包流程：
 1. 选择要打包的产品（复选框）
-2. 生成 YAML + JSON 配置文件
-3. 下载所有选中的主题包
+2. 读取当前项目快照
+3. 创建新的导出批次
+4. 后台执行 Playwright 截图与标准打包脚本
+5. 在导出根目录下生成素材包与输出包
 
 ---
 

@@ -3,6 +3,7 @@ import { execSync, spawn, type ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import http from 'http';
+import { buildExportRequestYaml } from '../src/export/build-config.js';
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, '../..');
 const WEB_ROOT = path.resolve(import.meta.dirname, '..');
@@ -17,6 +18,32 @@ interface BuildOptions {
   buttonText?: string;
   themeColor: string;
   themeImageUrl?: string;
+  selectedProducts?: string[];
+  exportDir?: string;
+  onStatus?: (status: 'capturing' | 'packaging' | 'verifying' | 'completed' | 'failed') => void;
+}
+
+interface ResolveBuildDirectoriesOptions {
+  nameEn: string;
+  exportDir?: string;
+}
+
+function getVerifySelectionArgs(selectedProducts?: string[]) {
+  return selectedProducts && selectedProducts.length > 0
+    ? ['--products', selectedProducts.join(',')]
+    : [];
+}
+
+function resolveBuildDirectories(options: ResolveBuildDirectoriesOptions) {
+  const baseDir = options.exportDir
+    ? path.resolve(options.exportDir)
+    : path.join(PROJECT_ROOT, 'output', `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${options.nameEn}`);
+
+  return {
+    baseDir,
+    assetsDir: path.join(baseDir, '素材包'),
+    packagesDir: path.join(baseDir, '输出包'),
+  };
 }
 
 function waitForServer(url: string, timeoutMs = 30_000): Promise<void> {
@@ -67,10 +94,7 @@ async function ensureDevServer(): Promise<ChildProcess | null> {
 }
 
 async function buildAll(options: BuildOptions): Promise<void> {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const baseDir = path.join(PROJECT_ROOT, 'output', `${date}-${options.nameEn}`);
-  const assetsDir = path.join(baseDir, '素材包');
-  const packagesDir = path.join(baseDir, '输出包');
+  const { baseDir, assetsDir, packagesDir } = resolveBuildDirectories(options);
 
   console.log(`\n🏗️ Theme Studio Build`);
   console.log(`   主题: ${options.name}`);
@@ -86,6 +110,7 @@ async function buildAll(options: BuildOptions): Promise<void> {
 
     // Step 2: Screenshot
     console.log('📸 Step 2: 截图导出...');
+    options.onStatus?.('capturing');
     fs.mkdirSync(assetsDir, { recursive: true });
     fs.mkdirSync(packagesDir, { recursive: true });
     const screenshotResults = await screenshotAll(assetsDir, {
@@ -96,33 +121,20 @@ async function buildAll(options: BuildOptions): Promise<void> {
 
     // Step 3: Generate theme-build-request.yaml
     console.log('📝 Step 3: 生成构建配置...');
-    const yaml = `title: "${options.name}"
-subtitle: "${options.subtitle ?? options.name}"
-buttonText: "${options.buttonText ?? '立即进入'}"
-themeColor: "${options.themeColor}"
-headerFont: ""
-products:
-  - mk
-  - ekp_v12
-  - ekp_v13_5
-  - ekp_v14_16
-  - ekp_v17
-images:
-  headerBanner: "header-banner.png"
-  headerClassic: "header_complex_frame_bg.png"
-  headerSimple: "header_tlayout_frame_bg.png"
-  headerTabs: "header_tlayout_frame_bg.png"
-  headerIcon: "header_tlayout_frame_bg.png"
-  headerSideheader: "header-sideheader.png"
-  loginBackground: "bg-login.jpg"
-  loginLogo: ""
-`;
+    const yaml = buildExportRequestYaml({
+      name: options.name,
+      subtitle: options.subtitle,
+      buttonText: options.buttonText,
+      themeColor: options.themeColor,
+      selectedProducts: options.selectedProducts ?? ['mk', 'ekp_v12', 'ekp_v13_5', 'ekp_v14_16', 'ekp_v17'],
+    });
     const yamlPath = path.join(assetsDir, 'theme-build-request.yaml');
     fs.writeFileSync(yamlPath, yaml, 'utf-8');
     console.log(`   ✅ 配置已生成: ${yamlPath}\n`);
 
     // Step 4: Build packages
     console.log('📦 Step 4: 执行打包...');
+    options.onStatus?.('packaging');
     const builderPath = path.join(PROJECT_ROOT, 'theme_builder.py');
     try {
       execSync(`python3 "${builderPath}" --config "${yamlPath}" --output "${packagesDir}"`, {
@@ -132,24 +144,31 @@ images:
       console.log('   ✅ 打包完成\n');
     } catch (e) {
       console.error('   ❌ 打包失败:', (e as Error).message);
-      process.exit(1);
+      options.onStatus?.('failed');
+      throw e;
     }
 
     // Step 5: Verify
     console.log('🔍 Step 5: 验证包...');
+    options.onStatus?.('verifying');
     const verifyPath = path.join(PROJECT_ROOT, 'scripts', 'verify-build.py');
     try {
-      execSync(`python3 "${verifyPath}" "${packagesDir}"`, {
+      const verifyArgs = getVerifySelectionArgs(options.selectedProducts)
+        .map((value) => `"${value}"`)
+        .join(' ');
+      execSync(`python3 "${verifyPath}" "${packagesDir}" ${verifyArgs}`.trim(), {
         stdio: 'inherit',
         cwd: PROJECT_ROOT,
       });
       console.log('   ✅ 验证通过\n');
     } catch (e) {
       console.error('   ❌ 验证失败');
-      process.exit(1);
+      options.onStatus?.('failed');
+      throw e;
     }
 
     console.log('🎉 全部完成！');
+    options.onStatus?.('completed');
     console.log(`   素材包: ${assetsDir}`);
     console.log(`   输出包: ${packagesDir}`);
 
@@ -169,8 +188,8 @@ images:
 if (process.argv[1]?.endsWith('build.ts')) {
   const args = process.argv.slice(2);
   if (args.length < 3) {
-    console.log('用法: npx tsx scripts/build.ts <主题名> <nameEn> <themeColor> [light-ui|dark-ui] [背景图URL]');
-    console.log('示例: npx tsx scripts/build.ts "申能企业" shenergy-enterprise #226F3B dark-ui /path/to/bg.jpg');
+    console.log('用法: npx tsx scripts/build.ts <主题名> <nameEn> <themeColor> [light-ui|dark-ui] [背景图URL] [productsCsv]');
+    console.log('示例: npx tsx scripts/build.ts "申能企业" shenergy-enterprise #226F3B dark-ui /path/to/bg.jpg mk,ekp_v17');
     process.exit(1);
   }
 
@@ -180,10 +199,11 @@ if (process.argv[1]?.endsWith('build.ts')) {
     themeColor: args[2],
     templateType: (args[3] as 'light-ui' | 'dark-ui') ?? 'light-ui',
     themeImageUrl: args[4],
+    selectedProducts: args[5]?.split(',').map(item => item.trim()).filter(Boolean),
   }).catch(err => {
     console.error('构建失败:', err);
     process.exit(1);
   });
 }
 
-export { buildAll };
+export { buildAll, resolveBuildDirectories, getVerifySelectionArgs };

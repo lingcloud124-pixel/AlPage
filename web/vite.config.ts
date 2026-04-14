@@ -24,6 +24,11 @@ export default defineConfig({
         rewrite: (proxyPath: string) => proxyPath.replace(/^\/api\/image/, '/v1'),
         headers: { Host: 'api.minimaxi.com' },
       },
+      '/api/export': {
+        target: 'http://127.0.0.1:5174',
+        changeOrigin: true,
+        rewrite: (proxyPath: string) => proxyPath.replace(/^\/api\/export/, ''),
+      },
     },
   },
   build: {
