@@ -242,7 +242,7 @@ body[data-ui-theme="light"] .theme-studio-toast {
   background: #1a1a2e;
   display: flex;
   flex-direction: column;
-  padding: 16px 4px 16px 12px;
+  padding: 16px 12px;
   transition: all 0.3s ease;
   overflow: hidden;
 }
@@ -3458,7 +3458,7 @@ body,
 .project-sidebar {
   background: rgba(8, 8, 8, 0.94);
   border-right: 1px solid var(--border-subtle);
-  padding: 18px 4px 18px 14px;
+  padding: 18px 14px;
   gap: 8px;
   backdrop-filter: blur(18px);
 }
