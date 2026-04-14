@@ -390,6 +390,7 @@ export function setupChatInterface(deps: ChatDeps) {
   }
 
   function sendUserMessage() {
+    if (activeAbortController) return;
     const hasText = messageInput && messageInput.value.trim() !== '';
     const hasImages = pendingImages.length > 0;
     if (!hasText && !hasImages) return;

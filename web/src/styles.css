@@ -1470,6 +1470,14 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
   display: none;
 }
 
+.preview-panel.expanded .preview-close-btn {
+  display: flex;
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 10;
+}
+
 .preview-close-btn:hover {
   background: var(--primary-color-opacity-10);
   color: var(--primary-color);
@@ -3598,6 +3606,11 @@ body,
   width: 18px;
   height: 18px;
   stroke: currentColor;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-toggle-btn svg.flipped {
+  transform: scaleX(-1);
 }
 
 .project-action-menu {

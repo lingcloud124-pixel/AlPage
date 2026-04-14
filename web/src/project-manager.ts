@@ -344,37 +344,3 @@ function createProjectItem(project: Project, deps: SidebarDeps): HTMLElement {
 export function closeAllProjectMenus() {
   document.querySelectorAll('.sidebar-project-menu').forEach(m => m.remove());
 }
-
-export function populateHistoryProjects(showWorkspace: (id: string) => void) {
-  const projectsList = document.getElementById('projectsList');
-  if (!projectsList) return;
-  projectsList.innerHTML = '';
-  const projects = listProjects();
-
-  if (projects.length === 0) {
-    const emptyMessage = document.createElement('p');
-    emptyMessage.textContent = '暂无历史项目';
-    emptyMessage.style.textAlign = 'center';
-    emptyMessage.style.color = 'var(--auxiliary-gray)';
-    emptyMessage.style.fontStyle = 'italic';
-    emptyMessage.style.margin = '20px 0';
-    projectsList.appendChild(emptyMessage);
-    return;
-  }
-
-  projects.forEach(project => {
-    const projectCard = document.createElement('div');
-    projectCard.className = 'project-card';
-    projectCard.innerHTML = `
-      <div class="project-name">
-        <span>🎨</span>
-        <span></span>
-      </div>
-      <div class="project-date">${new Date(project.updatedAt).toLocaleString('zh-CN')}</div>
-    `;
-    const nameSpan = projectCard.querySelector('.project-name span:last-child');
-    if (nameSpan) nameSpan.textContent = project.name;
-    projectCard.addEventListener('click', () => showWorkspace(project.id));
-    projectsList.appendChild(projectCard);
-  });
-}

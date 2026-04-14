@@ -1,6 +1,6 @@
 import { renderTemplate } from './templates/loader';
 import { loadSettings, saveSettings as persistSettings, DEFAULT_CHAT_ENDPOINT } from './agent/chat-client';
-import { getCurrentProjectId, loadProject, saveProject, deleteProject, listProjects, populateSidebarProjects, closeAllProjectMenus } from './project-manager';
+import { getCurrentProjectId, loadProject, saveProject, deleteProject, listProjects, populateSidebarProjects, closeAllProjectMenus, updateProjectNameDisplay, createProject } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, loadDefaultTemplates } from './theme-engine';
 import { loadAndRenderChatHistory, setupChatInterface } from './chat-manager';
 import { showNotification, setupMainActions } from './package-manager';
@@ -16,12 +16,24 @@ export function applyUiTheme(mode: 'dark' | 'light' = 'dark') {
 
 export function collapseProjectSidebar() {
   const projectSidebar = document.getElementById('projectSidebar');
-  if (projectSidebar) projectSidebar.classList.add('collapsed');
+  if (projectSidebar) {
+    projectSidebar.classList.add('collapsed');
+    projectSidebar.style.removeProperty('width');
+    projectSidebar.style.removeProperty('min-width');
+  }
+  const toggleBtn = document.getElementById('sidebarToggleBtn');
+  toggleBtn?.querySelector('svg')?.classList.add('flipped');
 }
 
 export function expandProjectSidebar() {
   const projectSidebar = document.getElementById('projectSidebar');
-  if (projectSidebar) projectSidebar.classList.remove('collapsed');
+  if (projectSidebar) {
+    projectSidebar.classList.remove('collapsed');
+    projectSidebar.style.removeProperty('width');
+    projectSidebar.style.removeProperty('min-width');
+  }
+  const toggleBtn = document.getElementById('sidebarToggleBtn');
+  toggleBtn?.querySelector('svg')?.classList.remove('flipped');
 }
 
 export function setChatPanelWidth(width: number | null) {
@@ -70,6 +82,7 @@ export function expandPreview() {
 export function collapsePreview() {
   const previewPanel = document.getElementById('previewPanel');
   if (previewPanel) previewPanel.classList.remove('expanded');
+  syncWorkbenchLayoutForActiveTab(false, 'loginTab');
 }
 
 export function setupResizableDivider() {
@@ -144,13 +157,6 @@ export function setupPreviewPanel() {
   if (!previewPanel) return;
   const closeBtn = previewPanel.querySelector('.preview-close-btn');
   if (closeBtn) closeBtn.addEventListener('click', collapsePreview);
-  const headerSelect = document.getElementById('headerSelect');
-  if (headerSelect) {
-    headerSelect.addEventListener('change', (e) => {
-      const target = e.target as HTMLSelectElement;
-      loadHeaderIntoMainPage(target.value);
-    });
-  }
 }
 
 async function loadHeaderIntoMainPage(headerId: string) {
@@ -174,7 +180,6 @@ export function setupTabSwitching() {
     { btnId: 'loginTab', pageId: 'loginPage', templateId: 'login' },
     { btnId: 'mainPageTab', pageId: 'mainPage', templateId: 'desktop' },
   ];
-  const headerSwitcher = document.getElementById('headerSwitcher');
   let activeTabInfo = { btn: null as HTMLButtonElement | null, page: null as HTMLElement | null, templateId: '' };
 
   TAB_MAP.forEach(tabInfo => {
@@ -199,7 +204,6 @@ export function setupTabSwitching() {
       activeTabInfo = { btn, page, templateId };
       const hasPreview = !!document.getElementById('previewPanel')?.classList.contains('expanded');
       syncWorkbenchLayoutForActiveTab(hasPreview, btnId as 'loginTab' | 'mainPageTab');
-      if (headerSwitcher) headerSwitcher.style.display = btnId === 'mainPageTab' ? 'flex' : 'none';
       if (!page.firstElementChild) await renderTemplate(templateId, page);
       requestAnimationFrame(() => (window as any).resizePreview?.());
     });
@@ -340,6 +344,7 @@ export function setupProjectActionMenu(deps: { populateSidebarProjects: () => vo
       if (newName && newName.trim()) {
         project.name = newName.trim();
         saveProject(project);
+        updateProjectNameDisplay(project);
         deps.populateSidebarProjects();
       }
     });
@@ -366,7 +371,12 @@ export function setupProjectActionMenu(deps: { populateSidebarProjects: () => vo
       if (!confirm(`确定删除项目「${project.name}」？`)) return;
       deleteProject(getCurrentProjectId()!);
       const projects = listProjects();
-      if (projects.length > 0) deps.showWorkspace(projects[0].id);
+      if (projects.length > 0) {
+        deps.showWorkspace(projects[0].id);
+      } else {
+        const newProj = createProject('未命名项目', 'light-ui');
+        if (newProj) deps.showWorkspace(newProj.id);
+      }
       deps.populateSidebarProjects();
     });
   }
