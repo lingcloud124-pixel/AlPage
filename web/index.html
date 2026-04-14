@@ -168,31 +168,42 @@
 
         <!-- 打包选择弹窗 -->
         <div class="modal-overlay" id="packageModal">
-            <div class="modal-content package-modal" style="width: 520px;">
-                <div class="modal-header">
-                    <h3>主题打包</h3>
-                    <button class="modal-close-btn" id="packageModalClose">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p style="margin-bottom: 16px; color: var(--auxiliary-gray);">选择需要打包的产品：</p>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-                        <button id="packageSelectAll" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; font-size: 14px;">全选</button>
-                        <button id="packageDeselectAll" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; font-size: 14px;">取消全选</button>
+            <div class="modal-content package-modal">
+                <header class="package-modal-header">
+                    <div>
+                        <h2 class="package-modal-title">主题打包</h2>
+                        <p class="package-modal-subtitle">选择需要打包的产品并执行打包任务</p>
                     </div>
-                    <div id="packageProductList" class="package-product-list">
-                        <!-- 由 JS 动态生成 -->
-                    </div>
-                    <div style="margin-top: 20px;">
-                        <h4 style="margin: 0 0 8px; font-size: 14px; color: var(--header-font-color);">最近导出批次</h4>
-                        <div id="packageExportHistory" style="max-height: 180px; overflow:auto; border:1px solid var(--border-color); border-radius:8px; padding:8px; background: var(--panel-bg-color);">
-                            <div style="font-size:12px; color: var(--auxiliary-gray);">暂无导出记录</div>
+                    <button class="package-modal-close-btn" id="packageModalClose" aria-label="关闭">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </header>
+                <div class="package-modal-body">
+                    <section class="package-section">
+                        <div class="section-heading">
+                            <span class="section-accent"></span>
+                            <h3>产品选择</h3>
                         </div>
-                    </div>
+                        <div class="package-actions">
+                            <button id="packageSelectAll">全选</button>
+                            <button id="packageDeselectAll">取消全选</button>
+                        </div>
+                        <div id="packageProductList" class="package-product-list"></div>
+                    </section>
+                    <section class="package-section">
+                        <div class="section-heading">
+                            <span class="section-accent"></span>
+                            <h3>最近导出批次</h3>
+                        </div>
+                        <div id="packageExportHistory" class="package-export-history">
+                            <div class="export-history-empty">暂无导出记录</div>
+                        </div>
+                    </section>
                 </div>
-                <div class="modal-footer">
-                    <button id="packageStartBtn" style="background-color: var(--primary-color); color: white;">开始打包</button>
-                    <button id="packageCancelBtn">取消</button>
-                </div>
+                <footer class="package-modal-footer">
+                    <button id="packageStartBtn" class="btn-primary">开始打包</button>
+                    <button id="packageCancelBtn" class="btn-secondary">取消</button>
+                </footer>
             </div>
         </div>
 
