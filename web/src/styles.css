@@ -2874,11 +2874,12 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
 }
 
 .app-container.panel-open .chat-panel {
-  width: 372px !important;
-  min-width: 372px !important;
-  flex: 0 0 372px !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  flex: 0 0 0 !important;
   overflow: hidden;
-  opacity: 1;
+  border: none;
+  opacity: 0;
   transition: all 0.3s ease;
 }
 
