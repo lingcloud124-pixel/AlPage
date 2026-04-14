@@ -92,6 +92,7 @@ export async function loadDefaultTemplates() {
 
     if (loginTarget) await renderTemplate('login', loginTarget);
     if (mainTarget) await renderTemplate('desktop', mainTarget);
+    initDesktopSidebarBehavior(mainTarget);
     if (headerDefaultTarget) await renderTemplate('header-default', headerDefaultTarget);
     if (headerComplexTarget) await renderTemplate('header-complex', headerComplexTarget);
     if (headerMenuTarget) await renderTemplate('header-menu', headerMenuTarget);
@@ -102,6 +103,16 @@ export async function loadDefaultTemplates() {
   } catch (e) {
     console.error('Failed to load templates:', (e as Error).message);
   }
+}
+
+function initDesktopSidebarBehavior(container: HTMLElement | null) {
+  if (!container) return;
+  container.querySelectorAll('.sidebar-group-title').forEach(header => {
+    header.addEventListener('click', () => {
+      const icon = header.querySelector('.collapse-icon');
+      if (icon) icon.classList.toggle('collapsed');
+    });
+  });
 }
 
 export function applyPresetBackground(presetKey: string, bgMap: Record<string, string>): void {

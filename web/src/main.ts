@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initializeFeatureModules() {
   setupTabSwitching();
-  setupChatInterface({ expandPreview, populateSidebarProjects: () => populateSidebarProjects({ showWorkspace, createProject: (n, t) => createProject(n, t) }) });
+  setupChatInterface({ expandPreview, populateSidebarProjects: () => populateSidebarProjects({ showWorkspace, createProject: (n, t) => createProject(n, t) }), syncLayout: syncWorkbenchLayoutForActiveTab, collapseProjectSidebar, setChatPanelWidth });
   setupCollapsibleColorPanel();
   setupSettingsDialog();
   setupProjectActionMenu({

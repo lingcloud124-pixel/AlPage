@@ -974,6 +974,19 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
   animation-delay: 0.4s;
 }
 
+.tool-loading-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--auxiliary-gray);
+  font-size: 13px;
+}
+
+.tool-loading-indicator .typing-dot {
+  width: 4px;
+  height: 4px;
+}
+
 @keyframes typingBounce {
   0%, 60%, 100% {
     transform: translateY(0);

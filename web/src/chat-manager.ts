@@ -315,6 +315,9 @@ function buildThinkingToggle(text: string): HTMLElement {
 export interface ChatDeps {
   expandPreview: () => void;
   populateSidebarProjects: () => void;
+  syncLayout: (hasPreview: boolean, activeTabId: 'loginTab' | 'mainPageTab') => void;
+  collapseProjectSidebar: () => void;
+  setChatPanelWidth: (width: number | null) => void;
 }
 
 export function setupChatInterface(deps: ChatDeps) {
@@ -598,27 +601,55 @@ export function setupChatInterface(deps: ChatDeps) {
     const TOOL_GLOBAL_TIMEOUT = 120_000;
     const toolStartTime = Date.now();
 
+    let loadingMsgEl: HTMLElement | null = null;
+    function showToolLoading(text: string) {
+      removeToolLoading();
+      loadingMsgEl = addMessageToChat('ai', '');
+      const c = loadingMsgEl.querySelector('.message-content') as HTMLElement;
+      if (c) {
+        c.innerHTML = `<span class="tool-loading-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span> ${text}</span>`;
+      }
+    }
+    function removeToolLoading() {
+      if (loadingMsgEl) {
+        loadingMsgEl.remove();
+        loadingMsgEl = null;
+      }
+    }
+
     for (const tc of toolCalls) {
       if (Date.now() - toolStartTime > TOOL_GLOBAL_TIMEOUT) {
+        removeToolLoading();
         addMessageToChat('ai', '⚠️ 工具执行总时长超限，剩余工具已跳过');
         saveChatHistory();
         break;
       }
       try {
+        showToolLoading(tc.tool === 'generate_theme_pipeline'
+          ? '🎨 正在生成背景图，请稍候...'
+          : `⚙️ 正在执行 ${tc.tool}...`);
+
         const result = await executeTool(tc, (event) => {
-          if (event.type === 'image_generated' && tc.tool === 'generate_theme_pipeline') {
-            const imgData = event.data as { imageUrl: string };
-            addMessageToChat('ai', '🖼️ 背景图已生成，正在分析配色...');
-            const imgMsg = addMessageToChat('ai', '');
-            const imgEl = document.createElement('img');
-            imgEl.src = imgData.imageUrl;
-            imgEl.style.cssText = 'max-width:100%;border-radius:8px;margin-top:4px;';
-            imgEl.crossOrigin = 'anonymous';
-            const c = imgMsg.querySelector('.message-content') as HTMLElement;
-            if (c) c.appendChild(imgEl);
-            saveChatHistory();
+          if (tc.tool === 'generate_theme_pipeline') {
+            if (event.type === 'image_generating') {
+              showToolLoading('🎨 正在生成背景图，请稍候...');
+            } else if (event.type === 'image_generated') {
+              removeToolLoading();
+              const imgData = event.data as { imageUrl: string };
+              addMessageToChat('ai', '🖼️ 背景图已生成，正在分析配色...');
+              const imgMsg = addMessageToChat('ai', '');
+              const imgEl = document.createElement('img');
+              imgEl.src = imgData.imageUrl;
+              imgEl.style.cssText = 'max-width:100%;border-radius:8px;margin-top:4px;';
+              imgEl.crossOrigin = 'anonymous';
+              const c = imgMsg.querySelector('.message-content') as HTMLElement;
+              if (c) c.appendChild(imgEl);
+              showToolLoading('🎨 正在分析配色方案...');
+              saveChatHistory();
+            }
           }
         });
+        removeToolLoading();
         if (result.success) {
           if (tc.tool === 'generate_theme_pipeline') {
             const imgData = result.data as { imageUrl?: string; primaryColor?: string };
@@ -641,6 +672,16 @@ export function setupChatInterface(deps: ChatDeps) {
               }
             }
             deps.expandPreview();
+            const indicator = document.querySelector('.topbar-tabs .tab-indicator') as HTMLElement;
+            const loginBtn = document.getElementById('loginTab') as HTMLElement;
+            document.getElementById('loginTab')?.classList.add('active-tab');
+            document.getElementById('loginPage')?.classList.add('active-preview');
+            if (indicator && loginBtn) {
+              indicator.style.left = loginBtn.offsetLeft + 'px';
+              indicator.style.width = loginBtn.offsetWidth + 'px';
+            }
+            deps.collapseProjectSidebar();
+            deps.setChatPanelWidth(372);
           } else if (tc.tool === 'save_colors') {
             const saveData = tc.args as { name?: string };
             const pid = getCurrentProjectId();
@@ -657,6 +698,7 @@ export function setupChatInterface(deps: ChatDeps) {
         }
         saveChatHistory();
       } catch (e) {
+        removeToolLoading();
         addMessageToChat('ai', `❌ ${tc.tool} 执行失败：${(e as Error).message}`);
         saveChatHistory();
       }

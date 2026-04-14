@@ -340,6 +340,10 @@
   transform: rotate(-90deg);
 }
 
+.sidebar-section:has(.collapse-icon.collapsed) > .sidebar-nav {
+  display: none;
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -415,6 +419,10 @@
 
 .collapse-icon.collapsed {
   transform: rotate(-90deg);
+}
+
+.sidebar-section:has(.collapse-icon.collapsed) > .sidebar-nav {
+  display: none;
 }
 
 .sidebar-nav {

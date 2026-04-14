@@ -2,19 +2,29 @@
 
 ## 快速开始
 
-### 1. 安装依赖
+### 0. 克隆到新电脑后（首次运行）
+
 ```bash
+# 安装依赖
 npm install
 cd web && npm install
+cd ..
+
+# 配置 API 密钥（.env 文件不会被 git 追踪，需自行创建）
+cp .env.example .env
+# 编辑 .env，填入 MINIMAX_API_KEY
+
+cp web/.env.example web/.env
+# 编辑 web/.env，填入 VITE_DASHSCOPE_API_KEY 和 VITE_MINIMAX_API_KEY
 ```
 
-### 2. 安装 Skill（可选，用于 AI 辅助）
+### 1. 安装 Skill（可选，用于 AI 辅助）
 ```bash
 bash scripts/install-skill.sh
 ```
 安装后重启 OpenCode，Skill 自动生效。
 
-### 3. 启动 Web 应用
+### 2. 启动 Web 应用
 
 ```bash
 cd web
@@ -28,7 +38,7 @@ cd web
 npm run export-bridge
 ```
 
-### 4. 使用方式
+### 3. 使用方式
 
 **方式一：AI 辅助（推荐）**
 告诉 OpenCode：
@@ -102,3 +112,10 @@ A: 这是旧 TypeScript 工具链的 bug。新的 `theme_builder.py` 已正确�
 
 **Q: 如何查看生成的主题包**
 A: Web 导出默认输出到你在设置中配置的导出根目录下：`projects/{projectId}-{nameEn}/exports/{timestamp}/输出包/`。根目录脚本默认仍可输出到项目内 `output/`。
+
+**Q: 克隆到其他电脑后打开是旧页面，没有 API 密钥**
+A: `node_modules/`、`web/dist/` 和 `.env` 文件均被 git 忽略。正确步骤：
+1. `npm install && cd web && npm install && cd ..`
+2. `cp .env.example .env` 并填入 `MINIMAX_API_KEY`
+3. `cp web/.env.example web/.env` 并填入聊天和图片 API 密钥
+4. `cd web && npm run dev`（**不是**直接打开 `index.html`）
