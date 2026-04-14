@@ -167,7 +167,7 @@ body[data-ui-theme="light"] .chat-shell-send:hover {
   background: #1a1a2e;
   display: flex;
   flex-direction: column;
-  padding: 16px 12px;
+  padding: 16px 4px 16px 12px;
   transition: all 0.3s ease;
   overflow: hidden;
 }
@@ -282,6 +282,32 @@ body[data-ui-theme="light"] .chat-shell-send:hover {
 .sidebar-project-list {
   flex: 1;
   overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.sidebar-project-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-project-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-project-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+  border-radius: 4px;
+}
+
+.sidebar-project-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb {
+  background: rgba(17,17,17,0.12);
+}
+
+body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(17,17,17,0.22);
 }
 
 .sidebar-project-item {
@@ -3357,7 +3383,7 @@ body,
 .project-sidebar {
   background: rgba(8, 8, 8, 0.94);
   border-right: 1px solid var(--border-subtle);
-  padding: 18px 14px;
+  padding: 18px 4px 18px 14px;
   gap: 8px;
   backdrop-filter: blur(18px);
 }
