@@ -117,9 +117,12 @@ body[data-ui-theme="light"] .sidebar-new-btn:hover {
   background: #F2F2F2;
 }
 
+body[data-ui-theme="light"] .sidebar-project-item:hover {
+  background: rgba(17,17,17,0.04);
+}
+
 body[data-ui-theme="light"] .sidebar-project-item.active {
   background: rgba(17,17,17,0.08);
-  border-color: transparent;
 }
 
 body[data-ui-theme="light"] .chat-shell-send {
@@ -311,12 +314,12 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
 }
 
 .sidebar-project-item {
-  padding: 10px 12px;
+  padding: 7px 11px;
   border-radius: 8px;
   color: rgba(255,255,255,0.8);
   font-size: 14px;
   cursor: pointer;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   transition: background 0.15s;
   display: flex;
   align-items: center;
@@ -3446,18 +3449,16 @@ body,
   border: 1px solid transparent;
   border-radius: 10px;
   color: var(--text-secondary);
-  margin-bottom: 6px;
-  padding: 9px 11px;
+  margin-bottom: 2px;
+  padding: 7px 11px;
 }
 
 .sidebar-project-item:hover {
-  background: rgba(255,255,255,0.04);
-  border-color: var(--border-subtle);
+  background: rgba(255,255,255,0.05);
 }
 
 .sidebar-project-item.active {
   background: rgba(255,255,255,0.08);
-  border-color: transparent;
   color: var(--text-primary);
 }
 

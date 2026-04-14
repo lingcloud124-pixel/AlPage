@@ -29,6 +29,6 @@ describe('web light mode action colors', () => {
 
     // Active project item
     expect(styles).toContain('body[data-ui-theme="light"] .sidebar-project-item.active');
-    expect(styles).toContain('border-color: transparent;');
+    expect(styles).toContain('background: rgba(17,17,17,0.08);');
   });
 });
