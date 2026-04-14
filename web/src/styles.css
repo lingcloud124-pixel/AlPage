@@ -97,6 +97,7 @@ body[data-ui-theme="light"] .project-sidebar {
 
 body[data-ui-theme="light"] .chat-header {
   background: rgba(255,255,255,0.92);
+  border-bottom-color: rgba(17,17,17,0.08);
 }
 
 body[data-ui-theme="light"] .input-area {
@@ -105,6 +106,7 @@ body[data-ui-theme="light"] .input-area {
 
 body[data-ui-theme="light"] .workspace-topbar {
   background: rgba(255,255,255,0.92);
+  border-bottom-color: rgba(17,17,17,0.08);
 }
 
 body[data-ui-theme="light"] .sidebar-new-btn {
@@ -125,6 +127,35 @@ body[data-ui-theme="light"] .sidebar-project-item.active {
   background: rgba(17,17,17,0.08);
 }
 
+body[data-ui-theme="light"] .sidebar-project-menu-btn {
+  color: rgba(17,17,17,0.4);
+}
+
+body[data-ui-theme="light"] .sidebar-project-menu {
+  background: #FFFFFF;
+  border: 1px solid rgba(17,17,17,0.10);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+body[data-ui-theme="light"] .sidebar-project-menu button {
+  color: rgba(17,17,17,0.8);
+}
+
+body[data-ui-theme="light"] .sidebar-project-menu button:hover {
+  background: rgba(17,17,17,0.06);
+}
+
+body[data-ui-theme="light"] .sidebar-toggle-btn,
+body[data-ui-theme="light"] .settings-btn {
+  color: var(--text-muted);
+}
+
+body[data-ui-theme="light"] .sidebar-toggle-btn:hover,
+body[data-ui-theme="light"] .settings-btn:hover {
+  background: rgba(17,17,17,0.06);
+  color: var(--text-primary);
+}
+
 body[data-ui-theme="light"] .chat-shell-send {
   background: #111111;
   color: #FFFFFF;
@@ -133,6 +164,47 @@ body[data-ui-theme="light"] .chat-shell-send {
 
 body[data-ui-theme="light"] .chat-shell-send:hover {
   background: #333333;
+}
+
+body[data-ui-theme="light"] .preview-panel {
+  background: #FFFFFF;
+}
+
+body[data-ui-theme="light"] .pane-divider::after {
+  background: rgba(17,17,17,0.18);
+}
+
+body[data-ui-theme="light"] .project-action-menu {
+  background: #FFFFFF;
+  border: 1px solid rgba(17,17,17,0.10);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+body[data-ui-theme="light"] .project-action-menu button {
+  color: rgba(17,17,17,0.8);
+}
+
+body[data-ui-theme="light"] .project-action-menu button:hover {
+  background: rgba(17,17,17,0.06);
+}
+
+body[data-ui-theme="light"] .modal-content {
+  background: #FFFFFF;
+  color: #111111;
+}
+
+body[data-ui-theme="light"] .modal-content hr {
+  border-top-color: rgba(17,17,17,0.08);
+}
+
+body[data-ui-theme="light"] .modal-content h4 {
+  color: rgba(17,17,17,0.6);
+}
+
+body[data-ui-theme="light"] .theme-studio-toast {
+  background: rgba(255,255,255,0.94);
+  color: #111111;
+  border-color: rgba(17,17,17,0.10);
 }
 
 .ui-icon-button {

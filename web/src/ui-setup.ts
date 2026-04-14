@@ -112,7 +112,6 @@ export function setupResizableDivider() {
         projectSidebar.classList.remove('collapsed');
         projectSidebar.style.width = `${newWidth}px`;
         projectSidebar.style.minWidth = `${newWidth}px`;
-        projectSidebar.style.padding = '18px 14px';
       }
       return;
     }
