@@ -9,9 +9,9 @@ describe('web new project button style', () => {
     const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
 
     expect(styles).toContain('.sidebar-new-btn {');
-    expect(styles).toContain('border: 1px solid rgba(255,255,255,0.16);');
-    expect(styles).toContain('color: #FFFFFF;');
-    expect(styles).toContain('background: rgba(255,255,255,0.08);');
+    expect(styles).toContain('background: var(--accent-ui-soft);');
+    expect(styles).toContain('color: var(--text-primary);');
+    expect(styles).toContain('border: 1px solid var(--border-strong);');
     expect(styles).toContain('body[data-ui-theme="light"] .sidebar-new-btn');
     expect(styles).toContain('background: #FAFAFA;');
     expect(styles).toContain('color: #111111;');

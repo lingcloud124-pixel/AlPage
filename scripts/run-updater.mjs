@@ -1,3 +1,9 @@
+/**
+ * ⚠️ DEPRECATED / 历史工具链
+ *
+ * run-updater.mjs 属于旧的 manifest 驱动批处理流程，
+ * 当前产品主链路已由 Theme Studio Web + theme_builder.py 替代。
+ */
 import path from 'path';
 import fs from 'fs-extra';
 import { fileURLToPath } from 'url';

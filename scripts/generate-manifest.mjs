@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 
 /**
+ * ⚠️ LEGACY / 历史工具链
+ *
  * generate-manifest.mjs
  * 
  * 从 colors/{name}.json 自动生成 manifest.json
  * 支持 Light-UI 和 Dark-UI 两种模板类型
+ *
+ * 当前 Theme Studio Web 主链路不再依赖该脚本作为主要入口，
+ * 保留它仅用于历史工具链兼容和参考。
  * 
  * 用法：
  *   node scripts/generate-manifest.mjs {主题名}

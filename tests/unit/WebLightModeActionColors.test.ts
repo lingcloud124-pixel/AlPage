@@ -20,7 +20,7 @@ describe('web light mode action colors', () => {
 
     // Workspace topbar
     expect(styles).toContain('body[data-ui-theme="light"] .workspace-topbar');
-    expect(styles).toContain('background: rgba(255,255,255,0.92);');
+    expect(styles).toContain('background: var(--surface-0);');
 
     // New project button
     expect(styles).toContain('body[data-ui-theme="light"] .sidebar-new-btn');
@@ -29,6 +29,6 @@ describe('web light mode action colors', () => {
 
     // Active project item
     expect(styles).toContain('body[data-ui-theme="light"] .sidebar-project-item.active');
-    expect(styles).toContain('background: rgba(17,17,17,0.08);');
+    expect(styles).toContain('background: var(--accent-ui-soft);');
   });
 });

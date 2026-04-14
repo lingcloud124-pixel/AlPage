@@ -1,3 +1,9 @@
+/**
+ * ⚠️ LEGACY / 历史工具链
+ *
+ * 此模块服务于旧的 Pencil 资产提取流程，
+ * 当前产品导出主链路已改为 HTML 预览 + Playwright 截图。
+ */
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { ColorScheme } from '../types/ColorScheme.js';

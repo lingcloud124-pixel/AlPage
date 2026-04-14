@@ -1,3 +1,9 @@
+/**
+ * ⚠️ LEGACY / 历史工具链
+ *
+ * 此客户端服务于旧的 Pencil / `.pen` 工作流，
+ * 仅供历史参考与旧测试使用，不属于当前 Theme Studio Web 产品主链路。
+ */
 import type { DesktopAIColorScheme } from '../types/DesktopAI.js';
 
 declare global {

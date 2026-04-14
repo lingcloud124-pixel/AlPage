@@ -9,11 +9,11 @@ describe('web topbar tabs', () => {
     const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
 
     expect(styles).toContain('.topbar-tabs');
-    expect(styles).toContain('gap: 4px;');
-    expect(styles).toContain('padding: 2px;');
-    expect(styles).toContain('min-height: 34px;');
-    expect(styles).toContain('font-size: var(--font-size-meta);');
-    expect(styles).toContain('letter-spacing: 0.06em;');
-    expect(styles).toContain('border-color: var(--border-strong);');
+    expect(styles).toContain('padding: 1px;');
+    expect(styles).toContain('height: 35px;');
+    expect(styles).toContain('.topbar-tabs .tab-indicator');
+    expect(styles).toContain('.tab-btn');
+    expect(styles).toContain('font-size: 10px;');
+    expect(styles).toContain('background: var(--surface-3);');
   });
 });

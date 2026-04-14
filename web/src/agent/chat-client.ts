@@ -32,7 +32,10 @@ export function loadSettings(): AISettings {
       apiEndpoint: migrateEndpoint(parsed.apiEndpoint) ?? ZHIPU_DEFAULTS.apiEndpoint,
       imageApiEndpoint: migrateEndpoint(parsed.imageApiEndpoint) ?? ZHIPU_DEFAULTS.imageApiEndpoint,
     };
-  } catch {
+  } catch (error) {
+    console.warn('[chat-client] 设置读取失败，已回退默认配置:', {
+      message: (error as Error).message,
+    });
     return { ...ZHIPU_DEFAULTS };
   }
 }
@@ -156,6 +159,8 @@ export async function chatCompletion(
     let reasoningContent = '';
     let buffer = '';
     let contentStarted = false;
+    let streamParseErrorCount = 0;
+    let streamParseErrorSample = '';
 
     while (true) {
       const { done, value } = await reader.read();
@@ -183,8 +188,25 @@ export async function chatCompletion(
             fullContent += delta.content;
             onToken?.(delta.content);
           }
-        } catch {}
+        } catch (error) {
+          streamParseErrorCount += 1;
+          if (!streamParseErrorSample) streamParseErrorSample = data.slice(0, 160);
+          void error;
+        }
       }
+    }
+
+    if (streamParseErrorCount > 0) {
+      console.warn('[chat-client] 流式响应存在未解析片段，已跳过:', {
+        count: streamParseErrorCount,
+        sample: streamParseErrorSample,
+      });
+    }
+
+    if (buffer.trim()) {
+      console.warn('[chat-client] 流式响应结束后仍有未消费缓冲片段:', {
+        sample: buffer.trim().slice(0, 160),
+      });
     }
 
     return fullContent;
@@ -200,6 +222,9 @@ export async function chatCompletion(
 
 export function parseToolCallsFromContent(content: string): Array<{ tool: string; args: Record<string, unknown> }> {
   const toolCalls: Array<{ tool: string; args: Record<string, unknown> }> = [];
+  let invalidJsonBlockCount = 0;
+  let invalidInlineToolCallCount = 0;
+  let invalidToolCallSample = '';
 
   const jsonBlockRegex = /```json\s*\n([\s\S]*?)\n```/g;
   let match;
@@ -209,7 +234,11 @@ export function parseToolCallsFromContent(content: string): Array<{ tool: string
       if (parsed.tool && typeof parsed.tool === 'string') {
         toolCalls.push({ tool: parsed.tool, args: parsed.args ?? {} });
       }
-    } catch {}
+    } catch (error) {
+      invalidJsonBlockCount += 1;
+      if (!invalidToolCallSample) invalidToolCallSample = match[1].slice(0, 160);
+      void error;
+    }
   }
 
   if (toolCalls.length === 0) {
@@ -217,8 +246,20 @@ export function parseToolCallsFromContent(content: string): Array<{ tool: string
     while ((match = inlineRegex.exec(content)) !== null) {
       try {
         toolCalls.push({ tool: match[1], args: JSON.parse(match[2]) });
-      } catch {}
+      } catch (error) {
+        invalidInlineToolCallCount += 1;
+        if (!invalidToolCallSample) invalidToolCallSample = match[0].slice(0, 160);
+        void error;
+      }
     }
+  }
+
+  if (invalidJsonBlockCount + invalidInlineToolCallCount > 0) {
+    console.warn('[chat-client] Tool call JSON 解析失败，已跳过无效片段:', {
+      jsonBlocks: invalidJsonBlockCount,
+      inlineCalls: invalidInlineToolCallCount,
+      sample: invalidToolCallSample,
+    });
   }
 
   return toolCalls;

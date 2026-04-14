@@ -62,9 +62,9 @@ Topic Automation/
 ├── scripts/
 │   ├── install-skill.sh  # Skill 安装脚本
 │   ├── theme_builder.py  # 统一打包工具（生成15个zip包）
-│   ├── update-pen-theme.py # pen文件颜色/图片更新器
+│   ├── update-pen-theme.py # 历史 pen 文件更新器（非当前主链路）
 │   ├── verify-build.py   # 打包后验证工具
-│   └── run-updater.mjs   # 批量更新脚本（已弃用）
+│   └── ...               # 其他历史脚本/辅助脚本
 ├── web/                  # Theme Studio Web 应用（当前主线）
 │   ├── src/              # HTML/CSS/TS 源码
 │   ├── scripts/          # 截图、构建、导出桥接
@@ -74,9 +74,9 @@ Topic Automation/
 │   └── *.json           # 配色方案
 ├── designs/
 │   ├── sources/
-│   │   ├── Light-UI-模板.pen  # 设计模板（勿修改）
-│   │   └── Dark-UI-模板.pen   # Dark 模板（实验性）
-│   └── Topic-*.pen       # 生成的主题文件
+│   │   ├── Light-UI-模板.pen  # 设计参考模板（勿修改）
+│   │   └── Dark-UI-模板.pen   # 设计参考模板（勿修改）
+│   └── Topic-*.pen       # 历史/参考产物（非当前主链路）
 ├── assets/
 │   └── references/samples/主题样例包/  # 主题包模板（symlink to 样例包）
 └── output/               # 根目录脚本默认输出目录（Web 导出推荐使用用户自配目录）
@@ -105,7 +105,7 @@ A: 运行 `bash scripts/install-skill.sh`，然后重启 OpenCode
 A: Web 应用里点击“打包”，先勾选产品，再由本地导出桥接在后台执行截图和标准脚本打包。手动方式仍可使用 `python3 theme_builder.py --config theme-build-request.yaml`。
 
 **Q: manifest.json 配置文件需要手动编辑吗**
-A: 不需要。`manifest.json` 现在由 `theme_builder.py` 自动生成，无需手动编辑。
+A: 当前 Web 主链路不依赖手动编辑 `manifest.json`。该文件主要属于历史工具链参考范围，现行主链路以项目快照 + 截图 + `theme_builder.py` 打包为准。
 
 **Q: 批量打包失败 "Unable to determine theme type"**
 A: 这是旧 TypeScript 工具链的 bug。新的 `theme_builder.py` 已正确处理主题类型检测，不会出现此问题。

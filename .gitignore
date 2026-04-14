@@ -12,6 +12,7 @@ test-results/
 screenshots/
 web/node_modules/
 web/dist/
+web/screenshots/
 web/test-screenshots/
 web/test-results/
 *.zip

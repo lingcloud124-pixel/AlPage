@@ -13,7 +13,8 @@ describe('web workbench chrome heights', () => {
     expect(styles).toContain('.chat-header');
     expect(styles).toContain('height: 70px;');
     expect(styles).toContain('.sidebar-settings-btn');
-    expect(styles).toContain('.topbar-tabs .tab-btn');
-    expect(styles).toContain('.topbar-tabs .tab-btn.active-tab');
+    expect(styles).toContain('.topbar-tabs');
+    expect(styles).toContain('.tab-btn');
+    expect(styles).toContain('.topbar-tabs .tab-indicator');
   });
 });

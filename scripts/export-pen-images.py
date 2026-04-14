@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
+⚠️ LEGACY / 历史工具链
+
 export-pen-images.py - 从 .pen 文件导出素材图片
 
 根据 pencil-export-images skill 定义的节点 ID 导出所有需要的素材。
 使用 node-png 或 Python 的 PIL 库进行渲染。
+
+当前 Theme Studio 产品主链路不再依赖该脚本，
+保留它仅用于历史参考和旧规则核对。
 
 用法:
   python3 scripts/export-pen-images.py {主题名} {模板类型}

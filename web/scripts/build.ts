@@ -72,7 +72,9 @@ async function ensureDevServer(): Promise<ChildProcess | null> {
       console.log('   ✅ 开发服务器已运行\n');
       return null;
     }
-  } catch {}
+  } catch (error) {
+    console.warn('   ℹ️ 未检测到已运行的开发服务器，准备自动启动 Vite:', (error as Error).message);
+  }
 
   // Start Vite dev server
   console.log('   🚀 启动 Vite 开发服务器...');
@@ -174,7 +176,9 @@ async function buildAll(options: BuildOptions): Promise<void> {
 
     try {
       execSync(`open "${packagesDir}"`, { stdio: 'pipe' });
-    } catch {}
+    } catch (error) {
+      console.warn('   ℹ️ 无法自动打开输出目录，请手动查看:', (error as Error).message);
+    }
 
   } finally {
     // Clean up Vite if we started it

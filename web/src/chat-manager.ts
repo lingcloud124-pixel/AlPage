@@ -70,7 +70,11 @@ export function loadChatHistory(): Array<{ role: string; content: string; timest
     const raw = localStorage.getItem(`theme-studio-chat-${pid}`);
     if (!raw) return [];
     return JSON.parse(raw) as Array<{ role: string; content: string; timestamp: number }>;
-  } catch {
+  } catch (error) {
+    console.warn('[chat-manager] 聊天历史读取失败，已回退为空记录:', {
+      projectId: pid,
+      message: (error as Error).message,
+    });
     return [];
   }
 }
@@ -426,7 +430,11 @@ export function setupChatInterface(deps: ChatDeps) {
               timestamp: Date.now(),
             });
           }
-        } catch {}
+        } catch (error) {
+          console.warn('[chat-manager] 图片参考分析失败，已跳过颜色参考注入:', {
+            message: (error as Error).message,
+          });
+        }
       });
     } else {
       addMessageToChat('user', content);

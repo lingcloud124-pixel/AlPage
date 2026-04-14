@@ -14,6 +14,7 @@
 - Path B（Web 浏览器流程）是唯一主线
 - `.pen` 文件只做视觉参考，不是运行时渲染源
 - HTML 模板 + Playwright 截图 + `theme_builder.py` 是当前导出主链
+- 历史 CLI / Pencil / Manifest 工具链仅保留参考价值，不再作为产品执行步骤
 
 ---
 

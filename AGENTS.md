@@ -19,11 +19,11 @@
 
 ## 二、架构概览
 
-本项目以 **Path B（Web 浏览器流程）** 为主，Path A（Pencil MCP CLI）已弃用：
+本项目以 **Path B（Web 浏览器流程）** 为主，Path A（旧 Pencil/CLI 流程）已弃用：
 
-### 产品线 A：CLI + Pencil MCP（已弃用，仅供参考）
+### 产品线 A：CLI + Pencil MCP（已弃用，仅作历史参考）
 
-> ⚠️ 此路径已不再使用。`SKILL.md` 和 `rules/` 中描述的 4 阶段 Pencil MCP 流程仅作历史参考。
+> ⚠️ 此路径已不再使用。相关说明只保留为历史背景，不能再当作当前执行步骤。
 
 ### 产品线 B：Theme Studio Web 应用（当前活跃，HTML + CSS + TS + Tailwind v4）
 
@@ -224,7 +224,7 @@ Topic Automation/
 ├── 操作说明书.md           # 用户操作手册
 ├── TEST-PLAN.md           # 测试计划（~85 个用例）
 ├── theme_builder.py       # 统一打包工具（15 zip）
-├── manifest.json          # 旧工具链 manifest（已废弃，保留参考）
+├── manifest.json          # 旧工具链 manifest（历史保留，非当前主链路）
 ├── theme-build-request.yaml # CLI 打包配置
 ├── package.json           # Root Node 项目（vitest + 依赖）
 ├── vite.config.ts         # Root vitest 配置（仅测试，非 Web 构建）
@@ -259,21 +259,21 @@ Topic Automation/
 │   └── plans/             # 历史实施计划
 │
 ├── scripts/               # 自动化脚本（17 个 + lib/）
-│   ├── update-pen-theme.py    # Pen 文件颜色/图片更新
+│   ├── update-pen-theme.py    # 历史 Pen 文件更新脚本（非当前主链路）
 │   ├── verify-build.py        # 打包后验证
 │   ├── deep-verify.py         # 深度验证
-│   ├── export-pen-images.py   # Pencil 图片导出
+│   ├── export-pen-images.py   # 历史图片导出脚本（非当前主链路）
 │   ├── install-skill.sh       # Skill 安装
 │   ├── image_gen.py           # 图片生成 CLI
 │   ├── validate-colors.py     # 色值验证
 │   ├── apply-theme.mjs        # 主题应用
-│   ├── generate-manifest.mjs  # Manifest 生成
+│   ├── generate-manifest.mjs  # 历史 Manifest 生成脚本
 │   ├── verify-export.mjs      # 导出验证
 │   ├── verify-theme.mjs       # 主题验证
 │   ├── validate-phase.mjs     # 阶段验证
 │   ├── e2e-test.mjs           # E2E 测试运行器
 │   ├── check-dark-ui-colors.sh # Dark-UI 色值检查
-│   ├── run-updater.mjs        # 已弃用
+│   ├── run-updater.mjs        # 已弃用（历史残留）
 │   ├── generate_sample_image.py # 样例图片生成
 │   └── lib/                   # 共享库
 │       ├── build-global-colors.mjs
@@ -282,11 +282,11 @@ Topic Automation/
 ├── colors/                # 配色方案 JSON（35 个）
 ├── designs/
 │   ├── sources/           # 模板（勿删改）
-│   │   ├── Light-UI-模板.pen
-│   │   └── Dark-UI-模板.pen
+│   │   ├── Light-UI-模板.pen   # 设计参考模板
+│   │   └── Dark-UI-模板.pen    # 设计参考模板
 │   ├── backgrounds/       # 背景图（10 张）
 │   ├── assets/            # avatars/ + news/
-│   └── Topic-*.pen        # 生成的主题文件（9+）
+│   └── Topic-*.pen        # 历史/参考产物（非当前主链路）
 │
 ├── assets/references/samples/主题样例包/  # 官方样例包（symlink）
 │
@@ -296,7 +296,7 @@ Topic Automation/
 │   │   ├── ColorUpdater.ts     # CSS 颜色更新
 │   │   ├── ImageProcessor.ts   # 图片处理
 │   │   ├── MetadataUpdater.ts  # 元数据更新
-│   │   ├── PencilMCPClient.ts  # Pencil MCP 客户端
+│   │   ├── PencilMCPClient.ts  # 历史 Pencil MCP 客户端（参考保留）
 │   │   ├── ScssCompiler.ts     # SCSS 编译
 │   │   ├── ThemeUpdater.ts     # 主题更新编排
 │   │   └── VariableMapper.ts   # CSS 变量映射
@@ -373,11 +373,11 @@ Topic Automation/
 
 | 层 | 技术 |
 |----|------|
-| 主题包 | Python（theme_builder.py, update-pen-theme.py） |
+| 主题包 | Python（当前主线为 `theme_builder.py`，其余历史脚本仅作参考） |
 | Web 前端 | HTML + CSS + TypeScript + Tailwind v4（Vite 开发服务器） |
 | AI 聊天 | 通义千问 qwen3.6-plus（via DashScope Coding Plan API） |
 | 图片生成 | MiniMax image-01（via Token Plan API） |
-| 设计文件 | Pencil（.pen 格式，仅作 HTML 模板参考） |
+| 设计文件 | `.pen` / 设计参考模板（仅作 HTML 模板参考） |
 | 截图 | Playwright |
 | 图片处理 | ImageMagick（convert） |
 | 测试 | Vitest（单元，63 文件）+ Playwright（E2E） |
@@ -413,9 +413,9 @@ Topic Automation/
 ## 九、环境依赖
 
 - **Node.js**: `npm install`（项目根目录 + web/ 目录）
-- **Python 3**: theme_builder.py, update-pen-theme.py, deep-verify.py
+- **Python 3**: `theme_builder.py`、`deep-verify.py`（`update-pen-theme.py` 属历史参考脚本）
 - **ImageMagick**: `convert` 命令（切图裁剪）
-- **Pencil**: .pen 文件编辑器（MCP 连接）
+- **Pencil**: 仅在查看历史参考模板时可能需要，不属于当前产品必需依赖
 - **Playwright**: Web 端截图 + E2E 测试
 - **导出根目录**: 用户在设置中配置，本地桥接层必须有写权限
 - **API Keys**:

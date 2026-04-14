@@ -17,7 +17,7 @@ describe('web chat input shell', () => {
     expect(styles).toContain('.chat-shell-send');
     expect(styles).toContain('.chat-shell-plus');
     expect(styles).toContain('.attachment-item');
-    expect(styles).toContain('background: rgba(255,255,255,0.04);');
+    expect(styles).toContain('background: var(--surface-btn);');
     expect(styles).not.toContain('.input-row button {');
   });
 });

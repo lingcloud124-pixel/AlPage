@@ -1,3 +1,9 @@
+/**
+ * ⚠️ LEGACY / 历史工具链
+ *
+ * 此模块面向旧的 `.pen` 设计生成链路，
+ * 当前 Web 产品主链路不再依赖它进行实时预览或导出。
+ */
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { DesktopAIColorScheme } from '../../types/DesktopAI.js';
