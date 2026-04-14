@@ -2810,6 +2810,7 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
 }
 
 .side-panel-header {
+  height: 70px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
