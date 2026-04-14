@@ -2863,7 +2863,15 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
   margin-right: 8px;
 }
 
-/* 侧边面板开启时对话区的收起效果 */
+/* 面板展开时：导航收起，对话隐藏，面板+预览占满 */
+.app-container.panel-open .project-sidebar {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+  border: none;
+}
+
 .app-container.panel-open .chat-panel {
   width: 0 !important;
   min-width: 0 !important;
@@ -2874,7 +2882,8 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
   transition: all 0.3s ease;
 }
 
-.app-container.panel-open .resize-divider {
+.app-container.panel-open .resize-divider,
+.app-container.panel-open .pane-divider {
   display: none;
 }
 
@@ -3948,7 +3957,7 @@ body,
 }
 
 .side-panel {
-  background: rgba(12,12,12,0.98);
+  background: var(--surface-0);
   border-left: 1px solid var(--border-subtle);
   box-shadow: none;
 }

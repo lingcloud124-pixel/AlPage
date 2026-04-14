@@ -215,24 +215,57 @@ export function setupCollapsibleColorPanel() {
   const sidePanel = document.getElementById('sidePanel') as HTMLElement;
   const panelToggleBtn = document.getElementById('panelToggleBtn') as HTMLButtonElement;
   const sidePanelClose = document.getElementById('sidePanelClose') as HTMLButtonElement;
+  const projectSidebar = document.getElementById('projectSidebar');
 
   if (!appContainer || !sidePanel || !panelToggleBtn) {
     console.error('Panel toggle elements not found');
     return;
   }
 
+  let prePanelState: { sidebarCollapsed: boolean; chatWidth: string; chatFlex: string; chatMinWidth: string } | null = null;
+
+  function openPanel() {
+    if (appContainer.classList.contains('panel-open')) return;
+    const chatPanel = document.getElementById('chatPanel') as HTMLElement;
+    prePanelState = {
+      sidebarCollapsed: projectSidebar?.classList.contains('collapsed') ?? false,
+      chatWidth: chatPanel?.style.width ?? '',
+      chatFlex: chatPanel?.style.flex ?? '',
+      chatMinWidth: chatPanel?.style.minWidth ?? '',
+    };
+    collapseProjectSidebar();
+    appContainer.classList.add('panel-open');
+    sidePanel.classList.add('open');
+    panelToggleBtn.textContent = '收起面板';
+  }
+
+  function closePanel() {
+    if (!appContainer.classList.contains('panel-open')) return;
+    appContainer.classList.remove('panel-open');
+    sidePanel.classList.remove('open');
+    panelToggleBtn.textContent = '面板';
+    if (prePanelState) {
+      const chatPanel = document.getElementById('chatPanel') as HTMLElement;
+      if (!prePanelState.sidebarCollapsed) expandProjectSidebar();
+      if (chatPanel) {
+        if (prePanelState.chatWidth) chatPanel.style.width = prePanelState.chatWidth;
+        else chatPanel.style.removeProperty('width');
+        if (prePanelState.chatFlex) chatPanel.style.flex = prePanelState.chatFlex;
+        else chatPanel.style.removeProperty('flex');
+        if (prePanelState.chatMinWidth) chatPanel.style.minWidth = prePanelState.chatMinWidth;
+        else chatPanel.style.removeProperty('min-width');
+      }
+      prePanelState = null;
+    }
+  }
+
   panelToggleBtn.addEventListener('click', () => {
-    appContainer.classList.toggle('panel-open');
-    sidePanel.classList.toggle('open');
-    panelToggleBtn.textContent = appContainer.classList.contains('panel-open') ? '收起面板' : '面板';
+    if (appContainer.classList.contains('panel-open')) closePanel();
+    else openPanel();
   });
 
   if (sidePanelClose) {
-    sidePanelClose.addEventListener('click', () => {
-      appContainer.classList.remove('panel-open');
-      sidePanel.classList.remove('open');
-      panelToggleBtn.textContent = '面板';
-    });
+    sidePanelClose.addEventListener('click', closePanel);
   }
 }
 
