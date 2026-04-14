@@ -322,8 +322,8 @@ Topic Automation/
 │   ├── integration/       # 1 个集成测试
 │   ├── fixtures/          # 测试数据（zips, colors, images, SCSS）
 │   ├── helpers/           # 测试工具（fixtureZips.ts）
-│   ├── latest/            # 最新测试输出
-│   └── history/           # 历史测试输出
+│   ├── latest/            # 运行时测试输出（建议忽略/可清理）
+│   └── history/           # 历史测试输出（建议忽略/可清理）
 │
 ├── web/                   # Theme Studio Web 应用
 │   ├── index.html         # 主入口（三列布局）
@@ -334,7 +334,6 @@ Topic Automation/
 │   ├── public/            # 静态资源（背景图、颜色、Logo）
 │   └── dist/              # 构建产物
 │
-├── templates/             # 主题模板（仅 manifest-template.json）
 └── output/                # 输出
     └── {日期}-{nameEn}/
         ├── 素材包/

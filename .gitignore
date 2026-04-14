@@ -25,4 +25,6 @@ assets/images/generated-*.png
 extracted/
 .omx/
 temp/
+tests/latest/
+tests/history/
 tests/fixtures/zips/
