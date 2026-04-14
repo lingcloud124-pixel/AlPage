@@ -122,6 +122,16 @@ body[data-ui-theme="light"] .sidebar-project-item.active {
   border-color: transparent;
 }
 
+body[data-ui-theme="light"] .chat-shell-send {
+  background: #111111;
+  color: #FFFFFF;
+  border: none;
+}
+
+body[data-ui-theme="light"] .chat-shell-send:hover {
+  background: #333333;
+}
+
 .ui-icon-button {
   width: 36px;
   height: 36px;
@@ -1173,6 +1183,27 @@ body[data-ui-theme="light"] .sidebar-project-item.active {
   transform: scale(1.05);
 }
 
+.chat-shell-send .icon-stop {
+  display: none;
+}
+
+.chat-shell-send.stop-mode {
+  border-radius: 10px;
+}
+
+.chat-shell-send.stop-mode .icon-send {
+  display: none;
+}
+
+.chat-shell-send.stop-mode .icon-stop {
+  display: block;
+}
+
+.chat-shell-send.stop-mode:hover {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
 .thinking-indicator {
   color: var(--auxiliary-gray, #999);
   font-size: 13px;
@@ -1189,12 +1220,11 @@ body[data-ui-theme="light"] .sidebar-project-item.active {
 }
 
 .input-row button.stop-mode {
-  background-color: #E53935;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .input-row button.stop-mode:hover {
-  background-color: #C62828;
+  opacity: 0.8;
 }
 
 .thinking-toggle {
