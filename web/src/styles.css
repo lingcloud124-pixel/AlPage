@@ -2873,12 +2873,11 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
 }
 
 .app-container.panel-open .chat-panel {
-  width: 0 !important;
-  min-width: 0 !important;
-  padding: 0 !important;
+  width: 372px !important;
+  min-width: 372px !important;
+  flex: 0 0 372px !important;
   overflow: hidden;
-  border: none;
-  opacity: 0;
+  opacity: 1;
   transition: all 0.3s ease;
 }
 

@@ -59,7 +59,7 @@ export function syncWorkbenchLayoutForActiveTab(hasPreview: boolean, activeTabId
 
   if (activeTabId === 'mainPageTab') {
     collapseProjectSidebar();
-    setChatPanelWidth(280);
+    setChatPanelWidth(372);
     return;
   }
 

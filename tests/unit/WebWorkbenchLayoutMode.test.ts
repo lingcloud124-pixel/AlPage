@@ -11,7 +11,7 @@ describe('web workbench layout mode', () => {
 
     expect(uiSetup).toContain('syncWorkbenchLayoutForActiveTab');
     expect(uiSetup).toContain("activeTabId === 'mainPageTab'");
-    expect(uiSetup).toContain('setChatPanelWidth(280)');
+    expect(uiSetup).toContain('setChatPanelWidth(372)');
     expect(uiSetup).toContain('setChatPanelWidth(null)');
     expect(main).toContain('syncWorkbenchLayoutForActiveTab(true');
     expect(main).toContain('syncWorkbenchLayoutForActiveTab(false');
