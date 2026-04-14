@@ -181,6 +181,13 @@ export function setupTabSwitching() {
     { btnId: 'mainPageTab', pageId: 'mainPage', templateId: 'desktop' },
   ];
   let activeTabInfo = { btn: null as HTMLButtonElement | null, page: null as HTMLElement | null, templateId: '' };
+  const indicator = document.querySelector('.topbar-tabs .tab-indicator') as HTMLElement;
+
+  function moveIndicator(btn: HTMLButtonElement) {
+    if (!indicator) return;
+    indicator.style.left = btn.offsetLeft + 'px';
+    indicator.style.width = btn.offsetWidth + 'px';
+  }
 
   TAB_MAP.forEach(tabInfo => {
     const { btnId, pageId, templateId } = tabInfo;
@@ -192,7 +199,7 @@ export function setupTabSwitching() {
       btn.classList.add('active-tab');
       page.classList.add('active-preview');
       activeTabInfo = { btn, page, templateId };
-      syncWorkbenchLayoutForActiveTab(false, 'loginTab');
+      requestAnimationFrame(() => moveIndicator(btn));
     }
 
     btn.addEventListener('click', async () => {
@@ -202,8 +209,7 @@ export function setupTabSwitching() {
       btn.classList.add('active-tab');
       page.classList.add('active-preview');
       activeTabInfo = { btn, page, templateId };
-      const hasPreview = !!document.getElementById('previewPanel')?.classList.contains('expanded');
-      syncWorkbenchLayoutForActiveTab(hasPreview, btnId as 'loginTab' | 'mainPageTab');
+      moveIndicator(btn);
       if (!page.firstElementChild) await renderTemplate(templateId, page);
       requestAnimationFrame(() => (window as any).resizePreview?.());
     });

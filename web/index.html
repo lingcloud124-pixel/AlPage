@@ -128,6 +128,7 @@
                     <div class="topbar-left">
                         <span class="project-name" id="projectName">未命名项目</span>
                         <div class="topbar-tabs">
+                            <div class="tab-indicator"></div>
                             <button id="loginTab" class="tab-btn active-tab">登录页</button>
                             <button id="mainPageTab" class="tab-btn">主页</button>
                         </div>
@@ -167,7 +168,7 @@
 
         <!-- 打包选择弹窗 -->
         <div class="modal-overlay" id="packageModal">
-            <div class="modal-content" style="width: 520px;">
+            <div class="modal-content package-modal" style="width: 520px;">
                 <div class="modal-header">
                     <h3>主题打包</h3>
                     <button class="modal-close-btn" id="packageModalClose">&times;</button>
@@ -198,56 +199,123 @@
 
         <!-- 设置模态框 -->
         <div class="modal-overlay" id="settingsModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>API设置</h3>
-                    <button class="modal-close-btn">&times;</button>
+            <div class="modal-content settings-modal">
+                <!-- Header -->
+                <header class="settings-header">
+                    <div>
+                        <h2 class="settings-title">API设置</h2>
+                        <p class="settings-subtitle">配置您的工作区 API 凭据和环境参数</p>
+                    </div>
+                    <button class="modal-close-btn" aria-label="关闭">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </header>
+
+                <!-- Scrollable Body -->
+                <div class="settings-body">
+                    <!-- Section 1: Chat Model -->
+                    <section class="settings-section">
+                        <div class="section-heading">
+                            <span class="section-accent"></span>
+                            <h3>对话模型 (Chat Model)</h3>
+                        </div>
+                        <div class="settings-card">
+                            <div class="form-row">
+                                <label class="form-label" for="apiEndpoint">API端点</label>
+                                <div class="form-input-wrap">
+                                    <input type="text" id="apiEndpoint" placeholder="coding.dashscope.aliyuncs.com/v1（留空使用默认代理）" />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label" for="apiKey">API密钥</label>
+                                <div class="form-input-wrap">
+                                    <input type="password" id="apiKey" placeholder="DashScope API Key（留空使用默认）" />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label" for="modelName">模型名称</label>
+                                <div class="form-input-wrap">
+                                    <input type="text" id="modelName" placeholder="qwen3.6-plus（留空使用默认）" />
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Section 2: Image Generation Model -->
+                    <section class="settings-section">
+                        <div class="section-heading">
+                            <span class="section-accent"></span>
+                            <h3>图像生成模型</h3>
+                        </div>
+                        <div class="settings-card">
+                            <div class="form-row">
+                                <label class="form-label" for="imageApiEndpoint">API端点</label>
+                                <div class="form-input-wrap">
+                                    <input type="text" id="imageApiEndpoint" placeholder="https://api.minimaxi.com/v1" />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label" for="imageApiKey">API密钥</label>
+                                <div class="form-input-wrap">
+                                    <input type="password" id="imageApiKey" placeholder="MiniMax Token Plan API Key" />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label" for="imageModelName">图像模型名称</label>
+                                <div class="form-input-wrap">
+                                    <input type="text" id="imageModelName" placeholder="image-01" />
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Section 3: Export Settings -->
+                    <section class="settings-section">
+                        <div class="section-heading">
+                            <span class="section-accent"></span>
+                            <h3>导出设置</h3>
+                        </div>
+                        <div class="settings-card">
+                            <div class="form-row">
+                                <label class="form-label" for="exportRoot">导出根目录</label>
+                                <div class="form-input-wrap">
+                                    <input type="text" id="exportRoot" placeholder="例如：/Users/你的名字/Documents/Theme Studio" />
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Section 4: Interface Settings -->
+                    <section class="settings-section">
+                        <div class="section-heading">
+                            <span class="section-accent"></span>
+                            <h3>界面与常规设置</h3>
+                        </div>
+                        <div class="settings-card">
+                            <div class="form-row">
+                                <div class="form-label-group">
+                                    <label class="form-label" for="uiThemeMode">界面模式</label>
+                                    <span class="form-label-desc">选择您偏好的视觉主题</span>
+                                </div>
+                                <div class="form-input-wrap">
+                                    <select id="uiThemeMode">
+                                        <option value="dark">Dark</option>
+                                        <option value="light">Light</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
-                <div class="modal-body">
-                    <div class="form-field">
-                        <label for="apiEndpoint">API端点：</label>
-                        <input type="text" id="apiEndpoint" placeholder="coding.dashscope.aliyuncs.com/v1（留空使用默认代理）" />
+
+                <!-- Footer -->
+                <footer class="settings-footer">
+                    <span class="settings-help-link">获取配置帮助</span>
+                    <div class="settings-footer-actions">
+                        <button id="cancelSettings" class="btn-cancel">取消</button>
+                        <button id="saveSettings" class="btn-save">保存</button>
                     </div>
-                    <div class="form-field">
-                        <label for="apiKey">API密钥：</label>
-                        <input type="password" id="apiKey" placeholder="DashScope API Key（留空使用默认）" />
-                    </div>
-                    <div class="form-field">
-                        <label for="modelName">模型名称：</label>
-                        <input type="text" id="modelName" placeholder="qwen3.6-plus（留空使用默认）" />
-                    </div>
-                    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:16px 0;">
-                    <h4 style="margin:0 0 12px;color:rgba(255,255,255,0.7);font-size:13px;">图像生成模型 — MiniMax image-01（用于生成主题背景图）</h4>
-                    <div class="form-field">
-                        <label for="imageApiEndpoint">图像API端点：</label>
-                        <input type="text" id="imageApiEndpoint" placeholder="https://api.minimaxi.com/v1" />
-                    </div>
-                    <div class="form-field">
-                        <label for="imageApiKey">图像API密钥：</label>
-                        <input type="password" id="imageApiKey" placeholder="MiniMax Token Plan API Key" />
-                    </div>
-                    <div class="form-field">
-                        <label for="imageModelName">图像模型名称：</label>
-                        <input type="text" id="imageModelName" placeholder="image-01" />
-                    </div>
-                    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:16px 0;">
-                    <h4 style="margin:0 0 12px;color:rgba(255,255,255,0.7);font-size:13px;">导出设置</h4>
-                    <div class="form-field">
-                        <label for="exportRoot">导出根目录：</label>
-                        <input type="text" id="exportRoot" placeholder="例如：/Users/你的名字/Documents/Theme Studio" />
-                    </div>
-                    <div class="form-field">
-                        <label for="uiThemeMode">工作台界面模式：</label>
-                        <select id="uiThemeMode">
-                            <option value="dark">Dark</option>
-                            <option value="light">Light</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button id="saveSettings">保存</button>
-                    <button id="cancelSettings">取消</button>
-                </div>
+                </footer>
             </div>
         </div>
 
