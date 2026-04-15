@@ -7,6 +7,7 @@ import { showNotification, setupMainActions } from './package-manager';
 import { initializeColorEditor } from './components/color-editor';
 import type { AISettings } from './types';
 import { normalizeExportRoot } from './export/export-paths';
+import { pickDirectoryViaBridge } from './export/export-bridge';
 
 let previewTemplatesLoaded = false;
 
@@ -318,6 +319,21 @@ export function setupSettingsDialog() {
     if (exportRootInput) exportRootInput.value = settings.exportRoot || '';
     if (uiThemeSelect) uiThemeSelect.value = settings.uiTheme || 'dark';
   }
+
+  const chooseExportRootBtn = document.getElementById('chooseExportRootBtn') as HTMLButtonElement | null;
+  chooseExportRootBtn?.addEventListener('click', async () => {
+    const exportRootInput = document.getElementById('exportRoot') as HTMLInputElement | null;
+    try {
+      const pickedPath = await pickDirectoryViaBridge(window);
+      if (!pickedPath) {
+        showNotification('当前本地桥接尚未提供目录选择能力，请先手动填写导出根目录');
+        return;
+      }
+      if (exportRootInput) exportRootInput.value = normalizeExportRoot(pickedPath);
+    } catch {
+      showNotification('目录选择失败，请确认本地导出桥接已启动，或先手动填写导出根目录');
+    }
+  });
 
   function saveSettingsForm() {
     const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement;

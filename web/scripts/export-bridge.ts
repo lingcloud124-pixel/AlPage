@@ -98,7 +98,28 @@ function defaultOpenPath(targetPath: string): Promise<void> {
   });
 }
 
-export function createExportBridgeServer(handleJob?: JobHandler, openPath: (targetPath: string) => Promise<void> = defaultOpenPath) {
+function defaultPickDirectory(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile('osascript', ['-e', 'POSIX path of (choose folder with prompt "选择 Theme Studio 导出根目录")'], (error, stdout) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      const pickedPath = stdout.trim();
+      if (!pickedPath) {
+        reject(new Error('empty_path'));
+        return;
+      }
+      resolve(pickedPath.replace(/\/$/, ''));
+    });
+  });
+}
+
+export function createExportBridgeServer(
+  handleJob?: JobHandler,
+  openPath: (targetPath: string) => Promise<void> = defaultOpenPath,
+  pickDirectory: () => Promise<string> = defaultPickDirectory,
+) {
   return http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/jobs') {
       try {
@@ -139,6 +160,18 @@ export function createExportBridgeServer(handleJob?: JobHandler, openPath: (targ
         await openPath(payload.path);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: (error as Error).message }));
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/pick-directory') {
+      try {
+        const selectedPath = await pickDirectory();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, path: selectedPath }));
       } catch (error) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: false, error: (error as Error).message }));

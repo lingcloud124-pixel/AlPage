@@ -2,6 +2,7 @@ import type { ExportJobRequest } from './export-job';
 
 export interface ThemeStudioExportBridge {
   enqueueExportJob?: (payload: ExportJobRequest) => Promise<{ accepted?: boolean; jobId?: string } | void> | { accepted?: boolean; jobId?: string } | void;
+  pickDirectory?: () => Promise<{ path?: string } | void> | { path?: string } | void;
 }
 
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -42,6 +43,18 @@ function getFetchBridge(source: unknown): ThemeStudioExportBridge | null {
 
       return await response.json() as { accepted?: boolean; jobId?: string };
     },
+    async pickDirectory() {
+      const response = await fetchImpl('/api/export/pick-directory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error(`目录选择请求失败 (${response.status})`);
+      }
+
+      return await response.json() as { path?: string };
+    },
   };
 }
 
@@ -58,4 +71,13 @@ export async function dispatchExportJobToBridge(source: unknown, request: Export
       : request.batch.id,
     mode,
   };
+}
+
+export async function pickDirectoryViaBridge(source: unknown): Promise<string | null> {
+  const bridge = getExportBridge(source) ?? getFetchBridge(source);
+  if (!bridge?.pickDirectory) return null;
+  const result = await bridge.pickDirectory();
+  return result && typeof result === 'object' && 'path' in result && typeof result.path === 'string'
+    ? result.path
+    : null;
 }

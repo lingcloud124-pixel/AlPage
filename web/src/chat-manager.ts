@@ -282,7 +282,7 @@ function addGuideCardsMessage(options: string[], sendUserMessage: () => void): H
     card.className = 'guide-card-chat';
     card.textContent = option;
     card.addEventListener('click', () => {
-      const input = document.getElementById('messageInput') as HTMLInputElement;
+      const input = document.getElementById('messageInput') as HTMLTextAreaElement;
       if (input) { input.value = `我想做一个${option}`; sendUserMessage(); }
     });
     cardsContainer.appendChild(card);
@@ -325,9 +325,10 @@ export interface ChatDeps {
 }
 
 export function setupChatInterface(deps: ChatDeps) {
-  const messageInput = document.getElementById('messageInput') as HTMLInputElement;
+  const messageInput = document.getElementById('messageInput') as HTMLTextAreaElement;
   const sendBtn = document.getElementById('sendBtn') as HTMLButtonElement;
   const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
+  const composerInner = document.querySelector('.chat-shell-composer-inner') as HTMLElement | null;
 
   if (!messageInput || !sendBtn || !messagesContainer) {
     console.error('Chat elements not found');
@@ -335,6 +336,15 @@ export function setupChatInterface(deps: ChatDeps) {
   }
 
   sendBtn.addEventListener('click', sendUserMessage);
+  const resizeMessageInput = () => {
+    messageInput.style.height = '40px';
+    const nextHeight = Math.min(messageInput.scrollHeight, 72);
+    const resolvedHeight = Math.max(40, nextHeight);
+    messageInput.style.height = `${resolvedHeight}px`;
+    if (composerInner) composerInner.style.minHeight = `${resolvedHeight + 56}px`;
+  };
+  resizeMessageInput();
+  messageInput.addEventListener('input', resizeMessageInput);
   messageInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendUserMessage(); }
   });
@@ -440,7 +450,10 @@ export function setupChatInterface(deps: ChatDeps) {
       addMessageToChat('user', content);
     }
 
-    if (messageInput) messageInput.value = '';
+    if (messageInput) {
+      messageInput.value = '';
+      resizeMessageInput();
+    }
     if (content) callAI(content);
 
     if (content && getCurrentProjectId()) {
