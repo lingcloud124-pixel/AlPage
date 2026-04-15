@@ -32,9 +32,9 @@
 - 浏览器: Chrome 120+, Safari 17+, Edge 120+
 
 ### 2.2 API 配置
-- API 服务商: 智谱 AI
-- 模型: GLM-4-Flash
-- API Key 环境变量: `VITE_ZHIPU_API_KEY`
+- 聊天模型（开发测试默认）: 通义千问 qwen3.6-plus（DashScope Coding Plan）
+- 图像模型（开发测试默认）: MiniMax image-01（Token Plan）
+- Web 工作台 API Key 环境变量: `VITE_DASHSCOPE_API_KEY`, `VITE_MINIMAX_API_KEY`
 
 ### 2.3 测试数据
 - 预设方案库: 15+ 个场景预设

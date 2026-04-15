@@ -374,8 +374,8 @@ Topic Automation/
 |----|------|
 | 主题包 | Python（当前主线为 `theme_builder.py`，其余历史脚本仅作参考） |
 | Web 前端 | HTML + CSS + TypeScript + Tailwind v4（Vite 开发服务器） |
-| AI 聊天 | 通义千问 qwen3.6-plus（via DashScope Coding Plan API） |
-| 图片生成 | MiniMax image-01（via Token Plan API） |
+| AI 聊天 | 标准模式：用户自定义聊天模型；开发测试默认：通义千问 qwen3.6-plus（via DashScope Coding Plan API） |
+| 图片生成 | 标准模式：用户自定义图像模型；开发测试默认：MiniMax image-01（via Token Plan API） |
 | 设计文件 | `.pen` / 设计参考模板（仅作 HTML 模板参考） |
 | 截图 | Playwright |
 | 图片处理 | ImageMagick（convert） |
@@ -407,6 +407,39 @@ Topic Automation/
 | 图片模型 | `image-01` |
 | 环境变量 | `VITE_DASHSCOPE_API_KEY`, `VITE_MINIMAX_API_KEY` |
 
+### 模型接入说明（重要）
+
+本项目存在两种不同语义的模型接入方式，必须明确区分：
+
+#### 1. 产品标准接入（面向用户）
+
+- 用户可以在界面设置中填写：
+  - `apiEndpoint`
+  - `apiKey`
+  - `model`
+  - `imageApiEndpoint`
+  - `imageApiKey`
+  - `imageModel`
+- 这是产品正式能力，代表 Theme Studio 支持用户接入自定义聊天/图像模型。
+- 相关代码：`web/src/ui-setup.ts`、`web/src/types.ts`。
+
+#### 2. 开发测试接入（面向当前研发环境）
+
+- 当前开发/测试默认跑的是：
+  - DashScope Coding Plan
+  - MiniMax Token Plan
+- Web 端实际默认值不是普通公网 endpoint，而是：
+  - `/api/chat` → Vite proxy → `coding.dashscope.aliyuncs.com`
+  - `/api/image` → Vite proxy → `47.100.184.181`（Host 头伪装为 `api.minimaxi.com`）
+- 这是一套为了当前研发环境稳定跑通而存在的特殊接法，不应误写为产品通用接入说明。
+- 相关代码：`web/src/agent/chat-client.ts`、`web/vite.config.ts`。
+
+#### 3. 文档原则
+
+- 对外说明产品能力时，应描述“标准模型接入”。
+- 解释当前本地开发/测试环境时，才描述 Coding Plan / 特殊代理配置。
+- 不要把开发测试接法写成产品唯一正确接法。
+
 ---
 
 ## 九、环境依赖
@@ -420,6 +453,7 @@ Topic Automation/
 - **API Keys**:
   - 根 `.env`: `MINIMAX_API_KEY`
   - `web/.env`: `VITE_DASHSCOPE_API_KEY`, `VITE_MINIMAX_API_KEY`
+  - 注意：根 `.env` 主要服务于根目录脚本/打包链路；Web 工作台主要依赖 `web/.env`
 
 ---
 
