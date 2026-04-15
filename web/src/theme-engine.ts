@@ -5,9 +5,25 @@ import { getHeaderSelectOptions } from './theme/template-registry';
 import { getCurrentProjectId, loadProject, saveProject } from './project-manager';
 import type { Project } from './project-manager';
 
+const LINKED_LIGHT_BG_VARS = [
+  '--portal-header-bg-extend-color',
+  '--sidebar-panel-bg',
+  '--gradient-start',
+] as const;
+
+function applyLinkedLightBgVars(target: HTMLElement, name: string, value: string): boolean {
+  if (!LINKED_LIGHT_BG_VARS.includes(name as typeof LINKED_LIGHT_BG_VARS[number])) return false;
+  for (const varName of LINKED_LIGHT_BG_VARS) {
+    target.style.setProperty(varName, value);
+  }
+  return true;
+}
+
 export function setThemeVar(name: string, value: string): void {
   const panel = document.getElementById('previewPanel');
-  if (panel) panel.style.setProperty(name, value);
+  if (!panel) return;
+  if (applyLinkedLightBgVars(panel, name, value)) return;
+  panel.style.setProperty(name, value);
 }
 
 export function applyThemeImageAssignments(templateId: string, imageUrl: string): void {
@@ -34,7 +50,8 @@ const COLOR_VAR_NAMES = [
   'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
   'primary-color-opacity-10', 'primary-color-opacity-20', 'primary-color-opacity-30',
   'header-font-color', 'auxiliary-gray', 'auxiliary-gray-dark',
-  'body-bg-color', 'login-bg-color', 'panel-bg-color',
+  'body-bg-color', 'portal-header-bg-extend-color', 'portal-header-complex-bg-extend-color',
+  'login-bg-color', 'panel-bg-color',
   'sidebar-panel-bg', 'sidebar-color', 'sidebar-icon-color',
   'border-color', 'border-icon-color',
   'gradient-start', 'gradient-mid',
@@ -93,6 +110,7 @@ export async function loadDefaultTemplates() {
     if (loginTarget) await renderTemplate('login', loginTarget);
     if (mainTarget) await renderTemplate('desktop', mainTarget);
     initDesktopSidebarBehavior(mainTarget);
+    initDesktopTemplateBehavior(mainTarget);
     if (headerDefaultTarget) await renderTemplate('header-default', headerDefaultTarget);
     if (headerComplexTarget) await renderTemplate('header-complex', headerComplexTarget);
     if (headerMenuTarget) await renderTemplate('header-menu', headerMenuTarget);
@@ -113,6 +131,90 @@ function initDesktopSidebarBehavior(container: HTMLElement | null) {
       if (icon) icon.classList.toggle('collapsed');
     });
   });
+}
+
+function initDesktopTemplateBehavior(container: HTMLElement | null) {
+  if (!container) return;
+
+  const tabBtns = container.querySelectorAll<HTMLElement>('.tab-btn');
+  tabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  const monthLabel = container.querySelector<HTMLElement>('.current-month');
+  const calendarGrid = container.querySelector<HTMLElement>('.calendar-grid');
+  const prevBtn = container.querySelector<HTMLElement>('#prev-month');
+  const nextBtn = container.querySelector<HTMLElement>('#next-month');
+
+  if (!monthLabel || !calendarGrid) return;
+
+  const now = new Date();
+  let displayYear = now.getFullYear();
+  let displayMonth = now.getMonth();
+
+  const renderCalendarWeek = () => {
+    monthLabel.textContent = `${displayYear}-${String(displayMonth + 1).padStart(2, '0')}`;
+    calendarGrid.innerHTML = '';
+
+    const weekDays = [
+      { day: 2, lunar: '十三', muted: true, event: false },
+      { day: 3, lunar: '十四', muted: false, event: false },
+      { day: 4, lunar: '十四', muted: false, event: false },
+      { day: 5, lunar: '十五', muted: false, event: true, highlighted: true },
+      { day: 6, lunar: '十六', muted: false, event: true },
+      { day: 7, lunar: '十七', muted: false, event: true },
+      { day: 8, lunar: '十八', muted: true, event: false },
+    ];
+
+    for (const item of weekDays) {
+      const dayElement = document.createElement('div');
+      dayElement.className = 'calendar-day';
+      if (item.muted) dayElement.classList.add('other-month');
+      if (item.highlighted) dayElement.classList.add('is-highlighted');
+
+      const dayNumber = document.createElement('span');
+      dayNumber.className = 'calendar-day-number';
+      dayNumber.textContent = String(item.day);
+
+      const lunar = document.createElement('span');
+      lunar.className = 'calendar-day-lunar';
+      lunar.textContent = item.lunar;
+
+      dayElement.appendChild(dayNumber);
+      dayElement.appendChild(lunar);
+
+      if (item.event) {
+        const eventDot = document.createElement('div');
+        eventDot.className = 'event-dot';
+        dayElement.appendChild(eventDot);
+      }
+
+      calendarGrid.appendChild(dayElement);
+    }
+  };
+
+  prevBtn?.addEventListener('click', () => {
+    displayMonth -= 1;
+    if (displayMonth < 0) {
+      displayMonth = 11;
+      displayYear -= 1;
+    }
+    renderCalendarWeek();
+  });
+
+  nextBtn?.addEventListener('click', () => {
+    displayMonth += 1;
+    if (displayMonth > 11) {
+      displayMonth = 0;
+      displayYear += 1;
+    }
+    renderCalendarWeek();
+  });
+
+  renderCalendarWeek();
 }
 
 export function applyPresetBackground(presetKey: string, bgMap: Record<string, string>): void {

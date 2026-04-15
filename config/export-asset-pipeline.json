@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "steps": [
+    {
+      "id": "project-snapshot",
+      "name": "固定当前项目快照",
+      "description": "锁定当前项目的背景图、模板类型、产品选择和确认后的颜色变量。"
+    },
+    {
+      "id": "login-background",
+      "name": "处理登录页背景素材",
+      "description": "基于当前背景图生成登录背景图、背景 PNG 和登录缩略图。"
+    },
+    {
+      "id": "header-sidebar",
+      "name": "处理页眉和左侧导航素材",
+      "description": "按 Light/Dark 三明治规则生成页眉与左导航切图。"
+    },
+    {
+      "id": "icon-recolor",
+      "name": "处理涉及主题色的图标素材",
+      "description": "在打包阶段对主题包内需要跟随主题色变化的 PNG 图标执行自动换色。"
+    },
+    {
+      "id": "thumbnails",
+      "name": "处理封面图和缩略图素材",
+      "description": "生成 desktop、layout-banner、fullscreen-sideheader、fullscreen-sidenav、center-sidenav、thumb、banner_personal、study_banner 等展示素材。"
+    }
+  ]
+}

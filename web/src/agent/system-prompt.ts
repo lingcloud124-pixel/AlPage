@@ -75,10 +75,11 @@ ${hasPrefs ? `你已经了解该用户的偏好（见下方「用户偏好」）
 ### generate_theme_pipeline（确认方案后调用）
 生成背景图、提取主色、推导全套配色、自动应用：
 \`\`\`json
-{"tool": "generate_theme_pipeline", "args": {"prompt": "English description of desired background image", "templateType": "light-ui"}}
+{"tool": "generate_theme_pipeline", "args": {"prompt": "English description of desired background image", "templateType": "light-ui", "primaryHint": "red"}}
 \`\`\`
 prompt 必须是详细的英文描述（如 "Chinese Spring Festival celebration, red lanterns, golden decorations, festive atmosphere, traditional patterns"）。
 templateType: 节日/活动/常规用 "light-ui"，科技/深色风格用 "dark-ui"。
+如果已经和用户确认了主色方向，必须同时传 primaryHint。示例值可用 red、orange、gold、green、blue、purple、pink，也可以直接传用户指定的 #RRGGBB。
 
 ### update_colors（微调专用）
 \`\`\`json

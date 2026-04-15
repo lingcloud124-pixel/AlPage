@@ -29,7 +29,7 @@ export function getScreenshotTargets(templateType: 'light-ui' | 'dark-ui') {
 
   const login: ScreenshotTarget[] = [
     {
-      selector: '.template-login',
+      selector: '.login-bg',
       outputName: stripExtension(config.loginBackground.full.outputFile),
       width: loginTemplate?.width ?? config.loginBackground.full.width,
       height: loginTemplate?.height ?? config.loginBackground.full.height,

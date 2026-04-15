@@ -11,16 +11,16 @@
    * 主题色系 (4)
    * ======================== */
   --primary-color: #2C615C;
-  --primary-color-hover: #B2FFE6;
-  --alter-color: #144E48;
-  --alter-color-hover-on: #73CAA6;
+  --primary-color-hover: #44978f;
+  --alter-color: #1c2725;
+  --alter-color-hover-on: #6bbdb4;
 
   /* ========================
    * 透明度变体 (3)
    * ======================== */
-  --primary-color-opacity-10: #E9F1EB;
-  --primary-color-opacity-20: #D3E2D8;
-  --primary-color-opacity-30: #BDD4C4;
+  --primary-color-opacity-10: #eaefef;
+  --primary-color-opacity-20: #d5dfde;
+  --primary-color-opacity-30: #c0d0ce;
 
   /* ========================
    * 文字色系 (4)
@@ -37,15 +37,15 @@
   --body-bg-color: #F8F8F8;
   --portal-header-bg-extend-color: #FBFCF2;
   --portal-header-complex-bg-extend-color: #FBFCF2;
-  --login-bg-color: #144E48;
+  --login-bg-color: #FDFFF6;
   --panel-bg-color: #FFFFFF;
 
   /* ========================
    * 侧边栏 (3)
    * ======================== */
-  --sidebar-panel-bg: #B8A9D9;
+  --sidebar-panel-bg: #FBFCF2;
   --sidebar-color: #333333;
-  --sidebar-icon-color: #9B8FC7;
+  --sidebar-icon-color: #2C615C;
 
   /* ========================
    * 边框 (2)
@@ -56,8 +56,8 @@
   /* ========================
    * 渐变组件色 (2)
    * ======================== */
-  --gradient-start: #fdfff5;
-  --gradient-mid: #f7f3cd;
+  --gradient-start: #FBFCF2;
+  --gradient-mid: #dfe7e7;
 
   /* ========================
    * 背景图变量

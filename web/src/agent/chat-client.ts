@@ -1,24 +1,42 @@
 import type { ChatRequest, ChatResponse, AISettings } from '../types';
 
 export const SETTINGS_KEY = 'themeStudioSettings';
-export const DEFAULT_CHAT_ENDPOINT = '/api/chat';
+const DEFAULT_CHAT_PROXY_ENDPOINT = '/api/chat';
+const DEFAULT_IMAGE_PROXY_ENDPOINT = '/api/image';
+const DEFAULT_CHAT_REMOTE_ENDPOINT = 'https://coding.dashscope.aliyuncs.com/v1';
+const DEFAULT_IMAGE_REMOTE_ENDPOINT = 'https://api.minimaxi.com/v1';
+
+export const DEFAULT_CHAT_ENDPOINT = import.meta.env.DEV
+  ? DEFAULT_CHAT_PROXY_ENDPOINT
+  : DEFAULT_CHAT_REMOTE_ENDPOINT;
+export const DEFAULT_IMAGE_ENDPOINT = import.meta.env.DEV
+  ? DEFAULT_IMAGE_PROXY_ENDPOINT
+  : DEFAULT_IMAGE_REMOTE_ENDPOINT;
 
 const ZHIPU_DEFAULTS: AISettings = {
   apiEndpoint: DEFAULT_CHAT_ENDPOINT,
   apiKey: import.meta.env.VITE_DASHSCOPE_API_KEY ?? '',
   model: 'qwen3.6-plus',
-  imageApiEndpoint: '/api/image',
+  imageApiEndpoint: DEFAULT_IMAGE_ENDPOINT,
   imageApiKey: import.meta.env.VITE_MINIMAX_API_KEY ?? '',
   imageModel: 'image-01',
   exportRoot: '',
   uiTheme: 'dark',
 };
 
-function migrateEndpoint(endpoint?: string): string | undefined {
+function normalizeEndpoint(endpoint: string, fallback: string): string {
+  const trimmed = endpoint.trim().replace(/\/+$/, '');
+  if (!trimmed) return fallback;
+  if (trimmed.startsWith('/')) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+function migrateEndpoint(endpoint: string | undefined, fallback: string): string | undefined {
   if (!endpoint) return endpoint;
-  if (endpoint.includes('dashscope.aliyuncs.com')) return '/api/chat';
-  if (endpoint.includes('api.minimaxi.com')) return '/api/image';
-  return endpoint;
+  if (endpoint.includes('dashscope.aliyuncs.com')) return fallback;
+  if (endpoint.includes('api.minimaxi.com') || endpoint.includes('47.100.184.181')) return fallback;
+  return normalizeEndpoint(endpoint, fallback);
 }
 
 export function loadSettings(): AISettings {
@@ -29,8 +47,8 @@ export function loadSettings(): AISettings {
     return {
       ...ZHIPU_DEFAULTS,
       ...parsed,
-      apiEndpoint: migrateEndpoint(parsed.apiEndpoint) ?? ZHIPU_DEFAULTS.apiEndpoint,
-      imageApiEndpoint: migrateEndpoint(parsed.imageApiEndpoint) ?? ZHIPU_DEFAULTS.imageApiEndpoint,
+      apiEndpoint: migrateEndpoint(parsed.apiEndpoint, DEFAULT_CHAT_ENDPOINT) ?? ZHIPU_DEFAULTS.apiEndpoint,
+      imageApiEndpoint: migrateEndpoint(parsed.imageApiEndpoint, DEFAULT_IMAGE_ENDPOINT) ?? ZHIPU_DEFAULTS.imageApiEndpoint,
     };
   } catch (error) {
     console.warn('[chat-client] 设置读取失败，已回退默认配置:', {
@@ -130,6 +148,10 @@ export async function chatCompletion(
   }
 
   try {
+    if (settings.apiEndpoint.startsWith('/') && typeof window !== 'undefined' && window.location.protocol === 'file:') {
+      throw new Error('当前页面是以文件方式直接打开的，无法使用 /api 代理。请通过 `npm run dev` 或 `npm run preview` 启动 Theme Studio。');
+    }
+
     const response = await fetch(`${settings.apiEndpoint}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -213,6 +235,9 @@ export async function chatCompletion(
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
       throw new Error('请求超时（120秒），请检查网络连接后重试');
+    }
+    if (e instanceof TypeError) {
+      throw new Error(`无法连接到接口 ${settings.apiEndpoint}，请确认当前是通过 Vite 开发服务器启动，或在设置中填写可访问的完整 https 地址`);
     }
     throw e;
   } finally {

@@ -1,5 +1,5 @@
 import { renderTemplate } from './templates/loader';
-import { loadSettings, saveSettings as persistSettings, DEFAULT_CHAT_ENDPOINT } from './agent/chat-client';
+import { loadSettings, saveSettings as persistSettings, DEFAULT_CHAT_ENDPOINT, DEFAULT_IMAGE_ENDPOINT } from './agent/chat-client';
 import { getCurrentProjectId, loadProject, saveProject, deleteProject, listProjects, populateSidebarProjects, closeAllProjectMenus, updateProjectNameDisplay, createProject } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, loadDefaultTemplates } from './theme-engine';
 import { loadAndRenderChatHistory, setupChatInterface } from './chat-manager';
@@ -312,7 +312,7 @@ export function setupSettingsDialog() {
     if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || DEFAULT_CHAT_ENDPOINT;
     if (apiKeyInput) apiKeyInput.value = settings.apiKey || '';
     if (modelNameInput) modelNameInput.value = settings.modelName || settings.model || 'qwen3.6-plus';
-    if (imageApiEndpointInput) imageApiEndpointInput.value = settings.imageApiEndpoint || 'https://api.minimaxi.com/v1';
+    if (imageApiEndpointInput) imageApiEndpointInput.value = settings.imageApiEndpoint || DEFAULT_IMAGE_ENDPOINT;
     if (imageApiKeyInput) imageApiKeyInput.value = settings.imageApiKey || '';
     if (imageModelNameInput) imageModelNameInput.value = settings.imageModelName || settings.imageModel || 'image-01';
     if (exportRootInput) exportRootInput.value = settings.exportRoot || '';
@@ -336,7 +336,7 @@ export function setupSettingsDialog() {
       apiKey: apiKeyInput.value,
       model: modelNameInput.value,
       modelName: modelNameInput.value,
-      imageApiEndpoint: imageApiEndpointInput?.value || 'https://api.minimaxi.com/v1',
+      imageApiEndpoint: imageApiEndpointInput?.value || DEFAULT_IMAGE_ENDPOINT,
       imageApiKey: imageApiKeyInput?.value || '',
       imageModel: imageModelNameInput?.value || 'image-01',
       imageModelName: imageModelNameInput?.value || 'image-01',

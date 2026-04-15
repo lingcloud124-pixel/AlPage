@@ -1,4 +1,4 @@
-import { initializeColorEditor } from './components/color-editor';
+import { initializeColorEditor, syncColorEditorFromTheme } from './components/color-editor';
 import {
   getCurrentProjectId,
   setCurrentProjectId,
@@ -69,6 +69,7 @@ function showWorkspace(projectId: string): void {
       if (project.headerBgImageUrl) {
         setThemeVar('--theme-header-bg-image', `url('${project.headerBgImageUrl}')`);
       }
+      syncColorEditorFromTheme();
       expandPreview();
       syncWorkbenchLayoutForActiveTab(true, 'mainPageTab');
       document.getElementById('loginTab')?.classList.remove('active-tab');
@@ -76,6 +77,7 @@ function showWorkspace(projectId: string): void {
       document.getElementById('mainPageTab')?.classList.add('active-tab');
       document.getElementById('mainPage')?.classList.add('active-preview');
     } else {
+      syncColorEditorFromTheme();
       collapsePreview();
       syncWorkbenchLayoutForActiveTab(false, 'loginTab');
     }

@@ -223,6 +223,8 @@ export interface DerivedColors {
   'auxiliary-gray': string;
   'auxiliary-gray-dark': string;
   'body-bg-color': string;
+  'portal-header-bg-extend-color': string;
+  'portal-header-complex-bg-extend-color': string;
   'login-bg-color': string;
   'panel-bg-color': string;
   'sidebar-panel-bg': string;
@@ -232,6 +234,161 @@ export interface DerivedColors {
   'border-icon-color': string;
   'gradient-start': string;
   'gradient-mid': string;
+}
+
+export interface PaletteCandidate {
+  hex: string;
+  h: number;
+  s: number;
+  l: number;
+  score: number;
+  reason: string;
+}
+
+export interface PreferredHueHint {
+  raw: string;
+  label: string;
+  targetHue: number;
+  tolerance: number;
+  fallbackHex: string;
+  boost: number;
+}
+
+export interface ThemeGenerationCheck {
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface ThemeGenerationReport {
+  primaryColor: string;
+  templateType: 'light-ui' | 'dark-ui';
+  checks: ThemeGenerationCheck[];
+  passed: boolean;
+}
+
+export const DEFAULT_LIGHT_UI_PRIMARY = '#2C615C';
+
+function getHueDistance(a: number, b: number): number {
+  const delta = Math.abs(a - b) % 360;
+  return Math.min(delta, 360 - delta);
+}
+
+export function resolvePreferredHueHint(
+  input: string | undefined,
+  templateType: 'light-ui' | 'dark-ui',
+): PreferredHueHint | null {
+  if (!input) return null;
+
+  const normalized = input.trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (/^#[0-9a-f]{6}$/i.test(normalized)) {
+    const { h } = hexToHsl(normalized);
+    return {
+      raw: input,
+      label: normalized,
+      targetHue: h,
+      tolerance: 22,
+      fallbackHex: normalized,
+      boost: 42,
+    };
+  }
+
+  const hintDefs: Array<{
+    aliases: string[];
+    label: string;
+    targetHue: number;
+    tolerance: number;
+    fallbackHexLight: string;
+    fallbackHexDark: string;
+    boost: number;
+  }> = [
+    {
+      aliases: ['red', '红', '红色', '大红', '喜庆红', '中国红', '正红', 'crimson', 'scarlet'],
+      label: 'red',
+      targetHue: 4,
+      tolerance: 24,
+      fallbackHexLight: '#C62828',
+      fallbackHexDark: '#8B1E1E',
+      boost: 48,
+    },
+    {
+      aliases: ['orange', '橙', '橙色', '橙红', '暖橙', 'amber'],
+      label: 'orange',
+      targetHue: 28,
+      tolerance: 24,
+      fallbackHexLight: '#EF6C00',
+      fallbackHexDark: '#A64B00',
+      boost: 42,
+    },
+    {
+      aliases: ['yellow', '黄', '黄色', '金色', 'gold'],
+      label: 'yellow',
+      targetHue: 48,
+      tolerance: 22,
+      fallbackHexLight: '#C69214',
+      fallbackHexDark: '#8C6A12',
+      boost: 38,
+    },
+    {
+      aliases: ['green', '绿', '绿色', '青绿', 'emerald'],
+      label: 'green',
+      targetHue: 138,
+      tolerance: 26,
+      fallbackHexLight: '#2E7D32',
+      fallbackHexDark: '#256029',
+      boost: 38,
+    },
+    {
+      aliases: ['cyan', 'teal', '青', '青色', '蓝绿', '薄荷'],
+      label: 'teal',
+      targetHue: 176,
+      tolerance: 24,
+      fallbackHexLight: '#00897B',
+      fallbackHexDark: '#0F5B53',
+      boost: 36,
+    },
+    {
+      aliases: ['blue', '蓝', '蓝色', '企业蓝', 'sky blue'],
+      label: 'blue',
+      targetHue: 214,
+      tolerance: 26,
+      fallbackHexLight: '#1565C0',
+      fallbackHexDark: '#1A4E8A',
+      boost: 38,
+    },
+    {
+      aliases: ['purple', 'violet', '紫', '紫色', '蓝紫'],
+      label: 'purple',
+      targetHue: 264,
+      tolerance: 26,
+      fallbackHexLight: '#6A1B9A',
+      fallbackHexDark: '#4A2374',
+      boost: 36,
+    },
+    {
+      aliases: ['pink', '粉', '粉色', '桃粉', 'rose'],
+      label: 'pink',
+      targetHue: 332,
+      tolerance: 22,
+      fallbackHexLight: '#D81B60',
+      fallbackHexDark: '#92204E',
+      boost: 34,
+    },
+  ];
+
+  const matched = hintDefs.find((hint) => hint.aliases.some((alias) => normalized.includes(alias)));
+  if (!matched) return null;
+
+  return {
+    raw: input,
+    label: matched.label,
+    targetHue: matched.targetHue,
+    tolerance: matched.tolerance,
+    fallbackHex: templateType === 'dark-ui' ? matched.fallbackHexDark : matched.fallbackHexLight,
+    boost: matched.boost,
+  };
 }
 
 /**
@@ -251,6 +408,145 @@ export function deriveColorsFromPrimary(
   return deriveLightUiColors(primaryHex);
 }
 
+export function rankPrimaryCandidates(
+  dominantColors: string[],
+  templateType: 'light-ui' | 'dark-ui',
+  preferredHueHint?: string,
+): PaletteCandidate[] {
+  const seen = new Set<string>();
+  const candidates: PaletteCandidate[] = [];
+  const hint = resolvePreferredHueHint(preferredHueHint, templateType);
+
+  for (const hex of dominantColors) {
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex) || seen.has(hex.toLowerCase())) continue;
+    seen.add(hex.toLowerCase());
+
+    const { h, s, l } = hexToHsl(hex);
+    let score = s;
+    let reason = '饱和度优先';
+
+    if (templateType === 'light-ui') {
+      const lightnessTarget = 56;
+      score += Math.max(0, 30 - Math.abs(l - lightnessTarget));
+      if (l >= 45 && l <= 75) score += 18;
+      if (s >= 28) score += 12;
+      if (l < 38) score -= 26;
+      if (l > 82) score -= 18;
+      reason = '偏好中浅亮度且有足够饱和度的主色';
+    } else {
+      const lightnessTarget = 38;
+      score += Math.max(0, 28 - Math.abs(l - lightnessTarget));
+      if (l >= 18 && l <= 55) score += 18;
+      if (s >= 20) score += 10;
+      if (l < 12) score -= 22;
+      if (l > 62) score -= 18;
+      reason = '偏好中低亮度且色相清晰的暗色主色';
+    }
+
+    if (hint) {
+      const hueDistance = getHueDistance(h, hint.targetHue);
+      if (hueDistance <= hint.tolerance) {
+        score += hint.boost - hueDistance * 0.75;
+        reason += `；匹配已确认主色方向(${hint.label})`;
+      } else {
+        score -= Math.min(20, (hueDistance - hint.tolerance) * 0.35);
+        reason += `；偏离已确认主色方向(${hint.label})`;
+      }
+    }
+
+    candidates.push({ hex, h, s, l, score, reason });
+  }
+
+  return candidates.sort((a, b) => b.score - a.score);
+}
+
+export function buildThemeGenerationReport(
+  primaryHex: string,
+  derived: DerivedColors,
+  templateType: 'light-ui' | 'dark-ui'
+): ThemeGenerationReport {
+  const primary = hexToHsl(derived['primary-color']);
+  const hover = hexToHsl(derived['primary-color-hover']);
+  const alter = hexToHsl(derived['alter-color']);
+  const alterHover = hexToHsl(derived['alter-color-hover-on']);
+  const header = hexToHsl(derived['header-font-color']);
+  const primarySource = hexToHsl(primaryHex);
+  const hueDelta = (from: number, to: number) => ((to - from) % 360 + 360) % 360;
+
+  const checks: ThemeGenerationCheck[] = [];
+
+  if (templateType === 'dark-ui') {
+    checks.push({
+      label: '主色贴近背景主色调',
+      passed: Math.abs(primary.h - primarySource.h) <= 4,
+      detail: `source H=${primarySource.h}°, primary H=${primary.h}°`,
+    });
+    checks.push({
+      label: 'primary-hover 色相偏移',
+      passed: Math.abs(hueDelta(primary.h, hover.h) - 26) <= 4,
+      detail: `delta=${hueDelta(primary.h, hover.h)}°`,
+    });
+    checks.push({
+      label: 'header-font 色相偏移',
+      passed: Math.abs(hueDelta(primary.h, header.h) - 22) <= 4,
+      detail: `delta=${hueDelta(primary.h, header.h)}°`,
+    });
+    checks.push({
+      label: '亮度排序',
+      passed: alter.l < primary.l && primary.l < alterHover.l && alterHover.l < hover.l && hover.l < header.l,
+      detail: `alter=${alter.l}, primary=${primary.l}, alterHover=${alterHover.l}, hover=${hover.l}, header=${header.l}`,
+    });
+    checks.push({
+      label: 'sidebar-panel-bg 等于 header-font-color',
+      passed: derived['sidebar-panel-bg'].toLowerCase() === derived['header-font-color'].toLowerCase(),
+      detail: `${derived['sidebar-panel-bg']} vs ${derived['header-font-color']}`,
+    });
+    checks.push({
+      label: 'login 背景保持深色',
+      passed: hexToHsl(derived['login-bg-color']).l <= primary.l,
+      detail: `login=${hexToHsl(derived['login-bg-color']).l}, primary=${primary.l}`,
+    });
+  } else {
+    checks.push({
+      label: '主色亮度位于 Light-UI 推荐区间',
+      passed: primary.l >= 45 && primary.l <= 60,
+      detail: `primary L=${primary.l}`,
+    });
+    checks.push({
+      label: 'primary-hover 比 primary 更亮',
+      passed: hover.l > primary.l,
+      detail: `primary=${primary.l}, hover=${hover.l}`,
+    });
+    checks.push({
+      label: 'alter-color 比 primary 更深',
+      passed: alter.l < primary.l,
+      detail: `alter=${alter.l}, primary=${primary.l}`,
+    });
+    checks.push({
+      label: 'header-font-color 固定深色',
+      passed: derived['header-font-color'].toLowerCase() === '#333333',
+      detail: derived['header-font-color'],
+    });
+    checks.push({
+      label: 'login 背景保持浅色',
+      passed: hexToHsl(derived['login-bg-color']).l >= 75,
+      detail: `login L=${hexToHsl(derived['login-bg-color']).l}`,
+    });
+    checks.push({
+      label: '主色仍保留来自背景图的色相',
+      passed: Math.abs(primary.h - primarySource.h) <= 6,
+      detail: `source H=${primarySource.h}°, primary H=${primary.h}°`,
+    });
+  }
+
+  return {
+    primaryColor: derived['primary-color'],
+    templateType,
+    checks,
+    passed: checks.every(check => check.passed),
+  };
+}
+
 /**
  * Light-UI 模板的颜色推导逻辑
  * @param primaryHex - 主色 hex 值
@@ -259,10 +555,10 @@ export function deriveColorsFromPrimary(
 function deriveLightUiColors(primaryHex: string): DerivedColors {
   // 1. 主色及其变体
   const primaryColor = primaryHex;
-  const primaryColorHover = lighten(primaryHex, 15); // lighten(primary, 20%), HSL L + 15
-  
+  const primaryColorHover = lighten(primaryHex, 15); // primary-hover = 比主色更亮的浅色变体
+
   // 2. alter-color 及其变体
-  const alterColor = darken(desaturate(primaryHex, 20), 15); // darken(primary, 15%), desaturate 20%
+  const alterColor = desaturate(darken(primaryHex, 15), 20); // alter-color = desaturate(darken(primary, 15%), 20%)
   const alterColorHoverOn = lighten(primaryColorHover, 15); // lighten(primaryHover, 15%)
   
   // 3. opacity 变体（与白色混合）
@@ -277,24 +573,26 @@ function deriveLightUiColors(primaryHex: string): DerivedColors {
   
   // 5. 固定背景色
   const bodyBgColor = '#F8F8F8';
+  const portalHeaderBgExtendColor = '#FBFCF2';
+  const portalHeaderComplexBgExtendColor = '#FBFCF2';
   const panelBgColor = '#FFFFFF';
   
-  // 6. 登录背景（与白色混合）
-  const loginBgColor = blendWhite(primaryHex, 0.15);
+  // 6. 登录背景 / 延展背景按规则使用固定浅色系
+  const loginBgColor = '#FDFFF6';
   
-  // 7. sidebar-panel-bg（紫色偏移）
-  const sidebarPanelBg = deriveSidebarPanelBg(primaryHex);
+  // 7. 侧边栏背景与页眉延展色保持一致
+  const sidebarPanelBg = portalHeaderBgExtendColor;
   
   // 8. sidebar 相关
   const sidebarColor = '#333333';
-  const sidebarIconColor = blendWhite(primaryHex, 0.25);
+  const sidebarIconColor = primaryColor;
   
   // 9. 边框色
   const borderColor = '#E5E7EB';
   const borderIconColor = '#E5E7EB';
   
-  // 10. 渐变色
-  const gradientStart = blendWhite(primaryHex, 0.05);
+  // 10. 渐变色起点与页眉/侧边栏浅背景保持一致
+  const gradientStart = portalHeaderBgExtendColor;
   const gradientMid = blendWhite(primaryHex, 0.15);
   
   return {
@@ -309,6 +607,8 @@ function deriveLightUiColors(primaryHex: string): DerivedColors {
     'auxiliary-gray': auxiliaryGray,
     'auxiliary-gray-dark': auxiliaryGrayDark,
     'body-bg-color': bodyBgColor,
+    'portal-header-bg-extend-color': portalHeaderBgExtendColor,
+    'portal-header-complex-bg-extend-color': portalHeaderComplexBgExtendColor,
     'login-bg-color': loginBgColor,
     'panel-bg-color': panelBgColor,
     'sidebar-panel-bg': sidebarPanelBg,
@@ -321,25 +621,10 @@ function deriveLightUiColors(primaryHex: string): DerivedColors {
   };
 }
 
-/**
- * 推导 sidebar-panel-bg（加紫色偏移）
- * 将 primary 的 H 值偏移 +45°（偏向紫色），降低饱和度，高亮度
- * @param primaryHex - 主色 hex 值
- * @returns sidebar-panel-bg 的 hex 值
- */
-function deriveSidebarPanelBg(primaryHex: string): string {
-  const hsl = hexToHsl(primaryHex);
-  
-  // 色相偏移 +45°（偏向紫色）
-  const sidebarH = (hsl.h + 45) % 360;
-  
-  // 降低饱和度（保留 40%）
-  const sidebarS = Math.max(10, hsl.s * 0.4);
-  
-  // 高亮度（至少 80，至多 90，基础亮度 + 30）
-  const sidebarL = Math.min(90, Math.max(80, hsl.l + 30));
-  
-  return hslToHex(sidebarH, sidebarS, sidebarL);
+export function toCssVarRecord(colors: DerivedColors): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(colors).map(([key, value]) => [`--${key}`, value]),
+  );
 }
 
 /**
@@ -379,6 +664,8 @@ function deriveDarkUiColors(primaryHex: string): DerivedColors {
 
   // 背景色 — 深色系
   const bodyBgColor = '#F8F8F8';
+  const portalHeaderBgExtendColor = alterColor;
+  const portalHeaderComplexBgExtendColor = alterColor;
 
   // 登录背景 — 使用 alter 色（最深）
   const loginBgColor = alterColor;
@@ -413,6 +700,8 @@ function deriveDarkUiColors(primaryHex: string): DerivedColors {
     'auxiliary-gray': auxiliaryGray,
     'auxiliary-gray-dark': auxiliaryGrayDark,
     'body-bg-color': bodyBgColor,
+    'portal-header-bg-extend-color': portalHeaderBgExtendColor,
+    'portal-header-complex-bg-extend-color': portalHeaderComplexBgExtendColor,
     'login-bg-color': loginBgColor,
     'panel-bg-color': panelBgColor,
     'sidebar-panel-bg': sidebarPanelBg,

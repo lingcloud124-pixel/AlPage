@@ -1,14 +1,10 @@
-import { screenshotAll } from './screenshot.js';
-import { execSync, spawn, type ChildProcess } from 'child_process';
+import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import http from 'http';
 import { buildExportRequestYaml } from '../src/export/build-config.js';
+import { buildExportAssetSnapshot } from '../src/export/asset-snapshot.js';
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, '../..');
-const WEB_ROOT = path.resolve(import.meta.dirname, '..');
-const VITE_PORT = 5173;
-const VITE_URL = `http://localhost:${VITE_PORT}`;
 
 interface BuildOptions {
   name: string;
@@ -17,6 +13,7 @@ interface BuildOptions {
   subtitle?: string;
   buttonText?: string;
   themeColor: string;
+  cssVariables?: Record<string, string>;
   themeImageUrl?: string;
   selectedProducts?: string[];
   exportDir?: string;
@@ -46,96 +43,64 @@ function resolveBuildDirectories(options: ResolveBuildDirectoriesOptions) {
   };
 }
 
-function waitForServer(url: string, timeoutMs = 30_000): Promise<void> {
-  const start = Date.now();
-  return new Promise((resolve, reject) => {
-    const check = () => {
-      if (Date.now() - start > timeoutMs) {
-        reject(new Error(`服务器启动超时 (${timeoutMs / 1000}s)`));
-        return;
-      }
-      http.get(url, (res) => {
-        res.resume();
-        if (res.statusCode && res.statusCode < 500) resolve();
-        else setTimeout(check, 500);
-      }).on('error', () => setTimeout(check, 500));
-    };
-    check();
-  });
-}
-
-async function ensureDevServer(): Promise<ChildProcess | null> {
-  // Check if already running
-  try {
-    const response = await fetch(VITE_URL);
-    if (response.ok) {
-      console.log('   ✅ 开发服务器已运行\n');
-      return null;
-    }
-  } catch (error) {
-    console.warn('   ℹ️ 未检测到已运行的开发服务器，准备自动启动 Vite:', (error as Error).message);
-  }
-
-  // Start Vite dev server
-  console.log('   🚀 启动 Vite 开发服务器...');
-  const viteProcess = spawn('npx', ['vite', '--port', String(VITE_PORT)], {
-    cwd: WEB_ROOT,
-    stdio: 'pipe',
-    shell: true,
-    detached: false,
-  });
-
-  try {
-    await waitForServer(VITE_URL);
-    console.log('   ✅ 开发服务器已启动\n');
-    return viteProcess;
-  } catch (e) {
-    viteProcess.kill();
-    throw e;
-  }
-}
-
 async function buildAll(options: BuildOptions): Promise<void> {
   const { baseDir, assetsDir, packagesDir } = resolveBuildDirectories(options);
+  const cssVariables = options.cssVariables ?? {};
 
   console.log(`\n🏗️ Theme Studio Build`);
   console.log(`   主题: ${options.name}`);
   console.log(`   类型: ${options.templateType}`);
   console.log(`   目录: ${baseDir}\n`);
 
-  let viteProcess: ChildProcess | null = null;
-
   try {
-    // Step 1: Ensure dev server is running
-    console.log('📋 Step 1: 开发服务器...');
-    viteProcess = await ensureDevServer();
-
-    // Step 2: Screenshot
-    console.log('📸 Step 2: 截图导出...');
-    options.onStatus?.('capturing');
+    // Step 1: Generate export config and asset snapshot
+    console.log('📝 Step 1: 固定项目快照并生成构建配置...');
     fs.mkdirSync(assetsDir, { recursive: true });
     fs.mkdirSync(packagesDir, { recursive: true });
-    const screenshotResults = await screenshotAll(assetsDir, {
-      themeImageUrl: options.themeImageUrl,
-      templateType: options.templateType,
-    });
-    console.log(`   ✅ 截图完成: ${Object.keys(screenshotResults).length} 个文件\n`);
-
-    // Step 3: Generate theme-build-request.yaml
-    console.log('📝 Step 3: 生成构建配置...');
     const yaml = buildExportRequestYaml({
       name: options.name,
       subtitle: options.subtitle,
       buttonText: options.buttonText,
       themeColor: options.themeColor,
+      templateType: options.templateType,
+      colors: options.cssVariables,
       selectedProducts: options.selectedProducts ?? ['mk', 'ekp_v12', 'ekp_v13_5', 'ekp_v14_16', 'ekp_v17'],
     });
     const yamlPath = path.join(assetsDir, 'theme-build-request.yaml');
     fs.writeFileSync(yamlPath, yaml, 'utf-8');
-    console.log(`   ✅ 配置已生成: ${yamlPath}\n`);
+    const assetSnapshot = buildExportAssetSnapshot({
+      project: {
+        id: options.nameEn,
+        name: options.name,
+        themeName: options.name,
+        templateType: options.templateType,
+        colors: cssVariables,
+        bgImageUrl: options.themeImageUrl,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+      cssVariables,
+      selectedProducts: options.selectedProducts ?? ['mk', 'ekp_v12', 'ekp_v13_5', 'ekp_v14_16', 'ekp_v17'],
+      nameEn: options.nameEn,
+      exportDir: baseDir,
+    });
+    const snapshotPath = path.join(assetsDir, 'asset-snapshot.json');
+    fs.writeFileSync(snapshotPath, `${JSON.stringify(assetSnapshot, null, 2)}\n`, 'utf-8');
+    console.log(`   ✅ 配置已生成: ${yamlPath}`);
+    console.log(`   ✅ 快照已生成: ${snapshotPath}\n`);
 
-    // Step 4: Build packages
-    console.log('📦 Step 4: 执行打包...');
+    // Step 2: Prepare assets via Python pipeline
+    console.log('🖼️ Step 2: 按 5 步素材流水线准备素材...');
+    options.onStatus?.('capturing');
+    const assetPrepPath = path.join(PROJECT_ROOT, 'scripts', 'prepare_export_assets.py');
+    execSync(`python3 "${assetPrepPath}" --snapshot "${snapshotPath}" --output "${assetsDir}"`, {
+      stdio: 'inherit',
+      cwd: PROJECT_ROOT,
+    });
+    console.log('   ✅ 素材准备完成\n');
+
+    // Step 3: Build packages
+    console.log('📦 Step 3: 执行打包...');
     options.onStatus?.('packaging');
     const builderPath = path.join(PROJECT_ROOT, 'theme_builder.py');
     try {
@@ -150,8 +115,8 @@ async function buildAll(options: BuildOptions): Promise<void> {
       throw e;
     }
 
-    // Step 5: Verify
-    console.log('🔍 Step 5: 验证包...');
+    // Step 4: Verify
+    console.log('🔍 Step 4: 验证包...');
     options.onStatus?.('verifying');
     const verifyPath = path.join(PROJECT_ROOT, 'scripts', 'verify-build.py');
     try {
@@ -181,11 +146,7 @@ async function buildAll(options: BuildOptions): Promise<void> {
     }
 
   } finally {
-    // Clean up Vite if we started it
-    if (viteProcess) {
-      console.log('\n🧹 关闭开发服务器...');
-      viteProcess.kill();
-    }
+    // no-op
   }
 }
 

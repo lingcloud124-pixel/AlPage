@@ -11,7 +11,7 @@ describe('web screenshot rules', () => {
     );
 
     expect(rules.login[0]).toMatchObject({
-      selector: '.template-login',
+      selector: '.login-bg',
       outputName: 'bg-login',
       width: 2215,
       height: 1080,

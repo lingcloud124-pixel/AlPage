@@ -33,6 +33,7 @@ export interface ParsePenArgs {
 
 export interface GenerateBackgroundArgs {
   prompt: string;
+  primaryHint?: string;
 }
 
 export interface UploadBackgroundArgs {

@@ -1,4 +1,5 @@
-import { deriveColorsFromPrimary } from '../theme/color-utils';
+import { getCurrentProjectId, loadProject } from '../project-manager';
+import { DEFAULT_LIGHT_UI_PRIMARY, deriveColorsFromPrimary, toCssVarRecord } from '../theme/color-utils';
 
 export interface ColorSetting {
   name: string;
@@ -8,34 +9,37 @@ export interface ColorSetting {
   defaultValue: string;
 }
 
+const defaultLightUiTheme = toCssVarRecord(deriveColorsFromPrimary(DEFAULT_LIGHT_UI_PRIMARY, 'light-ui'));
+
 const colorSettings: ColorSetting[] = [
-  { name: 'primary', property: '--primary-color', label: '主题色', group: 'theme', defaultValue: '#2C615C' },
-  { name: 'primary-hover', property: '--primary-color-hover', label: '主题色悬停', group: 'theme', defaultValue: '#B2FFE6' },
-  { name: 'alter', property: '--alter-color', label: '辅助色', group: 'theme', defaultValue: '#144E48' },
-  { name: 'alter-hover', property: '--alter-color-hover-on', label: '辅助色悬停激活', group: 'theme', defaultValue: '#73CAA6' },
-  
-  { name: 'opacity-10', property: '--primary-color-opacity-10', label: '主题色透明度10%', group: 'opacity', defaultValue: '#E9F1EB' },
-  { name: 'opacity-20', property: '--primary-color-opacity-20', label: '主题色透明度20%', group: 'opacity', defaultValue: '#D3E2D8' },
-  { name: 'opacity-30', property: '--primary-color-opacity-30', label: '主题色透明度30%', group: 'opacity', defaultValue: '#BDD4C4' },
-  
-  { name: 'header-font', property: '--header-font-color', label: '标题字体色', group: 'text', defaultValue: '#333333' },
-  { name: 'auxiliary-gray', property: '--auxiliary-gray', label: '辅助灰色', group: 'text', defaultValue: '#999999' },
-  { name: 'auxiliary-gray-dark', property: '--auxiliary-gray-dark', label: '深辅助灰色', group: 'text', defaultValue: '#666666' },
-  
-  { name: 'body-bg', property: '--body-bg-color', label: '主体背景色', group: 'bg', defaultValue: '#F8F8F8' },
-  { name: 'header-extend', property: '--portal-header-bg-extend-color', label: '页眉扩展背景色', group: 'bg', defaultValue: '#FBFCF2' },
-  { name: 'header-complex-extend', property: '--portal-header-complex-bg-extend-color', label: '页眉复合背景色', group: 'bg', defaultValue: '#FBFCF2' },
-  { name: 'login-bg', property: '--login-bg-color', label: '登录背景色', group: 'bg', defaultValue: '#144E48' },
-  
-  { name: 'sidebar-panel', property: '--sidebar-panel-bg', label: '侧边栏面板背景', group: 'sidebar', defaultValue: '#B8A9D9' },
-  { name: 'sidebar-color', property: '--sidebar-color', label: '侧边栏文字色', group: 'sidebar', defaultValue: '#333333' },
-  { name: 'icon-color', property: '--sidebar-icon-color', label: '侧边栏图标色', group: 'sidebar', defaultValue: '#9B8FC7' },
-  
-  { name: 'border', property: '--border-color', label: '边框色', group: 'border', defaultValue: '#EEEEEE' },
-  { name: 'border-icon', property: '--border-icon-color', label: '图栋边框色', group: 'border', defaultValue: '#EEEEEE' },
-  
-  { name: 'gradient-start', property: '--gradient-start', label: '渐变起点色', group: 'gradient', defaultValue: '#fdfff5' },
-  { name: 'gradient-mid', property: '--gradient-mid', label: '渐变中间色', group: 'gradient', defaultValue: '#f7f3cd' },
+  { name: 'primary', property: '--primary-color', label: '主题色', group: 'theme', defaultValue: defaultLightUiTheme['--primary-color'] },
+  { name: 'primary-hover', property: '--primary-color-hover', label: '主题色悬停', group: 'theme', defaultValue: defaultLightUiTheme['--primary-color-hover'] },
+  { name: 'alter', property: '--alter-color', label: '辅助色', group: 'theme', defaultValue: defaultLightUiTheme['--alter-color'] },
+  { name: 'alter-hover', property: '--alter-color-hover-on', label: '辅助色悬停激活', group: 'theme', defaultValue: defaultLightUiTheme['--alter-color-hover-on'] },
+
+  { name: 'opacity-10', property: '--primary-color-opacity-10', label: '主题色透明度10%', group: 'opacity', defaultValue: defaultLightUiTheme['--primary-color-opacity-10'] },
+  { name: 'opacity-20', property: '--primary-color-opacity-20', label: '主题色透明度20%', group: 'opacity', defaultValue: defaultLightUiTheme['--primary-color-opacity-20'] },
+  { name: 'opacity-30', property: '--primary-color-opacity-30', label: '主题色透明度30%', group: 'opacity', defaultValue: defaultLightUiTheme['--primary-color-opacity-30'] },
+
+  { name: 'header-font', property: '--header-font-color', label: '标题字体色', group: 'text', defaultValue: defaultLightUiTheme['--header-font-color'] },
+  { name: 'auxiliary-gray', property: '--auxiliary-gray', label: '辅助灰色', group: 'text', defaultValue: defaultLightUiTheme['--auxiliary-gray'] },
+  { name: 'auxiliary-gray-dark', property: '--auxiliary-gray-dark', label: '深辅助灰色', group: 'text', defaultValue: defaultLightUiTheme['--auxiliary-gray-dark'] },
+
+  { name: 'body-bg', property: '--body-bg-color', label: '主体背景色', group: 'bg', defaultValue: defaultLightUiTheme['--body-bg-color'] },
+  { name: 'header-extend', property: '--portal-header-bg-extend-color', label: '页眉扩展背景色', group: 'bg', defaultValue: defaultLightUiTheme['--portal-header-bg-extend-color'] },
+  { name: 'header-complex-extend', property: '--portal-header-complex-bg-extend-color', label: '页眉复合背景色', group: 'bg', defaultValue: defaultLightUiTheme['--portal-header-complex-bg-extend-color'] },
+  { name: 'login-bg', property: '--login-bg-color', label: '登录背景色', group: 'bg', defaultValue: defaultLightUiTheme['--login-bg-color'] },
+  { name: 'panel-bg', property: '--panel-bg-color', label: '面板背景色', group: 'bg', defaultValue: defaultLightUiTheme['--panel-bg-color'] },
+
+  { name: 'sidebar-panel', property: '--sidebar-panel-bg', label: '侧边栏面板背景', group: 'sidebar', defaultValue: defaultLightUiTheme['--sidebar-panel-bg'] },
+  { name: 'sidebar-color', property: '--sidebar-color', label: '侧边栏文字色', group: 'sidebar', defaultValue: defaultLightUiTheme['--sidebar-color'] },
+  { name: 'icon-color', property: '--sidebar-icon-color', label: '侧边栏图标色', group: 'sidebar', defaultValue: defaultLightUiTheme['--sidebar-icon-color'] },
+
+  { name: 'border', property: '--border-color', label: '边框色', group: 'border', defaultValue: defaultLightUiTheme['--border-color'] },
+  { name: 'border-icon', property: '--border-icon-color', label: '图标边框色', group: 'border', defaultValue: defaultLightUiTheme['--border-icon-color'] },
+
+  { name: 'gradient-start', property: '--gradient-start', label: '渐变起点色', group: 'gradient', defaultValue: defaultLightUiTheme['--gradient-start'] },
+  { name: 'gradient-mid', property: '--gradient-mid', label: '渐变中间色', group: 'gradient', defaultValue: defaultLightUiTheme['--gradient-mid'] },
 ];
 
 const groupLabels: Record<string, string> = {
@@ -48,8 +52,28 @@ const groupLabels: Record<string, string> = {
   gradient: '渐变组件色'
 };
 
+const LINKED_LIGHT_BG_VARS = [
+  '--portal-header-bg-extend-color',
+  '--sidebar-panel-bg',
+  '--gradient-start',
+] as const;
+
+function applyLinkedLightBgVars(target: HTMLElement, varName: string, value: string): boolean {
+  if (!LINKED_LIGHT_BG_VARS.includes(varName as typeof LINKED_LIGHT_BG_VARS[number])) return false;
+  for (const linkedVar of LINKED_LIGHT_BG_VARS) {
+    target.style.setProperty(linkedVar, value);
+  }
+  return true;
+}
+
 function getThemeTarget(): HTMLElement {
   return document.getElementById('previewPanel') ?? document.documentElement;
+}
+
+function getActiveTemplateType(): 'light-ui' | 'dark-ui' {
+  const currentProjectId = getCurrentProjectId();
+  if (!currentProjectId) return 'light-ui';
+  return loadProject(currentProjectId)?.templateType ?? 'light-ui';
 }
 
 function getCSSVar(varName: string): string {
@@ -57,13 +81,28 @@ function getCSSVar(varName: string): string {
 }
 
 function setCSSVar(varName: string, value: string): void {
-  getThemeTarget().style.setProperty(varName, value);
+  const target = getThemeTarget();
+  if (applyLinkedLightBgVars(target, varName, value)) return;
+  target.style.setProperty(varName, value);
 }
 
 export function updateThemeColors(colors: Record<string, string>): void {
   for (const [name, value] of Object.entries(colors)) {
     const varName = name.startsWith('--') ? name : `--${name}`;
     setCSSVar(varName, value);
+  }
+}
+
+export function syncColorEditorFromTheme(): void {
+  const container = document.getElementById('colorEditor');
+  if (!container) return;
+
+  for (const setting of colorSettings) {
+    const currentVal = normalizeHexColor(getCSSVar(setting.property) || setting.defaultValue);
+    const colorInput = container.querySelector<HTMLInputElement>(`input[type="color"][data-css-var="${setting.property}"]`);
+    const hexInput = container.querySelector<HTMLInputElement>(`input[type="text"][data-css-var="${setting.property}"]`);
+    if (colorInput) colorInput.value = currentVal;
+    if (hexInput) hexInput.value = currentVal;
   }
 }
 
@@ -121,7 +160,7 @@ export function initializeColorEditor(): void {
   deriveSection.appendChild(deriveTitle);
 
   const deriveDescription = document.createElement('p');
-  deriveDescription.textContent = '输入品牌主色，自动推导全套配色';
+  deriveDescription.textContent = '输入品牌主色，按当前模板规则自动推导全套配色';
   deriveDescription.style.fontSize = '12px';
   deriveDescription.style.color = 'var(--auxiliary-gray)';
   deriveDescription.style.margin = '0 0 12px 0';
@@ -192,7 +231,8 @@ export function initializeColorEditor(): void {
     }
     
     // 使用 color-utils 推导
-    const colors = deriveColorsFromPrimary(hex, 'light-ui');
+    const templateType = getActiveTemplateType();
+    const colors = deriveColorsFromPrimary(hex, templateType);
     
     // 应用到 CSS 变量
     for (const [key, value] of Object.entries(colors)) {
@@ -201,7 +241,7 @@ export function initializeColorEditor(): void {
     
     // 刷新面板显示
     initializeColorEditor();
-    showDeriveSuccess(deriveSection, `已从 ${hex} 推导并应用全套配色`);
+    showDeriveSuccess(deriveSection, `已按 ${templateType} 规则从 ${hex} 推导并应用全套配色`);
   });
 
   deriveRow.appendChild(deriveColorPicker);
@@ -212,6 +252,7 @@ export function initializeColorEditor(): void {
   container.appendChild(deriveSection);
 
   console.log('Color editor initialized with', colorSettings.length, 'color controls');
+  syncColorEditorFromTheme();
 }
 
 function groupColorSettings(settings: ColorSetting[]): Record<string, ColorSetting[]> {
@@ -256,6 +297,7 @@ function createColorControl(setting: ColorSetting): HTMLElement {
   
   const colorInput = document.createElement('input');
   colorInput.type = 'color';
+  colorInput.dataset.cssVar = setting.property;
   
   const currentVal = getCSSVar(setting.property);
   colorInput.value = normalizeHexColor(currentVal || setting.defaultValue);
@@ -273,6 +315,7 @@ function createColorControl(setting: ColorSetting): HTMLElement {
   const hexInput = document.createElement('input');
   hexInput.type = 'text';
   hexInput.className = 'hex-input';
+  hexInput.dataset.cssVar = setting.property;
   hexInput.value = normalizeHexColor(colorInput.value);
   hexInput.size = 7;
   

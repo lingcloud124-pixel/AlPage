@@ -88,11 +88,11 @@
 }
 
 .login-lang-option:hover {
-  background-color: var(--primary-color-opacity-10, #e9f1eb);
+  background-color: var(--primary-color-opacity-10, #eaefef);
 }
 
 .login-lang-option.active {
-  background-color: var(--primary-color-opacity-10, #e9f1eb);
+  background-color: var(--primary-color-opacity-10, #eaefef);
   color: var(--primary-color);
   font-weight: 500;
 }
@@ -161,7 +161,7 @@
   left: 0;
   right: 0;
   height: 1px;
-  background-color: var(--primary-color-opacity-20, #d3e2d8);
+  background-color: var(--primary-color-opacity-20, #d5dfde);
 }
 
 .login-tab-indicator {

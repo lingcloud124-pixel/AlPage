@@ -1,0 +1,42 @@
+{
+  "light-ui": {
+    "sidebar": {
+      "baseColorVar": "portal-header-bg-extend-color",
+      "gradientColorVar": "portal-header-bg-extend-color",
+      "fallbackColor": "#F1F1F1",
+      "gradientDirection": "vertical",
+      "gradientOpacityStart": 1,
+      "gradientOpacityEnd": 0.7,
+      "imageOpacity": 1
+    },
+    "header": {
+      "baseColorVar": "portal-header-bg-extend-color",
+      "gradientColorVar": "portal-header-bg-extend-color",
+      "fallbackColor": "#F1F1F1",
+      "gradientDirection": "horizontal",
+      "gradientOpacityStart": 0.6,
+      "gradientOpacityEnd": 1,
+      "imageOpacity": 1
+    }
+  },
+  "dark-ui": {
+    "sidebar": {
+      "baseColorVar": "header-font-color",
+      "gradientColorVar": "header-font-color",
+      "fallbackColor": "#F1F1F1",
+      "gradientDirection": "vertical",
+      "gradientOpacityStart": 1,
+      "gradientOpacityEnd": 0.7,
+      "imageOpacity": 1
+    },
+    "header": {
+      "baseColorVar": "portal-header-complex-bg-extend-color",
+      "gradientColorVar": "portal-header-complex-bg-extend-color",
+      "fallbackColor": "#F1F1F1",
+      "gradientDirection": "horizontal",
+      "gradientOpacityStart": 0.6,
+      "gradientOpacityEnd": 1,
+      "imageOpacity": 1
+    }
+  }
+}

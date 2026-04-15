@@ -1,4 +1,5 @@
 import type { ChatMessage, ExportBatch } from './types';
+import { DEFAULT_LIGHT_UI_PRIMARY, deriveColorsFromPrimary, toCssVarRecord } from './theme/color-utils';
 
 export interface Project {
   id: string;
@@ -44,14 +45,7 @@ export function updateProjectNameDisplay(project: Project): void {
 }
 
 export function getDefaultColors(): Record<string, string> {
-  return {
-    '--primary-color': '#2C615C',
-    '--primary-color-hover': '#B2FFE6',
-    '--alter-color': '#144E48',
-    '--header-font-color': '#333333',
-    '--auxiliary-gray': '#999999',
-    '--body-bg-color': '#F8F8F8',
-  };
+  return toCssVarRecord(deriveColorsFromPrimary(DEFAULT_LIGHT_UI_PRIMARY, 'light-ui'));
 }
 
 export function createProject(name: string, templateType: 'light-ui' | 'dark-ui', trackProjectCreated?: () => void): Project | null {

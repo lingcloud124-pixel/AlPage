@@ -72,6 +72,20 @@ export async function renderTemplate(
   }
 }
 
+const LINKED_LIGHT_BG_VARS = [
+  '--portal-header-bg-extend-color',
+  '--sidebar-panel-bg',
+  '--gradient-start',
+] as const;
+
+function applyLinkedLightBgVars(target: HTMLElement, varName: string, value: string): boolean {
+  if (!LINKED_LIGHT_BG_VARS.includes(varName as typeof LINKED_LIGHT_BG_VARS[number])) return false;
+  for (const linkedVar of LINKED_LIGHT_BG_VARS) {
+    target.style.setProperty(linkedVar, value);
+  }
+  return true;
+}
+
 function getThemeTarget(): HTMLElement {
   return document.getElementById('previewPanel') ?? document.documentElement;
 }
@@ -80,6 +94,7 @@ export function applyThemeVariables(colors: Record<string, string>): void {
   const target = getThemeTarget();
   for (const [key, value] of Object.entries(colors)) {
     const varName = key.startsWith('--') ? key : `--${key}`;
+    if (applyLinkedLightBgVars(target, varName, value)) continue;
     target.style.setProperty(varName, value);
   }
 }

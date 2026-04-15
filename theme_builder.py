@@ -10,6 +10,7 @@ Usage:
 
 import argparse
 import json
+import math
 import os
 import re
 import shutil
@@ -17,34 +18,69 @@ import subprocess
 import sys
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 # =============================================================================
 # Constants
 # =============================================================================
 
-SAMPLES_ROOT = Path(__file__).parent / "assets/references/samples/主题样例包"
+PROJECT_ROOT = Path(__file__).parent
+LOCAL_SAMPLES_DIR = PROJECT_ROOT / "assets" / "references" / "samples"
 
-TEMPLATE_ZIPS = {
-    "mk": {
-        "theme": "主题-MK-2026清明主题.zip",
-        "login": "登录-MK-2026清明.zip",
+DEFAULT_SAMPLES_ROOTS = {
+    "light-ui": LOCAL_SAMPLES_DIR / "light样例包",
+    "dark-ui": LOCAL_SAMPLES_DIR / "dark样例包",
+}
+
+TEMPLATE_ZIPS_BY_TYPE = {
+    "light-ui": {
+        "mk": {
+            "theme": "主题-MK-2026清明主题.zip",
+            "login": "登录-MK-2026清明.zip",
+        },
+        "ekp_v12": {
+            "theme": "主题-V12-2026清明主题.zip",
+            "login": "登录-V12-2026清明.zip",
+        },
+        "ekp_v13_5": {
+            "theme": "主题-V13〜V13.5-2026清明主题.zip",
+            "login": "登录-V13-2026清明.zip",
+        },
+        "ekp_v14_16": {
+            "theme": "主题-V14〜V16-2026清明主题.zip",
+            "login": "登录-V16-2026清明.zip",
+        },
+        "ekp_v17": {
+            "theme": "主题-V17-2026清明主题.zip",
+            "login": "登录-V17-2026清明.zip",
+        },
     },
-    "ekp_v12": {
-        "theme": "主题-V12-2026清明主题.zip",
-        "login": "登录-V12-2026清明.zip",
-    },
-    "ekp_v13_5": {
-        "theme": "主题-V13〜V13.5-2026清明主题.zip",
-        "login": "登录-V13-2026清明.zip",
-    },
-    "ekp_v14_16": {
-        "theme": "主题-V14〜V16-2026清明主题.zip",
-        "login": "登录-V16-2026清明.zip",
-    },
-    "ekp_v17": {
-        "theme": "主题-V17-2026清明主题.zip",
-        "login": "登录-V17-2026清明.zip",
+    "dark-ui": {
+        "mk": {
+            "theme": "mk-festival-26-spring主题包.zip",
+            "login": "mk-festival-spring-登录包.zip",
+        },
+        "ekp_v12": {
+            "theme": "主题-V12-2026春节主题.zip",
+            "login": "登录-V12-2026春节.zip",
+        },
+        "ekp_v13_5": {
+            "theme": "主题-V13〜V13.5-2026春节主题.zip",
+            "login": "登录-V13-2026春节.zip",
+        },
+        "ekp_v14_16": {
+            "theme": "主题-V14〜V16-2026春节主题.zip",
+            "login": "登录-V16〜V17-2026春节.zip",
+        },
+        "ekp_v17": {
+            "theme": "主题-V17-2026春节主题.zip",
+            "login": "登录-V16〜V17-2026春节.zip",
+        },
     },
 }
 
@@ -55,16 +91,29 @@ VERSION_LABELS = {
     "ekp_v17": "V17",
 }
 
-LOGIN_VARIANTS = {
-    "ekp_v13_5": [
-        {"label": "V13", "template": "登录-V13-2026清明.zip"},
-        {"label": "V13.5", "template": "登录-V13.5-2026清明.zip"},
-    ],
-    "ekp_v14_16": [
-        {"label": "V14", "template": "登录-V14-2026清明.zip"},
-        {"label": "V15", "template": "登录-V15-2026清明.zip"},
-        {"label": "V16", "template": "登录-V16-2026清明.zip"},
-    ],
+LOGIN_VARIANTS_BY_TYPE = {
+    "light-ui": {
+        "ekp_v13_5": [
+            {"label": "V13", "template": "登录-V13-2026清明.zip"},
+            {"label": "V13.5", "template": "登录-V13.5-2026清明.zip"},
+        ],
+        "ekp_v14_16": [
+            {"label": "V14", "template": "登录-V14-2026清明.zip"},
+            {"label": "V15", "template": "登录-V15-2026清明.zip"},
+            {"label": "V16", "template": "登录-V16-2026清明.zip"},
+        ],
+    },
+    "dark-ui": {
+        "ekp_v13_5": [
+            {"label": "V13", "template": "登录-V13-2026春节.zip"},
+            {"label": "V13.5", "template": "登录-V13.5-2026春节.zip"},
+        ],
+        "ekp_v14_16": [
+            {"label": "V14", "template": "登录-V14-2026春节.zip"},
+            {"label": "V15", "template": "登录-V15-2026春节.zip"},
+            {"label": "V16", "template": "登录-V16〜V17-2026春节.zip"},
+        ],
+    },
 }
 
 # Color replacement mapping for CSS (MK/EKP shared)
@@ -85,6 +134,37 @@ COLOR_VARIANTS = {
 BG_VARIANTS = {
     "#fbfcf2": None,
     "#fbf9eb": None,
+}
+
+LEGACY_VARIABLE_COLOR_VARIANTS = {
+    "header-font-color": ["#ffe4cf", "#FFE4CF"],
+    "sidebar-icon-color": ["#dcb496", "#DCB496"],
+    "portal-header-bg-extend-color": ["#c41b00", "#C41B00", "#fbfcf2", "#FBFCF2", "#fbf9eb", "#FBF9EB"],
+}
+
+DEFAULT_THEME_VARIABLES = {
+    "primary-color": "#2C615C",
+    "primary-color-hover": "#B2FFE6",
+    "alter-color": "#144E48",
+    "alter-color-hover-on": "#73CAA6",
+    "primary-color-opacity-10": "#E9F1EB",
+    "primary-color-opacity-20": "#D3E2D8",
+    "primary-color-opacity-30": "#BDD4C4",
+    "header-font-color": "#333333",
+    "auxiliary-gray": "#999999",
+    "auxiliary-gray-dark": "#666666",
+    "body-bg-color": "#F8F8F8",
+    "portal-header-bg-extend-color": "#FBFCF2",
+    "portal-header-complex-bg-extend-color": "#FBFCF2",
+    "login-bg-color": "#144E48",
+    "panel-bg-color": "#FFFFFF",
+    "sidebar-panel-bg": "#B8A9D9",
+    "sidebar-color": "#333333",
+    "sidebar-icon-color": "#9B8FC7",
+    "border-color": "#E5E7EB",
+    "border-icon-color": "#E5E7EB",
+    "gradient-start": "#FDFFF5",
+    "gradient-mid": "#F7F3CD",
 }
 
 # RGB replacements (for rgba() variants)
@@ -114,6 +194,22 @@ def success(msg: str):
 
 def warn(msg: str):
     print(f"⚠️  {msg}")
+
+
+def resolve_samples_root(template_type: str, configured_root: Optional[str] = None) -> Path:
+    if configured_root:
+        return Path(configured_root).expanduser().resolve()
+    return DEFAULT_SAMPLES_ROOTS.get(
+        template_type, Path(__file__).parent / "assets/references/samples/主题样例包"
+    )
+
+
+def get_template_zips(template_type: str) -> Dict[str, Dict[str, str]]:
+    return TEMPLATE_ZIPS_BY_TYPE.get(template_type, TEMPLATE_ZIPS_BY_TYPE["light-ui"])
+
+
+def get_login_variants(template_type: str) -> Dict[str, List[Dict[str, str]]]:
+    return LOGIN_VARIANTS_BY_TYPE.get(template_type, LOGIN_VARIANTS_BY_TYPE["light-ui"])
 
 
 def ensure_dir(path: Path):
@@ -183,12 +279,27 @@ def build_color_replacements(theme_color: str) -> Dict[str, str]:
 
 
 def inject_color_into_css(
-    content: str, theme_color: str, header_font: str = "#333333"
+    content: str,
+    theme_color: str,
+    header_font: str = "#333333",
+    colors: Optional[Dict[str, str]] = None,
 ) -> str:
     replacements = build_color_replacements(theme_color)
     for hex_code in BG_VARIANTS:
         replacements[hex_code.lower()] = header_font.lower()
         replacements[hex_code.upper()] = header_font.upper()
+    for legacy_hex in LEGACY_VARIABLE_COLOR_VARIANTS.get("header-font-color", []):
+        replacements[legacy_hex.lower()] = header_font.lower()
+        replacements[legacy_hex.upper()] = header_font.upper()
+    for var_name, default_hex in DEFAULT_THEME_VARIABLES.items():
+        actual = (colors or {}).get(var_name)
+        if not actual:
+            continue
+        replacements[default_hex.lower()] = actual.lower()
+        replacements[default_hex.upper()] = actual.upper()
+        for legacy_hex in LEGACY_VARIABLE_COLOR_VARIANTS.get(var_name, []):
+            replacements[legacy_hex.lower()] = actual.lower()
+            replacements[legacy_hex.upper()] = actual.upper()
     result = content
     for old, new in replacements.items():
         result = result.replace(old, new)
@@ -251,6 +362,69 @@ def replace_image(src: Path, dest: Path) -> bool:
     return True
 
 
+def _hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
+    clean = str(hex_color).strip().lstrip("#")
+    if len(clean) == 3:
+        clean = "".join(char * 2 for char in clean)
+    clean = clean[:6].ljust(6, "0")
+    return tuple(int(clean[index : index + 2], 16) for index in (0, 2, 4))
+
+
+def _rgb_distance(left: Tuple[int, int, int], right: Tuple[int, int, int]) -> float:
+    return math.sqrt(sum((a - b) ** 2 for a, b in zip(left, right)))
+
+
+def recolor_icon_directory(
+    base_dir: Path,
+    relative_dirs: List[str],
+    colors: Optional[Dict[str, str]] = None,
+    threshold: float = 80.0,
+) -> Tuple[int, int]:
+    if Image is None:
+        warn("Pillow not installed, skipping icon recolor step")
+        return (0, 0)
+
+    palette = colors or {}
+    replacement_map = {
+        "#2c615c": palette.get("primary-color", "#2C615C"),
+        "#144e48": palette.get("alter-color", "#144E48"),
+        "#56817d": palette.get("alter-color-hover-on", "#73CAA6"),
+        "#eaf0ef": palette.get("primary-color-opacity-10", "#E9F1EB"),
+        "#d5dfde": palette.get("primary-color-opacity-20", "#D3E2D8"),
+        "#c0d0cf": palette.get("primary-color-opacity-30", "#BDD4C4"),
+        "#fbfcf2": palette.get("portal-header-bg-extend-color", "#FBFCF2"),
+        "#ffe4cf": palette.get("header-font-color", "#333333"),
+        "#dcb496": palette.get("sidebar-icon-color", "#9B8FC7"),
+    }
+    mappings = [(_hex_to_rgb(source), _hex_to_rgb(target)) for source, target in replacement_map.items()]
+
+    files_processed = 0
+    pixels_changed = 0
+    for relative_dir in relative_dirs:
+        icon_dir = base_dir / relative_dir
+        if not icon_dir.exists():
+            continue
+        for icon_path in icon_dir.rglob("*.png"):
+            with Image.open(icon_path).convert("RGBA") as image:
+                pixels = image.load()
+                modified = 0
+                for x in range(image.width):
+                    for y in range(image.height):
+                        red, green, blue, alpha = pixels[x, y]
+                        if alpha == 0:
+                            continue
+                        for source_rgb, target_rgb in mappings:
+                            if _rgb_distance((red, green, blue), source_rgb) <= threshold:
+                                pixels[x, y] = (*target_rgb, alpha)
+                                modified += 1
+                                break
+                if modified > 0:
+                    image.save(icon_path, "PNG")
+                    files_processed += 1
+                    pixels_changed += modified
+    return (files_processed, pixels_changed)
+
+
 # =============================================================================
 # MK Package Building
 # =============================================================================
@@ -264,7 +438,10 @@ def build_mk_package(
     button_text: str,
     theme_color: str,
     images: Dict[str, str],
+    template_type: str,
+    sample_root: Path,
     header_font: str = "#333333",
+    colors: Optional[Dict[str, str]] = None,
     config_base: Optional[Path] = None,
 ) -> List[Path]:
     """
@@ -280,7 +457,8 @@ def build_mk_package(
     # -------------------------------------------------------------------------
     # Theme package
     # -------------------------------------------------------------------------
-    theme_zip = SAMPLES_ROOT / TEMPLATE_ZIPS["mk"]["theme"]
+    template_zips = get_template_zips(template_type)
+    theme_zip = sample_root / template_zips["mk"]["theme"]
     theme_extract_dir = work_dir / "mk_theme_extract"
     theme_name = "mk-festival-26-qingm"  # inner folder name in zip
 
@@ -332,7 +510,7 @@ def build_mk_package(
         css_file = inner_theme_dir / css_name
         if css_file.exists():
             content = read_text(css_file)
-            content = inject_color_into_css(content, theme_color, header_font)
+            content = inject_color_into_css(content, theme_color, header_font, colors)
             content = inject_color_into_rgb(content, theme_color)
             content = inject_header_font_color(content, header_font)
             write_text(css_file, content)
@@ -355,6 +533,34 @@ def build_mk_package(
                 replace_image(src, static_dir / filename)
                 log(f"Replaced {filename}")
 
+    sample_thumb_dir = inner_theme_dir / "sample" / "thumbnail"
+    if sample_thumb_dir.exists():
+        mk_thumb_map = {
+            "desktop.png": images.get("desktop"),
+            "layout-banner": images.get("layoutBanner"),
+            "fullscreen-sideheader": images.get("fullscreenSideheader"),
+            "fullscreen-sidenav": images.get("fullscreenSidenav"),
+            "center-sidenav": images.get("centerSidenav"),
+        }
+        for prefix, src_path in mk_thumb_map.items():
+            if not src_path:
+                continue
+            src = resolve_path(src_path, config_base)
+            if not src:
+                continue
+            for existing in sample_thumb_dir.iterdir():
+                if existing.is_file() and (existing.name == prefix or existing.name.startswith(f"{prefix}.")):
+                    replace_image(src, existing)
+                    log(f"Replaced sample thumbnail {existing.name}")
+
+    icon_files, icon_pixels = recolor_icon_directory(
+        inner_theme_dir,
+        ["static", "icon", "src/static", "src/static/icon"],
+        colors,
+    )
+    if icon_files > 0:
+        log(f"Recolored MK icons: {icon_files} files / {icon_pixels} pixels")
+
     # ---- Repack theme zip ----
     theme_output = output_dir / f"主题-MK-{title}.zip"
     repack_dir(theme_extract_dir, theme_output, inner_theme_dir.name)
@@ -367,7 +573,7 @@ def build_mk_package(
     # -------------------------------------------------------------------------
     # Login package
     # -------------------------------------------------------------------------
-    login_zip = SAMPLES_ROOT / TEMPLATE_ZIPS["mk"]["login"]
+    login_zip = sample_root / template_zips["mk"]["login"]
     login_extract_dir = work_dir / "mk_login_extract"
     login_name = "login26-festival-qingm"
 
@@ -425,7 +631,7 @@ def build_mk_package(
         if "font/" in str(css_file):
             continue
         content = read_text(css_file)
-        modified = inject_color_into_css(content, theme_color)
+        modified = inject_color_into_css(content, theme_color, colors=colors)
         modified = inject_color_into_rgb(modified, theme_color)
         write_text(css_file, modified)
     log(f"Injected color {theme_color} into login CSS")
@@ -437,11 +643,24 @@ def build_mk_package(
         if src:
             replace_image(src, login_static / "background.png")
             log("Replaced login background")
+    if images.get("loginBackgroundPng"):
+        src = resolve_path(images["loginBackgroundPng"], config_base)
+        if src:
+            replace_image(src, login_static / "background.png")
+            log("Replaced login background PNG")
     if images.get("loginLogo"):
         src = resolve_path(images["loginLogo"], config_base)
         if src:
             replace_image(src, login_static / "logo.png")
             log("Replaced login logo")
+
+    login_thumb = resolve_path(images.get("loginThumb"), config_base) if images.get("loginThumb") else None
+    sample_thumb_dir = inner_login_dir / "sample" / "thumbnail"
+    if sample_thumb_dir.exists() and login_thumb:
+        for existing in sample_thumb_dir.iterdir():
+            if existing.is_file() and not existing.name.startswith("."):
+                replace_image(login_thumb, existing)
+                log(f"Replaced login sample thumbnail {existing.name}")
 
     # ---- Repack login zip ----
     login_output = output_dir / f"登录-MK-{title}.zip"
@@ -467,7 +686,10 @@ def build_ekp_package(
     button_text: str,
     theme_color: str,
     images: Dict[str, str],
+    template_type: str,
+    sample_root: Path,
     header_font: str = "#333333",
+    colors: Optional[Dict[str, str]] = None,
     config_base: Optional[Path] = None,
 ) -> List[Path]:
     """
@@ -478,11 +700,12 @@ def build_ekp_package(
     """
     if config_base is None:
         config_base = work_dir
-    if product_key not in TEMPLATE_ZIPS:
+    template_zips = get_template_zips(template_type)
+    if product_key not in template_zips:
         error(f"Unknown EKP product: {product_key}")
         return []
 
-    templates = TEMPLATE_ZIPS[product_key]
+    templates = template_zips[product_key]
     outputs = []
 
     version_label = VERSION_LABELS.get(
@@ -492,7 +715,7 @@ def build_ekp_package(
     # -------------------------------------------------------------------------
     # EKP Theme package
     # -------------------------------------------------------------------------
-    theme_zip = SAMPLES_ROOT / templates["theme"]
+    theme_zip = sample_root / templates["theme"]
     theme_extract_dir = work_dir / f"ekp_theme_{version_label}_extract"
 
     log(f"Unzipping EKP {version_label} theme: {theme_zip}")
@@ -519,7 +742,7 @@ def build_ekp_package(
     if style_dir.exists():
         for css_file in style_dir.rglob("*.css"):
             content = read_text(css_file)
-            modified = inject_color_into_css(content, theme_color, header_font)
+            modified = inject_color_into_css(content, theme_color, header_font, colors)
             modified = inject_color_into_rgb(modified, theme_color)
             modified = inject_header_font_color(modified, header_font)
             write_text(css_file, modified)
@@ -529,18 +752,19 @@ def build_ekp_package(
     if scss_dir.exists():
         for scss_file in scss_dir.rglob("*.scss"):
             content = read_text(scss_file)
-            modified = inject_color_into_css(content, theme_color, header_font)
+            modified = inject_color_into_css(content, theme_color, header_font, colors)
             modified = inject_header_font_color(modified, header_font)
             write_text(scss_file, modified)
         log(f"Injected color {theme_color} into scss/*.scss")
 
     # ---- Replace thumb.jpg (thumbnail) ----
     thumb = inner_theme_dir / "thumb.jpg"
-    if images.get("loginBackground"):
-        src = resolve_path(images["loginBackground"], config_base)
-        if src:
-            replace_image(src, thumb)
-            log("Replaced thumb.jpg")
+    thumb_src = resolve_path(images.get("themeThumb"), config_base) if images.get("themeThumb") else None
+    if not thumb_src and images.get("desktop"):
+        thumb_src = resolve_path(images["desktop"], config_base)
+    if thumb_src:
+        replace_image(thumb_src, thumb)
+        log("Replaced thumb.jpg")
 
     image_style_dir = inner_theme_dir / "images" / "image-style"
     if image_style_dir.exists():
@@ -549,10 +773,12 @@ def build_ekp_package(
             "header_complex_frame_bg.png": images.get("headerClassic"),
             "header_menu_frame_bg.png": images.get("headerMenu"),
             "header_zone_frame_bg.png": images.get("headerTabs"),
-            "header_zone_nav_frame_bg.png": images.get("headerTabs"),
-            "header_single_menu_frame_bg.png": images.get("headerSimple"),
+            "header_zone_nav_frame_bg.png": images.get("headerIcon", images.get("headerTabs")),
+            "header_single_menu_frame_bg.png": images.get("headerSingleMenuFrameBg", images.get("headerSideheader")),
             "header-banner.png": images.get("headerBanner"),
             "header-sideheader.png": images.get("headerSideheader"),
+            "banner_personal.png": images.get("bannerPersonal", images.get("layoutBanner")),
+            "study_banner.png": images.get("studyBanner", images.get("layoutBanner")),
         }
         for filename, src_path in ekl_image_map.items():
             if src_path:
@@ -562,6 +788,21 @@ def build_ekp_package(
                     if dest.parent.exists():
                         shutil.copy2(src, dest)
                         log(f"Replaced {filename}")
+
+    icon_files, icon_pixels = recolor_icon_directory(
+        inner_theme_dir,
+        [
+            "icon",
+            "images/icon-primary",
+            "images/icon-multi-sprite",
+            "images/icons",
+            "images/icon-multi",
+            "images/panel",
+        ],
+        colors,
+    )
+    if icon_files > 0:
+        log(f"Recolored EKP {version_label} theme icons: {icon_files} files / {icon_pixels} pixels")
 
     # ---- Repack theme zip (flat: files at zip root, no wrapper folder) ----
     theme_output = output_dir / f"主题-{version_label}-{title}.zip"
@@ -574,7 +815,7 @@ def build_ekp_package(
     # -------------------------------------------------------------------------
     # EKP Login package
     # -------------------------------------------------------------------------
-    login_zip = SAMPLES_ROOT / templates["login"]
+    login_zip = sample_root / templates["login"]
     login_extract_dir = work_dir / f"ekp_login_{version_label}_extract"
 
     log(f"Unzipping EKP {version_label} login: {login_zip}")
@@ -591,7 +832,7 @@ def build_ekp_package(
         if "font/" in str(css_file):
             continue
         content = read_text(css_file)
-        modified = inject_color_into_css(content, theme_color, header_font)
+        modified = inject_color_into_css(content, theme_color, header_font, colors)
         modified = inject_color_into_rgb(modified, theme_color)
         write_text(css_file, modified)
     log(f"Injected color {theme_color} into EKP login CSS")
@@ -635,6 +876,14 @@ def build_ekp_package(
                         replace_image(thumb_src, thumb_dest)
                         log(f"Replaced login_bg/{thumb_name}")
 
+    icon_files, icon_pixels = recolor_icon_directory(
+        inner_login_dir,
+        ["images", "icon", "login_bg"],
+        colors,
+    )
+    if icon_files > 0:
+        log(f"Recolored EKP {version_label} login icons: {icon_files} files / {icon_pixels} pixels")
+
     if images.get("loginLogo"):
         src = resolve_path(images["loginLogo"], config_base)
         if src:
@@ -660,11 +909,11 @@ def build_ekp_package(
     # -------------------------------------------------------------------------
     # Login variants (V13.5 from V13 template, V14/V15 from V16 template)
     # -------------------------------------------------------------------------
-    variants = LOGIN_VARIANTS.get(product_key, [])
+    variants = get_login_variants(template_type).get(product_key, [])
     for variant in variants:
         variant_label = variant["label"]
         variant_template = variant["template"]
-        variant_zip = SAMPLES_ROOT / variant_template
+        variant_zip = sample_root / variant_template
 
         if not variant_zip.exists():
             warn(f"Login variant template not found: {variant_zip}, skipping")
@@ -680,7 +929,7 @@ def build_ekp_package(
             if "font/" in str(css_file):
                 continue
             content = read_text(css_file)
-            modified = inject_color_into_css(content, theme_color, header_font)
+            modified = inject_color_into_css(content, theme_color, header_font, colors)
             modified = inject_color_into_rgb(modified, theme_color)
             write_text(css_file, modified)
 
@@ -714,6 +963,14 @@ def build_ekp_package(
                         if thumb_dest.parent.exists():
                             replace_image(thumb_src, thumb_dest)
                             log(f"Replaced {variant_label} login_bg/{thumb_name}")
+
+        icon_files, icon_pixels = recolor_icon_directory(
+            variant_inner,
+            ["images", "icon", "login_bg"],
+            colors,
+        )
+        if icon_files > 0:
+            log(f"Recolored {variant_label} login icons: {icon_files} files / {icon_pixels} pixels")
 
         variant_output = output_dir / f"登录-{variant_label}-{title}.zip"
         repack_dir(variant_extract, variant_output, inner_name=None)
@@ -858,9 +1115,16 @@ def build_all(config_path: Path, output_dir: Path):
     button_text = cfg.get("buttonText", "立即进入")
     theme_color = cfg.get("themeColor", "#144e48")
     header_font = cfg.get("headerFont", "#333333")
+    colors = cfg.get("colors", {})
     images = cfg.get("images", {})
     products = cfg.get("products", ["mk"])
+    template_type = cfg.get("templateType", "light-ui")
+    sample_root = resolve_samples_root(template_type, cfg.get("sampleRoot"))
     config_base = config_path.parent.resolve()
+
+    if not sample_root.exists():
+        error(f"Sample root not found: {sample_root}")
+        return []
 
     ensure_dir(output_dir)
 
@@ -883,7 +1147,10 @@ def build_all(config_path: Path, output_dir: Path):
                 button_text=button_text,
                 theme_color=theme_color,
                 images=images,
+                template_type=template_type,
+                sample_root=sample_root,
                 header_font=header_font,
+                colors=colors,
                 config_base=config_base,
             )
             all_outputs.extend(outs)
@@ -898,7 +1165,10 @@ def build_all(config_path: Path, output_dir: Path):
                 button_text=button_text,
                 theme_color=theme_color,
                 images=images,
+                template_type=template_type,
+                sample_root=sample_root,
                 header_font=header_font,
+                colors=colors,
                 config_base=config_base,
             )
             all_outputs.extend(outs)

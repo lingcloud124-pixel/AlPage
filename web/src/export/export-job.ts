@@ -1,6 +1,7 @@
 import type { ExportBatch } from '../types';
 import type { Project } from '../project-manager';
 import { buildExportRequestYaml } from './build-config';
+import { buildExportAssetSnapshot, type ExportAssetSnapshot } from './asset-snapshot';
 import { buildExportBatchPaths } from './export-paths';
 
 export interface BuildExportJobRequestArgs {
@@ -14,11 +15,13 @@ export interface BuildExportJobRequestArgs {
 export interface ExportJobRequest {
   batch: ExportBatch;
   yaml: string;
+  assetSnapshot: ExportAssetSnapshot;
   buildOptions: {
     name: string;
     nameEn: string;
     templateType: 'light-ui' | 'dark-ui';
     themeColor: string;
+    cssVariables: Record<string, string>;
     themeImageUrl?: string;
     selectedProducts: string[];
   };
@@ -47,8 +50,9 @@ export function buildExportJobRequest(args: BuildExportJobRequestArgs): ExportJo
   const timestamp = args.now ?? Date.now();
   const name = getProjectExportName(args.project);
   const nameEn = getProjectExportNameEn(args.project);
-  const themeColor = args.cssVariables['primary-color'] || args.project.colors['primary-color'] || '#2C615C';
-  const headerFont = args.cssVariables['header-font-color'] || args.project.colors['header-font-color'] || '#333333';
+  const cssVariables = { ...args.project.colors, ...args.cssVariables };
+  const themeColor = cssVariables['primary-color'] || cssVariables['--primary-color'] || '#2C615C';
+  const headerFont = cssVariables['header-font-color'] || cssVariables['--header-font-color'] || '#333333';
   const exportPaths = args.exportRoot
     ? buildExportBatchPaths({
       exportRoot: args.exportRoot,
@@ -70,7 +74,7 @@ export function buildExportJobRequest(args: BuildExportJobRequestArgs): ExportJo
       name,
       nameEn,
       templateType: args.project.templateType,
-      colors: { ...args.project.colors, ...args.cssVariables },
+      colors: cssVariables,
       bgImageUrl: args.project.bgImageUrl,
       headerBgImageUrl: args.project.headerBgImageUrl,
     },
@@ -81,14 +85,25 @@ export function buildExportJobRequest(args: BuildExportJobRequestArgs): ExportJo
     yaml: buildExportRequestYaml({
       name,
       themeColor,
+      templateType: args.project.templateType,
       headerFont,
       selectedProducts: args.selectedProducts,
+      colors: cssVariables,
+    }),
+    assetSnapshot: buildExportAssetSnapshot({
+      project: args.project,
+      cssVariables,
+      selectedProducts: args.selectedProducts,
+      nameEn,
+      exportDir: exportPaths?.exportDir,
+      now: timestamp,
     }),
     buildOptions: {
       name,
       nameEn,
       templateType: args.project.templateType,
       themeColor,
+      cssVariables,
       themeImageUrl: args.project.bgImageUrl,
       selectedProducts: [...args.selectedProducts],
     },

@@ -449,7 +449,7 @@ Playwright 截图必须输出的图片清单：
 | login_thumb.jpg | login_thumb.jpg | 缩放 960×540 |
 | thumb-1.jpg | bg-login.jpg | 裁剪 800×390 |
 | thumb-2.jpg | bg-login.jpg | 裁剪 800×390（偏移 800px） |
-| desktop-resized.png | desktop.png | 缩放 1440×800 |
+| desktop.png | desktop.png | 缩放为最终 1440×800 成品 |
 | layout-banner.jpg | desktop.png | 缩放 1600×572 |
 | fullscreen-sideheader.jpg | desktop.png | 缩放 1600×572 |
 | fullscreen-sidenav.jpg | desktop.png | 缩放 1600×572 |

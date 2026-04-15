@@ -16,16 +16,41 @@ Checks:
       must differ from source template (file size changed)
 """
 
+import re
 import sys
 import zipfile
 import json
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 ROOT = Path(__file__).parent.parent
-REF_DIR = ROOT / "assets/references/samples/主题样例包"
+LOCAL_SAMPLES_DIR = ROOT / "assets" / "references" / "samples"
 VERIFY_RULES = json.loads((ROOT / "config" / "build-verification-rules.json").read_text(encoding="utf-8"))
-EXPECTED_ZIPS = [(item["prefix"], item["reference"]) for item in VERIFY_RULES["expectedZips"]]
+LIGHT_EXPECTED_ZIPS = [(item["prefix"], item["reference"]) for item in VERIFY_RULES["expectedZips"]]
+EXPECTED_ZIPS_BY_TEMPLATE_TYPE = {
+    "light-ui": LIGHT_EXPECTED_ZIPS,
+    "dark-ui": [
+        ("主题-MK-", "mk-festival-26-spring主题包.zip"),
+        ("登录-MK-", "mk-festival-spring-登录包.zip"),
+        ("主题-V12-", "主题-V12-2026春节主题.zip"),
+        ("登录-V12-", "登录-V12-2026春节.zip"),
+        ("主题-V13〜V13.5-", "主题-V13〜V13.5-2026春节主题.zip"),
+        ("登录-V13〜V13.5-", "登录-V13-2026春节.zip"),
+        ("登录-V13-", "登录-V13-2026春节.zip"),
+        ("登录-V13.5-", "登录-V13.5-2026春节.zip"),
+        ("主题-V14〜V16-", "主题-V14〜V16-2026春节主题.zip"),
+        ("登录-V14〜V16-", "登录-V16〜V17-2026春节.zip"),
+        ("登录-V14-", "登录-V14-2026春节.zip"),
+        ("登录-V15-", "登录-V15-2026春节.zip"),
+        ("登录-V16-", "登录-V16〜V17-2026春节.zip"),
+        ("主题-V17-", "主题-V17-2026春节主题.zip"),
+        ("登录-V17-", "登录-V16〜V17-2026春节.zip"),
+    ],
+}
+DEFAULT_SAMPLE_ROOTS = {
+    "light-ui": LOCAL_SAMPLES_DIR / "light样例包",
+    "dark-ui": LOCAL_SAMPLES_DIR / "dark样例包",
+}
 PRODUCT_TO_PREFIXES = {
     "mk": ["主题-MK-", "登录-MK-"],
     "ekp_v12": ["主题-V12-", "登录-V12-"],
@@ -53,6 +78,28 @@ OLD_COLORS = {
     "#4A4A7E",
     "#3a3a6e",
     "#3A3A6E",
+    "#a7160b",
+    "#A7160B",
+    "#94170e",
+    "#94170E",
+    "#b9453c",
+    "#B9453C",
+    "#f8c28c",
+    "#F8C28C",
+    "#fdd0a3",
+    "#FDD0A3",
+    "#f6e7e6",
+    "#F6E7E6",
+    "#edd0ce",
+    "#EDD0CE",
+    "#e4b9b5",
+    "#E4B9B5",
+    "#ffe4cf",
+    "#FFE4CF",
+    "#dcb496",
+    "#DCB496",
+    "#ce7566",
+    "#CE7566",
 }
 
 
@@ -62,6 +109,67 @@ def find_gen_zip(output_dir, prefix):
         if f.name.startswith(prefix):
             return f
     return None
+
+
+def parse_cli_args(argv: List[str]) -> Tuple[Path, Optional[List[str]], Optional[str], Optional[Path]]:
+    if len(argv) < 2:
+        print("Usage: python3 scripts/verify-build.py <output_dir>")
+        print("Example: python3 scripts/verify-build.py output/20260409-超级英雄超人/输出包")
+        print("Optional: --products mk,ekp_v17 --template-type dark-ui --sample-root /path/to/samples")
+        sys.exit(1)
+
+    output_dir = Path(argv[1])
+    selected_products = None
+    template_type = None
+    sample_root = None
+
+    i = 2
+    while i < len(argv):
+        arg = argv[i]
+        if arg == "--products" and i + 1 < len(argv):
+            selected_products = [item.strip() for item in argv[i + 1].split(",") if item.strip()]
+            i += 2
+            continue
+        if arg == "--template-type" and i + 1 < len(argv):
+            template_type = argv[i + 1].strip()
+            i += 2
+            continue
+        if arg == "--sample-root" and i + 1 < len(argv):
+            sample_root = Path(argv[i + 1]).expanduser()
+            i += 2
+            continue
+        print(f"❌ Unknown argument: {arg}")
+        sys.exit(1)
+
+    return output_dir, selected_products, template_type, sample_root
+
+
+def detect_template_type_from_output_dir(output_dir: Path) -> Optional[str]:
+    assets_yaml = output_dir.parent / "素材包" / "theme-build-request.yaml"
+    if not assets_yaml.exists():
+        return None
+
+    content = assets_yaml.read_text(encoding="utf-8", errors="replace")
+    match = re.search(r'^templateType:\s*"?(light-ui|dark-ui)"?\s*$', content, re.MULTILINE)
+    if match:
+        return match.group(1)
+    return None
+
+
+def resolve_template_type(output_dir: Path, explicit_template_type: Optional[str]) -> str:
+    template_type = explicit_template_type or detect_template_type_from_output_dir(output_dir) or "light-ui"
+    if template_type not in EXPECTED_ZIPS_BY_TEMPLATE_TYPE:
+        print(f"❌ Unsupported template type: {template_type}")
+        sys.exit(1)
+    return template_type
+
+
+def resolve_sample_root(template_type: str, explicit_sample_root: Optional[Path]) -> Path:
+    sample_root = (explicit_sample_root or DEFAULT_SAMPLE_ROOTS[template_type]).resolve()
+    if not sample_root.exists():
+        print(f"❌ Sample root not found: {sample_root}")
+        sys.exit(1)
+    return sample_root
 
 
 def verify_structure(gen_path, ref_path, prefix=""):
@@ -138,21 +246,21 @@ LOGIN_IMAGE_CHECKS = VERIFY_RULES["loginImageChecks"]
 STRUCTURE_EXTRA_ALLOWED = VERIFY_RULES["structureExtraAllowed"]
 
 
-def verify_image_replacement(gen_path, prefix):
+def verify_image_replacement(gen_path, prefix, expected_zips, sample_root):
     # type: (Path, str) -> Tuple[bool, List[str]]
     image_paths = LOGIN_IMAGE_CHECKS.get(prefix, [])
     if not image_paths:
         return True, []
 
     ref_name = None
-    for p, r in EXPECTED_ZIPS:
+    for p, r in expected_zips:
         if p == prefix:
             ref_name = r
             break
     if not ref_name:
         return True, ["No reference mapping for image check"]
 
-    ref_path = REF_DIR / ref_name
+    ref_path = sample_root / ref_name
     if not ref_path.exists():
         return True, [f"Reference not found for image check: {ref_name}"]
 
@@ -186,24 +294,19 @@ def verify_image_replacement(gen_path, prefix):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python3 scripts/verify-build.py <output_dir>")
-        print(
-            "Example: python3 scripts/verify-build.py output/20260409-超级英雄超人/输出包"
-        )
-        sys.exit(1)
-
-    output_dir = Path(sys.argv[1])
-    selected_products = None
-    if len(sys.argv) >= 4 and sys.argv[2] == "--products":
-        selected_products = [item.strip() for item in sys.argv[3].split(",") if item.strip()]
+    output_dir, selected_products, explicit_template_type, explicit_sample_root = parse_cli_args(sys.argv)
     if not output_dir.exists():
         print(f"❌ Output directory not found: {output_dir}")
         sys.exit(1)
 
-    print(f"🔍 Verifying build: {output_dir}\n")
+    template_type = resolve_template_type(output_dir, explicit_template_type)
+    sample_root = resolve_sample_root(template_type, explicit_sample_root)
 
-    expected_zips = EXPECTED_ZIPS
+    print(f"🔍 Verifying build: {output_dir}")
+    print(f"🎨 Template type: {template_type}")
+    print(f"📚 Sample root: {sample_root}\n")
+
+    expected_zips = EXPECTED_ZIPS_BY_TEMPLATE_TYPE[template_type]
     if selected_products:
         selected_prefixes = {
             prefix
@@ -211,7 +314,7 @@ def main():
             for prefix in PRODUCT_TO_PREFIXES.get(product, [])
         }
         expected_zips = [
-            (prefix, ref) for prefix, ref in EXPECTED_ZIPS if prefix in selected_prefixes
+            (prefix, ref) for prefix, ref in expected_zips if prefix in selected_prefixes
         ]
 
     all_zips = list(output_dir.glob("*.zip"))
@@ -230,11 +333,11 @@ def main():
             failed += 1
             continue
 
-        ref_path = REF_DIR / ref_name
+        ref_path = sample_root / ref_name
 
         struct_ok, struct_issues = verify_structure(gen_path, ref_path, prefix)
         color_ok, color_issues = verify_color_injection(gen_path)
-        image_ok, image_issues = verify_image_replacement(gen_path, prefix)
+        image_ok, image_issues = verify_image_replacement(gen_path, prefix, expected_zips, sample_root)
 
         status = "✅" if struct_ok and color_ok and image_ok else "❌"
         name = gen_path.name

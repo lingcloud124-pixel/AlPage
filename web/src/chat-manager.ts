@@ -12,6 +12,7 @@ import { getCurrentProjectId, loadProject, saveProject, updateProjectNameDisplay
 import type { Project } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, saveCurrentColorsToProject, getCurrentColors, applyPresetBackground, getThemeTarget } from './theme-engine';
 import { PRESET_BACKGROUNDS } from './project-manager';
+import { syncColorEditorFromTheme } from './components/color-editor';
 
 const conversationHistory: ChatMessage[] = [];
 let activeAbortController: AbortController | null = null;
@@ -190,6 +191,7 @@ function addPresetCardsMessage(cards: Array<{key: string; label: string; primary
               applyTemplateSpecificThemeVars(project.templateType);
             }
           }
+          syncColorEditorFromTheme();
           trackPresetUsage(preset.key);
           applyPresetBackground(preset.key, PRESET_BACKGROUNDS);
           expandPreview();
@@ -660,12 +662,27 @@ export function setupChatInterface(deps: ChatDeps) {
         removeToolLoading();
         if (result.success) {
           if (tc.tool === 'generate_theme_pipeline') {
-            const imgData = result.data as { imageUrl?: string; primaryColor?: string };
+            const imgData = result.data as {
+              imageUrl?: string;
+              primaryColor?: string;
+              generationReport?: { checks?: Array<{ label: string; passed: boolean }> };
+              contrastValidation?: { passed?: boolean; failures?: string[] };
+              dominantColors?: string[];
+            };
             const colorTag = imgData?.primaryColor
               ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${imgData.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
               : '';
-            addMessageToChat('ai', `🎨 配色方案已生成！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`);
+            const rulePassed = imgData.generationReport?.checks?.every(check => check.passed) ?? false;
+            const contrastPassed = imgData.contrastValidation?.passed ?? false;
+            const summaryParts = [
+              `🎨 配色方案已生成！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
+              imgData.dominantColors?.length ? `识别到的候选主色 ${imgData.dominantColors.slice(0, 3).join(' / ')}。` : '',
+              `生成规则校验：${rulePassed ? '通过' : '有待微调'}。`,
+              `对比度校验：${contrastPassed ? '通过' : '存在风险'}。`,
+            ].filter(Boolean);
+            addMessageToChat('ai', summaryParts.join(' '));
             saveCurrentColorsToProject();
+            syncColorEditorFromTheme();
             const pid = getCurrentProjectId();
             if (pid) {
               const proj = loadProject(pid);
@@ -699,6 +716,7 @@ export function setupChatInterface(deps: ChatDeps) {
             }
           } else if (tc.tool === 'update_colors') {
             saveCurrentColorsToProject();
+            syncColorEditorFromTheme();
             deps.expandPreview();
           }
         } else {

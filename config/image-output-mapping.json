@@ -1,0 +1,232 @@
+{
+  "login": [
+    {
+      "id": "loginBackground",
+      "output": "bg-login.jpg",
+      "width": 2215,
+      "height": 1080,
+      "format": "JPEG",
+      "recipe": "login-background"
+    },
+    {
+      "id": "loginBackgroundPng",
+      "output": "background.png",
+      "width": 1920,
+      "height": 1080,
+      "format": "PNG",
+      "recipe": "login-background-inner",
+      "source": "bg-login.jpg"
+    },
+    {
+      "id": "loginThumb",
+      "output": "login_thumb.jpg",
+      "width": 960,
+      "height": 540,
+      "format": "JPEG",
+      "recipe": "login-thumbnail",
+      "source": "bg-login.jpg"
+    },
+    {
+      "id": "loginThumbOne",
+      "output": "login_bg/thumb-1.jpg",
+      "width": 800,
+      "height": 390,
+      "format": "JPEG",
+      "recipe": "login-thumb-1",
+      "source": "bg-login.jpg"
+    },
+    {
+      "id": "loginThumbTwo",
+      "output": "login_bg/thumb-2.jpg",
+      "width": 800,
+      "height": 390,
+      "format": "JPEG",
+      "recipe": "login-thumb-2",
+      "source": "bg-login.jpg"
+    }
+  ],
+  "headerSidebar": [
+    {
+      "id": "headerSimple",
+      "output": "header-simple.png",
+      "width": 1920,
+      "height": 60,
+      "format": "PNG",
+      "recipe": "header"
+    },
+    {
+      "id": "headerClassic",
+      "output": "header-classic.png",
+      "width": 1920,
+      "height": 90,
+      "format": "PNG",
+      "recipe": "header"
+    },
+    {
+      "id": "headerMenu",
+      "output": "header-menu.png",
+      "width": 1920,
+      "height": 130,
+      "format": "PNG",
+      "recipe": "header"
+    },
+    {
+      "id": "headerBanner",
+      "output": "header-banner.png",
+      "width": 2560,
+      "height": 480,
+      "format": "PNG",
+      "recipe": "header"
+    },
+    {
+      "id": "headerTabs",
+      "output": "header-tabs.png",
+      "width": 1920,
+      "height": 60,
+      "format": "PNG",
+      "recipe": "header"
+    },
+    {
+      "id": "headerIcon",
+      "output": "header-icon.png",
+      "width": 1920,
+      "height": 60,
+      "format": "PNG",
+      "recipe": "header"
+    },
+    {
+      "id": "headerTlayoutFrameBg",
+      "output": "header_tlayout_frame_bg.png",
+      "width": 1920,
+      "height": 60,
+      "format": "PNG",
+      "recipe": "header"
+    },
+    {
+      "id": "headerComplexFrameBg",
+      "output": "header_complex_frame_bg.png",
+      "width": 1920,
+      "height": 90,
+      "format": "PNG",
+      "recipe": "header"
+    },
+    {
+      "id": "headerMenuFrameBg",
+      "output": "header_menu_frame_bg.png",
+      "width": 1920,
+      "height": 130,
+      "format": "PNG",
+      "recipe": "header"
+    },
+    {
+      "id": "headerZoneFrameBg",
+      "output": "header_zone_frame_bg.png",
+      "width": 1920,
+      "height": 60,
+      "format": "PNG",
+      "recipe": "header"
+    },
+    {
+      "id": "headerZoneNavFrameBg",
+      "output": "header_zone_nav_frame_bg.png",
+      "width": 1920,
+      "height": 60,
+      "format": "PNG",
+      "recipe": "header"
+    },
+    {
+      "id": "headerSideheader",
+      "output": "header-sideheader.png",
+      "widthByTheme": {
+        "light-ui": 200,
+        "dark-ui": 200
+      },
+      "heightByTheme": {
+        "light-ui": 900,
+        "dark-ui": 488
+      },
+      "format": "PNG",
+      "recipe": "sidebar"
+    },
+    {
+      "id": "headerSingleMenuFrameBg",
+      "output": "header_single_menu_frame_bg.png",
+      "widthByTheme": {
+        "light-ui": 200,
+        "dark-ui": 200
+      },
+      "heightByTheme": {
+        "light-ui": 900,
+        "dark-ui": 488
+      },
+      "format": "PNG",
+      "recipe": "sidebar"
+    }
+  ],
+  "thumbnails": [
+    {
+      "id": "desktop",
+      "output": "desktop.png",
+      "width": 1440,
+      "height": 800,
+      "format": "PNG",
+      "recipe": "desktop-thumbnail"
+    },
+    {
+      "id": "layoutBanner",
+      "output": "layout-banner.jpg",
+      "width": 1600,
+      "height": 572,
+      "format": "JPEG",
+      "recipe": "layout-thumbnail"
+    },
+    {
+      "id": "fullscreenSideheader",
+      "output": "fullscreen-sideheader.jpg",
+      "width": 1600,
+      "height": 572,
+      "format": "JPEG",
+      "recipe": "layout-thumbnail"
+    },
+    {
+      "id": "fullscreenSidenav",
+      "output": "fullscreen-sidenav.jpg",
+      "width": 1600,
+      "height": 572,
+      "format": "JPEG",
+      "recipe": "layout-thumbnail"
+    },
+    {
+      "id": "centerSidenav",
+      "output": "center-sidenav.jpg",
+      "width": 1600,
+      "height": 572,
+      "format": "JPEG",
+      "recipe": "layout-thumbnail"
+    },
+    {
+      "id": "themeThumb",
+      "output": "thumb.jpg",
+      "width": 1440,
+      "height": 800,
+      "format": "JPEG",
+      "recipe": "desktop-thumbnail"
+    },
+    {
+      "id": "bannerPersonal",
+      "output": "banner_personal.png",
+      "width": 1600,
+      "height": 572,
+      "format": "PNG",
+      "recipe": "layout-thumbnail"
+    },
+    {
+      "id": "studyBanner",
+      "output": "study_banner.png",
+      "width": 1600,
+      "height": 572,
+      "format": "PNG",
+      "recipe": "layout-thumbnail"
+    }
+  ]
+}

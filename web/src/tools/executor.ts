@@ -1,7 +1,13 @@
 import type { ToolCall, ToolResult } from '../types';
 import { generateImage } from '../agent/chat-client';
 import { validateColorScheme } from './contrast-validator';
-import { deriveColorsFromPrimary, hexToRgb, rgbToHsl } from '../theme/color-utils';
+import {
+  buildThemeGenerationReport,
+  deriveColorsFromPrimary,
+  rankPrimaryCandidates,
+  resolvePreferredHueHint,
+  type DerivedColors,
+} from '../theme/color-utils';
 import { buildThemeImageAssignments } from '../templates/theme-images';
 
 const COLOR_VARS = [
@@ -9,7 +15,7 @@ const COLOR_VARS = [
   'primary-color-opacity-10', 'primary-color-opacity-20', 'primary-color-opacity-30',
   'header-font-color', 'auxiliary-gray', 'auxiliary-gray-dark',
   'body-bg-color', 'portal-header-bg-extend-color', 'portal-header-complex-bg-extend-color',
-  'login-bg-color', 'sidebar-panel-bg', 'sidebar-color', 'sidebar-icon-color',
+  'login-bg-color', 'panel-bg-color', 'sidebar-panel-bg', 'sidebar-color', 'sidebar-icon-color',
   'border-color', 'border-icon-color', 'gradient-start', 'gradient-mid',
 ];
 
@@ -61,6 +67,56 @@ function getAllCurrentColors(): Record<string, string> {
     if (val) vars[v] = val;
   }
   return vars;
+}
+
+function pickBestThemeCandidate(
+  dominantColors: string[],
+  templateType: 'light-ui' | 'dark-ui',
+  preferredHueHint?: string,
+): {
+  primaryColor: string;
+  derivedColors: DerivedColors;
+  report: ReturnType<typeof buildThemeGenerationReport>;
+  triedCandidates: Array<{ hex: string; score: number; passed: boolean }>;
+} {
+  const ranked = rankPrimaryCandidates(dominantColors, templateType, preferredHueHint);
+  const hint = resolvePreferredHueHint(preferredHueHint, templateType);
+
+  if (ranked.length === 0) {
+    const fallbackHex = hint?.fallbackHex ?? (templateType === 'dark-ui' ? '#1A2845' : '#3B82F6');
+    const derived = deriveColorsFromPrimary(fallbackHex, templateType);
+    return {
+      primaryColor: fallbackHex,
+      derivedColors: derived,
+      report: buildThemeGenerationReport(fallbackHex, derived, templateType),
+      triedCandidates: [],
+    };
+  }
+
+  let best = ranked[0];
+  let bestDerived = deriveColorsFromPrimary(best.hex, templateType);
+  let bestReport = buildThemeGenerationReport(best.hex, bestDerived, templateType);
+  const triedCandidates = [{ hex: best.hex, score: best.score, passed: bestReport.passed }];
+
+  for (const candidate of ranked.slice(1)) {
+    if (bestReport.passed) break;
+    const derived = deriveColorsFromPrimary(candidate.hex, templateType);
+    const report = buildThemeGenerationReport(candidate.hex, derived, templateType);
+    triedCandidates.push({ hex: candidate.hex, score: candidate.score, passed: report.passed });
+    if (report.passed) {
+      best = candidate;
+      bestDerived = derived;
+      bestReport = report;
+      break;
+    }
+  }
+
+  return {
+    primaryColor: best.hex,
+    derivedColors: bestDerived,
+    report: bestReport,
+    triedCandidates,
+  };
 }
 
 export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
@@ -239,6 +295,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
       case 'generate_theme_pipeline': {
         const bgPrompt = (args.prompt ?? args.description ?? '') as string;
         const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
+        const preferredHueHint = (args.primaryHint ?? args.preferredHue ?? args.colorDirection ?? '') as string;
         if (!bgPrompt) return { success: false, error: 'generate_theme_pipeline 需要 prompt 参数' };
 
         onProgress?.({ type: 'image_generating' });
@@ -253,31 +310,48 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         const analyzeResult = await analyzeImageAsync(imgResult.url);
         const dominantColors = (analyzeResult.data as Record<string, unknown>)?.dominantColors as string[] | undefined;
         if (!analyzeResult.success || !dominantColors || dominantColors.length === 0) {
-          const fallbackHex = templateType === 'dark-ui' ? '#1A2845' : '#1565C0';
+          const fallbackHex = resolvePreferredHueHint(preferredHueHint, templateType)?.fallbackHex
+            ?? (templateType === 'dark-ui' ? '#1A2845' : '#1565C0');
           const colors = deriveColorsFromPrimary(fallbackHex, templateType);
+          const report = buildThemeGenerationReport(fallbackHex, colors, templateType);
+          const contrast = validateColorScheme({ ...colors });
           updateColors({ ...colors });
           applyThemeImages('login', imgResult.url);
           applyThemeImages('desktop', imgResult.url);
-          return { success: true, data: { primaryColor: fallbackHex, imageUrl: imgResult.url, applied: true, fallbackUsed: true } };
+          return {
+            success: true,
+            data: {
+              primaryColor: fallbackHex,
+              imageUrl: imgResult.url,
+              applied: true,
+              fallbackUsed: true,
+              preferredHueHint,
+              dominantColors: [],
+              generationReport: report,
+              contrastValidation: contrast,
+            },
+          };
         }
 
-        let bestColor = dominantColors[0];
-        let bestSat = -1;
-        for (const hex of dominantColors) {
-          const rgb = hexToRgb(hex);
-          const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-          if (hsl.s > bestSat) {
-            bestSat = hsl.s;
-            bestColor = hex;
-          }
-        }
-
-        const derived = deriveColorsFromPrimary(bestColor, templateType);
-        updateColors({ ...derived });
+        const selected = pickBestThemeCandidate(dominantColors, templateType, preferredHueHint);
+        const contrast = validateColorScheme({ ...selected.derivedColors });
+        updateColors({ ...selected.derivedColors });
         applyThemeImages('login', imgResult.url);
         applyThemeImages('desktop', imgResult.url);
 
-        return { success: true, data: { primaryColor: bestColor, imageUrl: imgResult.url, applied: true } };
+        return {
+          success: true,
+          data: {
+            primaryColor: selected.primaryColor,
+            imageUrl: imgResult.url,
+            applied: true,
+            preferredHueHint,
+            dominantColors,
+            generationReport: selected.report,
+            triedCandidates: selected.triedCandidates,
+            contrastValidation: contrast,
+          },
+        };
       }
 
       case 'generate_background': {
