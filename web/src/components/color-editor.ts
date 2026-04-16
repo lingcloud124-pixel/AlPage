@@ -76,6 +76,23 @@ function getActiveTemplateType(): 'light-ui' | 'dark-ui' {
   return loadProject(currentProjectId)?.templateType ?? 'light-ui';
 }
 
+function getResetBaselineColors(): Record<string, string> {
+  const currentProjectId = getCurrentProjectId();
+  if (currentProjectId) {
+    const project = loadProject(currentProjectId);
+    if (project?.colors && Object.keys(project.colors).length > 0) {
+      const normalized: Record<string, string> = {};
+      for (const [key, value] of Object.entries(project.colors)) {
+        const varName = key.startsWith('--') ? key : `--${key}`;
+        normalized[varName] = value;
+      }
+      return normalized;
+    }
+  }
+
+  return Object.fromEntries(colorSettings.map((setting) => [setting.property, setting.defaultValue]));
+}
+
 function getCSSVar(varName: string): string {
   return getComputedStyle(getThemeTarget()).getPropertyValue(varName).trim();
 }
@@ -137,14 +154,15 @@ export function initializeColorEditor(): void {
   }
   
   const resetButton = document.createElement('button');
-  resetButton.textContent = '恢复默认主题';
+  resetButton.textContent = '恢复生成主题';
   resetButton.style.width = '100%';
   resetButton.style.marginTop = '20px';
   resetButton.classList.add('reset-button');
   
   resetButton.addEventListener('click', () => {
+    const baselineColors = getResetBaselineColors();
     for (const s of colorSettings) {
-      setCSSVar(s.property, s.defaultValue);
+      setCSSVar(s.property, baselineColors[s.property] ?? s.defaultValue);
     }
     initializeColorEditor();
   });
@@ -208,7 +226,7 @@ export function initializeColorEditor(): void {
   deriveBtn.style.height = '36px';
   deriveBtn.style.padding = '0 16px';
   deriveBtn.style.backgroundColor = 'var(--primary-color)';
-  deriveBtn.style.color = 'white';
+  deriveBtn.style.color = 'var(--white)';
   deriveBtn.style.border = 'none';
   deriveBtn.style.borderRadius = '4px';
   deriveBtn.style.cursor = 'pointer';

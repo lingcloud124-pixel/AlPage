@@ -194,6 +194,10 @@ export function setupTabSwitching() {
     indicator.style.width = btn.offsetWidth + 'px';
   }
 
+  function syncActiveIndicator() {
+    if (activeTabInfo.btn) moveIndicator(activeTabInfo.btn);
+  }
+
   TAB_MAP.forEach(tabInfo => {
     const { btnId, pageId, templateId } = tabInfo;
     const btn = document.getElementById(btnId) as HTMLButtonElement;
@@ -204,7 +208,10 @@ export function setupTabSwitching() {
       btn.classList.add('active-tab');
       page.classList.add('active-preview');
       activeTabInfo = { btn, page, templateId };
-      requestAnimationFrame(() => moveIndicator(btn));
+      requestAnimationFrame(() => {
+        moveIndicator(btn);
+        requestAnimationFrame(() => moveIndicator(btn));
+      });
     }
 
     btn.addEventListener('click', async () => {
@@ -219,6 +226,8 @@ export function setupTabSwitching() {
       requestAnimationFrame(() => (window as any).resizePreview?.());
     });
   });
+
+  window.addEventListener('resize', syncActiveIndicator);
 }
 
 export function setupCollapsibleColorPanel() {

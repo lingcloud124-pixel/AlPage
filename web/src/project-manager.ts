@@ -6,6 +6,7 @@ export interface Project {
   name: string;
   nameEn?: string;
   themeName?: string;
+  lifecycle?: 'draft' | 'active';
   templateType: 'light-ui' | 'dark-ui';
   colors: Record<string, string>;
   bgImageUrl?: string;
@@ -53,6 +54,7 @@ export function createProject(name: string, templateType: 'light-ui' | 'dark-ui'
   const newProject: Project = {
     id,
     name,
+    lifecycle: 'draft',
     templateType,
     colors: {},
     createdAt: Date.now(),
@@ -71,6 +73,7 @@ export function createProjectWithPreset(name: string, templateType: 'light-ui' |
   const newProject: Project = {
     id,
     name,
+    lifecycle: 'active',
     templateType,
     colors,
     createdAt: Date.now(),
@@ -87,6 +90,9 @@ export function loadProject(id: string): Project | null {
 }
 
 export function saveProject(project: Project): Project | null {
+  if (!project.lifecycle) {
+    project.lifecycle = 'draft';
+  }
   project.updatedAt = Date.now();
   const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
   const existingIndex = projects.findIndex(p => p.id === project.id);
@@ -109,7 +115,17 @@ export function listProjects(): Project[] {
   return projects.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-function hasProjectChatHistory(projectId: string): boolean {
+export function activateProject(projectId: string): Project | null {
+  const project = loadProject(projectId);
+  if (!project) return null;
+  if (project.lifecycle !== 'active') {
+    project.lifecycle = 'active';
+    return saveProject(project);
+  }
+  return project;
+}
+
+export function hasProjectChatHistory(projectId: string): boolean {
   try {
     const raw = localStorage.getItem(`theme-studio-chat-${projectId}`);
     if (!raw) return false;
@@ -125,6 +141,7 @@ export function deleteProject(id: string): boolean {
     const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
     const filteredProjects = projects.filter(p => p.id !== id);
     localStorage.setItem('theme-studio-projects', JSON.stringify(filteredProjects));
+    localStorage.removeItem(`theme-studio-chat-${id}`);
     const cur = localStorage.getItem('theme-studio-current-project');
     if (cur === id) localStorage.removeItem('theme-studio-current-project');
     return true;
@@ -237,24 +254,21 @@ export function populateSidebarProjects(deps: SidebarDeps) {
   const sidebarProjectList = document.getElementById('sidebarProjectList');
   if (!sidebarProjectList) return;
   sidebarProjectList.innerHTML = '';
-  const projects = listProjects().filter((project) => {
-    if (project.name !== '未命名项目') return true;
-    return hasProjectChatHistory(project.id);
-  });
+  const visibleProjects = listProjects().filter((project) => hasProjectChatHistory(project.id));
 
-  if (projects.length === 0) {
+  if (visibleProjects.length === 0) {
     const emptyMessage = document.createElement('p');
     emptyMessage.textContent = '暂无历史项目';
     emptyMessage.style.textAlign = 'center';
-    emptyMessage.style.color = 'rgba(255,255,255,0.5)';
+    emptyMessage.style.color = 'var(--text-muted)';
     emptyMessage.style.fontStyle = 'italic';
     emptyMessage.style.margin = '20px 0';
     sidebarProjectList.appendChild(emptyMessage);
     return;
   }
 
-  const pinned = projects.filter(p => p.pinned);
-  const unpinned = projects.filter(p => !p.pinned);
+  const pinned = visibleProjects.filter(p => p.pinned);
+  const unpinned = visibleProjects.filter(p => !p.pinned);
 
   if (pinned.length > 0) {
     const pinnedHeader = document.createElement('div');
@@ -323,7 +337,10 @@ function createProjectItem(project: Project, deps: SidebarDeps): HTMLElement {
     deleteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> 删除`;
     deleteBtn.addEventListener('click', (ev) => {
       ev.stopPropagation();
-      if (confirm(`确定删除「${project.name}」吗？`)) {
+      closeAllProjectMenus();
+
+      const modal = document.getElementById('deleteConfirmModal');
+      const confirmDelete = () => {
         deleteProject(project.id);
         closeAllProjectMenus();
         if (currentPid === project.id) {
@@ -336,7 +353,39 @@ function createProjectItem(project: Project, deps: SidebarDeps): HTMLElement {
           }
         }
         populateSidebarProjects(deps);
+      };
+
+      if (!modal) {
+        if (confirm(`确定删除「${project.name}」吗？`)) {
+          confirmDelete();
+        }
+        return;
       }
+
+      const messageEl = document.getElementById('deleteConfirmMessage');
+      if (messageEl) {
+        messageEl.textContent = `确定删除「${project.name}」吗？此操作不可撤销。`;
+      }
+
+      modal.classList.add('active');
+
+      const cancelBtn = document.getElementById('deleteCancelBtn');
+      const okBtn = document.getElementById('deleteOkBtn');
+
+      const cleanup = () => {
+        modal.classList.remove('active');
+        cancelBtn?.replaceWith(cancelBtn.cloneNode(false));
+        okBtn?.replaceWith(okBtn.cloneNode(false));
+      };
+
+      document.getElementById('deleteCancelBtn')?.addEventListener('click', () => {
+        cleanup();
+      });
+
+      document.getElementById('deleteOkBtn')?.addEventListener('click', () => {
+        confirmDelete();
+        cleanup();
+      });
     });
 
     menu.appendChild(pinToggle);

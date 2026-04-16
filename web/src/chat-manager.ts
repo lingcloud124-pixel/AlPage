@@ -8,7 +8,7 @@ import { getSystemPrompt } from './agent/system-prompt';
 import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences, trackPresetUsage } from './agent/user-preferences';
 import { analyzeImageAsync, executeTool } from './tools/executor';
 import type { ChatMessage } from './types';
-import { getCurrentProjectId, loadProject, saveProject, updateProjectNameDisplay, PRESET_DISPLAY, getAvailablePresets } from './project-manager';
+import { getCurrentProjectId, loadProject, saveProject, updateProjectNameDisplay, PRESET_DISPLAY, getAvailablePresets, activateProject } from './project-manager';
 import type { Project } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, saveCurrentColorsToProject, getCurrentColors, applyPresetBackground, getThemeTarget } from './theme-engine';
 import { PRESET_BACKGROUNDS } from './project-manager';
@@ -503,7 +503,9 @@ export function setupChatInterface(deps: ChatDeps) {
     if (content) callAI(content);
 
     if (content && getCurrentProjectId()) {
-      const project = loadProject(getCurrentProjectId()!);
+      const projectId = getCurrentProjectId()!;
+      activateProject(projectId);
+      const project = loadProject(projectId);
       if (project && project.name === '未命名项目') {
         const autoName = content.length > 20 ? content.substring(0, 20) + '...' : content;
         project.name = autoName;
