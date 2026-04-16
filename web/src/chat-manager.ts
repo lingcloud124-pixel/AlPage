@@ -20,8 +20,28 @@ let activeAbortController: AbortController | null = null;
 export function getConversationHistory() { return conversationHistory; }
 export function getActiveAbortController() { return activeAbortController; }
 
+function getConversationMessagesContainer(): HTMLElement | null {
+  return document.getElementById('messagesContainer') as HTMLElement | null;
+}
+
+function setChatViewMode(mode: 'default' | 'conversation'): void {
+  const defaultView = document.getElementById('chatDefaultView');
+  const conversationView = document.getElementById('chatConversationView');
+  if (!defaultView || !conversationView) return;
+  defaultView.classList.toggle('is-hidden', mode !== 'default');
+  conversationView.classList.toggle('is-hidden', mode !== 'conversation');
+}
+
+export function showDefaultChatView(): void {
+  setChatViewMode('default');
+}
+
+export function showConversationChatView(): void {
+  setChatViewMode('conversation');
+}
+
 export function renderMessage(role: 'user' | 'ai', content: string): HTMLElement {
-  const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
+  const messagesContainer = getConversationMessagesContainer();
   if (!messagesContainer) return document.createElement('div');
 
   const messageDiv = document.createElement('div');
@@ -82,9 +102,15 @@ export function loadChatHistory(): Array<{ role: string; content: string; timest
 
 export function loadAndRenderChatHistory(messagesContainer: HTMLElement | null): void {
   if (!messagesContainer) return;
-  messagesContainer.innerHTML = '';
   conversationHistory.length = 0;
   const history = loadChatHistory();
+  if (history.length === 0) {
+    showDefaultChatView();
+    messagesContainer.innerHTML = '';
+    return;
+  }
+  showConversationChatView();
+  messagesContainer.innerHTML = '';
   history.forEach(msg => {
     const savedMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -95,9 +121,6 @@ export function loadAndRenderChatHistory(messagesContainer: HTMLElement | null):
     conversationHistory.push(savedMsg);
     renderMessage(msg.role as 'user' | 'ai', msg.content);
   });
-  if (history.length === 0) {
-    renderMessage('ai', '👋 欢迎使用主题工作室！我是您的 AI 助手，可以帮您生成配色方案、调整主题样式。请告诉我您想要什么样的主题风格？');
-  }
 }
 
 function stripToolCallsFromDisplay(content: string): string {
@@ -132,7 +155,7 @@ function parseGuideOptions(content: string): string[] {
 }
 
 function addPresetCardsMessage(cards: Array<{key: string; label: string; primary: string; type: string}>, addMessage: (role: 'user' | 'ai', content: string) => HTMLElement, expandPreview: () => void): HTMLElement {
-  const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
+  const messagesContainer = getConversationMessagesContainer();
   if (!messagesContainer) return document.createElement('div');
 
   const messageDiv = document.createElement('div');
@@ -216,7 +239,7 @@ function addPresetCardsMessage(cards: Array<{key: string; label: string; primary
 }
 
 function addBackgroundCardsMessage(bgKeys: string[], addMessage: (role: 'user' | 'ai', content: string) => HTMLElement, expandPreview: () => void): HTMLElement {
-  const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
+  const messagesContainer = getConversationMessagesContainer();
   if (!messagesContainer) return document.createElement('div');
 
   const messageDiv = document.createElement('div');
@@ -265,7 +288,7 @@ function addBackgroundCardsMessage(bgKeys: string[], addMessage: (role: 'user' |
 }
 
 function addGuideCardsMessage(options: string[], sendUserMessage: () => void): HTMLElement {
-  const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
+  const messagesContainer = getConversationMessagesContainer();
   if (!messagesContainer) return document.createElement('div');
 
   const messageDiv = document.createElement('div');
@@ -284,7 +307,7 @@ function addGuideCardsMessage(options: string[], sendUserMessage: () => void): H
     card.className = 'guide-card-chat';
     card.textContent = option;
     card.addEventListener('click', () => {
-      const input = document.getElementById('messageInput') as HTMLTextAreaElement;
+      const input = document.getElementById('conversationMessageInput') as HTMLTextAreaElement;
       if (input) { input.value = `我想做一个${option}`; sendUserMessage(); }
     });
     cardsContainer.appendChild(card);
@@ -327,36 +350,44 @@ export interface ChatDeps {
 }
 
 export function setupChatInterface(deps: ChatDeps) {
-  const messageInput = document.getElementById('messageInput') as HTMLTextAreaElement;
-  const sendBtn = document.getElementById('sendBtn') as HTMLButtonElement;
-  const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
-  const composerInner = document.querySelector('.chat-shell-composer-inner') as HTMLElement | null;
+  const defaultMessageInput = document.getElementById('messageInput') as HTMLTextAreaElement | null;
+  const conversationMessageInput = document.getElementById('conversationMessageInput') as HTMLTextAreaElement | null;
+  const defaultSendBtn = document.getElementById('sendBtn') as HTMLButtonElement | null;
+  const conversationSendBtn = document.getElementById('conversationSendBtn') as HTMLButtonElement | null;
+  const messagesContainer = getConversationMessagesContainer();
+  const defaultComposerInner = defaultMessageInput?.closest('.chat-shell-composer-inner') as HTMLElement | null;
+  const conversationComposerInner = conversationMessageInput?.closest('.chat-shell-composer-inner') as HTMLElement | null;
 
-  if (!messageInput || !sendBtn || !messagesContainer) {
+  if (!defaultMessageInput || !conversationMessageInput || !defaultSendBtn || !conversationSendBtn || !messagesContainer) {
     console.error('Chat elements not found');
     return;
   }
 
-  sendBtn.addEventListener('click', sendUserMessage);
-  const resizeMessageInput = () => {
-    messageInput.style.height = '40px';
-    const nextHeight = Math.min(messageInput.scrollHeight, 72);
+  defaultSendBtn.addEventListener('click', () => sendUserMessage('default'));
+  conversationSendBtn.addEventListener('click', () => sendUserMessage('conversation'));
+  const resizeMessageInput = (input: HTMLTextAreaElement, composerInner: HTMLElement | null) => {
+    input.style.height = '40px';
+    const nextHeight = Math.min(input.scrollHeight, 72);
     const resolvedHeight = Math.max(40, nextHeight);
-    messageInput.style.height = `${resolvedHeight}px`;
+    input.style.height = `${resolvedHeight}px`;
     if (composerInner) composerInner.style.minHeight = `${resolvedHeight + 56}px`;
   };
-  resizeMessageInput();
-  messageInput.addEventListener('input', resizeMessageInput);
-  messageInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendUserMessage(); }
+  resizeMessageInput(defaultMessageInput, defaultComposerInner);
+  resizeMessageInput(conversationMessageInput, conversationComposerInner);
+  defaultMessageInput.addEventListener('input', () => resizeMessageInput(defaultMessageInput, defaultComposerInner));
+  conversationMessageInput.addEventListener('input', () => resizeMessageInput(conversationMessageInput, conversationComposerInner));
+  defaultMessageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendUserMessage('default'); }
+  });
+  conversationMessageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendUserMessage('conversation'); }
   });
 
   const pendingImages: string[] = [];
-  const imagePreviewBar = document.getElementById('imagePreviewBar') as HTMLElement;
+  const defaultImagePreviewBar = document.getElementById('imagePreviewBar') as HTMLElement | null;
+  const conversationImagePreviewBar = document.getElementById('conversationImagePreviewBar') as HTMLElement | null;
 
-  const plusBtn = document.getElementById('plusBtn');
-  if (plusBtn) {
-    plusBtn.addEventListener('click', () => {
+  const openImagePicker = () => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
@@ -376,29 +407,34 @@ export function setupChatInterface(deps: ChatDeps) {
         }
       };
       input.click();
-    });
-  }
+  };
+
+  document.getElementById('plusBtn')?.addEventListener('click', openImagePicker);
+  document.getElementById('conversationPlusBtn')?.addEventListener('click', openImagePicker);
 
   function renderImagePreviewBar() {
-    if (!imagePreviewBar) return;
-    imagePreviewBar.innerHTML = '';
+    const previewBars = [defaultImagePreviewBar, conversationImagePreviewBar].filter(Boolean) as HTMLElement[];
+    if (previewBars.length === 0) return;
+    previewBars.forEach((bar) => { bar.innerHTML = ''; });
     if (pendingImages.length === 0) {
-      imagePreviewBar.classList.remove('has-images');
+      previewBars.forEach((bar) => bar.classList.remove('has-images'));
       return;
     }
-    imagePreviewBar.classList.add('has-images');
+    previewBars.forEach((bar) => bar.classList.add('has-images'));
     pendingImages.forEach((src, idx) => {
-      const thumb = document.createElement('div');
-      thumb.className = 'preview-thumb';
-      const img = document.createElement('img');
-      img.src = src;
-      thumb.appendChild(img);
-      const removeBtn = document.createElement('button');
-      removeBtn.className = 'remove-btn';
-      removeBtn.textContent = '×';
-      removeBtn.addEventListener('click', () => { pendingImages.splice(idx, 1); renderImagePreviewBar(); });
-      thumb.appendChild(removeBtn);
-      imagePreviewBar.appendChild(thumb);
+      previewBars.forEach((bar) => {
+        const thumb = document.createElement('div');
+        thumb.className = 'preview-thumb';
+        const img = document.createElement('img');
+        img.src = src;
+        thumb.appendChild(img);
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => { pendingImages.splice(idx, 1); renderImagePreviewBar(); });
+        thumb.appendChild(removeBtn);
+        bar.appendChild(thumb);
+      });
     });
   }
 
@@ -408,12 +444,16 @@ export function setupChatInterface(deps: ChatDeps) {
     return messageEl;
   }
 
-  function sendUserMessage() {
+  function sendUserMessage(source: 'default' | 'conversation' = 'conversation') {
     if (activeAbortController) return;
-    const hasText = messageInput && messageInput.value.trim() !== '';
+    const activeInput = source === 'default' ? defaultMessageInput : conversationMessageInput;
+    const fallbackInput = source === 'default' ? conversationMessageInput : defaultMessageInput;
+    const hasText = activeInput && activeInput.value.trim() !== '';
     const hasImages = pendingImages.length > 0;
     if (!hasText && !hasImages) return;
-    const content = messageInput ? messageInput.value.trim() : '';
+    const content = activeInput ? activeInput.value.trim() : '';
+
+    showConversationChatView();
 
     if (hasImages) {
       const imagesToSend = [...pendingImages];
@@ -452,9 +492,13 @@ export function setupChatInterface(deps: ChatDeps) {
       addMessageToChat('user', content);
     }
 
-    if (messageInput) {
-      messageInput.value = '';
-      resizeMessageInput();
+    if (activeInput) {
+      activeInput.value = '';
+      resizeMessageInput(activeInput, source === 'default' ? defaultComposerInner : conversationComposerInner);
+    }
+    if (fallbackInput && content) {
+      fallbackInput.value = '';
+      resizeMessageInput(fallbackInput, source === 'default' ? conversationComposerInner : defaultComposerInner);
     }
     if (content) callAI(content);
 
@@ -472,6 +516,17 @@ export function setupChatInterface(deps: ChatDeps) {
       }
     }
   }
+
+  const landingPromptButtons = document.querySelectorAll<HTMLElement>('.landing-prompt-trigger[data-prompt]');
+  landingPromptButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const prompt = button.dataset.prompt?.trim();
+      if (!prompt || !defaultMessageInput) return;
+      defaultMessageInput.value = prompt;
+      resizeMessageInput(defaultMessageInput, defaultComposerInner);
+      sendUserMessage('default');
+    });
+  });
 
   async function callAI(userMessage: string) {
     conversationHistory.push({
@@ -519,18 +574,17 @@ export function setupChatInterface(deps: ChatDeps) {
       contentEl.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
     }
 
-    const btn = document.getElementById('sendBtn');
     const setSendBtnStop = (isStop: boolean) => {
-      if (!btn) return;
-      if (isStop) { btn.classList.add('stop-mode'); btn.title = '停止生成'; }
-      else { btn.classList.remove('stop-mode'); btn.title = '发送'; }
+      if (!conversationSendBtn) return;
+      if (isStop) { conversationSendBtn.classList.add('stop-mode'); conversationSendBtn.title = '停止生成'; }
+      else { conversationSendBtn.classList.remove('stop-mode'); conversationSendBtn.title = '发送'; }
     };
 
     activeAbortController = new AbortController();
     setSendBtnStop(true);
 
     const stopHandler = () => { activeAbortController?.abort(); setSendBtnStop(false); };
-    btn?.addEventListener('click', stopHandler);
+    conversationSendBtn?.addEventListener('click', stopHandler);
 
     let thinkingText = '';
 
@@ -573,7 +627,7 @@ export function setupChatInterface(deps: ChatDeps) {
         activeAbortController.signal,
       );
     } catch (e) {
-      btn?.removeEventListener('click', stopHandler);
+      conversationSendBtn?.removeEventListener('click', stopHandler);
       activeAbortController = null;
       setSendBtnStop(false);
       if (contentEl) {
@@ -598,7 +652,7 @@ export function setupChatInterface(deps: ChatDeps) {
       return;
     }
 
-    btn?.removeEventListener('click', stopHandler);
+    conversationSendBtn?.removeEventListener('click', stopHandler);
     activeAbortController = null;
     setSendBtnStop(false);
 

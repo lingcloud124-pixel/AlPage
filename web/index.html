@@ -68,50 +68,162 @@
                     </div>
                 </div>
                 
-                <div class="messages-container">
-                    <!-- Welcome message with suggestions -->
-                    <div class="message ai-message welcome-message">
-                        <div class="avatar">
-                            <svg class="robot-avatar" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="5" y="6" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
-                                <circle cx="18" cy="7" r="1" fill="currentColor"/>
-                                <circle cx="6" cy="7" r="1" fill="currentColor"/>
-                                <rect x="9" y="10" width="6" height="2" rx="1" fill="currentColor"/>
-                                <line x1="9" y1="15" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            </svg>
-                        </div>
-                        <div class="message-content">
-                            <h4 class="welcome-title">欢迎使用 Theme Studio</h4>
-                            <p class="welcome-text">告诉我您需要什么场景的主题，例如 "做一套春节主题" 或 "端午节活动页"：</p>
-                            <div class="theme-suggestions">
-                                <button class="theme-btn">春节主题</button>
-                                <button class="theme-btn">端午主题</button>
-                                <button class="theme-btn">中秋主题</button>
-                                <button class="theme-btn">国庆主题</button>
+                <div class="chat-default-view" id="chatDefaultView">
+                    <div class="chat-default-scroll">
+                        <div class="landing-hero landing-hero--compact" id="chatLandingHero">
+                            <div class="landing-hero-copy landing-hero-copy--centered">
+                                <h1 class="landing-hero-title">我是 Theme Studio 你的 AI 主题创作伙伴</h1>
+                                <h2 class="landing-hero-subtitle">生成主题图•实时预览•细节修改•生成打包</h2>
                             </div>
+                        </div>
+
+                        <div class="input-area input-area--landing">
+                            <div class="image-preview-bar" id="imagePreviewBar"></div>
+                            <div class="input-row chat-shell-composer">
+                                <div class="chat-input-wrapper chat-shell-composer-inner">
+                                    <textarea id="messageInput" rows="1" placeholder="描述您需要的活动/节日主题..."></textarea>
+                                    <button id="plusBtn" class="plus-btn ui-icon-button chat-shell-plus" title="添加图片">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                        </svg>
+                                    </button>
+                                    <button id="sendBtn" class="ui-icon-button chat-shell-send" title="发送">
+                                        <svg class="icon-send" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M12 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            <path d="M5 12L12 5L19 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                        <svg class="icon-stop" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                            <rect x="4" y="4" width="16" height="16" rx="2"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="messages-container messages-container--landing">
+                            <section class="landing-section landing-section--after-composer" aria-labelledby="landingStartTitle">
+                                <div class="landing-section-header">
+                                    <h3 class="landing-section-title" id="landingStartTitle">你可以尝试这些主题</h3>
+                                    <span class="landing-section-meta">一键填入并立即开始生成</span>
+                                </div>
+                                <div class="landing-starter-grid theme-suggestions">
+                                    <button class="landing-starter-card theme-btn landing-prompt-trigger" data-prompt="帮我生成一套清明主题，整体气质要清新、克制、带一点春日薄雾感。">
+                                        <span class="landing-starter-icon landing-starter-icon-festival">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M12 3v18"></path>
+                                                <path d="M8 7c0-2 1.8-3.5 4-3.5S16 5 16 7c0 1.7-1 2.8-2.2 3.7"></path>
+                                                <path d="M7 14c1.5-1.8 3-2.7 5-2.7s3.5.9 5 2.7"></path>
+                                            </svg>
+                                        </span>
+                                        <span class="landing-starter-content">
+                                            <strong>生成清明主题</strong>
+                                            <small>清雅、留白、春日草木感</small>
+                                        </span>
+                                    </button>
+                                    <button class="landing-starter-card theme-btn landing-prompt-trigger" data-prompt="帮我生成一个足球联赛主题，强调速度感、竞技氛围和赛场张力。">
+                                        <span class="landing-starter-icon landing-starter-icon-sport">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <circle cx="12" cy="12" r="9"></circle>
+                                                <path d="M12 7l3 2-1 3h-4L9 9l3-2z"></path>
+                                                <path d="M7 14l3-2"></path>
+                                                <path d="M17 14l-3-2"></path>
+                                                <path d="M10 12l-1 4"></path>
+                                                <path d="M14 12l1 4"></path>
+                                            </svg>
+                                        </span>
+                                        <span class="landing-starter-content">
+                                            <strong>生成足球联赛主题</strong>
+                                            <small>赛事宣传、竞技感、热血视觉</small>
+                                        </span>
+                                    </button>
+                                    <button class="landing-starter-card theme-btn landing-prompt-trigger" data-prompt="帮我生成一个年中冲刺主题，用于鼓舞团队士气，风格专业但有力量感。">
+                                        <span class="landing-starter-icon landing-starter-icon-campaign">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M3 11l18-6v14l-18-6z"></path>
+                                                <path d="M11 13v6"></path>
+                                                <path d="M7 15l1.5 5"></path>
+                                            </svg>
+                                        </span>
+                                        <span class="landing-starter-content">
+                                            <strong>生成年中冲刺主题</strong>
+                                            <small>企业动员、冲刺目标、专业气场</small>
+                                        </span>
+                                    </button>
+                                    <button class="landing-starter-card theme-btn landing-prompt-trigger" data-prompt="帮我生成一个复古风格主题，要求有怀旧质感、暖色层次和轻海报感。">
+                                        <span class="landing-starter-icon landing-starter-icon-vintage">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <rect x="4" y="4" width="16" height="16" rx="3"></rect>
+                                                <circle cx="9" cy="9" r="1.5"></circle>
+                                                <path d="M20 15l-5-5-7 7"></path>
+                                            </svg>
+                                        </span>
+                                        <span class="landing-starter-content">
+                                            <strong>生成复古风格主题</strong>
+                                            <small>海报感、怀旧配色、氛围插画</small>
+                                        </span>
+                                    </button>
+                                </div>
+                            </section>
+
+                            <section class="landing-section" aria-labelledby="landingInspirationTitle">
+                                <div class="landing-section-header">
+                                    <h3 class="landing-section-title" id="landingInspirationTitle">主题灵感方向</h3>
+                                    <span class="landing-section-meta">延续产品定位，不直接套模板</span>
+                                </div>
+                                <div class="landing-inspiration-row">
+                                    <div class="landing-inspiration-card landing-template-card" aria-disabled="true">
+                                        <img class="landing-template-image" src="/backgrounds/winter-solstice-bg.jpg" alt="冬至主题效果图" loading="lazy">
+                                        <span class="landing-inspiration-tag">节日活动</span>
+                                        <strong>冬至主题</strong>
+                                        <small>适合冬日节气氛围、柔和暖意与节庆视觉表达</small>
+                                    </div>
+                                    <div class="landing-inspiration-card landing-template-card" aria-disabled="true">
+                                        <img class="landing-template-image" src="/backgrounds/overtime-worker-bg.png" alt="企业品牌主题效果图" loading="lazy">
+                                        <span class="landing-inspiration-tag">企业品牌</span>
+                                        <strong>品牌宣传 / 周年庆 / 战役活动</strong>
+                                        <small>突出品牌主色、秩序感与传播表达</small>
+                                    </div>
+                                    <div class="landing-inspiration-card landing-template-card" aria-disabled="true">
+                                        <img class="landing-template-image" src="/backgrounds/mount-tai-summit-bg.png" alt="勇攀高峰主题效果图" loading="lazy">
+                                        <span class="landing-inspiration-tag">励志愿景</span>
+                                        <strong>勇攀高峰主题</strong>
+                                        <small>强调目标感、突破感与高峰愿景的视觉表达</small>
+                                    </div>
+                                    <div class="landing-inspiration-card landing-template-card" aria-disabled="true">
+                                        <img class="landing-template-image" src="/backgrounds/maldives-vacation-bg.png" alt="自然清新主题效果图" loading="lazy">
+                                        <span class="landing-inspiration-tag">自然清新</span>
+                                        <strong>清明 / 春日 / 海边 / 森林</strong>
+                                        <small>强调自然色、空气感与柔和留白</small>
+                                    </div>
+                                </div>
+                            </section>
                         </div>
                     </div>
                 </div>
-                
-                <div class="input-area">
-                    <div class="image-preview-bar" id="imagePreviewBar"></div>
-                    <div class="input-row chat-shell-composer">
-                        <div class="chat-input-wrapper chat-shell-composer-inner">
-                            <textarea id="messageInput" rows="1" placeholder="描述您需要的活动/节日主题..."></textarea>
-                            <button id="plusBtn" class="plus-btn ui-icon-button chat-shell-plus" title="添加图片">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                                </svg>
-                            </button>
-                            <button id="sendBtn" class="ui-icon-button chat-shell-send" title="发送">
-                                <svg class="icon-send" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                    <path d="M5 12L12 5L19 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                                <svg class="icon-stop" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="4" y="4" width="16" height="16" rx="2"/>
-                                </svg>
-                            </button>
+
+                <div class="chat-conversation-view" id="chatConversationView">
+                    <div class="messages-container" id="messagesContainer"></div>
+
+                    <div class="input-area">
+                        <div class="image-preview-bar" id="conversationImagePreviewBar"></div>
+                        <div class="input-row chat-shell-composer">
+                            <div class="chat-input-wrapper chat-shell-composer-inner">
+                                <textarea id="conversationMessageInput" rows="1" placeholder="描述您需要的活动/节日主题..."></textarea>
+                                <button id="conversationPlusBtn" class="plus-btn ui-icon-button chat-shell-plus" title="添加图片">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                    </svg>
+                                </button>
+                                <button id="conversationSendBtn" class="ui-icon-button chat-shell-send" title="发送">
+                                    <svg class="icon-send" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M5 12L12 5L19 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <svg class="icon-stop" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="4" y="4" width="16" height="16" rx="2"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

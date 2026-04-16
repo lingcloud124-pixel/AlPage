@@ -10,7 +10,7 @@ import {
   closeAllProjectMenus,
 } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck } from './theme-engine';
-import { loadAndRenderChatHistory, setupChatInterface } from './chat-manager';
+import { loadAndRenderChatHistory, setupChatInterface, showDefaultChatView } from './chat-manager';
 import { setupMainActions, showNotification } from './package-manager';
 import {
   expandPreview,
@@ -39,7 +39,7 @@ declare global {
 function showWorkspace(projectId: string): void {
   const homePage = document.getElementById('homePage');
   const workspaceView = document.getElementById('workspaceView');
-  const messagesContainer = document.querySelector('.messages-container') as HTMLElement;
+  const messagesContainer = document.getElementById('messagesContainer') as HTMLElement;
 
   if (homePage) homePage.classList.add('view-hidden');
   if (workspaceView) workspaceView.classList.remove('view-hidden');
@@ -80,6 +80,7 @@ function showWorkspace(projectId: string): void {
       syncColorEditorFromTheme();
       collapsePreview();
       syncWorkbenchLayoutForActiveTab(false, 'loginTab');
+      showDefaultChatView();
     }
   }
 

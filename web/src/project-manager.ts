@@ -109,6 +109,17 @@ export function listProjects(): Project[] {
   return projects.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+function hasProjectChatHistory(projectId: string): boolean {
+  try {
+    const raw = localStorage.getItem(`theme-studio-chat-${projectId}`);
+    if (!raw) return false;
+    const history = safeJsonParse<Array<{ role: string; content: string; timestamp: number }>>(raw, []);
+    return history.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function deleteProject(id: string): boolean {
   try {
     const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
@@ -226,7 +237,10 @@ export function populateSidebarProjects(deps: SidebarDeps) {
   const sidebarProjectList = document.getElementById('sidebarProjectList');
   if (!sidebarProjectList) return;
   sidebarProjectList.innerHTML = '';
-  const projects = listProjects();
+  const projects = listProjects().filter((project) => {
+    if (project.name !== '未命名项目') return true;
+    return hasProjectChatHistory(project.id);
+  });
 
   if (projects.length === 0) {
     const emptyMessage = document.createElement('p');

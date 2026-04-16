@@ -70,8 +70,10 @@ export function syncWorkbenchLayoutForActiveTab(hasPreview: boolean, activeTabId
 
 export function expandPreview() {
   const previewPanel = document.getElementById('previewPanel');
+  const appContainer = document.querySelector('.app-container');
   if (!previewPanel) return;
   previewPanel.classList.add('expanded');
+  appContainer?.classList.add('preview-open');
 
   if (!previewTemplatesLoaded) {
     loadDefaultTemplates();
@@ -82,7 +84,9 @@ export function expandPreview() {
 
 export function collapsePreview() {
   const previewPanel = document.getElementById('previewPanel');
+  const appContainer = document.querySelector('.app-container');
   if (previewPanel) previewPanel.classList.remove('expanded');
+  appContainer?.classList.remove('preview-open');
   syncWorkbenchLayoutForActiveTab(false, 'loginTab');
 }
 
