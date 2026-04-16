@@ -1,5 +1,6 @@
 export interface ExportRequestOptions {
   name: string;
+  nameEn?: string;
   themeColor: string;
   templateType: 'light-ui' | 'dark-ui';
   selectedProducts: string[];
@@ -42,8 +43,11 @@ export function buildExportRequestYaml(options: ExportRequestOptions): string {
   const colorsYaml = normalizedColors.length > 0
     ? `colors:\n${normalizedColors.map(([name, value]) => `  ${name}: "${value}"`).join('\n')}\n`
     : '';
+  const nameEnYaml = options.nameEn?.trim()
+    ? `nameEn: "${options.nameEn.trim()}"\n`
+    : '';
 
-  return `title: "${options.name}"
+  return `${nameEnYaml}title: "${options.name}"
 subtitle: "${options.subtitle ?? options.name}"
 buttonText: "${options.buttonText ?? '立即进入'}"
 themeColor: "${options.themeColor}"

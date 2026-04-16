@@ -174,6 +174,106 @@ RGB_REPLACEMENTS = [
     (r"44,\s*97,\s*92", None),  # green RGB secondary
 ]
 
+DIRECT_THEME_PATTERNS: List[Tuple[str, List[str]]] = [
+    ("shenergy-enterprise", [r"申能", r"\bshenergy\b"]),
+    ("happy-xishuangbanna", [r"西双版纳", r"\bxishuangbanna\b"]),
+    ("maldives-vacation", [r"马尔代夫", r"\bmaldives\b"]),
+    ("mount-tai-summit", [r"泰山", r"\bmount\s*tai\b"]),
+    ("superman-superhero", [r"超级英雄", r"超人", r"\bsuper(hero|man)\b"]),
+    ("yellow-duck", [r"小黄鸭", r"\byellow duck\b"]),
+    ("watermelon-harvest", [r"西瓜", r"\bwatermelon\b"]),
+    ("cherry-blossom", [r"樱花", r"\bcherry blossom\b", r"\bsakura\b"]),
+    ("peach-blossom", [r"桃花", r"\bpeach blossom\b"]),
+    ("basketball-match", [r"篮球", r"\bbasketball\b"]),
+    ("football-match", [r"足球", r"\bfootball\b", r"\bsoccer\b"]),
+    ("interstellar", [r"星际", r"宇宙", r"太空", r"\binterstellar\b", r"\bspace\b"]),
+    ("ice-wonderland", [r"冰雪", r"冰川", r"雪境", r"\bice\b", r"\bsnow\b"]),
+    ("panda-night", [r"熊猫", r"\bpanda\b"]),
+    ("sanya", [r"三亚", r"\bsanya\b"]),
+    ("gaokao", [r"高考", r"\bgaokao\b"]),
+    ("christmas", [r"圣诞", r"\bchristmas\b"]),
+    ("mid-autumn", [r"中秋", r"\bmid[- ]autumn\b", r"\bmoon festival\b"]),
+    ("dragon-boat", [r"端午", r"龙舟", r"\bdragon boat\b"]),
+    ("spring-festival", [r"春节", r"新春", r"过年", r"\bspring festival\b", r"\blunar new year\b"]),
+    ("winter-solstice", [r"冬至", r"\bwinter solstice\b"]),
+    ("women-day", [r"妇女节", r"女神节", r"\bwomen'?s day\b"]),
+    ("childrens-day", [r"儿童节", r"六一", r"\bchildren'?s day\b"]),
+    ("20th-anniversary", [r"20周年", r"二十周年", r"\b20th anniversary\b"]),
+    ("1024", [r"1024", r"程序员节"]),
+    ("qingming", [r"清明", r"\bqingming\b"]),
+    ("national-day", [r"国庆", r"\bnational day\b"]),
+    ("dark-ui-spring", [r"暗夜春", r"春.*暗色", r"暗色.*春", r"\bdark\b.*\bspring\b", r"\bspring\b.*\bdark\b"]),
+    ("corporate-blue", [r"企业蓝", r"\bcorporate blue\b"]),
+    ("overtime-worker", [r"加班", r"夜班", r"深夜", r"\bovertime\b", r"\bnight shift\b"]),
+    ("work-hard", [r"奋斗", r"拼搏", r"加油干", r"\bwork hard\b"]),
+]
+
+GENERIC_TOKEN_PATTERNS: List[Tuple[str, List[str]]] = [
+    ("dark", [r"暗色", r"深色", r"夜景", r"夜晚", r"\bdark\b", r"\bnight\b"]),
+    ("light", [r"亮色", r"浅色", r"\blight\b"]),
+    ("spring", [r"春", r"\bspring\b"]),
+    ("summer", [r"夏", r"\bsummer\b"]),
+    ("autumn", [r"秋", r"\bautumn\b", r"\bfall\b"]),
+    ("winter", [r"冬", r"\bwinter\b"]),
+    ("festival", [r"节", r"\bfestival\b", r"\bholiday\b"]),
+    ("enterprise", [r"企业", r"商务", r"办公", r"\benterprise\b", r"\bcorporate\b"]),
+    ("tech", [r"科技", r"\btech\b", r"\bfuture\b"]),
+    ("ocean", [r"海", r"海洋", r"\bocean\b", r"\bsea\b"]),
+    ("mountain", [r"山", r"\bmountain\b"]),
+    ("forest", [r"森林", r"林", r"\bforest\b"]),
+    ("flower", [r"花", r"\bflower\b", r"\bblossom\b"]),
+    ("blue", [r"蓝", r"\bblue\b"]),
+    ("green", [r"绿", r"\bgreen\b"]),
+    ("red", [r"红", r"\bred\b"]),
+    ("gold", [r"金", r"\bgold(en)?\b"]),
+]
+
+ASCII_STOPWORDS = {
+    "a", "an", "and", "app", "bg", "for", "image", "make", "me", "of", "page",
+    "please", "style", "theme", "ui", "with", "workspace",
+}
+
+PINYIN_CHAR_MAP = {
+    "春": "chun",
+    "夏": "xia",
+    "秋": "qiu",
+    "冬": "dong",
+    "清": "qing",
+    "明": "ming",
+    "国": "guo",
+    "庆": "qing",
+    "端": "duan",
+    "午": "wu",
+    "中": "zhong",
+    "樱": "ying",
+    "花": "hua",
+    "桃": "tao",
+    "山": "shan",
+    "海": "hai",
+    "星": "xing",
+    "空": "kong",
+    "企": "qi",
+    "业": "ye",
+    "蓝": "lan",
+    "红": "hong",
+    "绿": "lv",
+    "金": "jin",
+    "熊": "xiong",
+    "猫": "mao",
+    "夜": "ye",
+    "申": "shen",
+    "能": "neng",
+    "三": "san",
+    "亚": "ya",
+    "西": "xi",
+    "双": "shuang",
+    "版": "ban",
+    "纳": "na",
+    "泰": "tai",
+    "科": "ke",
+    "技": "ji",
+}
+
 
 # =============================================================================
 # Utility Functions
@@ -196,12 +296,117 @@ def warn(msg: str):
     print(f"⚠️  {msg}")
 
 
+def normalize_name_en(value: Any) -> str:
+    if value is None:
+        return ""
+    slug = re.sub(r"['\"`]", "", str(value).strip().lower())
+    slug = re.sub(r"[^a-z0-9]+", "-", slug)
+    slug = re.sub(r"^-+|-+$", "", slug)
+    slug = re.sub(r"-{2,}", "-", slug)
+    return slug[:64]
+
+
+def _extract_direct_theme_slug(text: str) -> Optional[str]:
+    for slug, patterns in DIRECT_THEME_PATTERNS:
+        if any(re.search(pattern, text, flags=re.IGNORECASE) for pattern in patterns):
+            if slug == "national-day" and re.search(r"暗色|深色|dark", text, flags=re.IGNORECASE):
+                return "national-day-dark"
+            return slug
+    return None
+
+
+def _extract_generic_tokens(text: str) -> List[str]:
+    tokens = [
+        token
+        for token, patterns in GENERIC_TOKEN_PATTERNS
+        if any(re.search(pattern, text, flags=re.IGNORECASE) for pattern in patterns)
+    ]
+    ascii_words = [
+        word.lower()
+        for word in re.findall(r"[a-z0-9]+", text, flags=re.IGNORECASE)
+        if word.lower() not in ASCII_STOPWORDS
+    ]
+    merged = []
+    for item in [*tokens, *ascii_words]:
+        if item and item not in merged:
+            merged.append(item)
+    return merged[:4]
+
+
+def _transliterate_chinese_text(text: str) -> str:
+    chars = re.findall(r"[\u4e00-\u9fff]", text)
+    transliterated = "-".join(PINYIN_CHAR_MAP.get(char, "") for char in chars if PINYIN_CHAR_MAP.get(char, ""))
+    return normalize_name_en(transliterated)
+
+
+def derive_name_en_from_text(text: Any) -> str:
+    source = str(text or "").strip()
+    if not source:
+        return "project"
+
+    direct_match = _extract_direct_theme_slug(source)
+    if direct_match:
+        return direct_match
+
+    normalized = normalize_name_en(source)
+    if normalized and re.search(r"[a-z]", normalized) and not normalized.isdigit():
+        return normalized
+
+    tokens = _extract_generic_tokens(source)
+    if tokens:
+        return normalize_name_en("-".join(tokens)) or "project"
+
+    transliterated = _transliterate_chinese_text(source)
+    return transliterated or "project"
+
+
+def discover_sample_root(template_type: str) -> Optional[Path]:
+    dir_name = DEFAULT_SAMPLES_ROOTS.get(template_type, LOCAL_SAMPLES_DIR / "主题样例包").name
+    desktop_dir = Path.home() / "Desktop"
+    search_patterns = [
+        f"*/Topic Automation/assets/references/samples/{dir_name}",
+        f"*/*/Topic Automation/assets/references/samples/{dir_name}",
+    ]
+
+    # Light-UI historically reused the generic "主题样例包" alias.
+    if template_type == "light-ui":
+        search_patterns.extend(
+            [
+                "*/Topic Automation/assets/references/samples/主题样例包",
+                "*/*/Topic Automation/assets/references/samples/主题样例包",
+            ]
+        )
+
+    for pattern in search_patterns:
+        for candidate in desktop_dir.glob(pattern):
+            if candidate.exists():
+                return candidate.resolve()
+
+    return None
+
+
 def resolve_samples_root(template_type: str, configured_root: Optional[str] = None) -> Path:
     if configured_root:
-        return Path(configured_root).expanduser().resolve()
-    return DEFAULT_SAMPLES_ROOTS.get(
+        configured = Path(configured_root).expanduser().resolve()
+        if configured.exists():
+            return configured
+        warn(f"Configured sample root not found: {configured}")
+
+    default_root = DEFAULT_SAMPLES_ROOTS.get(
         template_type, Path(__file__).parent / "assets/references/samples/主题样例包"
     )
+    if default_root.exists():
+        return default_root.resolve()
+
+    if default_root.is_symlink():
+        warn(f"Default sample root symlink is broken: {default_root}")
+
+    discovered = discover_sample_root(template_type)
+    if discovered:
+        warn(f"Using discovered sample root: {discovered}")
+        return discovered
+
+    return default_root.resolve(strict=False)
 
 
 def get_template_zips(template_type: str) -> Dict[str, Dict[str, str]]:
@@ -682,6 +887,7 @@ def build_ekp_package(
     work_dir: Path,
     output_dir: Path,
     title: str,
+    name_en: str,
     subtitle: str,
     button_text: str,
     theme_color: str,
@@ -730,12 +936,25 @@ def build_ekp_package(
 
     # ---- Modify theme.xml ----
     theme_xml = inner_theme_dir / "design-xml" / "theme.xml"
+    import datetime
+    current_year = str(datetime.datetime.now().year)
+    theme_id = f"ekp_theme_{version_label}_{current_year}_{name_en}"
+    theme_name = f"ekp_theme_{version_label}_{current_year}_{title}"
     if theme_xml.exists():
         content = read_text(theme_xml)
-        content = content.replace("$loginTitle$", title)
-        content = content.replace("$loginBtnText$", button_text)
+        content = content.replace("$themeId$", theme_id)
+        content = content.replace("$themeName$", theme_name)
         write_text(theme_xml, content)
-        log(f"Updated theme.xml: title='{title}', btn='{button_text}'")
+        log(f"Updated theme.xml: themeId='{theme_id}', themeName='{theme_name}'")
+
+    # ---- Modify ui.ini ----
+    ui_ini = inner_theme_dir / "ui.ini"
+    if ui_ini.exists():
+        content = read_text(ui_ini)
+        content = content.replace("$themeId$", theme_id)
+        content = content.replace("$themeName$", theme_name)
+        write_text(ui_ini, content)
+        log(f"Updated ui.ini: id='{theme_id}', name='{theme_name}'")
 
     # ---- Inject theme color into all CSS files in style/ ----
     style_dir = inner_theme_dir / "style"
@@ -827,6 +1046,27 @@ def build_ekp_package(
 
     inner_login_dir = find_first_subdir(login_extract_dir)
     repack_login_dir = login_extract_dir
+
+    # ---- Modify config.ini ----
+    config_ini = inner_login_dir / "config.ini"
+    login_id = f"ekp_login_{version_label}_{current_year}_{name_en}"
+    login_name = f"ekp_login_{version_label}_{current_year}_{title}"
+    if config_ini.exists():
+        content = read_text(config_ini)
+        content = content.replace("$loginId$", login_id)
+        content = content.replace("$loginName$", login_name)
+        write_text(config_ini, content)
+        log(f"Updated config.ini: id='{login_id}', name='{login_name}'")
+
+    # ---- Modify login.jsp ----
+    login_jsp = inner_login_dir / "login.jsp"
+    login_id = f"ekp_login_{version_label}_{current_year}_{name_en}"
+    login_name = f"ekp_login_{version_label}_{current_year}_{title}"
+    if login_jsp.exists():
+        content = read_text(login_jsp)
+        content = content.replace("$loginId$", login_id)
+        write_text(login_jsp, content)
+        log(f"Updated login.jsp: loginId='{login_id}'") 
 
     for css_file in login_extract_dir.rglob("*.css"):
         if "font/" in str(css_file):
@@ -1111,6 +1351,8 @@ def build_all(config_path: Path, output_dir: Path):
     cfg = load_config(config_path)
 
     title = cfg.get("title", "未命名主题")
+    name_en = normalize_name_en(cfg.get("nameEn")) or derive_name_en_from_text(title)
+    cfg["nameEn"] = name_en
     subtitle = cfg.get("subtitle", "")
     button_text = cfg.get("buttonText", "立即进入")
     theme_color = cfg.get("themeColor", "#144e48")
@@ -1121,6 +1363,8 @@ def build_all(config_path: Path, output_dir: Path):
     template_type = cfg.get("templateType", "light-ui")
     sample_root = resolve_samples_root(template_type, cfg.get("sampleRoot"))
     config_base = config_path.parent.resolve()
+
+    log(f"Resolved theme nameEn: {name_en}")
 
     if not sample_root.exists():
         error(f"Sample root not found: {sample_root}")
@@ -1161,6 +1405,7 @@ def build_all(config_path: Path, output_dir: Path):
                 work_dir=work_base / product,
                 output_dir=output_dir,
                 title=title,
+                name_en=name_en,
                 subtitle=subtitle,
                 button_text=button_text,
                 theme_color=theme_color,
@@ -1232,7 +1477,10 @@ def main():
     ensure_dir(output_dir)
     success(f"Output directory: {output_dir}")
 
-    build_all(config_path, output_dir)
+    outputs = build_all(config_path, output_dir)
+    if not outputs:
+        sys.exit(1)
+    return 0
 
 
 if __name__ == "__main__":

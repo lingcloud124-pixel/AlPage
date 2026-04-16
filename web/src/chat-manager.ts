@@ -4,10 +4,12 @@ import {
   loadSettings,
   parseToolCallsFromContent,
 } from './agent/chat-client';
+import { enrichToolCallsWithColorHints } from './agent/tool-call-utils';
 import { getSystemPrompt } from './agent/system-prompt';
 import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences, trackPresetUsage } from './agent/user-preferences';
 import { analyzeImageAsync, executeTool } from './tools/executor';
 import type { ChatMessage } from './types';
+import { deriveNameEnFromText, normalizeNameEn } from './project-naming';
 import { getCurrentProjectId, loadProject, saveProject, updateProjectNameDisplay, PRESET_DISPLAY, getAvailablePresets } from './project-manager';
 import type { Project } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, saveCurrentColorsToProject, getCurrentColors, applyPresetBackground, getThemeTarget } from './theme-engine';
@@ -98,6 +100,18 @@ export function loadAndRenderChatHistory(messagesContainer: HTMLElement | null):
   if (history.length === 0) {
     renderMessage('ai', '👋 欢迎使用主题工作室！我是您的 AI 助手，可以帮您生成配色方案、调整主题样式。请告诉我您想要什么样的主题风格？');
   }
+}
+
+function ensureProjectNameEn(project: Project, sourceText: string): boolean {
+  const derived = deriveNameEnFromText(sourceText);
+  if (!derived || derived === 'project') return false;
+
+  const normalizedStored = normalizeNameEn(project.nameEn);
+  if (normalizedStored === derived) return false;
+  if (normalizedStored && normalizedStored !== 'project') return false;
+
+  project.nameEn = derived;
+  return true;
 }
 
 function stripToolCallsFromDisplay(content: string): string {
@@ -460,20 +474,37 @@ export function setupChatInterface(deps: ChatDeps) {
 
     if (content && getCurrentProjectId()) {
       const project = loadProject(getCurrentProjectId()!);
-      if (project && project.name === '未命名项目') {
-        const autoName = content.length > 20 ? content.substring(0, 20) + '...' : content;
-        project.name = autoName;
-        saveProject(project);
-        const chatProjectName = document.getElementById('chatProjectName');
-        if (chatProjectName) chatProjectName.textContent = autoName;
-        const projectNameEl = document.getElementById('projectName');
-        if (projectNameEl) projectNameEl.textContent = autoName;
-        deps.populateSidebarProjects();
+      if (project) {
+        let changed = false;
+
+        if (project.name === '未命名项目') {
+          const autoName = content.length > 20 ? content.substring(0, 20) + '...' : content;
+          project.name = autoName;
+          const chatProjectName = document.getElementById('chatProjectName');
+          if (chatProjectName) chatProjectName.textContent = autoName;
+          const projectNameEl = document.getElementById('projectName');
+          if (projectNameEl) projectNameEl.textContent = autoName;
+          changed = true;
+        }
+
+        changed = ensureProjectNameEn(project, `${project.themeName || ''} ${content}`) || changed;
+
+        if (changed) {
+          saveProject(project);
+          deps.populateSidebarProjects();
+        }
       }
     }
   }
 
   async function callAI(userMessage: string) {
+    const priorAssistantMessage = [...conversationHistory]
+      .reverse()
+      .find((message) => message.role === 'assistant')?.content ?? '';
+    const priorUserMessage = [...conversationHistory]
+      .reverse()
+      .find((message) => message.role === 'user' && message.content.trim() !== userMessage.trim())?.content ?? '';
+
     conversationHistory.push({
       id: Date.now().toString(),
       role: 'user',
@@ -620,7 +651,12 @@ export function setupChatInterface(deps: ChatDeps) {
     });
     saveChatHistory();
 
-    const toolCalls = parseToolCallsFromContent(fullResponse);
+    const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(fullResponse), {
+      userMessage,
+      assistantMessage: fullResponse,
+      priorAssistantMessage,
+      priorUserMessage,
+    });
     const TOOL_GLOBAL_TIMEOUT = 120_000;
     const toolStartTime = Date.now();
 
@@ -678,6 +714,11 @@ export function setupChatInterface(deps: ChatDeps) {
             const imgData = result.data as {
               imageUrl?: string;
               primaryColor?: string;
+              preferredHueHint?: string;
+              fallbackUsed?: boolean;
+              fallbackReason?: string;
+              enforcedPreferredHue?: boolean;
+              enforcementReason?: string;
               generationReport?: { checks?: Array<{ label: string; passed: boolean }> };
               contrastValidation?: { passed?: boolean; failures?: string[] };
               dominantColors?: string[];
@@ -690,7 +731,15 @@ export function setupChatInterface(deps: ChatDeps) {
             const summaryParts = [
               `🎨 配色方案已生成！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
               imgData.dominantColors?.length ? `识别到的候选主色 ${imgData.dominantColors.slice(0, 3).join(' / ')}。` : '',
+              imgData.fallbackUsed
+                ? `本次提色未稳定完成，已按${imgData.preferredHueHint || '已确认'}主色方向回退应用。`
+                : '',
+              imgData.enforcedPreferredHue && !imgData.fallbackUsed
+                ? `检测到图片主色与已确认的${imgData.preferredHueHint || '目标'}方向不一致，已强制校正到确认色。`
+                : '',
               `生成规则校验：${rulePassed ? '通过' : '有待微调'}。`,
+              imgData.fallbackReason ? `回退原因：${imgData.fallbackReason}。` : '',
+              imgData.enforcementReason ? `${imgData.enforcementReason}` : '',
               `对比度校验：${contrastPassed ? '通过' : '存在风险'}。`,
             ].filter(Boolean);
             addMessageToChat('ai', summaryParts.join(' '));
@@ -704,6 +753,7 @@ export function setupChatInterface(deps: ChatDeps) {
                 if (firstUserMsg) {
                   const raw = firstUserMsg.content.replace(/[\n\r]/g, ' ').trim();
                   proj.themeName = raw.length > 15 ? raw.substring(0, 15) + '...' : raw;
+                  ensureProjectNameEn(proj, `${proj.themeName} ${raw}`);
                   saveProject(proj);
                   updateProjectNameDisplay(proj);
                 }
@@ -721,11 +771,20 @@ export function setupChatInterface(deps: ChatDeps) {
             deps.collapseProjectSidebar();
             deps.setChatPanelWidth(372);
           } else if (tc.tool === 'save_colors') {
-            const saveData = tc.args as { name?: string };
+            const saveData = tc.args as { name?: string; nameEn?: string };
             const pid = getCurrentProjectId();
             if (pid && saveData?.name) {
               const proj = loadProject(pid);
-              if (proj) { proj.themeName = saveData.name; saveProject(proj); updateProjectNameDisplay(proj); }
+              if (proj) {
+                proj.themeName = saveData.name;
+                const normalizedNameEn = normalizeNameEn(saveData.nameEn);
+                const derivedNameEn = deriveNameEnFromText(`${saveData.name} ${conversationHistory.find((m) => m.role === 'user')?.content || ''}`);
+                if (normalizedNameEn || derivedNameEn !== 'project') {
+                  proj.nameEn = normalizedNameEn || derivedNameEn;
+                }
+                saveProject(proj);
+                updateProjectNameDisplay(proj);
+              }
             }
           } else if (tc.tool === 'update_colors') {
             saveCurrentColorsToProject();

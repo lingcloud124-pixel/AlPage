@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+from urllib.parse import unquote, urlparse
+from urllib.request import Request, urlopen
 
 try:
     from PIL import Image, ImageColor, ImageDraw
@@ -28,7 +31,28 @@ def _normalize_color(value: str, fallback: str) -> Tuple[int, int, int]:
     return ImageColor.getrgb(raw)
 
 
-def _resolve_source_image(snapshot: Dict[str, Any], project_root: Path) -> Path:
+def _download_remote_image(source: str, output_dir: Path) -> Path:
+    parsed = urlparse(source)
+    suffix = Path(unquote(parsed.path)).suffix or ".png"
+    cache_dir = output_dir / ".cache"
+    _ensure_dir(cache_dir)
+
+    digest = hashlib.sha1(source.encode("utf-8")).hexdigest()[:16]
+    cached_path = cache_dir / f"background-{digest}{suffix}"
+    if cached_path.exists() and cached_path.stat().st_size > 0:
+        return cached_path
+
+    request = Request(source, headers={"User-Agent": "ThemeStudioAssetPipeline/1.0"})
+    with urlopen(request, timeout=30) as response:
+        payload = response.read()
+    if not payload:
+        raise ValueError(f"Downloaded background image is empty: {source}")
+
+    cached_path.write_bytes(payload)
+    return cached_path
+
+
+def _resolve_source_image(snapshot: Dict[str, Any], project_root: Path, output_dir: Path) -> Path:
     source = (
         snapshot.get("sourceImages", {}).get("background")
         or snapshot.get("project", {}).get("background")
@@ -36,6 +60,10 @@ def _resolve_source_image(snapshot: Dict[str, Any], project_root: Path) -> Path:
     )
     if not source:
         raise ValueError("Asset snapshot is missing sourceImages.background")
+
+    parsed = urlparse(source)
+    if parsed.scheme in {"http", "https"}:
+        return _download_remote_image(source, output_dir)
 
     candidate = Path(source)
     if candidate.is_absolute() and candidate.exists():
@@ -270,7 +298,7 @@ def prepare_assets_from_snapshot(snapshot: Dict[str, Any], output_dir: Path, pro
 
     template_type = snapshot["project"]["templateType"]
     colors = snapshot.get("colors", {})
-    source_path = _resolve_source_image(snapshot, project_root)
+    source_path = _resolve_source_image(snapshot, project_root, output_dir)
     source = _open_rgba(source_path)
 
     manifest: Dict[str, str] = {}

@@ -46,8 +46,8 @@ describe('web export jobs', () => {
     });
 
     expect(request.buildOptions.selectedProducts).toEqual(['mk', 'ekp_v17']);
-    expect(request.buildOptions.nameEn).toBe('project-123-project');
-    expect(request.batch.exportDir).toBe('/Users/demo/Documents/Theme Studio/projects/project-123-project/exports/20240413-091959');
+    expect(request.buildOptions.nameEn).toBe('project-123-qingming');
+    expect(request.batch.exportDir).toBe('/Users/demo/Documents/Theme Studio/projects/project-123-qingming/exports/20240413-091959');
     expect(request.yaml).toContain('  - mk');
     expect(request.yaml).toContain('  - ekp_v17');
   });

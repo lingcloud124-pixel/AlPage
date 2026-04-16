@@ -1,5 +1,11 @@
 import { renderTemplate } from './templates/loader';
-import { loadSettings, saveSettings as persistSettings, DEFAULT_CHAT_ENDPOINT, DEFAULT_IMAGE_ENDPOINT } from './agent/chat-client';
+import {
+  loadSettings,
+  saveSettings as persistSettings,
+  DEFAULT_CHAT_ENDPOINT,
+  DEFAULT_IMAGE_ENDPOINT,
+  describeChatEndpointUsage,
+} from './agent/chat-client';
 import { getCurrentProjectId, loadProject, saveProject, deleteProject, listProjects, populateSidebarProjects, closeAllProjectMenus, updateProjectNameDisplay, createProject } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, loadDefaultTemplates } from './theme-engine';
 import { loadAndRenderChatHistory, setupChatInterface } from './chat-manager';
@@ -318,6 +324,17 @@ export function setupSettingsDialog() {
     if (imageModelNameInput) imageModelNameInput.value = settings.imageModelName || settings.imageModel || 'image-01';
     if (exportRootInput) exportRootInput.value = settings.exportRoot || '';
     if (uiThemeSelect) uiThemeSelect.value = settings.uiTheme || 'dark';
+    updateChatEndpointHelp(apiEndpointInput?.value || DEFAULT_CHAT_ENDPOINT);
+  }
+
+  function updateChatEndpointHelp(endpoint: string) {
+    const helpEl = document.getElementById('apiEndpointHelp');
+    if (!helpEl) return;
+    const message = describeChatEndpointUsage(endpoint || DEFAULT_CHAT_ENDPOINT);
+    helpEl.textContent = message;
+    helpEl.dataset.status = message.includes('将通过内置 /api/chat 代理') || message.includes('将直接请求这个完整地址')
+      ? 'ok'
+      : 'warn';
   }
 
   const chooseExportRootBtn = document.getElementById('chooseExportRootBtn') as HTMLButtonElement | null;
@@ -365,6 +382,11 @@ export function setupSettingsDialog() {
     settingsModal.classList.remove('active');
     showNotification('设置已保存');
   }
+
+  const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement | null;
+  apiEndpointInput?.addEventListener('input', () => {
+    updateChatEndpointHelp(apiEndpointInput.value || DEFAULT_CHAT_ENDPOINT);
+  });
 }
 
 export function setupProjectActionMenu(deps: { populateSidebarProjects: () => void; showWorkspace: (id: string) => void }) {
