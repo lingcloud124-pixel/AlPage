@@ -649,24 +649,16 @@ export function setupChatInterface(deps: ChatDeps) {
       }
       try {
         showToolLoading(tc.tool === 'generate_theme_pipeline'
-          ? '🎨 正在生成背景图，请稍候...'
+          ? '主题正在生成中，请稍后'
           : `⚙️ 正在执行 ${tc.tool}...`);
 
         const result = await executeTool(tc, (event) => {
           if (tc.tool === 'generate_theme_pipeline') {
             if (event.type === 'image_generating') {
-              showToolLoading('🎨 正在生成背景图，请稍候...');
+              showToolLoading('主题正在生成中，请稍后');
             } else if (event.type === 'image_generated') {
               removeToolLoading();
-              const imgData = event.data as { imageUrl: string };
               addMessageToChat('ai', '🖼️ 背景图已生成，正在分析配色...');
-              const imgMsg = addMessageToChat('ai', '');
-              const imgEl = document.createElement('img');
-              imgEl.src = imgData.imageUrl;
-              imgEl.style.cssText = 'max-width:100%;border-radius:8px;margin-top:4px;';
-              imgEl.crossOrigin = 'anonymous';
-              const c = imgMsg.querySelector('.message-content') as HTMLElement;
-              if (c) c.appendChild(imgEl);
               showToolLoading('🎨 正在分析配色方案...');
               saveChatHistory();
             }
