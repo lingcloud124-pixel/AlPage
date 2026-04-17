@@ -92,4 +92,47 @@ describe('chat client settings', async () => {
     expect(settings.imageApiEndpoint).toBe('/api/image');
     expect(settings.imageApiKey).toBe('img-old');
   });
+
+  test('describeChatEndpointUsage explains proxy mode on Theme Studio Vite origin', () => {
+    const message = mod.describeChatEndpointUsage('/api/chat', {
+      protocol: 'http:',
+      origin: 'http://127.0.0.1:5173',
+      hostname: '127.0.0.1',
+      port: '5173',
+    });
+
+    expect(message).toContain('内置 /api/chat 代理');
+    expect(message).toContain('http://127.0.0.1:5173');
+  });
+
+  test('buildChatConnectionError explains file-open pages cannot use proxy', () => {
+    const message = mod.buildChatConnectionError('/api/chat', {
+      protocol: 'file:',
+      origin: 'null',
+      hostname: '',
+      port: '',
+    });
+
+    expect(message).toContain('文件方式直接打开');
+    expect(message).toContain('npm run dev');
+  });
+
+  test('buildChatConnectionError explains missing proxy on non-Vite origin', () => {
+    const message = mod.buildChatConnectionError('/api/chat', {
+      protocol: 'https:',
+      origin: 'https://studio.example.com',
+      hostname: 'studio.example.com',
+      port: '',
+    });
+
+    expect(message).toContain('https://studio.example.com');
+    expect(message).toContain('没有可用的 /api/chat 代理');
+  });
+
+  test('buildChatConnectionError explains direct https endpoint failures', () => {
+    const message = mod.buildChatConnectionError('https://coding.dashscope.aliyuncs.com/v1');
+
+    expect(message).toContain('https://coding.dashscope.aliyuncs.com/v1');
+    expect(message).toContain('跨域');
+  });
 });

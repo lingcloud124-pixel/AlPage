@@ -25,6 +25,8 @@ interface ResolveBuildDirectoriesOptions {
   exportDir?: string;
 }
 
+const DEFAULT_SELECTED_PRODUCTS = ['mk', 'ekp_v14_16', 'ekp_v17'];
+
 function getVerifySelectionArgs(selectedProducts?: string[]) {
   return selectedProducts && selectedProducts.length > 0
     ? ['--products', selectedProducts.join(',')]
@@ -59,12 +61,13 @@ async function buildAll(options: BuildOptions): Promise<void> {
     fs.mkdirSync(packagesDir, { recursive: true });
     const yaml = buildExportRequestYaml({
       name: options.name,
+      nameEn: options.nameEn,
       subtitle: options.subtitle,
       buttonText: options.buttonText,
       themeColor: options.themeColor,
       templateType: options.templateType,
       colors: options.cssVariables,
-      selectedProducts: options.selectedProducts ?? ['mk', 'ekp_v12', 'ekp_v13_5', 'ekp_v14_16', 'ekp_v17'],
+      selectedProducts: options.selectedProducts ?? DEFAULT_SELECTED_PRODUCTS,
     });
     const yamlPath = path.join(assetsDir, 'theme-build-request.yaml');
     fs.writeFileSync(yamlPath, yaml, 'utf-8');
@@ -80,7 +83,7 @@ async function buildAll(options: BuildOptions): Promise<void> {
         updatedAt: Date.now(),
       },
       cssVariables,
-      selectedProducts: options.selectedProducts ?? ['mk', 'ekp_v12', 'ekp_v13_5', 'ekp_v14_16', 'ekp_v17'],
+      selectedProducts: options.selectedProducts ?? DEFAULT_SELECTED_PRODUCTS,
       nameEn: options.nameEn,
       exportDir: baseDir,
     });

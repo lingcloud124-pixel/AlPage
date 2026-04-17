@@ -1,5 +1,6 @@
 import type { ExportBatch } from '../types';
 import type { Project } from '../project-manager';
+import { buildProjectExportNameEn } from '../project-naming';
 import { buildExportRequestYaml } from './build-config';
 import { buildExportAssetSnapshot, type ExportAssetSnapshot } from './asset-snapshot';
 import { buildExportBatchPaths } from './export-paths';
@@ -27,23 +28,12 @@ export interface ExportJobRequest {
   };
 }
 
-function slugify(value: string): string {
-  const slug = value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48);
-
-  return slug || 'project';
-}
-
 function getProjectExportName(project: Project): string {
   return project.themeName || project.name || '未命名主题';
 }
 
 function getProjectExportNameEn(project: Project): string {
-  if (project.nameEn && project.nameEn.trim()) return project.nameEn.trim();
-  return `${project.id}-${slugify(project.themeName || project.name || '')}`;
+  return buildProjectExportNameEn(project);
 }
 
 export function buildExportJobRequest(args: BuildExportJobRequestArgs): ExportJobRequest {
@@ -84,6 +74,7 @@ export function buildExportJobRequest(args: BuildExportJobRequestArgs): ExportJo
     batch,
     yaml: buildExportRequestYaml({
       name,
+      nameEn,
       themeColor,
       templateType: args.project.templateType,
       headerFont,

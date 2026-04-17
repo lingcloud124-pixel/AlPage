@@ -3328,6 +3328,21 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
   background-position: right 12px center;
 }
 
+.form-input-help {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.form-input-help[data-status="ok"] {
+  color: var(--text-secondary);
+}
+
+.form-input-help[data-status="warn"] {
+  color: #d6ad66;
+}
+
 .export-root-picker {
   display: flex;
   align-items: center;
@@ -3419,8 +3434,9 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
 }
 
 /* Package Modal - x.ai spec */
-.package-modal .modal-content {
-  width: 520px;
+.modal-content.package-modal {
+  width: min(900px, 92vw);
+  max-width: 900px;
   display: flex;
   flex-direction: column;
   max-height: 80vh;

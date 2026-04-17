@@ -6,10 +6,12 @@ describe('web build export config', () => {
   test('includes all packaging image keys and preserves selected products only', () => {
     const yaml = buildExportRequestYaml({
       name: '清明主题',
+      nameEn: 'qingming',
       themeColor: '#2C615C',
       selectedProducts: ['mk', 'ekp_v17'],
     });
 
+    expect(yaml).toContain('nameEn: "qingming"');
     expect(yaml).toContain('title: "清明主题"');
     expect(yaml).toContain('themeColor: "#2C615C"');
 
