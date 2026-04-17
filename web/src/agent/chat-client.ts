@@ -13,6 +13,10 @@ export const DEFAULT_IMAGE_ENDPOINT = import.meta.env.DEV
   ? DEFAULT_IMAGE_PROXY_ENDPOINT
   : DEFAULT_IMAGE_REMOTE_ENDPOINT;
 
+const CHAT_IDLE_TIMEOUT_MS = 300_000;
+
+type RuntimeLocationLike = Pick<Location, 'protocol' | 'origin' | 'hostname' | 'port'>;
+
 const ZHIPU_DEFAULTS: AISettings = {
   apiEndpoint: DEFAULT_CHAT_ENDPOINT,
   apiKey: import.meta.env.VITE_DASHSCOPE_API_KEY ?? '',
@@ -37,6 +41,89 @@ function migrateEndpoint(endpoint: string | undefined, fallback: string): string
   if (endpoint.includes('dashscope.aliyuncs.com')) return fallback;
   if (endpoint.includes('api.minimaxi.com') || endpoint.includes('47.100.184.181')) return fallback;
   return normalizeEndpoint(endpoint, fallback);
+}
+
+function isRelativeEndpoint(endpoint: string): boolean {
+  return endpoint.trim().startsWith('/');
+}
+
+function getRuntimeLocation(locationLike?: RuntimeLocationLike): RuntimeLocationLike | undefined {
+  if (locationLike) return locationLike;
+  if (typeof window === 'undefined') return undefined;
+  return window.location;
+}
+
+function isHttpPage(locationLike?: RuntimeLocationLike): boolean {
+  return locationLike?.protocol === 'http:' || locationLike?.protocol === 'https:';
+}
+
+function isThemeStudioProxyOrigin(locationLike?: RuntimeLocationLike): boolean {
+  return locationLike?.port === '5173' || locationLike?.port === '4173';
+}
+
+export function describeChatEndpointUsage(endpoint: string, locationLike?: RuntimeLocationLike): string {
+  const runtime = getRuntimeLocation(locationLike);
+  if (!isRelativeEndpoint(endpoint)) {
+    return '当前将直接请求这个完整地址；请确认目标服务允许浏览器跨域访问。';
+  }
+
+  if (!runtime) {
+    return '当前是相对代理地址，需由 Theme Studio 自带的 /api/chat 代理提供服务。';
+  }
+
+  if (runtime.protocol === 'file:') {
+    return '当前页面是文件直开，/api/chat 无法工作；请通过 `cd web && npm run dev` 或 `npm run preview` 启动。';
+  }
+
+  if (!isHttpPage(runtime)) {
+    return `当前页面协议是 ${runtime.protocol}，/api/chat 无法工作；请改用 Theme Studio 自带服务，或填写完整 https 地址。`;
+  }
+
+  if (isThemeStudioProxyOrigin(runtime)) {
+    return `当前页面来源 ${runtime.origin}，将通过内置 /api/chat 代理访问模型接口。`;
+  }
+
+  return `当前页面来源 ${runtime.origin}，但这里未必提供 /api/chat 代理；若当前不是 Theme Studio 的 Vite 页面，请填写完整 https 地址。`;
+}
+
+export function getChatEndpointPreflightError(endpoint: string, locationLike?: RuntimeLocationLike): string | null {
+  const runtime = getRuntimeLocation(locationLike);
+  if (!isRelativeEndpoint(endpoint) || !runtime) return null;
+
+  if (runtime.protocol === 'file:') {
+    return '当前页面是以文件方式直接打开的，无法使用 /api 代理。请通过 `cd web && npm run dev` 或 `npm run preview` 启动 Theme Studio。';
+  }
+
+  if (!isHttpPage(runtime)) {
+    return `当前页面协议为 ${runtime.protocol}，无法使用相对代理地址 ${endpoint}。请通过 Theme Studio 自带服务启动，或在设置中填写完整 https 地址。`;
+  }
+
+  return null;
+}
+
+export function buildChatConnectionError(endpoint: string, locationLike?: RuntimeLocationLike): string {
+  const runtime = getRuntimeLocation(locationLike);
+  if (isRelativeEndpoint(endpoint)) {
+    if (!runtime) {
+      return `无法连接到接口 ${endpoint}。当前运行环境无法确认 /api 代理是否存在，请优先通过 \`cd web && npm run dev\` 或 \`npm run preview\` 启动 Theme Studio。`;
+    }
+
+    if (runtime.protocol === 'file:') {
+      return '当前页面是以文件方式直接打开的，无法使用 /api 代理。请通过 `cd web && npm run dev` 或 `npm run preview` 启动 Theme Studio。';
+    }
+
+    if (!isHttpPage(runtime)) {
+      return `当前页面协议为 ${runtime.protocol}，无法连接到相对代理地址 ${endpoint}。请通过 Theme Studio 自带服务启动，或在设置中填写完整 https 地址。`;
+    }
+
+    if (!isThemeStudioProxyOrigin(runtime)) {
+      return `无法连接到接口 ${endpoint}。当前页面来源是 ${runtime.origin}，这里没有可用的 /api/chat 代理。请改用 Theme Studio 的 Vite 开发/预览页面，或在设置中填写完整 https 地址。`;
+    }
+
+    return `无法连接到接口 ${endpoint}。当前页面来源是 ${runtime.origin}，但内置 /api/chat 代理没有响应。请确认 \`cd web && npm run dev\` 或 \`npm run preview\` 仍在运行，并检查 \`web/vite.config.ts\` 的代理配置。`;
+  }
+
+  return `无法连接到接口 ${endpoint}。请确认该 https 地址可直接访问，且目标服务允许浏览器跨域请求。`;
 }
 
 export function loadSettings(): AISettings {
@@ -141,15 +228,21 @@ export async function chatCompletion(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 120_000);
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const refreshTimeout = () => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => controller.abort(), CHAT_IDLE_TIMEOUT_MS);
+  };
+  refreshTimeout();
 
   if (externalSignal) {
     externalSignal.addEventListener('abort', () => controller.abort());
   }
 
   try {
-    if (settings.apiEndpoint.startsWith('/') && typeof window !== 'undefined' && window.location.protocol === 'file:') {
-      throw new Error('当前页面是以文件方式直接打开的，无法使用 /api 代理。请通过 `npm run dev` 或 `npm run preview` 启动 Theme Studio。');
+    const preflightError = getChatEndpointPreflightError(settings.apiEndpoint);
+    if (preflightError) {
+      throw new Error(preflightError);
     }
 
     const response = await fetch(`${settings.apiEndpoint}/chat/completions`, {
@@ -167,6 +260,7 @@ export async function chatCompletion(
       }),
       signal: controller.signal,
     });
+    refreshTimeout();
 
     if (!response.ok) {
       const errorBody = await response.text();
@@ -187,6 +281,7 @@ export async function chatCompletion(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      refreshTimeout();
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
@@ -234,14 +329,14 @@ export async function chatCompletion(
     return fullContent;
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
-      throw new Error('请求超时（120秒），请检查网络连接后重试');
+      throw new Error('请求超时（5分钟内未收到新的响应数据），请重试');
     }
     if (e instanceof TypeError) {
-      throw new Error(`无法连接到接口 ${settings.apiEndpoint}，请确认当前是通过 Vite 开发服务器启动，或在设置中填写可访问的完整 https 地址`);
+      throw new Error(buildChatConnectionError(settings.apiEndpoint));
     }
     throw e;
   } finally {
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 

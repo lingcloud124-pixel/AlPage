@@ -144,6 +144,29 @@ def parse_cli_args(argv: List[str]) -> Tuple[Path, Optional[List[str]], Optional
     return output_dir, selected_products, template_type, sample_root
 
 
+def discover_sample_root(template_type: str) -> Optional[Path]:
+    dir_name = DEFAULT_SAMPLE_ROOTS[template_type].name
+    desktop_dir = Path.home() / "Desktop"
+    search_patterns = [
+        f"*/Topic Automation/assets/references/samples/{dir_name}",
+        f"*/*/Topic Automation/assets/references/samples/{dir_name}",
+    ]
+
+    if template_type == "light-ui":
+        search_patterns.extend(
+            [
+                "*/Topic Automation/assets/references/samples/主题样例包",
+                "*/*/Topic Automation/assets/references/samples/主题样例包",
+            ]
+        )
+
+    for pattern in search_patterns:
+        for candidate in desktop_dir.glob(pattern):
+            if candidate.exists():
+                return candidate.resolve()
+    return None
+
+
 def detect_template_type_from_output_dir(output_dir: Path) -> Optional[str]:
     assets_yaml = output_dir.parent / "素材包" / "theme-build-request.yaml"
     if not assets_yaml.exists():
@@ -165,7 +188,12 @@ def resolve_template_type(output_dir: Path, explicit_template_type: Optional[str
 
 
 def resolve_sample_root(template_type: str, explicit_sample_root: Optional[Path]) -> Path:
-    sample_root = (explicit_sample_root or DEFAULT_SAMPLE_ROOTS[template_type]).resolve()
+    sample_root = (explicit_sample_root or DEFAULT_SAMPLE_ROOTS[template_type]).resolve(strict=False)
+    if not sample_root.exists():
+        discovered = discover_sample_root(template_type)
+        if discovered:
+            print(f"⚠️  Using discovered sample root: {discovered}")
+            sample_root = discovered
     if not sample_root.exists():
         print(f"❌ Sample root not found: {sample_root}")
         sys.exit(1)

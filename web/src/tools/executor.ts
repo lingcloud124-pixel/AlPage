@@ -69,7 +69,36 @@ function getAllCurrentColors(): Record<string, string> {
   return vars;
 }
 
-function pickBestThemeCandidate(
+function getHueDistanceDegrees(a: number, b: number): number {
+  const delta = Math.abs(a - b) % 360;
+  return Math.min(delta, 360 - delta);
+}
+
+function buildPromptWithPreferredHue(
+  bgPrompt: string,
+  preferredHueHint: string,
+  templateType: 'light-ui' | 'dark-ui',
+): string {
+  const hint = resolvePreferredHueHint(preferredHueHint, templateType);
+  if (!hint) return bgPrompt;
+
+  const hueDirectiveMap: Record<string, string> = {
+    red: 'Use a dominant festive red palette. Red must be the unmistakable primary visual color, with other accents only supporting it.',
+    orange: 'Use a dominant warm orange palette. Orange must be the unmistakable primary visual color, with other accents only supporting it.',
+    yellow: 'Use a dominant golden yellow palette. Gold must be the unmistakable primary visual color, with other accents only supporting it.',
+    green: 'Use a dominant green palette. Green must be the unmistakable primary visual color, with other accents only supporting it.',
+    teal: 'Use a dominant teal palette. Teal must be the unmistakable primary visual color, with other accents only supporting it.',
+    blue: 'Use a dominant blue palette. Blue must be the unmistakable primary visual color, with other accents only supporting it.',
+    purple: 'Use a dominant purple palette. Purple must be the unmistakable primary visual color, with other accents only supporting it.',
+    pink: 'Use a dominant pink palette. Pink must be the unmistakable primary visual color, with other accents only supporting it.',
+  };
+
+  const directive = hueDirectiveMap[hint.label];
+  if (!directive) return bgPrompt;
+  return `${bgPrompt.trim().replace(/\s+$/, '')} ${directive}`.trim();
+}
+
+export function pickBestThemeCandidate(
   dominantColors: string[],
   templateType: 'light-ui' | 'dark-ui',
   preferredHueHint?: string,
@@ -78,9 +107,12 @@ function pickBestThemeCandidate(
   derivedColors: DerivedColors;
   report: ReturnType<typeof buildThemeGenerationReport>;
   triedCandidates: Array<{ hex: string; score: number; passed: boolean }>;
+  enforcedPreferredHue: boolean;
+  enforcementReason?: string;
 } {
   const ranked = rankPrimaryCandidates(dominantColors, templateType, preferredHueHint);
   const hint = resolvePreferredHueHint(preferredHueHint, templateType);
+  let candidatePool = ranked;
 
   if (ranked.length === 0) {
     const fallbackHex = hint?.fallbackHex ?? (templateType === 'dark-ui' ? '#1A2845' : '#3B82F6');
@@ -90,15 +122,38 @@ function pickBestThemeCandidate(
       derivedColors: derived,
       report: buildThemeGenerationReport(fallbackHex, derived, templateType),
       triedCandidates: [],
+      enforcedPreferredHue: Boolean(hint),
+      enforcementReason: hint ? `未识别到匹配 ${hint.label} 的候选主色，已按确认主色校正。` : undefined,
     };
   }
 
-  let best = ranked[0];
+  if (hint) {
+    const hueMatched = ranked.filter((candidate) => getHueDistanceDegrees(candidate.h, hint.targetHue) <= hint.tolerance);
+    if (hueMatched.length === 0) {
+      const fallbackHex = hint.fallbackHex;
+      const derived = deriveColorsFromPrimary(fallbackHex, templateType);
+      return {
+        primaryColor: fallbackHex,
+        derivedColors: derived,
+        report: buildThemeGenerationReport(fallbackHex, derived, templateType),
+        triedCandidates: ranked.map((candidate) => ({
+          hex: candidate.hex,
+          score: candidate.score,
+          passed: buildThemeGenerationReport(candidate.hex, deriveColorsFromPrimary(candidate.hex, templateType), templateType).passed,
+        })),
+        enforcedPreferredHue: true,
+        enforcementReason: `生成图片主色偏离已确认的 ${hint.label} 方向，已按确认主色强制校正。`,
+      };
+    }
+    candidatePool = hueMatched;
+  }
+
+  let best = candidatePool[0];
   let bestDerived = deriveColorsFromPrimary(best.hex, templateType);
   let bestReport = buildThemeGenerationReport(best.hex, bestDerived, templateType);
   const triedCandidates = [{ hex: best.hex, score: best.score, passed: bestReport.passed }];
 
-  for (const candidate of ranked.slice(1)) {
+  for (const candidate of candidatePool.slice(1)) {
     if (bestReport.passed) break;
     const derived = deriveColorsFromPrimary(candidate.hex, templateType);
     const report = buildThemeGenerationReport(candidate.hex, derived, templateType);
@@ -116,7 +171,17 @@ function pickBestThemeCandidate(
     derivedColors: bestDerived,
     report: bestReport,
     triedCandidates,
+    enforcedPreferredHue: false,
   };
+}
+
+function resolveEffectivePreferredHueHint(
+  preferredHueHint: string,
+  bgPrompt: string,
+  templateType: 'light-ui' | 'dark-ui',
+): string {
+  if (preferredHueHint.trim()) return preferredHueHint;
+  return resolvePreferredHueHint(bgPrompt, templateType)?.label ?? '';
 }
 
 export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
@@ -293,9 +358,14 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         return loadColors(args as { nameEn: string });
 
       case 'generate_theme_pipeline': {
-        const bgPrompt = (args.prompt ?? args.description ?? '') as string;
+        const rawBgPrompt = (args.prompt ?? args.description ?? '') as string;
         const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
-        const preferredHueHint = (args.primaryHint ?? args.preferredHue ?? args.colorDirection ?? '') as string;
+        const preferredHueHint = resolveEffectivePreferredHueHint(
+          (args.primaryHint ?? args.preferredHue ?? args.colorDirection ?? '') as string,
+          rawBgPrompt,
+          templateType,
+        );
+        const bgPrompt = buildPromptWithPreferredHue(rawBgPrompt, preferredHueHint, templateType);
         if (!bgPrompt) return { success: false, error: 'generate_theme_pipeline 需要 prompt 参数' };
 
         onProgress?.({ type: 'image_generating' });
@@ -326,6 +396,8 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
               applied: true,
               fallbackUsed: true,
               preferredHueHint,
+              fallbackReason: analyzeResult.error ?? '未识别到可用主色候选',
+              enforcedPreferredHue: Boolean(preferredHueHint),
               dominantColors: [],
               generationReport: report,
               contrastValidation: contrast,
@@ -346,6 +418,8 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
             imageUrl: imgResult.url,
             applied: true,
             preferredHueHint,
+            enforcedPreferredHue: selected.enforcedPreferredHue,
+            enforcementReason: selected.enforcementReason,
             dominantColors,
             generationReport: selected.report,
             triedCandidates: selected.triedCandidates,
