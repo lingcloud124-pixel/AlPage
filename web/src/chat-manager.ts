@@ -15,12 +15,36 @@ import type { Project } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, saveCurrentColorsToProject, getCurrentColors, applyPresetBackground, getThemeTarget } from './theme-engine';
 import { PRESET_BACKGROUNDS } from './project-manager';
 import { syncColorEditorFromTheme } from './components/color-editor';
+import { parseThemeFeedback } from './tools/theme-feedback-refiner';
+import { decidePreferenceUpdate } from './tools/theme-preference-updater';
+import { updateProjectVisualContext, loadProjectVisualContext } from './tools/project-visual-context-store';
+import { updateCustomerVisualProfile, loadCustomerVisualProfile } from './tools/customer-visual-profile-store';
+import type { ThemePreview } from './tools/executor';
 
 const conversationHistory: ChatMessage[] = [];
 let activeAbortController: AbortController | null = null;
 
+export interface ThemeAgentDebugState {
+  toolCallPrompt?: string;
+  feedbackRegenerated?: boolean;
+  intent?: import('./tools/theme-intent-parser').ThemeIntent;
+  scenePlan?: import('./tools/theme-scene-planner').ThemeScenePlan;
+  scenePlans?: import('./tools/theme-scene-planner').ThemeScenePlan[];
+  planCheck?: { passed?: boolean; checks?: Array<{ label: string; passed: boolean; reason?: string }> };
+  planChecks?: Array<{ passed?: boolean; checks?: Array<{ label: string; passed: boolean; reason?: string }> }>;
+  directedPrompt?: string;
+  directedPrompts?: string[];
+  finalPrompt?: string;
+  finalPrompts?: string[];
+  preferredHueHint?: string;
+}
+
+let latestThemeAgentDebugState: ThemeAgentDebugState | null = null;
+let latestThemePreviews: Array<{ url: string; style: string; prompt: string }> | null = null;
+
 export function getConversationHistory() { return conversationHistory; }
 export function getActiveAbortController() { return activeAbortController; }
+export function getLatestThemeAgentDebugState() { return latestThemeAgentDebugState; }
 
 function getConversationMessagesContainer(): HTMLElement | null {
   return document.getElementById('messagesContainer') as HTMLElement | null;
@@ -364,6 +388,18 @@ export interface ChatDeps {
 }
 
 export function setupChatInterface(deps: ChatDeps) {
+  (globalThis as any).__selectThemePreview = (index: number) => {
+    if (!latestThemePreviews || index < 0 || index >= latestThemePreviews.length) return;
+    const selected = latestThemePreviews[index];
+    const styleLabels: Record<string, string> = { original: 'A', photorealistic: 'B', abstract: 'C' };
+    const label = styleLabels[selected.style] ?? `${index + 1}`;
+    const input = document.getElementById('conversationMessageInput') as HTMLTextAreaElement | null
+      ?? document.getElementById('messageInput') as HTMLTextAreaElement | null;
+    if (input) {
+      input.value = `我选择第${label}张图`;
+      input.dispatchEvent(new Event('input'));
+    }
+  };
   const defaultMessageInput = document.getElementById('messageInput') as HTMLTextAreaElement | null;
   const conversationMessageInput = document.getElementById('conversationMessageInput') as HTMLTextAreaElement | null;
   const defaultSendBtn = document.getElementById('sendBtn') as HTMLButtonElement | null;
@@ -468,6 +504,7 @@ export function setupChatInterface(deps: ChatDeps) {
     const content = activeInput ? activeInput.value.trim() : '';
 
     showConversationChatView();
+    (globalThis as any).__themeStudioCurrentProjectId = getCurrentProjectId() ?? undefined;
 
     if (hasImages) {
       const imagesToSend = [...pendingImages];
@@ -654,7 +691,7 @@ export function setupChatInterface(deps: ChatDeps) {
                 contentEl.textContent += token;
               }
             }
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            messagesContainer?.scrollTo(0, messagesContainer.scrollHeight);
           }
         },
         activeAbortController.signal,
@@ -712,6 +749,8 @@ export function setupChatInterface(deps: ChatDeps) {
       assistantMessage: fullResponse,
       priorAssistantMessage,
       priorUserMessage,
+      latestThemeAgentDebugState,
+      latestThemePreviews,
     });
     const TOOL_GLOBAL_TIMEOUT = 120_000;
     const toolStartTime = Date.now();
@@ -740,12 +779,12 @@ export function setupChatInterface(deps: ChatDeps) {
         break;
       }
       try {
-        showToolLoading(tc.tool === 'generate_theme_pipeline'
+        showToolLoading(tc.tool === 'generate_theme_pipeline' || tc.tool === 'generate_theme_previews'
           ? '主题正在生成中，请稍后'
           : `⚙️ 正在执行 ${tc.tool}...`);
 
         const result = await executeTool(tc, (event) => {
-          if (tc.tool === 'generate_theme_pipeline') {
+          if (tc.tool === 'generate_theme_pipeline' || tc.tool === 'generate_theme_previews') {
             if (event.type === 'image_generating') {
               showToolLoading('主题正在生成中，请稍后');
             } else if (event.type === 'image_generated') {
@@ -762,6 +801,13 @@ export function setupChatInterface(deps: ChatDeps) {
             const imgData = result.data as {
               imageUrl?: string;
               primaryColor?: string;
+              originalPrompt?: string;
+              directedPrompt?: string;
+              finalPrompt?: string;
+              scenePlan?: { sceneSentence?: string; styleKeywords?: string };
+              intent?: { category?: string; subCategory?: string; styleHints?: string[]; toneHints?: string[]; colorHints?: string[]; uiUseCase?: string };
+              planCheck?: { passed?: boolean; checks?: Array<{ label: string; passed: boolean; reason?: string }> };
+              themeAgentDebug?: ThemeAgentDebugState;
               preferredHueHint?: string;
               fallbackUsed?: boolean;
               fallbackReason?: string;
@@ -770,6 +816,7 @@ export function setupChatInterface(deps: ChatDeps) {
               generationReport?: { checks?: Array<{ label: string; passed: boolean }> };
               contrastValidation?: { passed?: boolean; failures?: string[] };
               dominantColors?: string[];
+              imageReview?: { score: number; acceptable: boolean; summary: string };
             };
             const colorTag = imgData?.primaryColor
               ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${imgData.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
@@ -778,6 +825,7 @@ export function setupChatInterface(deps: ChatDeps) {
             const contrastPassed = imgData.contrastValidation?.passed ?? false;
             const summaryParts = [
               `🎨 配色方案已生成！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
+              imgData.scenePlan?.sceneSentence ? `视觉方向：${imgData.scenePlan.sceneSentence.substring(0, 60)}...` : '',
               imgData.dominantColors?.length ? `识别到的候选主色 ${imgData.dominantColors.slice(0, 3).join(' / ')}。` : '',
               imgData.fallbackUsed
                 ? `本次提色未稳定完成，已按${imgData.preferredHueHint || '已确认'}主色方向回退应用。`
@@ -789,7 +837,54 @@ export function setupChatInterface(deps: ChatDeps) {
               imgData.fallbackReason ? `回退原因：${imgData.fallbackReason}。` : '',
               imgData.enforcementReason ? `${imgData.enforcementReason}` : '',
               `对比度校验：${contrastPassed ? '通过' : '存在风险'}。`,
+              imgData.imageReview ? imgData.imageReview.summary : '',
+              imgData.planCheck?.checks?.length ? `Theme Agent 计划校验：${imgData.planCheck.checks.map((check) => `${check.label}${check.passed ? '✅' : '❌'}`).join(' / ')}。` : '',
+              imgData.themeAgentDebug ? `
+
+[Theme Agent Debug]
+toolCallPrompt: ${imgData.themeAgentDebug.toolCallPrompt ?? ''}
+feedbackRegenerated: ${imgData.themeAgentDebug.feedbackRegenerated ? 'yes' : 'no'}
+intent.category: ${imgData.themeAgentDebug.intent?.category ?? ''}
+intent.subCategory: ${imgData.themeAgentDebug.intent?.subCategory ?? ''}
+intent.categoryScores: ${imgData.themeAgentDebug.intent?.categoryScores ? JSON.stringify(imgData.themeAgentDebug.intent.categoryScores) : ''}
+intent.styleHints: ${(imgData.themeAgentDebug.intent?.styleHints ?? []).join(', ')}
+intent.toneHints: ${(imgData.themeAgentDebug.intent?.toneHints ?? []).join(', ')}
+intent.colorHints: ${(imgData.themeAgentDebug.intent?.colorHints ?? []).join(', ')}
+scene.sentence: ${imgData.themeAgentDebug.scenePlan?.sceneSentence?.substring(0, 80) ?? ''}
+scene.styleKeywords: ${imgData.themeAgentDebug.scenePlan?.styleKeywords ?? ''}
+planCheck: ${(imgData.themeAgentDebug.planCheck?.checks ?? []).map((check) => `${check.label}:${check.passed ? 'pass' : 'fail'}`).join(' | ')}
+directedPrompt: ${imgData.themeAgentDebug.directedPrompt ?? ''}
+finalPrompt: ${imgData.themeAgentDebug.finalPrompt ?? ''}` : '',
             ].filter(Boolean);
+            latestThemeAgentDebugState = imgData.themeAgentDebug ?? null;
+            // ── Preference memory: update project context and customer profile from feedback ──
+            if (imgData.themeAgentDebug?.feedbackRegenerated && imgData.themeAgentDebug.intent && imgData.themeAgentDebug.scenePlan) {
+              try {
+                const pid = getCurrentProjectId();
+                if (pid) {
+                  const priorUserMsg = conversationHistory.length >= 2
+                    ? conversationHistory[conversationHistory.length - 2]
+                    : undefined;
+                  const feedbackText = priorUserMsg?.role === 'user' ? priorUserMsg.content : '';
+                  
+                  if (feedbackText) {
+                    const adjustment = parseThemeFeedback(feedbackText);
+                    const decision = decidePreferenceUpdate({
+                      adjustment,
+                      currentCustomerProfile: loadCustomerVisualProfile('default'),
+                      currentProjectContext: loadProjectVisualContext(pid),
+                    });
+                    
+                    if (decision.projectPatch) {
+                      updateProjectVisualContext(pid, decision.projectPatch);
+                    }
+                    if (decision.customerPatch) {
+                      updateCustomerVisualProfile('default', decision.customerPatch);
+                    }
+                  }
+                }
+              } catch { /* non-critical — don't block UI */ }
+            }
             addMessageToChat('ai', summaryParts.join(' '));
             saveCurrentColorsToProject();
             syncColorEditorFromTheme();
@@ -818,6 +913,73 @@ export function setupChatInterface(deps: ChatDeps) {
             }
             deps.collapseProjectSidebar();
             deps.setChatPanelWidth(372);
+          } else if (tc.tool === 'generate_theme_previews') {
+            const prevData = result.data as {
+              previews?: ThemePreview[];
+              themeAgentDebug?: ThemeAgentDebugState;
+              intent?: { category?: string };
+              preferredHueHint?: string;
+            };
+            latestThemeAgentDebugState = prevData?.themeAgentDebug ?? null;
+            latestThemePreviews = prevData?.previews ?? null;
+            const previews = prevData?.previews ?? [];
+            if (previews.length > 0) {
+              const imageCards = previews.map((p, i) =>
+                `<div style="flex:1;min-width:0;text-align:center;">` +
+                `<img src="${p.url}" style="width:100%;border-radius:8px;border:2px solid #333;cursor:pointer;" onclick="window.__selectThemePreview(${i})" />` +
+                `<div style="margin-top:4px;font-size:13px;color:#ddd;font-weight:600;">${p.directionLabel ?? `图 ${i + 1}`}</div>` +
+                (p.directionDescription ? `<div style="margin-top:2px;font-size:11px;color:#888;">${p.directionDescription}</div>` : '') +
+                `</div>`
+              ).join('');
+              const previewHtml = `<div style="display:flex;gap:8px;margin:8px 0;">${imageCards}</div>`;
+              addMessageToChat('ai', `🎨 已生成 ${previews.length} 张预览图，请点击选择或描述您的偏好：${previewHtml}`);
+            } else {
+              addMessageToChat('ai', '⚠️ 预览图生成失败，请重试。');
+            }
+            saveChatHistory();
+          } else if (tc.tool === 'apply_selected_theme') {
+            const appliedData = result.data as {
+              imageUrl?: string;
+              primaryColor?: string;
+              fallbackUsed?: boolean;
+              preferredHueHint?: string;
+              dominantColors?: string[];
+              generationReport?: { checks?: Array<{ label: string; passed: boolean }> };
+              contrastValidation?: { passed?: boolean; failures?: string[] };
+              enforcementReason?: string;
+            };
+            const colorTag = appliedData?.primaryColor
+              ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${appliedData.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
+              : '';
+            const contrastPassed = appliedData?.contrastValidation?.passed ?? false;
+            addMessageToChat('ai', [
+              `🎨 主题已应用！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
+              appliedData?.dominantColors?.length ? `识别到的候选主色 ${appliedData.dominantColors.slice(0, 3).join(' / ')}。` : '',
+              appliedData?.fallbackUsed ? '本次提色未稳定完成，已回退应用默认主色。' : '',
+              appliedData?.enforcementReason ?? '',
+              `对比度校验：${contrastPassed ? '通过' : '存在风险'}。`,
+            ].filter(Boolean).join(' '));
+            saveCurrentColorsToProject();
+            syncColorEditorFromTheme();
+            latestThemePreviews = null;
+            deps.expandPreview();
+            deps.collapseProjectSidebar();
+            deps.setChatPanelWidth(372);
+            requestAnimationFrame(() => {
+              const desktopTab = document.getElementById('desktopTab') as HTMLElement;
+              const desktopPage = document.getElementById('desktopPage') as HTMLElement;
+              const loginTab = document.getElementById('loginTab') as HTMLElement;
+              const loginPage = document.getElementById('loginPage') as HTMLElement;
+              if (desktopTab) desktopTab.classList.add('active-tab');
+              if (desktopPage) desktopPage.classList.add('active-preview');
+              if (loginTab) loginTab.classList.remove('active-tab');
+              if (loginPage) loginPage.classList.remove('active-preview');
+              const indicator = document.querySelector('.topbar-tabs .tab-indicator') as HTMLElement;
+              if (indicator && desktopTab) {
+                indicator.style.left = desktopTab.offsetLeft + 'px';
+                indicator.style.width = desktopTab.offsetWidth + 'px';
+              }
+            });
           } else if (tc.tool === 'save_colors') {
             const saveData = tc.args as { name?: string; nameEn?: string };
             const pid = getCurrentProjectId();

@@ -95,9 +95,19 @@ web/
     │   ├── header-semantics.ts     # Header ID → 显示名映射
     │   ├── template-registry.ts    # 模板配置（读取 config/web-template-registry.json）
     │   └── template-specific-vars.ts # Dark-UI 特殊 CSS 变量
-    └── tools/                      # Tool Calling
+    └── tools/                      # Tool Calling + Theme Agent
         ├── executor.ts             # 工具调度（7 个工具含 generate_theme_pipeline）
-        └── contrast-validator.ts   # WCAG 2.1 对比度校验
+        ├── contrast-validator.ts   # WCAG 2.1 对比度校验
+        ├── theme-intent-parser.ts  # 主题意图解析（6 类分类 + subCategory）
+        ├── theme-scene-planner.ts  # 场景规划（intent → scenePlan + 偏好回注）
+        ├── theme-prompt-director.ts # Prompt 组装（scenePlan → 最终 prompt）
+        ├── theme-plan-checker.ts   # 场景计划 7 项质量校验
+        ├── theme-feedback-refiner.ts # 反馈解析（9 种中英文模式）
+        ├── theme-regeneration-director.ts # 反馈驱动的场景重建
+        ├── theme-preference-updater.ts # 偏好决策引擎（项目短期 vs 客户长期）
+        ├── theme-image-reviewer.ts # 生成图片自动评审（8 项检查 + 评分）
+        ├── customer-visual-profile-store.ts # 客户长期偏好存储（localStorage）
+        └── project-visual-context-store.ts  # 项目视觉上下文存储（localStorage）
 ```
 
 **技术约束**：纯 HTML + CSS + TypeScript（不用 React/Vue），Tailwind CSS v4 仅用于设计令牌映射（不是组件库），中文 UI，CSS 变量驱动颜色。
@@ -123,6 +133,42 @@ web/
 4. CSS 变量驱动所有颜色，不硬编码
 5. 项目持久化（localStorage），用户可随时打开历史项目继续编辑或重新打包
 6. 导出根目录由用户在设置中配置，导出路径固定为 `导出根目录/projects/{projectId}-{nameEn}/exports/{timestamp}/`
+
+### Theme Agent（主题视觉总监）原则
+
+Theme Studio 的图片生成能力应逐步演进为一个 **Theme Agent**，用于替代“直译 prompt → 生图”的薄弱链路。
+
+#### Agent 目标
+1. **首图保底**：第一张图至少达到可继续使用与微调的及格线，不跑题、不像通用壁纸。
+2. **逐步学习**：随着客户长期使用，Agent 学会客户偏好的视觉方向，但不得污染其他项目与其他客户。
+
+#### Agent 必须负责
+- 主题意图理解（category / subCategory / tone / color / useCase）
+- 场景规划（scene / subject / composition / lighting / style / mood）
+- OA 背景图约束（左锚点、右留白、企业感、非壁纸化）
+- 用户反馈后的局部修正
+
+#### Agent 绝对不能负责
+- 打包逻辑
+- 截图逻辑
+- 导出目录与批次结构
+- zip 生成与 verify
+
+#### 技术边界
+Theme Agent 只允许影响：
+- 背景图 prompt 生成
+- 图像生成结果选择与迭代
+- 预览阶段的图片/色彩快照
+
+导出阶段只能消费已经确认的项目快照，**不允许在打包时重新生图或动态重算方向**。
+
+#### 推荐模块化结构（全部已实现）
+- `theme-intent-parser.ts`
+- `theme-scene-planner.ts`（含偏好回注）
+- `theme-prompt-director.ts`
+- `theme-feedback-refiner.ts`
+- `customer-visual-profile-store.ts`
+- `theme-image-reviewer.ts`
 
 ---
 

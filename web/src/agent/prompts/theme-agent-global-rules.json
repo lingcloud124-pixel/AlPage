@@ -1,0 +1,25 @@
+{
+  "version": "v2",
+  "purpose": "Non-negotiable quality standards for Theme Agent background generation",
+  "globalRules": {
+    "mustHaveNarrativeFeeling": true,
+    "mustBePositiveBright": true,
+    "noRealisticFrontalFaces": true,
+    "mustHaveFullLayering": true,
+    "mustHaveClearFocalPoint": true,
+    "mustSoftTransitionRight": true,
+    "mustRotateStylesPerBatch": true
+  },
+  "hardConstraints": [
+    "The image must tell a visual story with narrative feeling, not be a generic landscape wallpaper.",
+    "The mood must be positive, bright and uplifting. No dark, oppressive, heavy or cinematic-dark tones.",
+    "No realistic human frontal faces. Use silhouettes, back views, cartoon or faceless figures only.",
+    "The frame must have rich layered content: distinct foreground, midground and background, all with visible elements.",
+    "There must be a single clear visual focal point. No scattered random element piling.",
+    "The right side must have soft visual content transition toward clean UI space, not a hard cut or pure emptiness.",
+    "The main visual anchor must be on the left side with strong narrative composition.",
+    "The aesthetic must be professional, restrained and enterprise-ready.",
+    "Theme-related elements must be clearly visible and recognizable in the image.",
+    "Theme Agent must never re-generate or re-decide image direction during export/package stage."
+  ]
+}

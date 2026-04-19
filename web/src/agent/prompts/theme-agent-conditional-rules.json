@@ -1,0 +1,96 @@
+{
+  "version": "v1",
+  "purpose": "Conditional rules triggered by category, subCategory, scene type or style",
+  "rules": [
+    {
+      "id": "cn-enterprise-people-default",
+      "scope": "people",
+      "trigger": {
+        "mustMatchAny": ["中国企业", "中文职场", "职场人物", "staff photo", "team photo"]
+      },
+      "rule": "When a Chinese enterprise scene explicitly needs people, default to Asian faces and culturally fitting workplace styling.",
+      "type": "conditional-default"
+    },
+    {
+      "id": "no-realistic-portrait-default",
+      "scope": "people",
+      "trigger": {
+        "mustMatchAny": ["portrait", "person", "人物", "职场人物"]
+      },
+      "rule": "Avoid hyper-real close portrait faces unless the user explicitly asks for portrait realism.",
+      "type": "conditional-avoid"
+    },
+    {
+      "id": "summer-cool-scene",
+      "scope": "nature.subCategory",
+      "trigger": {
+        "mustMatchAny": ["summer-cool"]
+      },
+      "rule": "Use water feeling, airy atmosphere, translucent green leaves, breeze motion, bright sky light and refreshing layered summer details. Avoid drifting into qingming mist mountain style.",
+      "type": "scene-override"
+    },
+    {
+      "id": "qingming-scene",
+      "scope": "nature.subCategory",
+      "trigger": {
+        "mustMatchAny": ["qingming"]
+      },
+      "rule": "Use willow branches, misty distant hills, restrained spring humidity and subtle festival-season storytelling. Keep it elegant and quiet rather than generic landscape wallpaper.",
+      "type": "scene-override"
+    },
+    {
+      "id": "coastal-scene",
+      "scope": "nature.subCategory",
+      "trigger": {
+        "mustMatchAny": ["coastal"]
+      },
+      "rule": "Use sea breeze, shoreline detail, bright open sky, subtle wave patterns and refreshing coastal openness. Avoid travel-poster excess.",
+      "type": "scene-override"
+    },
+    {
+      "id": "forest-scene",
+      "scope": "nature.subCategory",
+      "trigger": {
+        "mustMatchAny": ["forest"]
+      },
+      "rule": "Use path depth, tree layering, filtered light, ecological texture and grounded forest calm. Avoid turning into empty green blur.",
+      "type": "scene-override"
+    },
+    {
+      "id": "sports-accuracy",
+      "scope": "sports",
+      "trigger": {
+        "mustMatchAny": ["basketball", "football", "sports", "赛事", "球类"]
+      },
+      "rule": "Sports equipment and motion must be accurate. The scene must feel like a corporate theme poster, not random fan art.",
+      "type": "quality-constraint"
+    },
+    {
+      "id": "sports-no-extra-flags",
+      "scope": "sports",
+      "trigger": {
+        "mustMatchAny": ["basketball", "football", "sports", "赛事", "球类"]
+      },
+      "rule": "Do not add unnecessary flags or unrelated ceremonial props unless explicitly requested.",
+      "type": "conditional-avoid"
+    },
+    {
+      "id": "three-d-business-quality",
+      "scope": "style",
+      "trigger": {
+        "mustMatchAny": ["3d", "render", "三维", "三维风"]
+      },
+      "rule": "3D output must feel polished, business-grade and premium, not low-age, toy-like or cheap game art.",
+      "type": "quality-constraint"
+    },
+    {
+      "id": "theme-poster-over-snapshot",
+      "scope": "general",
+      "trigger": {
+        "mustMatchAny": ["festival", "corporate", "education", "sports", "nature"]
+      },
+      "rule": "The final image should feel closer to a designed themed poster background than a casual snapshot.",
+      "type": "default-bias"
+    }
+  ]
+}

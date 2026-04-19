@@ -9,6 +9,13 @@ import {
   type DerivedColors,
 } from '../theme/color-utils';
 import { buildThemeImageAssignments } from '../templates/theme-images';
+import { parseThemeIntent } from './theme-intent-parser';
+import { buildThemeScenePlan, type PreferenceContext, buildExploratoryScenePlans, type ExploratoryDirection } from './theme-scene-planner';
+import { buildDirectedPrompt } from './theme-prompt-director';
+import { checkThemeScenePlan } from './theme-plan-checker';
+import { updateProjectVisualContext, loadProjectVisualContext } from './project-visual-context-store';
+import { loadCustomerVisualProfile } from './customer-visual-profile-store';
+import { reviewGeneratedImage, type ImageReviewResult } from './theme-image-reviewer';
 
 const COLOR_VARS = [
   'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
@@ -98,6 +105,14 @@ function buildPromptWithPreferredHue(
   return `${bgPrompt.trim().replace(/\s+$/, '')} ${directive}`.trim();
 }
 
+export interface ThemePreview {
+  url: string;
+  style: string;
+  prompt: string;
+  directionLabel: string;
+  directionDescription: string;
+}
+
 export function pickBestThemeCandidate(
   dominantColors: string[],
   templateType: 'light-ui' | 'dark-ui',
@@ -185,7 +200,6 @@ function resolveEffectivePreferredHueHint(
 }
 
 export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
-  // 参数验证 — 拒绝非 URL/data URI 的值
   if (!imageUrl || typeof imageUrl !== 'string') {
     return { success: false, error: 'analyze_image 需要 imageUrl 参数' };
   }
@@ -193,7 +207,7 @@ export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
     return { success: false, error: `imageUrl 必须是 data URI 或 HTTP URL，不支持本地路径: "${imageUrl.substring(0, 80)}"` };
   }
 
-  const loadPromise = new Promise<ToolResult>((resolve) => {
+  const loadPromise = new Promise<ToolResult>(async (resolve) => {
     let settled = false;
     const done = (fn: () => void) => {
       if (settled) return;
@@ -201,8 +215,29 @@ export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
       fn();
     };
 
+    let analysisUrl = imageUrl;
+
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+      try {
+        const resp = await fetch(proxyUrl);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          analysisUrl = URL.createObjectURL(blob);
+        }
+      } catch {
+        try {
+          const resp = await fetch(imageUrl, { mode: 'cors' });
+          if (resp.ok) {
+            const blob = await resp.blob();
+            analysisUrl = URL.createObjectURL(blob);
+          }
+        } catch {
+        }
+      }
+    }
+
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = () => done(() => {
       try {
         const canvas = document.createElement('canvas');
@@ -225,25 +260,70 @@ export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
           colorBuckets[key] = (colorBuckets[key] ?? 0) + 1;
         }
 
-        const sorted = Object.entries(colorBuckets)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([key]) => {
-            const [r, g, b] = key.split(',').map(Number);
-            const hex = '#' + [r, g, b].map(c => Math.min(255, c + step / 2).toString(16).padStart(2, '0')).join('');
-            return hex;
+        const toHex = (r: number, g: number, b: number) =>
+          '#' + [r, g, b].map(c => Math.min(255, c + step / 2).toString(16).padStart(2, '0')).join('');
+        const rgbToHsl = (r: number, g: number, b: number) => {
+          const rn = r / 255, gn = g / 255, bn = b / 255;
+          const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+          const l = (max + min) / 2;
+          if (max === min) return { h: 0, s: 0, l };
+          const d = max - min;
+          const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          let h = 0;
+          if (max === rn) h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6;
+          else if (max === gn) h = ((bn - rn) / d + 2) / 6;
+          else h = ((rn - gn) / d + 4) / 6;
+          return { h: h * 360, s: s * 100, l: l * 100 };
+        };
+
+        type BucketInfo = { key: string; count: number; r: number; g: number; b: number; hsl: { h: number; s: number; l: number } };
+        const allBuckets: BucketInfo[] = Object.entries(colorBuckets).map(([key, count]) => {
+          const [r, g, b] = key.split(',').map(Number);
+          return { key, count, r, g, b, hsl: rgbToHsl(r, g, b) };
+        });
+
+        const saturated = allBuckets
+          .filter(b => b.hsl.s >= 12 && b.hsl.l > 8 && b.hsl.l < 92)
+          .sort((a, b) => {
+            const scoreA = a.hsl.s * 0.6 + Math.log(a.count + 1) * 15;
+            const scoreB = b.hsl.s * 0.6 + Math.log(b.count + 1) * 15;
+            return scoreB - scoreA;
           });
 
-        resolve({ success: true, data: { dominantColors: sorted, source: 'client-canvas' } });
+        const neutral = allBuckets
+          .filter(b => b.hsl.s < 12 || b.hsl.l <= 8 || b.hsl.l >= 92)
+          .sort((a, b) => b.count - a.count);
+
+        const sortedHex: string[] = [];
+        const seenHues = new Set<number>();
+        for (const b of saturated) {
+          const hueKey = Math.round(b.hsl.h / 30);
+          if (sortedHex.length >= 3) break;
+          if (!seenHues.has(hueKey)) {
+            sortedHex.push(toHex(b.r, b.g, b.b));
+            seenHues.add(hueKey);
+          }
+        }
+        for (const b of neutral) {
+          if (sortedHex.length >= 5) break;
+          sortedHex.push(toHex(b.r, b.g, b.b));
+        }
+
+        if (analysisUrl !== imageUrl) URL.revokeObjectURL(analysisUrl);
+        resolve({ success: true, data: { dominantColors: sortedHex, source: 'client-canvas' } });
       } catch (e) {
+        if (analysisUrl !== imageUrl) URL.revokeObjectURL(analysisUrl);
         resolve({ success: false, error: `图片分析失败: ${(e as Error).message}` });
       }
     });
-    img.onerror = () => done(() => resolve({ success: false, error: '图片加载失败' }));
-    img.src = imageUrl;
+    img.onerror = () => done(() => {
+      if (analysisUrl !== imageUrl) URL.revokeObjectURL(analysisUrl);
+      resolve({ success: false, error: '图片加载失败' });
+    });
+    img.src = analysisUrl;
   });
 
-  return withTimeout(loadPromise, 10_000, 'analyze_image');
+  return withTimeout(loadPromise, 15_000, 'analyze_image');
 }
 
 function parsePen(args: { penContent: string }): ToolResult {
@@ -317,6 +397,9 @@ function validateToolArgs(tool: string, args: Record<string, unknown>): string |
     case 'load_colors':
       if (!args.nameEn) return 'load_colors 需要 nameEn 参数';
       return null;
+    case 'apply_selected_theme':
+      if (!args.imageUrl && !args.selectedImageUrl && !args.url) return 'apply_selected_theme 需要 imageUrl 参数';
+      return null;
     default:
       return null;
   }
@@ -332,7 +415,8 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
     return { success: false, error: validationError };
   }
 
-  const TOOL_TIMEOUT = tool === 'generate_theme_pipeline' ? 300_000 : 15_000;
+  const TOOL_TIMEOUT = tool === 'generate_theme_pipeline' || tool === 'generate_theme_previews'
+    ? 300_000 : 15_000;
 
   const execute = async (): Promise<ToolResult> => {
     switch (tool) {
@@ -357,20 +441,183 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
       case 'load_colors':
         return loadColors(args as { nameEn: string });
 
-      case 'generate_theme_pipeline': {
+      case 'generate_theme_previews': {
         const rawBgPrompt = (args.prompt ?? args.description ?? '') as string;
         const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
+        const feedbackRegenerated = Boolean(args.themeFeedbackRegenerated);
+        const intent = parseThemeIntent(rawBgPrompt, templateType);
+        const projectId = (globalThis as any).__themeStudioCurrentProjectId as string | undefined;
+        const prefContext: PreferenceContext | undefined = projectId ? (() => {
+          try {
+            const profile = loadCustomerVisualProfile('default');
+            const projectCtx = loadProjectVisualContext(projectId);
+            const hasProfile = profile.preferredStyles.length > 0
+              || profile.preferredCompositions.length > 0
+              || profile.dislikedTraits.length > 0
+              || profile.preferredBrightness !== 'balanced';
+            const hasProject = projectCtx.mustHaveElements.length > 0 || projectCtx.avoidElements.length > 0;
+            return (hasProfile || hasProject) ? {
+              customerProfile: profile,
+              projectMustHaveElements: projectCtx.mustHaveElements,
+              projectAvoidElements: projectCtx.avoidElements,
+            } : undefined;
+          } catch { return undefined; }
+        })() : undefined;
+        
+        const exploratoryDirections = buildExploratoryScenePlans(intent, prefContext);
         const preferredHueHint = resolveEffectivePreferredHueHint(
           (args.primaryHint ?? args.preferredHue ?? args.colorDirection ?? '') as string,
           rawBgPrompt,
           templateType,
         );
-        const bgPrompt = buildPromptWithPreferredHue(rawBgPrompt, preferredHueHint, templateType);
-        if (!bgPrompt) return { success: false, error: 'generate_theme_pipeline 需要 prompt 参数' };
 
         onProgress?.({ type: 'image_generating' });
 
-        const imgResult = await generateImage(bgPrompt);
+        const previewPromises = exploratoryDirections.map(async (direction) => {
+          const planCheck = checkThemeScenePlan(direction.plan);
+          const directed = buildDirectedPrompt(direction.plan);
+          const finalPrompt = buildPromptWithPreferredHue(directed.prompt, preferredHueHint, templateType);
+          const result = await generateImage(finalPrompt);
+          
+          return {
+            url: result.success && result.url ? result.url : '',
+            style: direction.styleId,
+            prompt: finalPrompt,
+            directionLabel: direction.directionLabel,
+            directionDescription: direction.directionDescription,
+            planCheck,
+            scenePlan: direction.plan,
+          };
+        });
+        
+        const results = await Promise.all(previewPromises);
+        const previews: ThemePreview[] = results.filter(r => r.url).map(r => ({
+          url: r.url,
+          style: r.style,
+          prompt: r.prompt,
+          directionLabel: r.directionLabel,
+          directionDescription: r.directionDescription,
+        }));
+        
+        const scenePlans = results.map(r => r.scenePlan);
+        const planChecks = results.map(r => r.planCheck);
+
+        if (previews.length === 0) {
+          return { success: false, error: '所有预览图生成失败，请重试' } as ToolResult;
+        }
+
+        return {
+          success: true,
+          data: {
+            previews,
+            intent,
+            scenePlans,
+            planChecks,
+            themeAgentDebug: {
+              toolCallPrompt: rawBgPrompt,
+              feedbackRegenerated,
+              intent,
+              scenePlans,
+              planChecks,
+              preferredHueHint,
+            },
+            preferredHueHint,
+          },
+        };
+      }
+
+      case 'apply_selected_theme': {
+        const imageUrl = (args.imageUrl ?? args.selectedImageUrl ?? args.url ?? '') as string;
+        const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
+        const preferredHueHint = (args.primaryHint ?? args.preferredHue ?? args.colorDirection ?? '') as string;
+        if (!imageUrl) return { success: false, error: 'apply_selected_theme 需要 imageUrl 参数' };
+
+        const analyzeResult = await analyzeImageAsync(imageUrl);
+        const dominantColors = (analyzeResult.data as Record<string, unknown>)?.dominantColors as string[] | undefined;
+        if (!analyzeResult.success || !dominantColors || dominantColors.length === 0) {
+          const fallbackHex = resolvePreferredHueHint(preferredHueHint, templateType)?.fallbackHex
+            ?? (templateType === 'dark-ui' ? '#1A2845' : '#1565C0');
+          const colors = deriveColorsFromPrimary(fallbackHex, templateType);
+          const report = buildThemeGenerationReport(fallbackHex, colors, templateType);
+          const contrast = validateColorScheme({ ...colors });
+          updateColors({ ...colors });
+          applyThemeImages('login', imageUrl);
+          applyThemeImages('desktop', imageUrl);
+          return {
+            success: true,
+            data: {
+              primaryColor: fallbackHex,
+              imageUrl,
+              applied: true,
+              fallbackUsed: true,
+              preferredHueHint,
+              fallbackReason: analyzeResult.error ?? '未识别到可用主色候选',
+              dominantColors: [],
+              generationReport: report,
+              contrastValidation: contrast,
+            },
+          };
+        }
+
+        const selected = pickBestThemeCandidate(dominantColors, templateType, preferredHueHint);
+        const contrast = validateColorScheme({ ...selected.derivedColors });
+        updateColors({ ...selected.derivedColors });
+        applyThemeImages('login', imageUrl);
+        applyThemeImages('desktop', imageUrl);
+
+        return {
+          success: true,
+          data: {
+            primaryColor: selected.primaryColor,
+            imageUrl,
+            applied: true,
+            preferredHueHint,
+            enforcedPreferredHue: selected.enforcedPreferredHue,
+            enforcementReason: selected.enforcementReason,
+            dominantColors,
+            generationReport: selected.report,
+            triedCandidates: selected.triedCandidates,
+            contrastValidation: contrast,
+          },
+        };
+      }
+
+      case 'generate_theme_pipeline': {
+        const rawBgPrompt = (args.prompt ?? args.description ?? '') as string;
+        const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
+        const feedbackRegenerated = Boolean(args.themeFeedbackRegenerated);
+        const intent = parseThemeIntent(rawBgPrompt, templateType);
+        const projectId = (globalThis as any).__themeStudioCurrentProjectId as string | undefined;
+        const prefContext: PreferenceContext | undefined = projectId ? (() => {
+          try {
+            const profile = loadCustomerVisualProfile('default');
+            const projectCtx = loadProjectVisualContext(projectId);
+            const hasProfile = profile.preferredStyles.length > 0
+              || profile.preferredCompositions.length > 0
+              || profile.dislikedTraits.length > 0
+              || profile.preferredBrightness !== 'balanced';
+            const hasProject = projectCtx.mustHaveElements.length > 0 || projectCtx.avoidElements.length > 0;
+            return (hasProfile || hasProject) ? {
+              customerProfile: profile,
+              projectMustHaveElements: projectCtx.mustHaveElements,
+              projectAvoidElements: projectCtx.avoidElements,
+            } : undefined;
+          } catch { return undefined; }
+        })() : undefined;
+        const scenePlan = buildThemeScenePlan(intent, prefContext);
+        const planCheck = checkThemeScenePlan(scenePlan);
+        const directed = buildDirectedPrompt(scenePlan);
+        const preferredHueHint = resolveEffectivePreferredHueHint(
+          (args.primaryHint ?? args.preferredHue ?? args.colorDirection ?? '') as string,
+          rawBgPrompt,
+          templateType,
+        );
+        const finalPrompt = buildPromptWithPreferredHue(directed.prompt, preferredHueHint, templateType);
+        if (!finalPrompt) return { success: false, error: 'generate_theme_pipeline 需要 prompt 参数' };
+
+        onProgress?.({ type: 'image_generating' });
+
+        const imgResult = await generateImage(finalPrompt);
         if (!imgResult.success || !imgResult.url) {
           return { success: false, error: imgResult.error ?? '背景图生成失败', fallback: 'direct-color-gen' } as ToolResult;
         }
@@ -388,6 +635,15 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           updateColors({ ...colors });
           applyThemeImages('login', imgResult.url);
           applyThemeImages('desktop', imgResult.url);
+          // Persist accepted scene plan to project visual context
+          const projectId = (globalThis as any).__themeStudioCurrentProjectId as string | undefined;
+          if (projectId && scenePlan) {
+            try {
+              updateProjectVisualContext(projectId, {
+                latestAcceptedScenePlan: scenePlan,
+              });
+            } catch { /* non-critical — don't block generation */ }
+          }
           return {
             success: true,
             data: {
@@ -395,12 +651,35 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
               imageUrl: imgResult.url,
               applied: true,
               fallbackUsed: true,
+              originalPrompt: rawBgPrompt,
+              intent,
+              scenePlan,
+              planCheck,
+              directedPrompt: directed.prompt,
+              finalPrompt,
+              themeAgentDebug: {
+                toolCallPrompt: rawBgPrompt,
+                feedbackRegenerated,
+                intent,
+                scenePlan,
+                planCheck,
+                directedPrompt: directed.prompt,
+                finalPrompt,
+              },
               preferredHueHint,
               fallbackReason: analyzeResult.error ?? '未识别到可用主色候选',
               enforcedPreferredHue: Boolean(preferredHueHint),
               dominantColors: [],
               generationReport: report,
               contrastValidation: contrast,
+              imageReview: reviewGeneratedImage({
+                dominantColors: [],
+                scenePlan, intent, templateType,
+                generationReport: report,
+                contrastValidation: contrast,
+                enforcedPreferredHue: Boolean(preferredHueHint),
+                fallbackUsed: true,
+              }),
             },
           };
         }
@@ -411,12 +690,36 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         applyThemeImages('login', imgResult.url);
         applyThemeImages('desktop', imgResult.url);
 
+        // Persist accepted scene plan to project visual context
+        if (projectId && scenePlan) {
+          try {
+            updateProjectVisualContext(projectId, {
+              latestAcceptedScenePlan: scenePlan,
+            });
+          } catch { /* non-critical — don't block generation */ }
+        }
+
         return {
           success: true,
           data: {
             primaryColor: selected.primaryColor,
             imageUrl: imgResult.url,
             applied: true,
+            originalPrompt: rawBgPrompt,
+            intent,
+            scenePlan,
+            planCheck,
+            directedPrompt: directed.prompt,
+            finalPrompt,
+            themeAgentDebug: {
+              toolCallPrompt: rawBgPrompt,
+              feedbackRegenerated,
+              intent,
+              scenePlan,
+              planCheck,
+              directedPrompt: directed.prompt,
+              finalPrompt,
+            },
             preferredHueHint,
             enforcedPreferredHue: selected.enforcedPreferredHue,
             enforcementReason: selected.enforcementReason,
@@ -424,6 +727,14 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
             generationReport: selected.report,
             triedCandidates: selected.triedCandidates,
             contrastValidation: contrast,
+            imageReview: reviewGeneratedImage({
+              dominantColors,
+              scenePlan, intent, templateType,
+              generationReport: selected.report,
+              contrastValidation: contrast,
+              enforcedPreferredHue: selected.enforcedPreferredHue,
+              fallbackUsed: false,
+            }),
           },
         };
       }

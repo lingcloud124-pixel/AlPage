@@ -168,6 +168,14 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
   const timeoutId = setTimeout(() => controller.abort(), 180_000);
 
   try {
+    const MAX_PROMPT_LENGTH = 1500;
+    const truncatedPrompt = prompt.length > MAX_PROMPT_LENGTH
+      ? prompt.slice(0, MAX_PROMPT_LENGTH - 3) + '...'
+      : prompt;
+    if (prompt.length > MAX_PROMPT_LENGTH) {
+      console.warn(`[chat-client] Image prompt truncated: ${prompt.length} → ${truncatedPrompt.length} chars`);
+    }
+
     const response = await fetch(`${imgSettings.endpoint}/image_generation`, {
       method: 'POST',
       headers: {
@@ -176,8 +184,9 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
       },
       body: JSON.stringify({
         model: imgSettings.model,
-        prompt,
-        aspect_ratio: '16:9',
+        prompt: truncatedPrompt,
+        width: 1920,
+        height: 1080,
         response_format: 'url',
       }),
       signal: controller.signal,
@@ -190,10 +199,19 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
 
     const data = await response.json();
 
-    const base64Array = data.data?.image_base64;
-    if (base64Array && base64Array.length > 0) {
-      const dataUrl = `data:image/jpeg;base64,${base64Array[0]}`;
-      return { success: true, url: dataUrl };
+    const baseStatusCode = data.base_resp?.status_code;
+    const baseStatusMsg = data.base_resp?.status_msg;
+    if (typeof baseStatusCode === 'number' && baseStatusCode !== 0) {
+      const errorMap: Record<number, string> = {
+        1002: '触发限流，请稍后再试',
+        1004: '账号鉴权失败，请检查 API Key 是否正确',
+        1008: '账号余额不足',
+        1026: '图片描述涉及敏感内容，请调整描述',
+        2013: '传入参数异常，请检查请求参数',
+        2049: '无效的 API Key',
+      };
+      const detail = errorMap[baseStatusCode] ?? baseStatusMsg ?? `未知错误 (${baseStatusCode})`;
+      return { success: false, error: `图像生成失败: ${detail}` };
     }
 
     const imageUrlFromUrls = data.data?.image_urls?.[0];
@@ -201,12 +219,19 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
       return { success: true, url: imageUrlFromUrls };
     }
 
+    const base64Array = data.data?.image_base64;
+    if (base64Array && base64Array.length > 0) {
+      const dataUrl = `data:image/jpeg;base64,${base64Array[0]}`;
+      return { success: true, url: dataUrl };
+    }
+
     const imageUrlFromArr = data.data?.[0]?.url;
     if (imageUrlFromArr) {
       return { success: true, url: imageUrlFromArr };
     }
 
-    return { success: false, error: '图像生成返回为空' };
+    console.warn('[chat-client] Image API response could not be parsed:', JSON.stringify(data).slice(0, 500));
+    return { success: false, error: '图像生成返回为空，请检查 API Key 是否有图像生成权限。' };
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
       return { success: false, error: '图像生成超时（180秒）' };

@@ -1,0 +1,27 @@
+{
+  "qualityBoost": [
+    "commercial-grade background design",
+    "highly detailed",
+    "professional lighting",
+    "clean composition",
+    "high-end corporate aesthetic",
+    "sharp focus",
+    "atmospheric depth",
+    "refined color harmony"
+  ],
+  "negativeConstraints": [
+    "no text",
+    "no watermark",
+    "no logo",
+    "no UI elements",
+    "no buttons",
+    "no interface",
+    "no signature",
+    "no cluttered layout",
+    "no deformed objects",
+    "no low-detail blur",
+    "no realistic human frontal faces",
+    "no frontal face portraits"
+  ],
+  "compositionRule": "leave clean negative space for OA interface overlays"
+}

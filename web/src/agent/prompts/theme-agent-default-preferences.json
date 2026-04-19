@@ -1,0 +1,21 @@
+{
+  "version": "v1",
+  "purpose": "Default preference baseline for Theme Agent when user does not provide explicit direction",
+  "defaultPreferences": {
+    "preferNarrativeComposition": true,
+    "preferBrightPositiveTone": true,
+    "preferThemePosterFeeling": true,
+    "preferStoryLikeButRestrained": true,
+    "preferEnterpriseUsabilityOverArtExperiment": true,
+    "preferMultipleRelevantElements": true,
+    "preferReadableUiBackground": true
+  },
+  "softBiases": [
+    "Prefer image directions with subtle narrative feeling rather than pure scenery.",
+    "Prefer bright, positive, breathable tone unless the user explicitly requests dark or moody visuals.",
+    "Prefer something closer to a premium themed visual poster than a casual snapshot.",
+    "Prefer multiple related visual elements over a single isolated object.",
+    "Prefer product-usable readability and enterprise fit over purely artistic abstraction.",
+    "Prefer calm professional polish instead of oppressive cinematic darkness by default."
+  ]
+}

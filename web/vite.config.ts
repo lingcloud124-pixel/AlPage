@@ -1,6 +1,57 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
-import path from 'path';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+import type { IncomingMessage, ServerResponse } from 'http';
+
+const upstreamProxyUrl = process.env.https_proxy
+  || process.env.HTTPS_PROXY
+  || process.env.http_proxy
+  || process.env.HTTP_PROXY
+  || process.env.all_proxy
+  || process.env.ALL_PROXY
+  || '';
+
+const imageProxyAgent = upstreamProxyUrl ? new HttpsProxyAgent(upstreamProxyUrl) : undefined;
+
+function imageProxyPlugin(): Plugin {
+  return {
+    name: 'image-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/proxy-image', (req: IncomingMessage, res: ServerResponse) => {
+        const url = new URL(req.url ?? '', `http://${req.headers.host}`).searchParams.get('url');
+        if (!url) {
+          res.statusCode = 400;
+          res.end('Missing url parameter');
+          return;
+        }
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30_000);
+        req.on('close', () => { clearTimeout(timeout); controller.abort(); });
+        fetch(url, {
+          signal: controller.signal,
+          ...(imageProxyAgent ? { dispatcher: undefined, } : {}),
+        }).then(async (imgRes) => {
+          clearTimeout(timeout);
+          if (!imgRes.ok) {
+            res.statusCode = 502;
+            res.end(`Upstream ${imgRes.status}`);
+            return;
+          }
+          const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+          const buf = Buffer.from(await imgRes.arrayBuffer());
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.end(buf);
+        }).catch((err) => {
+          clearTimeout(timeout);
+          res.statusCode = 502;
+          res.end(err.message);
+        });
+      });
+    },
+  };
+}
 
 const proxy = {
   '/api/chat': {
@@ -9,10 +60,10 @@ const proxy = {
     rewrite: (proxyPath: string) => proxyPath.replace(/^\/api\/chat/, '/v1'),
   },
   '/api/image': {
-    target: 'https://47.100.184.181',
+    target: 'https://api.minimaxi.com',
     changeOrigin: true,
     rewrite: (proxyPath: string) => proxyPath.replace(/^\/api\/image/, '/v1'),
-    headers: { Host: 'api.minimaxi.com' },
+    ...(imageProxyAgent ? { agent: imageProxyAgent } : {}),
   },
   '/api/export': {
     target: 'http://127.0.0.1:5174',
@@ -23,7 +74,7 @@ const proxy = {
 
 export default defineConfig({
   root: '.',
-  plugins: [tailwindcss()],
+    plugins: [tailwindcss(), imageProxyPlugin()],
   server: {
     port: 5173,
     open: true,
@@ -38,6 +89,6 @@ export default defineConfig({
     proxy,
   },
   build: {
-    outDir: 'dist',
+    outdir: 'dist',
   },
 });

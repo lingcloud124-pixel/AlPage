@@ -1,5 +1,9 @@
 import type { ToolCall } from '../types';
 import { resolvePreferredHueHint } from '../theme/color-utils';
+import { parseThemeFeedback } from '../tools/theme-feedback-refiner';
+import { buildRegeneratedScenePlan } from '../tools/theme-regeneration-director';
+import { buildDirectedPrompt } from '../tools/theme-prompt-director';
+import type { ThemeAgentDebugState } from '../chat-manager';
 
 function normalizeTemplateType(value: unknown): 'light-ui' | 'dark-ui' {
   return value === 'dark-ui' ? 'dark-ui' : 'light-ui';
@@ -109,10 +113,21 @@ export function enrichToolCallsWithColorHints(
     assistantMessage: string;
     priorAssistantMessage?: string;
     priorUserMessage?: string;
+    latestThemeAgentDebugState?: ThemeAgentDebugState | null;
+    latestThemePreviews?: Array<{ url: string; style: string; prompt: string; directionLabel?: string }> | null;
   },
 ): ToolCall[] {
+  const selectionResult = detectThemeSelection(
+    context.userMessage,
+    context.latestThemePreviews,
+    context.latestThemeAgentDebugState?.preferredHueHint,
+  );
+  if (selectionResult) {
+    return [{ tool: 'apply_selected_theme', args: selectionResult }, ...toolCalls];
+  }
+
   const enriched = toolCalls.map((toolCall) => {
-    if (toolCall.tool !== 'generate_theme_pipeline') return toolCall;
+    if (toolCall.tool !== 'generate_theme_pipeline' && toolCall.tool !== 'generate_theme_previews') return toolCall;
 
     const templateType = normalizeTemplateType(
       toolCall.args.templateType ?? inferTemplateTypeFromText(context.priorAssistantMessage ?? context.assistantMessage),
@@ -144,18 +159,41 @@ export function enrichToolCallsWithColorHints(
         : ''
     );
 
-    return {
-      ...toolCall,
-      args: {
-        ...toolCall.args,
-        templateType,
-        ...(finalPrompt ? { prompt: finalPrompt } : {}),
-        ...(inferredHint ? { primaryHint: inferredHint } : {}),
-      },
-    };
+    const regeneratedPrompt = (!isSimpleConfirmationMessage(context.userMessage)
+      && context.latestThemeAgentDebugState?.intent
+      && (context.latestThemeAgentDebugState?.scenePlan || context.latestThemeAgentDebugState?.scenePlans?.[0]))
+      ? (() => {
+          const adjustment = parseThemeFeedback(context.userMessage);
+          const hasAdjustment = Object.values(adjustment).some((value) =>
+            Array.isArray(value) ? value.length > 0 : value !== undefined,
+          );
+          if (!hasAdjustment) return '';
+          const basePlan = context.latestThemeAgentDebugState.scenePlan
+            ?? context.latestThemeAgentDebugState.scenePlans![0];
+          const regenerated = buildRegeneratedScenePlan(
+            context.latestThemeAgentDebugState.intent,
+            basePlan,
+            adjustment,
+          );
+          return buildDirectedPrompt(regenerated.nextScenePlan).prompt;
+        })()
+      : '';
+
+      return {
+        ...toolCall,
+        tool: 'generate_theme_previews',
+        args: {
+          ...toolCall.args,
+          templateType,
+          ...((regeneratedPrompt || finalPrompt) ? { prompt: regeneratedPrompt || finalPrompt } : {}),
+          ...(inferredHint ? { primaryHint: inferredHint } : {}),
+          ...(regeneratedPrompt ? { themeFeedbackRegenerated: true } : {}),
+        },
+      };
   });
 
-  const hasGeneratePipeline = enriched.some((toolCall) => toolCall.tool === 'generate_theme_pipeline');
+  const hasGeneratePipeline = enriched.some((toolCall) =>
+    toolCall.tool === 'generate_theme_pipeline' || toolCall.tool === 'generate_theme_previews');
   if (!hasGeneratePipeline && isSimpleConfirmationMessage(context.userMessage) && context.priorAssistantMessage) {
     const templateType = inferTemplateTypeFromText(context.priorAssistantMessage);
     const primaryHint = inferPrimaryHintFromText(context.priorAssistantMessage, templateType)
@@ -164,7 +202,7 @@ export function enrichToolCallsWithColorHints(
 
     return [
       {
-        tool: 'generate_theme_pipeline',
+        tool: 'generate_theme_previews',
         args: {
           templateType,
           prompt: buildGenerationPromptFromPlan({
@@ -181,5 +219,75 @@ export function enrichToolCallsWithColorHints(
     ];
   }
 
+  if (!hasGeneratePipeline && context.latestThemeAgentDebugState?.intent && (context.latestThemeAgentDebugState?.scenePlan || context.latestThemeAgentDebugState?.scenePlans?.[0])) {
+    const adjustment = parseThemeFeedback(context.userMessage);
+    const hasAdjustment = Object.values(adjustment).some((value) =>
+      Array.isArray(value) ? value.length > 0 : value !== undefined,
+    );
+
+    if (hasAdjustment) {
+      const basePlan = context.latestThemeAgentDebugState.scenePlan
+        ?? context.latestThemeAgentDebugState.scenePlans![0];
+      const regenerated = buildRegeneratedScenePlan(
+        context.latestThemeAgentDebugState.intent,
+        basePlan,
+        adjustment,
+      );
+      const directedPrompt = buildDirectedPrompt(regenerated.nextScenePlan).prompt;
+      const templateType = context.latestThemeAgentDebugState.intent.templateType ?? 'light-ui';
+      const primaryHint = inferPrimaryHintFromText(context.userMessage, templateType)
+        ?? inferPrimaryHintFromText(context.priorAssistantMessage, templateType)
+        ?? inferPrimaryHintFromText(context.priorUserMessage, templateType);
+
+      return [
+        {
+          tool: 'generate_theme_previews',
+          args: {
+            templateType,
+            prompt: directedPrompt,
+            ...(primaryHint ? { primaryHint } : {}),
+            themeFeedbackRegenerated: true,
+          },
+        },
+        ...enriched,
+      ];
+    }
+  }
+
   return enriched;
+}
+
+export function detectThemeSelection(
+  userMessage: string,
+  previews: Array<{ url: string; style: string; prompt: string; directionLabel?: string }> | null | undefined,
+  preferredHueHint?: string,
+): { imageUrl: string; templateType: string; primaryHint?: string } | null {
+  if (!previews || previews.length === 0) return null;
+  const msg = userMessage.trim().toLowerCase();
+
+  let selectedIndex = -1;
+
+  if (/(第\s*[一二三四123]\s*张|选\s*[一二三四123ABCabc]|用\s*[一二三四123ABCabc]|图\s*[123ABCabc]|[123ABCabc]\s*张|就\s*(这个|这张|第一|第二|第三)|第\s*[123]\s*个)/i.test(msg)) {
+    const digitMatch = msg.match(/[123]/);
+    const letterMatch = msg.match(/[abc]/i);
+    if (digitMatch) {
+      selectedIndex = parseInt(digitMatch[0]) - 1;
+    } else if (letterMatch) {
+      selectedIndex = letterMatch[0].toLowerCase().charCodeAt(0) - 'a'.charCodeAt(0);
+    } else if (/一|第一/.test(msg)) selectedIndex = 0;
+    else if (/二|第二/.test(msg)) selectedIndex = 1;
+    else if (/三|第三/.test(msg)) selectedIndex = 2;
+  }
+
+  if (/(这个|这张|就这)/.test(msg) && previews.length === 1) {
+    selectedIndex = 0;
+  }
+
+  if (selectedIndex < 0 || selectedIndex >= previews.length) return null;
+
+  return {
+    imageUrl: previews[selectedIndex].url,
+    templateType: 'light-ui',
+    ...(preferredHueHint ? { primaryHint: preferredHueHint } : {}),
+  };
 }
