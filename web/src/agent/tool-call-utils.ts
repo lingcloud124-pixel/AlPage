@@ -113,6 +113,7 @@ export function enrichToolCallsWithColorHints(
     assistantMessage: string;
     priorAssistantMessage?: string;
     priorUserMessage?: string;
+    templateType?: 'light-ui' | 'dark-ui';
     latestThemeAgentDebugState?: ThemeAgentDebugState | null;
     latestThemePreviews?: Array<{ url: string; style: string; prompt: string; directionLabel?: string }> | null;
   },
@@ -121,6 +122,7 @@ export function enrichToolCallsWithColorHints(
     context.userMessage,
     context.latestThemePreviews,
     context.latestThemeAgentDebugState?.preferredHueHint,
+    context.templateType,
   );
   if (selectionResult) {
     return [{ tool: 'apply_selected_theme', args: selectionResult }, ...toolCalls];
@@ -261,6 +263,7 @@ export function detectThemeSelection(
   userMessage: string,
   previews: Array<{ url: string; style: string; prompt: string; directionLabel?: string }> | null | undefined,
   preferredHueHint?: string,
+  templateType?: 'light-ui' | 'dark-ui',
 ): { imageUrl: string; templateType: string; primaryHint?: string } | null {
   if (!previews || previews.length === 0) return null;
   const msg = userMessage.trim().toLowerCase();
@@ -287,7 +290,7 @@ export function detectThemeSelection(
 
   return {
     imageUrl: previews[selectedIndex].url,
-    templateType: 'light-ui',
+    templateType: templateType ?? 'light-ui',
     ...(preferredHueHint ? { primaryHint: preferredHueHint } : {}),
   };
 }

@@ -35,29 +35,31 @@
 
 ## 亮度规则
 
-Dark-UI 颜色亮度必须严格排序：
+> **单位说明**：以下亮度值均为 HSL 色彩模型的 L 分量（Lightness），范围 0-100。
+
+Dark-UI 颜色亮度必须严格排序（由深到浅）：
 
 ```
-alter (亮度≈47-59，最深)
+alter (L≈49-51，最深)
   ↓
-primary (亮度≈64-68)
+primary (L≈64-68)
   ↓
-alter-hover (亮度≈97-100)
+alter-hover (L≈70，较深)
   ↓
-primary-hover (亮度≈214-216，极浅！)
+primary-hover (L≈85，极浅！)
   ↓
-header-font (亮度≈180+，浅色文字)
+header-font (L≈90，浅色文字)
 ```
 
 ### 亮度参考值
 
-| 颜色用途 | 亮度范围 | 说明 |
+| 颜色用途 | HSL L 值 | 说明 |
 |---------|---------|------|
-| alter | 47-59 | 最深，用于卡片/侧边栏背景 |
-| primary | 64-68 | 主色，按钮/链接 |
-| alter-hover | 97-100 | 较深，hover 状态 |
-| primary-hover | 214-216 | **极浅**，hover 状态（容易误用成中等深度） |
-| header-font | 180+ | 浅色，文字/图标 |
+| alter | 49-51 | 最深，用于卡片/侧边栏背景 |
+| primary | 64-68 | 主色，按钮/链接（从提取的主色钳制到此范围） |
+| alter-hover | ≈70 | 较深，hover 状态 |
+| primary-hover | ≈85 | **极浅**，hover 状态（Primary +26° 色调偏移） |
+| header-font | ≈90 | 浅色，文字/图标（Primary +22° 色调偏移） |
 
 ---
 
@@ -117,7 +119,7 @@ grep -E "#a7160b|#94170e|#C41B00|#fdd0a3" "$PEN_FILE" | wc -l
 
 ## ⚠️ 禁止操作清单
 
-- ❌ **primary-hover 使用中等深度** - 必须是极浅色（亮度≈216）
+- ❌ **primary-hover 使用中等深度** - 必须是极浅色（HSL L≈85）
 - ❌ **文字色使用深色** - Dark-UI 文字是浅色
 - ❌ **sidebar-panel-bg 与 header-font 不同** - 必须相同
 - ❌ **边框色带调性** - Dark-UI 边框全部纯灰
@@ -130,8 +132,8 @@ grep -E "#a7160b|#94170e|#C41B00|#fdd0a3" "$PEN_FILE" | wc -l
 
 ### 错误1：primary-hover 太深
 
-**错误**：primary-hover 使用 #CC6633（亮度≈100）
-**正确**：primary-hover 应为 #FFB74D（亮度≈216）
+**错误**：primary-hover 使用 #CC6633（HSL L≈60）
+**正确**：primary-hover 应为 #FFB74D（HSL L≈85）
 
 ### 错误2：背景图色调与主题色不协调
 
@@ -151,8 +153,8 @@ grep -E "#a7160b|#94170e|#C41B00|#fdd0a3" "$PEN_FILE" | wc -l
 - [ ] Primary = 背景色调
 - [ ] Primary-hover = Primary + 26°
 - [ ] Header-font = Primary + 22°
-- [ ] primary-hover 亮度≈216（极浅）
-- [ ] header-font 亮度 180+（浅色）
+- [ ] primary-hover 亮度≈85（极浅，HSL L 值）
+- [ ] header-font 亮度≈90（浅色文字，HSL L 值）
 - [ ] 无红色硬编码残留
 - [ ] sidebar-panel-bg = header-font
 

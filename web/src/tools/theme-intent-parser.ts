@@ -55,6 +55,17 @@ function pickCategory(scores: Record<'festival' | 'corporate' | 'technology' | '
 
 function inferSubCategory(text: string, category: ThemeCategory): string | undefined {
   const lower = text.toLowerCase();
+
+  if (category === 'festival') {
+    if (/(中秋|moon|月饼|mooncake|嫦娥|赏月)/i.test(text)) return 'mid-autumn';
+    if (/(端午|dragon boat|龙舟|粽子|zongzi|qu yuan)/i.test(text)) return 'dragon-boat';
+    if (/(国庆|national day|十月一)/i.test(text)) return 'national-day';
+    if (/(清明|qingming|扫墓|踏青)/i.test(text)) return 'qingming-fest';
+    if (/(春节|spring festival|chinese new year|lunar new year|cny|新年|过年|除夕|年味|贺岁|春联|red envelope|灯笼|lantern|firework|烟花|剪纸)/i.test(text)) return 'spring-festival';
+    if (/(元宵|lantern festival|元宵节|汤圆|花灯)/i.test(text)) return 'lantern-fest';
+    return 'festival-generic';
+  }
+
   if (category !== 'nature') return undefined;
 
   if (/(summer|cooling|cool|water|ripples|mint|airy|clear water|breeze|fresh green)/i.test(text)) {

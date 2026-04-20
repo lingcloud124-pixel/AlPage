@@ -41,8 +41,8 @@ describe('web desktop template structure', () => {
       'utf8',
     );
 
-    expect(desktopHtml).toContain('sidebar-theme-top');
-    expect(desktopHtml).toContain('sidebar-theme-bottom');
+    expect(desktopHtml).toContain('sidebar-theme-surface');
+    expect(desktopHtml).toContain('sidebar-theme-base');
     expect(desktopHtml).toContain('featured-story-card');
     expect(desktopHtml).toContain('featured-story-media');
     expect(desktopHtml).toContain('featured-story-list');

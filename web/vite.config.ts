@@ -1,6 +1,8 @@
 import { defineConfig, type Plugin } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import http from 'node:http';
+import https from 'node:https';
 import type { IncomingMessage, ServerResponse } from 'http';
 
 const upstreamProxyUrl = process.env.https_proxy
@@ -27,27 +29,43 @@ function imageProxyPlugin(): Plugin {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 30_000);
         req.on('close', () => { clearTimeout(timeout); controller.abort(); });
-        fetch(url, {
-          signal: controller.signal,
-          ...(imageProxyAgent ? { dispatcher: undefined, } : {}),
-        }).then(async (imgRes) => {
-          clearTimeout(timeout);
-          if (!imgRes.ok) {
+        if (imageProxyAgent) {
+          const parsed = new URL(url);
+          const transport = parsed.protocol === 'https:' ? https : http;
+          const proxyReq = transport.get(url, { agent: imageProxyAgent, signal: controller.signal }, (proxyRes) => {
+            clearTimeout(timeout);
+            if (proxyRes.statusCode && proxyRes.statusCode >= 300) {
+              res.statusCode = 502;
+              res.end(`Upstream ${proxyRes.statusCode}`);
+              return;
+            }
+            const contentType = proxyRes.headers['content-type'] || 'image/jpeg';
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            proxyRes.pipe(res);
+          });
+          proxyReq.on('error', (err) => { clearTimeout(timeout); res.statusCode = 502; res.end(err.message); });
+        } else {
+          fetch(url, { signal: controller.signal }).then(async (imgRes) => {
+            clearTimeout(timeout);
+            if (!imgRes.ok) {
+              res.statusCode = 502;
+              res.end(`Upstream ${imgRes.status}`);
+              return;
+            }
+            const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+            const buf = Buffer.from(await imgRes.arrayBuffer());
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.end(buf);
+          }).catch((err) => {
+            clearTimeout(timeout);
             res.statusCode = 502;
-            res.end(`Upstream ${imgRes.status}`);
-            return;
-          }
-          const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
-          const buf = Buffer.from(await imgRes.arrayBuffer());
-          res.setHeader('Content-Type', contentType);
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          res.end(buf);
-        }).catch((err) => {
-          clearTimeout(timeout);
-          res.statusCode = 502;
-          res.end(err.message);
-        });
+            res.end(err.message);
+          });
+        }
       });
     },
   };

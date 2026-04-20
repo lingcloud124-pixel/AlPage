@@ -14,6 +14,7 @@ function createProject(overrides: Partial<Project> = {}): Project {
       'primary-color': '#2C615C',
       'header-font-color': '#333333',
     },
+    bgImageUrl: 'https://example.com/bg.jpg',
     createdAt: 1,
     updatedAt: 1,
     ...overrides,

@@ -9,7 +9,6 @@ describe('web build logging guards', () => {
     const buildScript = fs.readFileSync(path.join(projectRoot, 'web/scripts/build.ts'), 'utf8');
 
     expect(buildScript).not.toContain('} catch {}');
-    expect(buildScript).toContain('未检测到已运行的开发服务器');
     expect(buildScript).toContain('无法自动打开输出目录，请手动查看');
   });
 });

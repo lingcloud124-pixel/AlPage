@@ -115,7 +115,22 @@ function getConditionalContentAdditions(intent: ThemeIntent): string {
 function buildThemeContent(intent: ThemeIntent): string {
   switch (intent.category) {
     case 'festival':
-      return 'lanterns and festive ornaments hanging close in the foreground, a celebratory archway with seasonal banners in the midground, distant city lights and warm sky glow in the background, a joyful scene of people gathering in silhouette';
+      switch (intent.subCategory) {
+        case 'mid-autumn':
+          return 'a luminous full moon hanging low in the foreground sky, delicate osmanthus branches framing the upper left, a quiet courtyard with tea table and mooncakes in the midground, soft silver-blue moonlight washing over the right side, reunion and serenity';
+        case 'dragon-boat':
+          return 'a dragon boat prow cutting through water spray in the foreground, racing banners and rhythmic oars in the midground, a wide river stretching into misty distance on the right, dynamic energy and tradition';
+        case 'national-day':
+          return 'a fluttering flag detail close-up in the foreground, grand architectural landmarks and festive lighting in the midground, a bright open sky with soft celebration trails on the right, pride and grandeur';
+        case 'qingming-fest':
+          return 'cherry blossom petals falling in the foreground, a winding stone path through soft green hills in the midground, misty rain fading into pale sky on the right, gentle remembrance and renewal';
+        case 'spring-festival':
+          return 'red lanterns and golden tassels hanging close in the foreground, a celebratory archway with spring couplets in the midground, distant fireworks and warm sky glow in the background, joyful gathering silhouettes';
+        case 'lantern-fest':
+          return 'colorful paper lanterns floating in the foreground, a bustling night market with warm lights in the midground, soft bokeh lights dissolving into the right background, wonder and celebration';
+        default:
+          return 'lanterns and festive ornaments hanging close in the foreground, a celebratory archway with seasonal banners in the midground, distant city lights and warm sky glow in the background, a joyful scene of people gathering in silhouette';
+      }
 
     case 'technology':
       return 'glowing geometric light ribbons curling from the lower-left foreground, translucent data panels floating in the midground, deep blue-violet sky with soft grid lines fading into the right background, suggesting innovation';

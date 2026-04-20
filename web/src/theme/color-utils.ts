@@ -434,13 +434,13 @@ export function rankPrimaryCandidates(
       if (l > 82) score -= 18;
       reason = '偏好中浅亮度且有足够饱和度的主色';
     } else {
-      const lightnessTarget = 38;
+      const lightnessTarget = 66;
       score += Math.max(0, 28 - Math.abs(l - lightnessTarget));
-      if (l >= 18 && l <= 55) score += 18;
+      if (l >= 55 && l <= 78) score += 18;
       if (s >= 20) score += 10;
-      if (l < 12) score -= 22;
-      if (l > 62) score -= 18;
-      reason = '偏好中低亮度且色相清晰的暗色主色';
+      if (l < 40) score -= 22;
+      if (l > 82) score -= 18;
+      reason = '偏好中高亮度(适配 Dark-UI derivation L=64-68 范围)且色相清晰的主色';
     }
 
     if (hint) {

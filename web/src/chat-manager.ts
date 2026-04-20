@@ -391,13 +391,18 @@ export function setupChatInterface(deps: ChatDeps) {
   (globalThis as any).__selectThemePreview = (index: number) => {
     if (!latestThemePreviews || index < 0 || index >= latestThemePreviews.length) return;
     const selected = latestThemePreviews[index];
-    const styleLabels: Record<string, string> = { original: 'A', photorealistic: 'B', abstract: 'C' };
+    const styleLabels: Record<string, string> = { photography: 'A', '3D-render': 'B', watercolor: 'C', abstract: 'C', illustration: 'B' };
     const label = styleLabels[selected.style] ?? `${index + 1}`;
     const input = document.getElementById('conversationMessageInput') as HTMLTextAreaElement | null
       ?? document.getElementById('messageInput') as HTMLTextAreaElement | null;
     if (input) {
       input.value = `我选择第${label}张图`;
       input.dispatchEvent(new Event('input'));
+      setTimeout(() => {
+        const sendBtn = document.getElementById('conversationSendBtn') as HTMLButtonElement | null
+          ?? document.getElementById('sendBtn') as HTMLButtonElement | null;
+        sendBtn?.click();
+      }, 50);
     }
   };
   const defaultMessageInput = document.getElementById('messageInput') as HTMLTextAreaElement | null;
@@ -749,6 +754,7 @@ export function setupChatInterface(deps: ChatDeps) {
       assistantMessage: fullResponse,
       priorAssistantMessage,
       priorUserMessage,
+      templateType,
       latestThemeAgentDebugState,
       latestThemePreviews,
     });

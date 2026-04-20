@@ -23,11 +23,11 @@ describe('web build export config', () => {
     expect(yaml).not.toContain('  - ekp_v14_16');
 
     expect(yaml).toContain('headerBanner: "header-banner.png"');
-    expect(yaml).toContain('headerClassic: "header_complex_frame_bg.png"');
-    expect(yaml).toContain('headerMenu: "header_menu_frame_bg.png"');
-    expect(yaml).toContain('headerSimple: "header_tlayout_frame_bg.png"');
-    expect(yaml).toContain('headerTabs: "header_zone_frame_bg.png"');
-    expect(yaml).toContain('headerIcon: "header_zone_nav_frame_bg.png"');
+    expect(yaml).toContain('headerClassic: "header-classic.png"');
+    expect(yaml).toContain('headerMenu: "header-menu.png"');
+    expect(yaml).toContain('headerSimple: "header-simple.png"');
+    expect(yaml).toContain('headerTabs: "header-tabs.png"');
+    expect(yaml).toContain('headerIcon: "header-icon.png"');
     expect(yaml).toContain('headerSideheader: "header-sideheader.png"');
     expect(yaml).toContain('loginBackground: "bg-login.jpg"');
   });

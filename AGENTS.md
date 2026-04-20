@@ -1,7 +1,7 @@
 # AGENTS.md — Theme Studio 项目 AI 持久记忆
 
 > **本项目 AI 助手（OpenCode/Sisyphus）在每次新对话时自动加载此文件。**
-> **最后更新**: 2026-04-13
+> **最后更新**: 2026-04-19
 
 ---
 
@@ -67,10 +67,11 @@ web/
     ├── styles.css                  # 全局样式（与 Tailwind 共存）
     ├── tailwind.css                # Tailwind v4 设计令牌（21 CSS vars → 语义名）
     ├── agent/                      # AI 对话层
-    │   ├── chat-client.ts          # SSE 流式客户端（Coding Plan qwen3.6-plus + MiniMax image-01）
-    │   ├── system-prompt.ts        # 动态 System Prompt（Light/Dark 规则 + 知识库 + 偏好）
+    │   ├── chat-client.ts          # SSE 流式客户端（Coding Plan qwen3.6-plus + MiniMax image-01 1920x1080）
+    │   ├── system-prompt.ts        # 动态 System Prompt（3-image preview 工作流指令）
     │   ├── knowledge-base.ts       # 34 预设描述 + 12 行业色板 + Header 指南
-    │   └── user-preferences.ts     # 跨项目偏好记忆（localStorage）
+    │   ├── user-preferences.ts     # 跨项目偏好记忆（localStorage）
+    │   └── tool-call-utils.ts      # Tool call enricher + detectThemeSelection + 色调推断
     ├── components/
     │   └── color-editor.ts         # 21 色编辑面板 + 品牌色派生功能
     ├── packaging/
@@ -96,11 +97,11 @@ web/
     │   ├── template-registry.ts    # 模板配置（读取 config/web-template-registry.json）
     │   └── template-specific-vars.ts # Dark-UI 特殊 CSS 变量
     └── tools/                      # Tool Calling + Theme Agent
-        ├── executor.ts             # 工具调度（7 个工具含 generate_theme_pipeline）
+        ├── executor.ts             # 工具调度（generate_theme_previews + apply_selected_theme 等）
         ├── contrast-validator.ts   # WCAG 2.1 对比度校验
-        ├── theme-intent-parser.ts  # 主题意图解析（6 类分类 + subCategory）
-        ├── theme-scene-planner.ts  # 场景规划（intent → scenePlan + 偏好回注）
-        ├── theme-prompt-director.ts # Prompt 组装（scenePlan → 最终 prompt）
+        ├── theme-intent-parser.ts  # 主题意图解析（6 类分类 + festival/nature subCategory）
+        ├── theme-scene-planner.ts  # 场景规划（intent → 3 exploratory directions + 偏好回注）
+        ├── theme-prompt-director.ts # Prompt 组装（HARD_NEGATIVES + COMPOSITION_PREFIX + sceneSentence）
         ├── theme-plan-checker.ts   # 场景计划 7 项质量校验
         ├── theme-feedback-refiner.ts # 反馈解析（9 种中英文模式）
         ├── theme-regeneration-director.ts # 反馈驱动的场景重建
@@ -162,13 +163,18 @@ Theme Agent 只允许影响：
 
 导出阶段只能消费已经确认的项目快照，**不允许在打包时重新生图或动态重算方向**。
 
-#### 推荐模块化结构（全部已实现）
-- `theme-intent-parser.ts`
-- `theme-scene-planner.ts`（含偏好回注）
-- `theme-prompt-director.ts`
-- `theme-feedback-refiner.ts`
-- `customer-visual-profile-store.ts`
-- `theme-image-reviewer.ts`
+#### 已实现模块（12 个）
+- `theme-intent-parser.ts` — 6 类分类 + festival 6 子分类 + nature 4 子分类
+- `theme-scene-planner.ts` — 3 exploratory directions + STYLE_SELECTION_MAP + 偏好回注
+- `theme-prompt-director.ts` — HARD_NEGATIVES + COMPOSITION_PREFIX + concrete visual descriptions
+- `theme-feedback-refiner.ts` — 9 种中英文反馈模式解析
+- `theme-regeneration-director.ts` — 反馈驱动的场景重建
+- `theme-preference-updater.ts` — 偏好决策引擎
+- `theme-plan-checker.ts` — 7 项场景质量校验
+- `theme-image-reviewer.ts` — 8 项图片自动评审 + 评分
+- `customer-visual-profile-store.ts` — 客户长期偏好
+- `project-visual-context-store.ts` — 项目视觉上下文
+- `tool-call-utils.ts` — Tool call enricher + detectThemeSelection（支持 Light/Dark templateType）
 
 ---
 
@@ -254,6 +260,10 @@ Theme Agent 只允许影响：
 | 找不到模板目录 | 目录名不一致 | `assets/references/samples/主题样例包` 是 symlink |
 | `npm run update` 失败 | 已弃用 | 用 `python3 theme_builder.py` |
 | CI workflow 反复被删 | PAT scope 问题 | 目前无 CI，不要重建 |
+| Dark-UI 项目选择预览图后颜色不对 | detectThemeSelection 硬编码了 light-ui | 已修复：templateType 从项目上下文传递 |
+| 预览图点击后没反应 | 旧版只填输入框不自动发送 | 已修复：点击预览图自动触发发送 |
+| Festival 类图片全是灯笼 | buildThemeContent 不区分子分类 | 已修复：新增 6 个节日子分类 |
+| MiniMax CDN 图片颜色提取失败（CORS） | 浏览器无法直接 fetch CDN 图片 | 使用 /api/proxy-image 服务端代理绕过 CORS |
 
 ---
 
@@ -363,8 +373,8 @@ Topic Automation/
 │
 ├── dist/                  # 编译产物（tsconfig.json → dist/）
 │
-├── tests/                 # Vitest 测试套件（63 文件）
-│   ├── unit/              # 25 个单元测试
+├── tests/                 # Vitest 测试套件（82 文件，247 测试）
+│   ├── unit/              # 82 个单元测试
 │   ├── integration/       # 1 个集成测试
 │   ├── fixtures/          # 测试数据（zips, colors, images, SCSS）
 │   ├── helpers/           # 测试工具（fixtureZips.ts）
@@ -425,7 +435,7 @@ Topic Automation/
 | 设计文件 | `.pen` / 设计参考模板（仅作 HTML 模板参考） |
 | 截图 | Playwright |
 | 图片处理 | ImageMagick（convert） |
-| 测试 | Vitest（单元，63 文件）+ Playwright（E2E） |
+| 测试 | Vitest（单元，82 文件 247 测试）+ Playwright（E2E） |
 | 构建 | Vite（Web）+ tsc（src/ → dist/） |
 
 ### Web 端 AI 数据流
@@ -434,8 +444,12 @@ Topic Automation/
 用户消息 → chat-manager.ts::callAI()
   → chat-client.ts [SSE to qwen3.6-plus via Vite proxy → coding.dashscope.aliyuncs.com]
   ← 响应中嵌入 tool calls
+  → tool-call-utils.ts::enrichToolCallsWithColorHints()
+     ├─ detectThemeSelection → 用户选择预览图 → apply_selected_theme
+     └─ 色调推断 + prompt 补全
   → executor.ts::executeTool()
-     ├─ generate_theme_pipeline → 生图(MiniMax image-01) + 提色(Canvas) + deriveColorsFromPrimary()
+     ├─ generate_theme_previews → 3 张不同风格预览图(MiniMax image-01 1920x1080)
+     ├─ apply_selected_theme → 颜色提取(Canvas + /api/proxy-image) + deriveColorsFromPrimary()
      ├─ update_colors → 直接操作 CSS vars（通过 theme-engine.ts）
      ├─ validate_colors → contrast-validator.ts
      └─ save/load_colors → localStorage
@@ -511,6 +525,8 @@ Topic Automation/
 | 配色 JSON 双份存储 | 🟡 中 | `colors/` 和 `web/public/colors/` 内容相同，应考虑 symlink |
 | `src/` 状态模糊 | 🟡 中 | AGENTS.md 曾标"已弃用"但实际 27 文件活跃维护 + 编译到 dist/ |
 | 无 CI | 🟢 低 | CI workflow 已被删 3 次，暂不需要重建 |
+| Dark-UI 规则文档亮度值已修正 | 🟢 低 | 原值 214-216 超出 HSL 范围，已修正为实际代码值 L≈85, L≈90 |
+| `generate_theme_pipeline` 在 Web 流程中被转为 `generate_theme_previews` | 🟢 低 | 设计意图：始终走 3-image preview 流程，单图路径仅 CLI 使用 |
 
 ---
 
@@ -540,3 +556,15 @@ Topic Automation/
 | 2026-04-13 | 测试修复：ChatClientSettings.test.ts | 更新端点断言从旧 dashscope 直连到 /api/chat proxy |
 | 2026-04-13 | SKILL.md v9.0：Agent 职责边界重定义 | 从 4 阶段流水线改为创建→迭代→导出，导出归产品功能 |
 | 2026-04-13 | 文档全面更新 | AGENTS.md、开发者系统流程图、实施路线图同步新模型 |
+| 2026-04-19 | Theme Agent prompt pipeline 重建 | 从 7-field 抽象模板改为 concrete visual descriptions（~765 chars） |
+| 2026-04-19 | 图片分辨率从 1280x720 提升到 1920x1080 | 更高质量的背景图 |
+| 2026-04-19 | 3-image preview 流程：生成 3 张不同风格预览图供用户选择 | 提升首次生成命中率 |
+| 2026-04-19 | 新增 12 个 Theme Agent 模块 | 意图解析、场景规划、prompt 组装、反馈解析等 |
+| 2026-04-19 | Festival 子分类支持（春节/中秋/端午/国庆/清明/元宵） | 不同节日生成不同视觉内容 |
+| 2026-04-19 | 修复 detectThemeSelection 硬编码 light-ui 的 bug | Dark-UI 项目选择预览图后现在正确应用暗色规则 |
+| 2026-04-19 | 修复 Dark-UI ranking 目标亮度与 derivation 不匹配 | ranking 从 L=38 改为 L=66，匹配 derivation 钳制范围 |
+| 2026-04-19 | 修复 imageProxyPlugin proxy agent 死代码 | 改为 http/https.get + HttpsProxyAgent |
+| 2026-04-19 | 点击预览图自动发送选择消息 | 无需用户手动按发送 |
+| 2026-04-19 | 删除死代码 prompt-enhancer.ts + quality-anchors.json | 零引用，已被 Theme Agent pipeline 替代 |
+| 2026-04-19 | 修复 9 个过时测试断言 | 测试文件 82/82 通过，247/247 测试通过 |
+| 2026-04-19 | Dark-UI 规则文档亮度值修正 | 214-216→85, 180+→90（HSL L 范围 0-100） |

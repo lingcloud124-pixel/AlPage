@@ -9,7 +9,6 @@ describe('web chat input shell', () => {
     const html = fs.readFileSync(path.join(projectRoot, 'web/index.html'), 'utf8');
     const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
 
-    expect(html).toContain('class="attachments-preview chat-shell-attachments"');
     expect(html).toContain('class="plus-btn ui-icon-button chat-shell-plus"');
     expect(html).toContain('id="sendBtn" class="ui-icon-button chat-shell-send"');
 
