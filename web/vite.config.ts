@@ -76,11 +76,15 @@ const proxy = {
     target: 'https://coding.dashscope.aliyuncs.com',
     changeOrigin: true,
     rewrite: (proxyPath: string) => proxyPath.replace(/^\/api\/chat/, '/v1'),
+    timeout: 600_000,
+    proxyTimeout: 600_000,
   },
   '/api/image': {
     target: 'https://api.minimaxi.com',
     changeOrigin: true,
     rewrite: (proxyPath: string) => proxyPath.replace(/^\/api\/image/, '/v1'),
+    timeout: 180_000,
+    proxyTimeout: 180_000,
     ...(imageProxyAgent ? { agent: imageProxyAgent } : {}),
   },
   '/api/export': {
