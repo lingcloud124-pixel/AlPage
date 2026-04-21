@@ -97,10 +97,10 @@ web/
     │   ├── template-registry.ts    # 模板配置（读取 config/web-template-registry.json）
     │   └── template-specific-vars.ts # Dark-UI 特殊 CSS 变量
     └── tools/                      # Tool Calling + Theme Agent
-        ├── executor.ts             # 工具调度（generate_theme_previews + apply_selected_theme 等）
+        ├── executor.ts             # 工具调度（generate_theme_pipeline + update_colors 等）
         ├── contrast-validator.ts   # WCAG 2.1 对比度校验
         ├── theme-intent-parser.ts  # 主题意图解析（6 类分类 + festival/nature subCategory）
-        ├── theme-scene-planner.ts  # 场景规划（intent → 3 exploratory directions + 偏好回注）
+        ├── theme-scene-planner.ts  # 场景规划（intent → scenePlan + 偏好回注）
         ├── theme-prompt-director.ts # Prompt 组装（HARD_NEGATIVES + COMPOSITION_PREFIX + sceneSentence）
         ├── theme-plan-checker.ts   # 场景计划 7 项质量校验
         ├── theme-feedback-refiner.ts # 反馈解析（9 种中英文模式）
@@ -444,13 +444,11 @@ Topic Automation/
 用户消息 → chat-manager.ts::callAI()
   → chat-client.ts [SSE to qwen3.6-plus via Vite proxy → coding.dashscope.aliyuncs.com]
   ← 响应中嵌入 tool calls
-  → tool-call-utils.ts::enrichToolCallsWithColorHints()
-     ├─ detectThemeSelection → 用户选择预览图 → apply_selected_theme
-     └─ 色调推断 + prompt 补全
-  → executor.ts::executeTool()
-     ├─ generate_theme_previews → 3 张不同风格预览图(MiniMax image-01 1920x1080)
-     ├─ apply_selected_theme → 颜色提取(Canvas + /api/proxy-image) + deriveColorsFromPrimary()
-     ├─ update_colors → 直接操作 CSS vars（通过 theme-engine.ts）
+   → tool-call-utils.ts::enrichToolCallsWithColorHints()
+      └─ 色调推断 + prompt 补全
+   → executor.ts::executeTool()
+      ├─ generate_theme_pipeline → 1 张背景图(MiniMax image-01 1920x1080) + 颜色提取 + 配色应用
+      ├─ update_colors → 直接操作 CSS vars（通过 theme-engine.ts）
      ├─ validate_colors → contrast-validator.ts
      └─ save/load_colors → localStorage
   → theme-engine.ts 应用颜色、chat-manager.ts 展开预览、project-manager.ts 保存项目
@@ -526,7 +524,6 @@ Topic Automation/
 | `src/` 状态模糊 | 🟡 中 | AGENTS.md 曾标"已弃用"但实际 27 文件活跃维护 + 编译到 dist/ |
 | 无 CI | 🟢 低 | CI workflow 已被删 3 次，暂不需要重建 |
 | Dark-UI 规则文档亮度值已修正 | 🟢 低 | 原值 214-216 超出 HSL 范围，已修正为实际代码值 L≈85, L≈90 |
-| `generate_theme_pipeline` 在 Web 流程中被转为 `generate_theme_previews` | 🟢 低 | 设计意图：始终走 3-image preview 流程，单图路径仅 CLI 使用 |
 
 ---
 
