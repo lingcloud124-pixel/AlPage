@@ -1,129 +1,55 @@
 import type { ChatRequest, ChatResponse, AISettings } from '../types';
+import { authHeaders } from '../auth';
 
 export const SETTINGS_KEY = 'themeStudioSettings';
-const DEFAULT_CHAT_PROXY_ENDPOINT = '/api/chat';
-const DEFAULT_IMAGE_PROXY_ENDPOINT = '/api/image';
-const DEFAULT_CHAT_REMOTE_ENDPOINT = 'https://coding.dashscope.aliyuncs.com/v1';
-const DEFAULT_IMAGE_REMOTE_ENDPOINT = 'https://api.minimaxi.com/v1';
+// Backend API endpoints
+const BACKEND_CHAT_ENDPOINT = '/api/theme/chat';
+const BACKEND_IMAGE_ENDPOINT = '/api/theme/image';
 
-export const DEFAULT_CHAT_ENDPOINT = import.meta.env.DEV
-  ? DEFAULT_CHAT_PROXY_ENDPOINT
-  : DEFAULT_CHAT_REMOTE_ENDPOINT;
-export const DEFAULT_IMAGE_ENDPOINT = import.meta.env.DEV
-  ? DEFAULT_IMAGE_PROXY_ENDPOINT
-  : DEFAULT_IMAGE_REMOTE_ENDPOINT;
+// Keep these for compatibility with ui-setup.ts
+export const DEFAULT_CHAT_ENDPOINT = BACKEND_CHAT_ENDPOINT;
+export const DEFAULT_IMAGE_ENDPOINT = BACKEND_IMAGE_ENDPOINT;
 
 const CHAT_IDLE_TIMEOUT_MS = 300_000;
 
 type RuntimeLocationLike = Pick<Location, 'protocol' | 'origin' | 'hostname' | 'port'>;
 
 const ZHIPU_DEFAULTS: AISettings = {
-  apiEndpoint: DEFAULT_CHAT_ENDPOINT,
-  apiKey: import.meta.env.VITE_DASHSCOPE_API_KEY ?? '',
-  model: 'qwen3.6-plus',
-  imageApiEndpoint: DEFAULT_IMAGE_ENDPOINT,
-  imageApiKey: import.meta.env.VITE_MINIMAX_API_KEY ?? '',
+  apiEndpoint: BACKEND_CHAT_ENDPOINT,
+  apiKey: '',  // Not needed anymore - server holds the key
+  model: 'MiniMax-M2.7',
+  imageApiEndpoint: BACKEND_IMAGE_ENDPOINT,
+  imageApiKey: '',  // Not needed anymore - server holds the key
   imageModel: 'image-01',
   exportRoot: '',
   uiTheme: 'dark',
 };
 
-function normalizeEndpoint(endpoint: string, fallback: string): string {
-  const trimmed = endpoint.trim().replace(/\/+$/, '');
-  if (!trimmed) return fallback;
-  if (trimmed.startsWith('/')) return trimmed;
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return `https://${trimmed}`;
+function getDefaultExportRoot(): string {
+  const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
+  return home ? `${home}/Desktop/ThemeStudio-Exports` : '';
 }
 
-function migrateEndpoint(endpoint: string | undefined, fallback: string): string | undefined {
-  if (!endpoint) return endpoint;
-  if (endpoint.includes('dashscope.aliyuncs.com')) return fallback;
-  if (endpoint.includes('api.minimaxi.com') || endpoint.includes('47.100.184.181')) return fallback;
-  return normalizeEndpoint(endpoint, fallback);
+export function getEffectiveExportRoot(settings?: { exportRoot?: string }): string {
+  const root = settings?.exportRoot?.trim();
+  return root || getDefaultExportRoot();
 }
 
-function isRelativeEndpoint(endpoint: string): boolean {
-  return endpoint.trim().startsWith('/');
-}
-
-function getRuntimeLocation(locationLike?: RuntimeLocationLike): RuntimeLocationLike | undefined {
-  if (locationLike) return locationLike;
-  if (typeof window === 'undefined') return undefined;
-  return window.location;
-}
-
-function isHttpPage(locationLike?: RuntimeLocationLike): boolean {
-  return locationLike?.protocol === 'http:' || locationLike?.protocol === 'https:';
-}
-
-function isThemeStudioProxyOrigin(locationLike?: RuntimeLocationLike): boolean {
-  return locationLike?.port === '5173' || locationLike?.port === '4173';
-}
-
+// Keep this for compatibility with ui-setup.ts
 export function describeChatEndpointUsage(endpoint: string, locationLike?: RuntimeLocationLike): string {
-  const runtime = getRuntimeLocation(locationLike);
-  if (!isRelativeEndpoint(endpoint)) {
-    return '当前将直接请求这个完整地址；请确认目标服务允许浏览器跨域访问。';
-  }
-
-  if (!runtime) {
-    return '当前是相对代理地址，需由 Theme Studio 自带的 /api/chat 代理提供服务。';
-  }
-
-  if (runtime.protocol === 'file:') {
-    return '当前页面是文件直开，/api/chat 无法工作；请通过 `cd web && npm run dev` 或 `npm run preview` 启动。';
-  }
-
-  if (!isHttpPage(runtime)) {
-    return `当前页面协议是 ${runtime.protocol}，/api/chat 无法工作；请改用 Theme Studio 自带服务，或填写完整 https 地址。`;
-  }
-
-  if (isThemeStudioProxyOrigin(runtime)) {
-    return `当前页面来源 ${runtime.origin}，将通过内置 /api/chat 代理访问模型接口。`;
-  }
-
-  return `当前页面来源 ${runtime.origin}，但这里未必提供 /api/chat 代理；若当前不是 Theme Studio 的 Vite 页面，请填写完整 https 地址。`;
+  return '当前将通过后端代理访问模型接口。';
 }
 
-export function getChatEndpointPreflightError(endpoint: string, locationLike?: RuntimeLocationLike): string | null {
-  const runtime = getRuntimeLocation(locationLike);
-  if (!isRelativeEndpoint(endpoint) || !runtime) return null;
-
-  if (runtime.protocol === 'file:') {
-    return '当前页面是以文件方式直接打开的，无法使用 /api 代理。请通过 `cd web && npm run dev` 或 `npm run preview` 启动 Theme Studio。';
-  }
-
-  if (!isHttpPage(runtime)) {
-    return `当前页面协议为 ${runtime.protocol}，无法使用相对代理地址 ${endpoint}。请通过 Theme Studio 自带服务启动，或在设置中填写完整 https 地址。`;
-  }
-
+function migrateEndpoint(endpoint: string | undefined, defaultEndpoint: string): string | null {
+  // If endpoint is undefined or empty, use the default
+  if (!endpoint) return null;
+  
+  // If endpoint is already the default backend endpoint, return it as-is
+  if (endpoint === defaultEndpoint) return null;
+  
+  // For legacy endpoints that might be stored in localStorage, 
+  // we now always use the backend proxy endpoints
   return null;
-}
-
-export function buildChatConnectionError(endpoint: string, locationLike?: RuntimeLocationLike): string {
-  const runtime = getRuntimeLocation(locationLike);
-  if (isRelativeEndpoint(endpoint)) {
-    if (!runtime) {
-      return `无法连接到接口 ${endpoint}。当前运行环境无法确认 /api 代理是否存在，请优先通过 \`cd web && npm run dev\` 或 \`npm run preview\` 启动 Theme Studio。`;
-    }
-
-    if (runtime.protocol === 'file:') {
-      return '当前页面是以文件方式直接打开的，无法使用 /api 代理。请通过 `cd web && npm run dev` 或 `npm run preview` 启动 Theme Studio。';
-    }
-
-    if (!isHttpPage(runtime)) {
-      return `当前页面协议为 ${runtime.protocol}，无法连接到相对代理地址 ${endpoint}。请通过 Theme Studio 自带服务启动，或在设置中填写完整 https 地址。`;
-    }
-
-    if (!isThemeStudioProxyOrigin(runtime)) {
-      return `无法连接到接口 ${endpoint}。当前页面来源是 ${runtime.origin}，这里没有可用的 /api/chat 代理。请改用 Theme Studio 的 Vite 开发/预览页面，或在设置中填写完整 https 地址。`;
-    }
-
-    return `无法连接到接口 ${endpoint}。当前页面来源是 ${runtime.origin}，但内置 /api/chat 代理没有响应。请确认 \`cd web && npm run dev\` 或 \`npm run preview\` 仍在运行，并检查 \`web/vite.config.ts\` 的代理配置。`;
-  }
-
-  return `无法连接到接口 ${endpoint}。请确认该 https 地址可直接访问，且目标服务允许浏览器跨域请求。`;
 }
 
 export function loadSettings(): AISettings {
@@ -131,12 +57,24 @@ export function loadSettings(): AISettings {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return { ...ZHIPU_DEFAULTS };
     const parsed = JSON.parse(raw) as Partial<AISettings>;
-    return {
+    const settings = {
       ...ZHIPU_DEFAULTS,
       ...parsed,
-      apiEndpoint: migrateEndpoint(parsed.apiEndpoint, DEFAULT_CHAT_ENDPOINT) ?? ZHIPU_DEFAULTS.apiEndpoint,
-      imageApiEndpoint: migrateEndpoint(parsed.imageApiEndpoint, DEFAULT_IMAGE_ENDPOINT) ?? ZHIPU_DEFAULTS.imageApiEndpoint,
     };
+
+    if (settings.model === 'qwen3.6-plus') {
+      settings.model = 'MiniMax-M2.7';
+    }
+
+    if (settings.apiEndpoint === '/api/chat') {
+      settings.apiEndpoint = BACKEND_CHAT_ENDPOINT;
+    }
+
+    if (settings.imageApiEndpoint === '/api/image') {
+      settings.imageApiEndpoint = BACKEND_IMAGE_ENDPOINT;
+    }
+
+    return settings;
   } catch (error) {
     console.warn('[chat-client] 设置读取失败，已回退默认配置:', {
       message: (error as Error).message,
@@ -150,20 +88,14 @@ export function saveSettings(settings: AISettings): void {
 }
 
 export function getImageSettings(): { endpoint: string; apiKey: string; model: string } {
-  const settings = loadSettings();
   return {
-    endpoint: settings.imageApiEndpoint ?? settings.apiEndpoint,
-    apiKey: settings.imageApiKey || settings.apiKey,
-    model: settings.imageModel || 'image-01',
+    endpoint: '/api/theme',
+    apiKey: '',  // Server holds the key
+    model: 'image-01',
   };
 }
 
 export async function generateImage(prompt: string): Promise<{ success: boolean; url?: string; error?: string }> {
-  const imgSettings = getImageSettings();
-  if (!imgSettings.apiKey) {
-    return { success: false, error: '未配置图像生成 API 密钥' };
-  }
-
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 180_000);
 
@@ -176,25 +108,39 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
       console.warn(`[chat-client] Image prompt truncated: ${prompt.length} → ${truncatedPrompt.length} chars`);
     }
 
-    const response = await fetch(`${imgSettings.endpoint}/image_generation`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${imgSettings.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: imgSettings.model,
-        prompt: truncatedPrompt,
-        width: 1920,
-        height: 1080,
-        response_format: 'url',
-      }),
-      signal: controller.signal,
-    });
+    const MAX_RETRIES = 2;
+    let response: Response | null = null;
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      return { success: false, error: `图像生成失败 (${response.status}): ${errorBody}` };
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      response = await fetch('/api/theme/image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(),
+        },
+        body: JSON.stringify({
+          model: 'image-01',
+          prompt: truncatedPrompt,
+          width: 1920,
+          height: 1080,
+          response_format: 'url',
+        }),
+        signal: controller.signal,
+      });
+
+      if (response.status === 529 && attempt < MAX_RETRIES) {
+        const delay = (attempt + 1) * 5000;
+        console.warn(`[chat-client] Image API 过载 (529)，${delay / 1000}s 后重试`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      break;
+    }
+
+    if (!response || !response.ok) {
+      const errorBody = response ? await response.text() : 'no response';
+      const statusCode = response?.status ?? 0;
+      return { success: false, error: `图像生成失败 (${statusCode}): ${errorBody}` };
     }
 
     const data = await response.json();
@@ -248,9 +194,7 @@ export async function chatCompletion(
   externalSignal?: AbortSignal,
 ): Promise<string> {
   const settings = loadSettings();
-  if (!settings.apiKey) {
-    throw new Error('请先在设置中配置 API Key');
-  }
+  // apiKey requirement removed - server holds the key now
 
   const controller = new AbortController();
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -265,34 +209,48 @@ export async function chatCompletion(
   }
 
   try {
-    const preflightError = getChatEndpointPreflightError(settings.apiEndpoint);
-    if (preflightError) {
-      throw new Error(preflightError);
+    const MAX_RETRIES = 3;
+    let response: Response | null = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      response = await fetch('/api/theme/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(),
+        },
+        body: JSON.stringify({
+          model: settings.model || 'MiniMax-M2.7',
+          messages: request.messages,
+          tools: request.tools,
+          temperature: request.temperature ?? 0.7,
+          stream: true,
+        }),
+        signal: controller.signal,
+      });
+      refreshTimeout();
+
+      if (response.status === 401) {
+        window.location.href = '/login.html';
+        throw new Error('未授权，请重新登录');
+      }
+
+      if (response.status === 529 && attempt < MAX_RETRIES) {
+        const delay = (attempt + 1) * 5000;
+        console.warn(`[chat-client] MiniMax 过载 (529)，${delay / 1000}s 后重试 (${attempt + 1}/${MAX_RETRIES})`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+
+      break;
     }
 
-    const response = await fetch(`${settings.apiEndpoint}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: settings.model,
-        messages: request.messages,
-        tools: request.tools,
-        temperature: request.temperature ?? 0.7,
-        stream: true,
-      }),
-      signal: controller.signal,
-    });
-    refreshTimeout();
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`API 错误 (${response.status}): ${errorBody}`);
+    if (!response!.ok) {
+      const errorBody = await response!.text();
+      throw new Error(`API 错误 (${response!.status}): ${errorBody}`);
     }
 
-    const reader = response.body?.getReader();
+    const reader = response!.body?.getReader();
     if (!reader) throw new Error('无法读取响应流');
 
     const decoder = new TextDecoder();
@@ -351,13 +309,14 @@ export async function chatCompletion(
       });
     }
 
-    return fullContent;
+    const cleaned = fullContent.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '').replace(/<thinkblocking>[\s\S]*$/g, '');
+    return cleaned;
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
       throw new Error('请求超时（5分钟内未收到新的响应数据），请重试');
     }
     if (e instanceof TypeError) {
-      throw new Error(buildChatConnectionError(settings.apiEndpoint));
+      throw new Error('无法连接到后端服务，请确认服务器正在运行');
     }
     throw e;
   } finally {

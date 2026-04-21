@@ -57,10 +57,10 @@ const COLOR_VAR_NAMES = [
   'gradient-start', 'gradient-mid',
 ];
 
-export function saveCurrentColorsToProject(): void {
+export async function saveCurrentColorsToProject(): Promise<void> {
   const pid = getCurrentProjectId();
   if (!pid) return;
-  const project = loadProject(pid);
+  const project = await loadProject(pid);
   if (!project) return;
   const target = getThemeTarget();
   const computed = getComputedStyle(target);
@@ -79,7 +79,7 @@ export function saveCurrentColorsToProject(): void {
   const headerBgMatch = headerBgRaw.match(/url\(['"]?([^'")\s]+)['"]?\)/);
   if (headerBgMatch) project.headerBgImageUrl = headerBgMatch[1];
 
-  saveProject(project);
+  await saveProject(project);
 }
 
 export function getCurrentColors(): Record<string, string> {

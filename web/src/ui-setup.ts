@@ -14,6 +14,8 @@ import { initializeColorEditor } from './components/color-editor';
 import type { AISettings } from './types';
 import { normalizeExportRoot } from './export/export-paths';
 import { pickDirectoryViaBridge } from './export/export-bridge';
+import { getEffectiveExportRoot } from './agent/chat-client';
+import { getUser, login } from './auth';
 
 let previewTemplatesLoaded = false;
 
@@ -320,6 +322,7 @@ export function setupSettingsDialog() {
 
   function loadStoredSettings() {
     const settings = loadSettings() as AISettings & { modelName?: string; imageModelName?: string };
+    const accountSelector = document.getElementById('accountSelector') as HTMLSelectElement;
     const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement;
     const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
     const modelNameInput = document.getElementById('modelName') as HTMLInputElement;
@@ -328,16 +331,31 @@ export function setupSettingsDialog() {
     const imageModelNameInput = document.getElementById('imageModelName') as HTMLInputElement;
     const exportRootInput = document.getElementById('exportRoot') as HTMLInputElement;
     const uiThemeSelect = document.getElementById('uiThemeMode') as HTMLSelectElement;
+    const currentUser = getUser();
 
+    if (accountSelector && currentUser?.name) accountSelector.value = currentUser.name;
     if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || DEFAULT_CHAT_ENDPOINT;
-    if (apiKeyInput) apiKeyInput.value = settings.apiKey || '';
-    if (modelNameInput) modelNameInput.value = settings.modelName || settings.model || 'qwen3.6-plus';
+    if (apiKeyInput) apiKeyInput.value = ''; // Server holds the key
+    if (modelNameInput) modelNameInput.value = settings.modelName || settings.model || 'MiniMax-M2.7';
     if (imageApiEndpointInput) imageApiEndpointInput.value = settings.imageApiEndpoint || DEFAULT_IMAGE_ENDPOINT;
-    if (imageApiKeyInput) imageApiKeyInput.value = settings.imageApiKey || '';
+    if (imageApiKeyInput) imageApiKeyInput.value = ''; // Server holds the key
     if (imageModelNameInput) imageModelNameInput.value = settings.imageModelName || settings.imageModel || 'image-01';
-    if (exportRootInput) exportRootInput.value = settings.exportRoot || '';
+    if (exportRootInput) {
+      exportRootInput.value = settings.exportRoot || '';
+      exportRootInput.placeholder = getEffectiveExportRoot();
+    }
     if (uiThemeSelect) uiThemeSelect.value = settings.uiTheme || 'dark';
     updateChatEndpointHelp(apiEndpointInput?.value || DEFAULT_CHAT_ENDPOINT);
+    
+    // Hide API key rows — server holds the keys now
+    const apiKeyRow = apiKeyInput?.closest('.form-row') as HTMLElement;
+    if (apiKeyRow) apiKeyRow.style.display = 'none';
+    const imageApiKeyRow = imageApiKeyInput?.closest('.form-row') as HTMLElement;
+    if (imageApiKeyRow) imageApiKeyRow.style.display = 'none';
+    const apiEndpointRow = apiEndpointInput?.closest('.form-row') as HTMLElement;
+    if (apiEndpointRow) apiEndpointRow.style.display = 'none';
+    const modelNameRow = modelNameInput?.closest('.form-row') as HTMLElement;
+    if (modelNameRow) modelNameRow.style.display = 'none';
   }
 
   function updateChatEndpointHelp(endpoint: string) {
@@ -365,33 +383,34 @@ export function setupSettingsDialog() {
     }
   });
 
-  function saveSettingsForm() {
-    const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement;
-    const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
-    const modelNameInput = document.getElementById('modelName') as HTMLInputElement;
-    const imageApiEndpointInput = document.getElementById('imageApiEndpoint') as HTMLInputElement;
-    const imageApiKeyInput = document.getElementById('imageApiKey') as HTMLInputElement;
-    const imageModelNameInput = document.getElementById('imageModelName') as HTMLInputElement;
-    const exportRootInput = document.getElementById('exportRoot') as HTMLInputElement;
+  async function saveSettingsForm() {
+    const accountSelector = document.getElementById('accountSelector') as HTMLSelectElement;
     const uiThemeSelect = document.getElementById('uiThemeMode') as HTMLSelectElement;
 
-    if (!apiEndpointInput || !apiKeyInput || !modelNameInput) return;
-
     const settings = {
-      apiEndpoint: apiEndpointInput.value || DEFAULT_CHAT_ENDPOINT,
-      apiKey: apiKeyInput.value,
-      model: modelNameInput.value,
-      modelName: modelNameInput.value,
-      imageApiEndpoint: imageApiEndpointInput?.value || DEFAULT_IMAGE_ENDPOINT,
-      imageApiKey: imageApiKeyInput?.value || '',
-      imageModel: imageModelNameInput?.value || 'image-01',
-      imageModelName: imageModelNameInput?.value || 'image-01',
-      exportRoot: normalizeExportRoot(exportRootInput?.value || ''),
+      apiEndpoint: DEFAULT_CHAT_ENDPOINT,
+      apiKey: '',
+      model: 'MiniMax-M2.7',
+      modelName: 'MiniMax-M2.7',
+      imageApiEndpoint: DEFAULT_IMAGE_ENDPOINT,
+      imageApiKey: '',
+      imageModel: 'image-01',
+      imageModelName: 'image-01',
+      exportRoot: '',
       uiTheme: (uiThemeSelect?.value as 'dark' | 'light') || 'dark',
     };
 
+    const currentUser = getUser();
+    const selectedAccount = accountSelector?.value;
     persistSettings(settings as any);
     applyUiTheme(settings.uiTheme as 'dark' | 'light');
+
+    if (selectedAccount && selectedAccount !== currentUser?.name) {
+      await login(selectedAccount);
+      window.location.reload();
+      return;
+    }
+
     settingsModal.classList.remove('active');
     showNotification('设置已保存');
   }
@@ -411,9 +430,9 @@ export function setupProjectActionMenu(deps: { populateSidebarProjects: () => vo
 
   if (!actionBtn || !actionMenu) return;
 
-  actionBtn.addEventListener('click', (e) => {
+  actionBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
-    const project = getCurrentProjectId() ? loadProject(getCurrentProjectId()!) : null;
+    const project = getCurrentProjectId() ? await loadProject(getCurrentProjectId()!) : null;
     if (actionPin && project) actionPin.textContent = project.pinned ? '取消置顶' : '置顶';
     actionMenu.classList.toggle('active');
   });
@@ -425,46 +444,46 @@ export function setupProjectActionMenu(deps: { populateSidebarProjects: () => vo
   });
 
   if (actionRename) {
-    actionRename.addEventListener('click', () => {
+    actionRename.addEventListener('click', async () => {
       actionMenu.classList.remove('active');
       if (!getCurrentProjectId()) return;
-      const project = loadProject(getCurrentProjectId()!);
+      const project = await loadProject(getCurrentProjectId()!);
       if (!project) return;
       const newName = prompt('重命名项目', project.name);
       if (newName && newName.trim()) {
         project.name = newName.trim();
-        saveProject(project);
+        await saveProject(project);
         updateProjectNameDisplay(project);
-        deps.populateSidebarProjects();
+        await deps.populateSidebarProjects();
       }
     });
   }
 
   if (actionPin) {
-    actionPin.addEventListener('click', () => {
+    actionPin.addEventListener('click', async () => {
       actionMenu.classList.remove('active');
       if (!getCurrentProjectId()) return;
-      const project = loadProject(getCurrentProjectId()!);
+      const project = await loadProject(getCurrentProjectId()!);
       if (!project) return;
       project.pinned = !project.pinned;
-      saveProject(project);
-      deps.populateSidebarProjects();
+      await saveProject(project);
+      await deps.populateSidebarProjects();
     });
   }
 
   if (actionDelete) {
-    actionDelete.addEventListener('click', () => {
+    actionDelete.addEventListener('click', async () => {
       actionMenu.classList.remove('active');
       if (!getCurrentProjectId()) return;
-      const project = loadProject(getCurrentProjectId()!);
+      const project = await loadProject(getCurrentProjectId()!);
       if (!project) return;
       if (!confirm(`确定删除项目「${project.name}」？`)) return;
-      deleteProject(getCurrentProjectId()!);
-      const projects = listProjects();
+      await deleteProject(getCurrentProjectId()!);
+      const projects = await listProjects();
       if (projects.length > 0) {
         deps.showWorkspace(projects[0].id);
       } else {
-        const newProj = createProject('未命名项目', 'light-ui');
+        const newProj = await createProject('未命名项目', 'light-ui');
         if (newProj) deps.showWorkspace(newProj.id);
       }
       deps.populateSidebarProjects();

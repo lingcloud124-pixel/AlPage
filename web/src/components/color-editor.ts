@@ -1,4 +1,4 @@
-import { getCurrentProjectId, loadProject } from '../project-manager';
+import { getCurrentProjectId } from '../project-manager';
 import { DEFAULT_LIGHT_UI_PRIMARY, deriveColorsFromPrimary, toCssVarRecord } from '../theme/color-utils';
 
 export interface ColorSetting {
@@ -73,23 +73,11 @@ function getThemeTarget(): HTMLElement {
 function getActiveTemplateType(): 'light-ui' | 'dark-ui' {
   const currentProjectId = getCurrentProjectId();
   if (!currentProjectId) return 'light-ui';
-  return loadProject(currentProjectId)?.templateType ?? 'light-ui';
+  const type = getComputedStyle(getThemeTarget()).getPropertyValue('--template-type').trim();
+  return type === 'dark-ui' ? 'dark-ui' : 'light-ui';
 }
 
 function getResetBaselineColors(): Record<string, string> {
-  const currentProjectId = getCurrentProjectId();
-  if (currentProjectId) {
-    const project = loadProject(currentProjectId);
-    if (project?.colors && Object.keys(project.colors).length > 0) {
-      const normalized: Record<string, string> = {};
-      for (const [key, value] of Object.entries(project.colors)) {
-        const varName = key.startsWith('--') ? key : `--${key}`;
-        normalized[varName] = value;
-      }
-      return normalized;
-    }
-  }
-
   return Object.fromEntries(colorSettings.map((setting) => [setting.property, setting.defaultValue]));
 }
 

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme Studio - 登录</title>
+  <link rel="stylesheet" href="/src/styles.css">
+  <link rel="stylesheet" href="/src/tailwind.css">
+  <style>
+    .login-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background-color: var(--app-bg);
+      padding: 20px;
+    }
+    
+    .login-card {
+      background: var(--surface-1);
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    .login-brand {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    
+    .login-brand-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    
+    .login-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    
+    .login-user-btn {
+      background: #252540;
+      border: 1px solid #3a3a5c;
+      border-radius: 12px;
+      padding: 16px 24px;
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s ease;
+      margin-bottom: 12px;
+    }
+    
+    .login-user-btn:hover {
+      border-color: var(--primary-color, #4A90D9);
+      background: #2a2a48;
+    }
+    
+    .login-user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary-color, #4A90D9);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .login-user-name {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    
+    .login-footer {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="login-brand-title">Theme Studio</div>
+      </div>
+      
+      <h2 class="login-title">选择用户登录</h2>
+      
+      <button class="login-user-btn" data-user="customer-a">
+        <span class="login-user-avatar">A</span>
+        <span class="login-user-name">客户A</span>
+      </button>
+      
+      <button class="login-user-btn" data-user="customer-b">
+        <span class="login-user-avatar">B</span>
+        <span class="login-user-name">客户B</span>
+      </button>
+      
+      <button class="login-user-btn" data-user="customer-c">
+        <span class="login-user-avatar">C</span>
+        <span class="login-user-name">客户C</span>
+      </button>
+      
+      <div class="login-footer">
+        Theme Automation System
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { login } from './src/auth.js';
+    
+    // Check if already logged in and redirect
+    const checkAuthAndRedirect = async () => {
+      try {
+        const token = localStorage.getItem('theme-studio-token');
+        if (token) {
+          // Verify token with backend
+          const response = await fetch('/api/auth/me', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            window.location.href = '/index.html';
+            return;
+          } else {
+            // Token invalid, clear storage
+            localStorage.removeItem('theme-studio-token');
+            localStorage.removeItem('theme-studio-user');
+          }
+        }
+      } catch (error) {
+        console.warn('Auth check failed:', error);
+        // Continue to login page
+      }
+    };
+    
+    // Handle login button clicks
+    const handleLoginClick = async (event) => {
+      const button = event.target.closest('.login-user-btn');
+      if (!button) return;
+      
+      const userName = button.dataset.user;
+      if (!userName) return;
+      
+      try {
+        // Show loading state
+        const buttons = document.querySelectorAll('.login-user-btn');
+        buttons.forEach(btn => {
+          btn.disabled = true;
+          btn.style.opacity = '0.7';
+        });
+        
+        await login(userName);
+        window.location.href = '/index.html';
+      } catch (error) {
+        console.error('Login failed:', error);
+        alert('登录失败，请重试');
+        // Restore buttons
+        buttons.forEach(btn => {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        });
+      }
+    };
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuthAndRedirect();
+      document.addEventListener('click', handleLoginClick);
+    });
+  </script>
+</body>
+</html>

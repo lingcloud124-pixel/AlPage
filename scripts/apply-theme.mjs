@@ -36,7 +36,7 @@ function main() {
     process.exit(1);
   }
 
-  const colorPath = path.join(ROOT, `colors/${nameEn}.json`);
+  const colorPath = path.join(ROOT, `web/public/colors/${nameEn}.json`);
   if (!fs.existsSync(colorPath)) {
     console.error(`配色方案不存在: ${colorPath}`);
     process.exit(1);

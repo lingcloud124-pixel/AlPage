@@ -29,6 +29,7 @@ import {
 } from './ui-setup';
 import { loadDefaultTemplates } from './theme-engine';
 import { loadSettings } from './agent/chat-client';
+import { checkAuth } from './auth';
 
 declare global {
   interface Window {
@@ -36,7 +37,7 @@ declare global {
   }
 }
 
-function showWorkspace(projectId: string): void {
+async function showWorkspace(projectId: string): Promise<void> {
   const homePage = document.getElementById('homePage');
   const workspaceView = document.getElementById('workspaceView');
   const messagesContainer = document.getElementById('messagesContainer') as HTMLElement;
@@ -49,7 +50,7 @@ function showWorkspace(projectId: string): void {
   const previewPanel = document.getElementById('previewPanel');
   if (previewPanel) previewPanel.removeAttribute('style');
 
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   if (project) {
     applyTemplateSpecificThemeVars(project.templateType);
     const projectNameElement = document.getElementById('projectName');
@@ -84,7 +85,7 @@ function showWorkspace(projectId: string): void {
     }
   }
 
-  loadAndRenderChatHistory(messagesContainer);
+  await loadAndRenderChatHistory(messagesContainer);
 }
 
 function runHealthCheck() {
@@ -98,14 +99,29 @@ function runHealthCheck() {
   else console.log('[Health Check] All passed');
 }
 
-function initializeRoutingModule() {
-  showWorkspaceDirectly();
+async function initializeFeatureModules() {
+  setupTabSwitching();
+  setupChatInterface({ expandPreview, populateSidebarProjects: async () => await populateSidebarProjects({ showWorkspace, createProject }), syncLayout: syncWorkbenchLayoutForActiveTab, collapseProjectSidebar, setChatPanelWidth });
+  setupCollapsibleColorPanel();
+  setupSettingsDialog();
+  setupProjectActionMenu({
+    populateSidebarProjects: async () => await populateSidebarProjects({ showWorkspace, createProject }),
+    showWorkspace,
+  });
+  setupMainActions();
+  setupResizableDivider();
+  setupQualityCheck();
+  setupPreviewPanel();
+}
+
+async function initializeRoutingModule() {
+  await showWorkspaceDirectly();
   const newProjectBtn = document.getElementById('newProjectBtn');
   if (newProjectBtn) {
-    newProjectBtn.addEventListener('click', () => {
-      const project = createProject('未命名项目', 'light-ui');
+    newProjectBtn.addEventListener('click', async () => {
+      const project = await createProject('未命名项目', 'light-ui');
       if (!project) return;
-      showWorkspace(project.id);
+      await showWorkspace(project.id);
       collapsePreview();
       syncWorkbenchLayoutForActiveTab(false, 'loginTab');
       const projectNameElement = document.getElementById('projectName');
@@ -121,10 +137,10 @@ function initializeRoutingModule() {
       else collapseProjectSidebar();
     });
   }
-  populateSidebarProjects({ showWorkspace, createProject: (n, t) => createProject(n, t) });
+  await populateSidebarProjects({ showWorkspace, createProject: (n, t) => createProject(n, t) });
 }
 
-function showWorkspaceDirectly(): void {
+async function showWorkspaceDirectly(): Promise<void> {
   const homePage = document.getElementById('homePage');
   const workspaceView = document.getElementById('workspaceView');
   if (homePage) homePage.classList.add('view-hidden');
@@ -133,39 +149,35 @@ function showWorkspaceDirectly(): void {
   expandProjectSidebar();
   setChatPanelWidth(null);
   if (storedId) {
-    showWorkspace(storedId);
+    await showWorkspace(storedId);
   } else {
-    const defaultProject = createProject('未命名项目', 'light-ui');
-    if (defaultProject) showWorkspace(defaultProject.id);
+    const defaultProject = await createProject('未命名项目', 'light-ui');
+    if (defaultProject) await showWorkspace(defaultProject.id);
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  runHealthCheck();
-  applyUiTheme(loadSettings().uiTheme || 'dark');
-  hydrateHeaderSelectOptions();
-  initializeColorEditor();
-  initializeFeatureModules();
-  initializeRoutingModule();
-  document.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement;
-    if (!target.closest('.sidebar-project-menu') && !target.closest('.sidebar-project-menu-btn')) {
-      closeAllProjectMenus();
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const isAuth = await checkAuth();
+    if (!isAuth) {
+      window.location.href = '/login.html';
+      return;
     }
-  });
-});
 
-function initializeFeatureModules() {
-  setupTabSwitching();
-  setupChatInterface({ expandPreview, populateSidebarProjects: () => populateSidebarProjects({ showWorkspace, createProject: (n, t) => createProject(n, t) }), syncLayout: syncWorkbenchLayoutForActiveTab, collapseProjectSidebar, setChatPanelWidth });
-  setupCollapsibleColorPanel();
-  setupSettingsDialog();
-  setupProjectActionMenu({
-    populateSidebarProjects: () => populateSidebarProjects({ showWorkspace, createProject: (n, t) => createProject(n, t) }),
-    showWorkspace,
-  });
-  setupMainActions();
-  setupResizableDivider();
-  setupQualityCheck();
-  setupPreviewPanel();
-}
+    runHealthCheck();
+    applyUiTheme(loadSettings().uiTheme || 'dark');
+    hydrateHeaderSelectOptions();
+    initializeColorEditor();
+    await initializeFeatureModules();
+    await initializeRoutingModule();
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.sidebar-project-menu') && !target.closest('.sidebar-project-menu-btn')) {
+        closeAllProjectMenus();
+      }
+    });
+  } catch (error) {
+    console.error('Initialization failed:', error);
+    window.location.href = '/login.html';
+  }
+});

@@ -309,81 +309,30 @@
 
                 <!-- Scrollable Body -->
                 <div class="settings-body">
-                    <!-- Section 1: Chat Model -->
+                    <!-- Section 1: Account -->
                     <section class="settings-section">
                         <div class="section-heading">
                             <span class="section-accent"></span>
-                            <h3>对话模型 (Chat Model)</h3>
+                            <h3>账号设置</h3>
                         </div>
                         <div class="settings-card">
                             <div class="form-row">
-                                <label class="form-label" for="apiEndpoint">API端点</label>
-                                <div class="form-input-wrap">
-                                    <input type="text" id="apiEndpoint" placeholder="coding.dashscope.aliyuncs.com/v1（留空使用默认代理）" />
-                                    <p class="form-input-help" id="apiEndpointHelp" data-status="warn">相对地址 /api/chat 仅在 Theme Studio 自带页面代理可用。</p>
+                                <div class="form-label-group">
+                                    <label class="form-label" for="accountSelector">当前账号</label>
+                                    <span class="form-label-desc">可在三个测试账号之间快速切换</span>
                                 </div>
-                            </div>
-                            <div class="form-row">
-                                <label class="form-label" for="apiKey">API密钥</label>
                                 <div class="form-input-wrap">
-                                    <input type="password" id="apiKey" placeholder="DashScope API Key（留空使用默认）" />
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <label class="form-label" for="modelName">模型名称</label>
-                                <div class="form-input-wrap">
-                                    <input type="text" id="modelName" placeholder="qwen3.6-plus（留空使用默认）" />
+                                    <select id="accountSelector">
+                                        <option value="customer-a">客户A</option>
+                                        <option value="customer-b">客户B</option>
+                                        <option value="customer-c">客户C</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
                     </section>
 
-                    <!-- Section 2: Image Generation Model -->
-                    <section class="settings-section">
-                        <div class="section-heading">
-                            <span class="section-accent"></span>
-                            <h3>图像生成模型</h3>
-                        </div>
-                        <div class="settings-card">
-                            <div class="form-row">
-                                <label class="form-label" for="imageApiEndpoint">API端点</label>
-                                <div class="form-input-wrap">
-                                    <input type="text" id="imageApiEndpoint" placeholder="https://api.minimaxi.com/v1" />
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <label class="form-label" for="imageApiKey">API密钥</label>
-                                <div class="form-input-wrap">
-                                    <input type="password" id="imageApiKey" placeholder="MiniMax Token Plan API Key" />
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <label class="form-label" for="imageModelName">图像模型名称</label>
-                                <div class="form-input-wrap">
-                                    <input type="text" id="imageModelName" placeholder="image-01" />
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Section 3: Export Settings -->
-                    <section class="settings-section">
-                        <div class="section-heading">
-                            <span class="section-accent"></span>
-                            <h3>导出设置</h3>
-                        </div>
-                        <div class="settings-card">
-                            <div class="form-row">
-                                <label class="form-label" for="exportRoot">导出根目录</label>
-                                <div class="form-input-wrap export-root-picker">
-                                    <input type="text" id="exportRoot" placeholder="例如：/Users/你的名字/Documents/Theme Studio" />
-                                    <button type="button" id="chooseExportRootBtn" class="export-root-picker-btn">选择文件夹</button>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Section 4: Interface Settings -->
+                    <!-- Section 2: Interface Settings -->
                     <section class="settings-section">
                         <div class="section-heading">
                             <span class="section-accent"></span>

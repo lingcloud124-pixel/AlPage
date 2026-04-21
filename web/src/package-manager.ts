@@ -6,7 +6,7 @@ import { openExportDirectory } from './export/export-open-client';
 import { fetchExportJobStatus } from './export/export-status-client';
 import { getCurrentProjectId, loadProject, saveProject, safeJsonParse } from './project-manager';
 import type { ExportBatchStatus } from './types';
-import { loadSettings } from './agent/chat-client';
+import { loadSettings, getEffectiveExportRoot } from './agent/chat-client';
 
 const EXPORT_JOB_QUEUE_KEY = 'theme-studio-export-jobs';
 
@@ -112,7 +112,7 @@ async function startPackagingProcess() {
       return;
     }
 
-    const project = loadProject(currentProjectId);
+    const project = await loadProject(currentProjectId);
     if (!project) {
       showNotification('当前项目不存在，无法创建导出任务');
       if (startBtn) { startBtn.textContent = '开始打包'; startBtn.disabled = false; }
@@ -120,22 +120,18 @@ async function startPackagingProcess() {
     }
 
     const settings = loadSettings();
-    if (!settings.exportRoot) {
-      showNotification('请先在设置中配置导出根目录');
-      if (startBtn) { startBtn.textContent = '开始打包'; startBtn.disabled = false; }
-      return;
-    }
+    const exportRoot = getEffectiveExportRoot(settings);
 
     const vars = getAllCSSVariables();
     const request = buildExportJobRequest({
       project,
       selectedProducts,
       cssVariables: vars,
-      exportRoot: settings.exportRoot,
+      exportRoot,
     });
 
     const updatedProject = appendExportBatchToProject(project, request.batch);
-    saveProject(updatedProject);
+    await saveProject(updatedProject);
 
     const queue = safeJsonParse<any[]>(localStorage.getItem(EXPORT_JOB_QUEUE_KEY), []);
     localStorage.setItem(EXPORT_JOB_QUEUE_KEY, JSON.stringify(appendExportJobRequest(queue, request)));
@@ -160,19 +156,19 @@ async function startPackagingProcess() {
   }
 }
 
-function markLatestExportBatchStatus(projectId: string, batchId: string, status: ExportBatchStatus) {
-  const project = loadProject(projectId);
+async function markLatestExportBatchStatus(projectId: string, batchId: string, status: ExportBatchStatus) {
+  const project = await loadProject(projectId);
   if (!project?.exportBatches) return;
-  saveProject(updateExportBatchInProject(project, batchId, { status }));
+  await saveProject(updateExportBatchInProject(project, batchId, { status }));
   renderExportHistory();
 }
 
-function renderExportHistory() {
+async function renderExportHistory() {
   const container = document.getElementById('packageExportHistory');
   const projectId = getCurrentProjectId();
   if (!container || !projectId) return;
 
-  const project = loadProject(projectId);
+  const project = await loadProject(projectId);
   const exportBatches = [...(project?.exportBatches ?? [])]
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 6);
@@ -191,10 +187,10 @@ async function trackExportJobStatus(projectId: string, batchId: string) {
     const status = await fetchExportJobStatus(fetch, batchId).catch(() => null);
     if (!status) return;
 
-    const project = loadProject(projectId);
+    const project = await loadProject(projectId);
     if (!project) return;
 
-    saveProject(updateExportBatchInProject(project, batchId, {
+    await saveProject(updateExportBatchInProject(project, batchId, {
       status: status.status,
       exportDir: status.exportDir,
       projectDir: status.projectDir,

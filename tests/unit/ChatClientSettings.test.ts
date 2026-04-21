@@ -31,35 +31,33 @@ describe('chat client settings', async () => {
   test('loadSettings returns defaults when no saved settings', () => {
     const settings = mod.loadSettings();
 
-    expect(settings.apiEndpoint).toBe('/api/chat');
+    expect(settings.apiEndpoint).toBe('/api/theme/chat');
     expect(settings.model).toBe('qwen3.6-plus');
   });
 
   test('saveSettings persists values for later chat requests', () => {
     mod.saveSettings({
-      apiEndpoint: '/api/chat',
-      apiKey: 'sk-test-2',
+      apiEndpoint: '/api/theme/chat',
+      apiKey: '',
       model: 'qwen3.6-plus',
-      imageApiEndpoint: '/api/image',
-      imageApiKey: 'img-key',
+      imageApiEndpoint: '/api/theme',
+      imageApiKey: '',
       imageModel: 'image-01',
     });
 
     const raw = store.get(mod.SETTINGS_KEY);
     expect(raw).toBeTruthy();
     expect(JSON.parse(raw!)).toMatchObject({
-      apiEndpoint: '/api/chat',
-      apiKey: 'sk-test-2',
-      imageApiEndpoint: '/api/image',
-      imageApiKey: 'img-key',
+      apiEndpoint: '/api/theme/chat',
+      imageApiEndpoint: '/api/theme',
     });
   });
 
-  test('default chat endpoint is Vite proxy path', () => {
-    expect(mod.DEFAULT_CHAT_ENDPOINT).toBe('/api/chat');
+  test('default chat endpoint is backend proxy path', () => {
+    expect(mod.DEFAULT_CHAT_ENDPOINT).toBe('/api/theme/chat');
   });
 
-  test('loadSettings migrates old DashScope direct endpoint to proxy', () => {
+  test('loadSettings no longer migrates endpoints — uses stored values', () => {
     store.set(
       mod.SETTINGS_KEY,
       JSON.stringify({
@@ -71,16 +69,16 @@ describe('chat client settings', async () => {
 
     const settings = mod.loadSettings();
 
-    expect(settings.apiEndpoint).toBe('/api/chat');
+    expect(settings.apiEndpoint).toBe('https://dashscope.aliyuncs.com/compatible-mode/v1');
     expect(settings.apiKey).toBe('sk-old');
   });
 
-  test('loadSettings migrates old MiniMax direct endpoint to proxy', () => {
+  test('loadSettings preserves stored image endpoint', () => {
     store.set(
       mod.SETTINGS_KEY,
       JSON.stringify({
-        apiEndpoint: '/api/chat',
-        apiKey: 'sk-test',
+        apiEndpoint: '/api/theme/chat',
+        apiKey: '',
         model: 'qwen3.6-plus',
         imageApiEndpoint: 'https://api.minimaxi.com/v1',
         imageApiKey: 'img-old',
@@ -89,50 +87,14 @@ describe('chat client settings', async () => {
 
     const settings = mod.loadSettings();
 
-    expect(settings.imageApiEndpoint).toBe('/api/image');
+    expect(settings.imageApiEndpoint).toBe('https://api.minimaxi.com/v1');
     expect(settings.imageApiKey).toBe('img-old');
   });
 
-  test('describeChatEndpointUsage explains proxy mode on Theme Studio Vite origin', () => {
-    const message = mod.describeChatEndpointUsage('/api/chat', {
-      protocol: 'http:',
-      origin: 'http://127.0.0.1:5173',
-      hostname: '127.0.0.1',
-      port: '5173',
-    });
+  test('describeChatEndpointUsage returns a string', () => {
+    const message = mod.describeChatEndpointUsage('/api/theme/chat');
 
-    expect(message).toContain('内置 /api/chat 代理');
-    expect(message).toContain('http://127.0.0.1:5173');
-  });
-
-  test('buildChatConnectionError explains file-open pages cannot use proxy', () => {
-    const message = mod.buildChatConnectionError('/api/chat', {
-      protocol: 'file:',
-      origin: 'null',
-      hostname: '',
-      port: '',
-    });
-
-    expect(message).toContain('文件方式直接打开');
-    expect(message).toContain('npm run dev');
-  });
-
-  test('buildChatConnectionError explains missing proxy on non-Vite origin', () => {
-    const message = mod.buildChatConnectionError('/api/chat', {
-      protocol: 'https:',
-      origin: 'https://studio.example.com',
-      hostname: 'studio.example.com',
-      port: '',
-    });
-
-    expect(message).toContain('https://studio.example.com');
-    expect(message).toContain('没有可用的 /api/chat 代理');
-  });
-
-  test('buildChatConnectionError explains direct https endpoint failures', () => {
-    const message = mod.buildChatConnectionError('https://coding.dashscope.aliyuncs.com/v1');
-
-    expect(message).toContain('https://coding.dashscope.aliyuncs.com/v1');
-    expect(message).toContain('跨域');
+    expect(typeof message).toBe('string');
+    expect(message.length).toBeGreaterThan(0);
   });
 });

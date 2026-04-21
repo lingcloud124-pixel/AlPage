@@ -4,6 +4,7 @@ import {
   loadSettings,
   parseToolCallsFromContent,
 } from './agent/chat-client';
+import { authHeaders } from './auth';
 import { enrichToolCallsWithColorHints } from './agent/tool-call-utils';
 import { getSystemPrompt } from './agent/system-prompt';
 import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences, trackPresetUsage } from './agent/user-preferences';
@@ -99,37 +100,55 @@ export function renderMessage(role: 'user' | 'ai', content: string): HTMLElement
   return messageDiv;
 }
 
-export function saveChatHistory(): void {
-  if (!getCurrentProjectId()) return;
-  const key = `theme-studio-chat-${getCurrentProjectId()}`;
-  const history = conversationHistory.map(m => ({ role: m.role, content: m.content, timestamp: m.timestamp }));
+export async function saveChatHistory(): Promise<void> {
+  const pid = getCurrentProjectId();
+  if (!pid) return;
+  const messages = conversationHistory.map(m => ({
+    role: m.role,
+    content: m.content,
+    timestamp: m.timestamp,
+  }));
   try {
-    localStorage.setItem(key, JSON.stringify(history));
+    await fetch(`/api/theme/projects/${pid}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ messages }),
+    });
   } catch (e) {
     console.error('Failed to save chat history:', e);
   }
 }
 
-export function loadChatHistory(): Array<{ role: string; content: string; timestamp: number }> {
+export async function loadChatHistory(): Promise<Array<{ role: string; content: string; timestamp: number }>> {
   const pid = getCurrentProjectId();
   if (!pid) return [];
   try {
-    const raw = localStorage.getItem(`theme-studio-chat-${pid}`);
-    if (!raw) return [];
-    return JSON.parse(raw) as Array<{ role: string; content: string; timestamp: number }>;
-  } catch (error) {
-    console.warn('[chat-manager] 聊天历史读取失败，已回退为空记录:', {
-      projectId: pid,
-      message: (error as Error).message,
+    const res = await fetch(`/api/theme/projects/${pid}/messages`, {
+      headers: authHeaders(),
     });
+    if (!res.ok) {
+      // Handle 401 Unauthorized
+      if (res.status === 401) {
+        window.location.href = '/login.html';
+      }
+      return [];
+    }
+    const messages = await res.json();
+    return messages.map((m: any) => ({
+      role: m.role,
+      content: m.content,
+      timestamp: m.timestamp,
+    }));
+  } catch (error) {
+    console.warn('[chat-manager] 聊天历史读取失败:', error);
     return [];
   }
 }
 
-export function loadAndRenderChatHistory(messagesContainer: HTMLElement | null): void {
+export async function loadAndRenderChatHistory(messagesContainer: HTMLElement | null): Promise<void> {
   if (!messagesContainer) return;
   conversationHistory.length = 0;
-  const history = loadChatHistory();
+  const history = await loadChatHistory();
   if (history.length === 0) {
     showDefaultChatView();
     messagesContainer.innerHTML = '';
@@ -163,6 +182,8 @@ function ensureProjectNameEn(project: Project, sourceText: string): boolean {
 
 function stripToolCallsFromDisplay(content: string): string {
   let cleaned = content;
+  // Strip <thinkblocking> tags from MiniMax-M2.7 reasoning output
+  cleaned = cleaned.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '');
   cleaned = cleaned.replace(/```json\s*\{[\s\S]*?\}\s*```/g, '');
   cleaned = cleaned.replace(/\{"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{[\s\S]*?\}\s*\}/g, '');
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
@@ -244,11 +265,11 @@ function addPresetCardsMessage(cards: Array<{key: string; label: string; primary
           for (const [k, v] of Object.entries(mappedColors)) setThemeVar(`--${k}`, v);
           const pid = getCurrentProjectId();
           if (pid) {
-            const project = loadProject(pid);
+            const project = await loadProject(pid);
             if (project) {
               project.colors = { ...project.colors, ...mappedColors };
               project.templateType = preset.type === 'dark-ui' ? 'dark-ui' : 'light-ui';
-              saveProject(project);
+              await saveProject(project);
               applyTemplateSpecificThemeVars(project.templateType);
             }
           }
@@ -495,11 +516,10 @@ export function setupChatInterface(deps: ChatDeps) {
 
   function addMessageToChat(role: 'user' | 'ai', content: string): HTMLElement {
     const messageEl = renderMessage(role, content);
-    saveChatHistory();
     return messageEl;
   }
 
-  function sendUserMessage(source: 'default' | 'conversation' = 'conversation') {
+  async function sendUserMessage(source: 'default' | 'conversation' = 'conversation') {
     if (activeAbortController) return;
     const activeInput = source === 'default' ? defaultMessageInput : conversationMessageInput;
     const fallbackInput = source === 'default' ? conversationMessageInput : defaultMessageInput;
@@ -525,7 +545,7 @@ export function setupChatInterface(deps: ChatDeps) {
           contentEl.appendChild(img);
         });
       }
-      saveChatHistory();
+      await saveChatHistory();
       imagesToSend.forEach(async (dataUrl) => {
         try {
           const result = await analyzeImageAsync(dataUrl);
@@ -546,6 +566,7 @@ export function setupChatInterface(deps: ChatDeps) {
       });
     } else {
       addMessageToChat('user', content);
+      await saveChatHistory();
     }
 
     if (activeInput) {
@@ -556,12 +577,12 @@ export function setupChatInterface(deps: ChatDeps) {
       fallbackInput.value = '';
       resizeMessageInput(fallbackInput, source === 'default' ? conversationComposerInner : defaultComposerInner);
     }
-    if (content) callAI(content);
+    if (content) await callAI(content);
 
     if (content && getCurrentProjectId()) {
       const projectId = getCurrentProjectId()!;
-      const activatedProject = activateProject(projectId);
-      const project = activatedProject ?? loadProject(projectId);
+      const activatedProject = await activateProject(projectId);
+      const project = activatedProject ?? await loadProject(projectId);
       if (project) {
         let changed = activatedProject !== null;
 
@@ -578,8 +599,8 @@ export function setupChatInterface(deps: ChatDeps) {
         changed = ensureProjectNameEn(project, `${project.themeName || ''} ${content}`) || changed;
 
         if (changed) {
-          saveProject(project);
-          deps.populateSidebarProjects();
+          await saveProject(project);
+          await deps.populateSidebarProjects();
         }
       }
     }
@@ -612,14 +633,11 @@ export function setupChatInterface(deps: ChatDeps) {
     });
 
     const settings = loadSettings();
-    if (!settings.apiKey) {
-      addMessageToChat('ai', '⚠️ 请先点击右上角 ⚙ 设置按钮，填入您的 API Key 后再开始对话。');
-      return;
-    }
+    // API key check removed - server holds the key now
 
     const availablePresets = getAvailablePresets();
     const prefs = loadUserPreferences();
-    const currentProject = getCurrentProjectId() ? loadProject(getCurrentProjectId()!) : null;
+    const currentProject = getCurrentProjectId() ? await loadProject(getCurrentProjectId()!) : null;
     const templateType = currentProject?.templateType || 'light-ui';
     const systemPrompt = getSystemPrompt({
       templateType,
@@ -641,6 +659,7 @@ export function setupChatInterface(deps: ChatDeps) {
     ];
 
     const aiMessageEl = addMessageToChat('ai', '');
+    await saveChatHistory();
     const contentEl = aiMessageEl.querySelector('.message-content') as HTMLElement;
     let fullResponse = '';
 
@@ -662,6 +681,8 @@ export function setupChatInterface(deps: ChatDeps) {
     conversationSendBtn?.addEventListener('click', stopHandler);
 
     let thinkingText = '';
+    let displayBuffer = '';
+    let insideThinkTag = false;
 
     try {
       let firstToken = true;
@@ -689,11 +710,35 @@ export function setupChatInterface(deps: ChatDeps) {
                 if (!thinkEl.parentElement) contentEl.appendChild(thinkEl);
                 thinkEl.textContent += token.slice(1);
               } else {
-                const indicator = contentEl.querySelector('.thinking-indicator');
-                if (indicator) indicator.remove();
-                const thinkEl = contentEl.querySelector('.thinking-content');
-                if (thinkEl) thinkEl.remove();
-                contentEl.textContent += token;
+                displayBuffer += token;
+                let displayText = '';
+                while (displayBuffer.includes('<thinkblocking>') || displayBuffer.includes('</thinkblocking>')) {
+                  if (!insideThinkTag && displayBuffer.includes('<thinkblocking>')) {
+                    const idx = displayBuffer.indexOf('<thinkblocking>');
+                    displayText += displayBuffer.slice(0, idx);
+                    displayBuffer = displayBuffer.slice(idx + '<thinkblocking>'.length);
+                    insideThinkTag = true;
+                  }
+                  if (insideThinkTag && displayBuffer.includes('</thinkblocking>')) {
+                    const idx = displayBuffer.indexOf('</thinkblocking>');
+                    displayBuffer = displayBuffer.slice(idx + '</thinkblocking>'.length);
+                    insideThinkTag = false;
+                  } else {
+                    displayBuffer = '';
+                    break;
+                  }
+                }
+                if (!insideThinkTag && displayBuffer) {
+                  displayText += displayBuffer;
+                  displayBuffer = '';
+                }
+                if (displayText) {
+                  const indicator = contentEl.querySelector('.thinking-indicator');
+                  if (indicator) indicator.remove();
+                  const thinkEl = contentEl.querySelector('.thinking-content');
+                  if (thinkEl) thinkEl.remove();
+                  contentEl.textContent += displayText;
+                }
               }
             }
             messagesContainer?.scrollTo(0, messagesContainer.scrollHeight);
@@ -728,8 +773,6 @@ export function setupChatInterface(deps: ChatDeps) {
     }
 
     conversationSendBtn?.removeEventListener('click', stopHandler);
-    activeAbortController = null;
-    setSendBtnStop(false);
 
     if (contentEl) {
       contentEl.classList.remove('streaming');
@@ -749,7 +792,7 @@ export function setupChatInterface(deps: ChatDeps) {
     });
     saveChatHistory();
 
-    const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(fullResponse), {
+    const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '')), {
       userMessage,
       assistantMessage: fullResponse,
       priorAssistantMessage,
@@ -780,8 +823,8 @@ export function setupChatInterface(deps: ChatDeps) {
     for (const tc of toolCalls) {
       if (Date.now() - toolStartTime > TOOL_GLOBAL_TIMEOUT) {
         removeToolLoading();
-        addMessageToChat('ai', '⚠️ 工具执行总时长超限，剩余工具已跳过');
-        saveChatHistory();
+        await addMessageToChat('ai', '⚠️ 工具执行总时长超限，剩余工具已跳过');
+        await saveChatHistory();
         break;
       }
       try {
@@ -792,12 +835,23 @@ export function setupChatInterface(deps: ChatDeps) {
         const result = await executeTool(tc, (event) => {
           if (tc.tool === 'generate_theme_pipeline' || tc.tool === 'generate_theme_previews') {
             if (event.type === 'image_generating') {
-              showToolLoading('主题正在生成中，请稍后');
+              const d = event.data as { current?: number; total?: number; label?: string } | undefined;
+              const cur = d?.current ?? 1;
+              const tot = d?.total ?? 3;
+              const label = d?.label ?? '';
+              showToolLoading(`🎨 正在生成预览图 ${cur}/${tot}${label ? ` · ${label}` : ''}，请稍候...`);
             } else if (event.type === 'image_generated') {
-              removeToolLoading();
-              addMessageToChat('ai', '🖼️ 背景图已生成，正在分析配色...');
-              showToolLoading('🎨 正在分析配色方案...');
-              saveChatHistory();
+              const d = event.data as { current?: number; total?: number } | undefined;
+              const cur = d?.current ?? 1;
+              const tot = d?.total ?? 3;
+              if (cur < tot) {
+                showToolLoading(`✅ 第 ${cur} 张完成，正在生成第 ${cur + 1} 张...`);
+              } else {
+                removeToolLoading();
+                addMessageToChat('ai', `🖼️ ${tot} 张预览图全部生成完毕，正在准备展示...`);
+                showToolLoading('📋 正在整理预览...');
+                saveChatHistory();
+              }
             }
           }
         });
@@ -846,21 +900,21 @@ export function setupChatInterface(deps: ChatDeps) {
               imgData.imageReview ? imgData.imageReview.summary : '',
               imgData.planCheck?.checks?.length ? `Theme Agent 计划校验：${imgData.planCheck.checks.map((check) => `${check.label}${check.passed ? '✅' : '❌'}`).join(' / ')}。` : '',
               imgData.themeAgentDebug ? `
-
-[Theme Agent Debug]
-toolCallPrompt: ${imgData.themeAgentDebug.toolCallPrompt ?? ''}
-feedbackRegenerated: ${imgData.themeAgentDebug.feedbackRegenerated ? 'yes' : 'no'}
-intent.category: ${imgData.themeAgentDebug.intent?.category ?? ''}
-intent.subCategory: ${imgData.themeAgentDebug.intent?.subCategory ?? ''}
-intent.categoryScores: ${imgData.themeAgentDebug.intent?.categoryScores ? JSON.stringify(imgData.themeAgentDebug.intent.categoryScores) : ''}
-intent.styleHints: ${(imgData.themeAgentDebug.intent?.styleHints ?? []).join(', ')}
-intent.toneHints: ${(imgData.themeAgentDebug.intent?.toneHints ?? []).join(', ')}
-intent.colorHints: ${(imgData.themeAgentDebug.intent?.colorHints ?? []).join(', ')}
-scene.sentence: ${imgData.themeAgentDebug.scenePlan?.sceneSentence?.substring(0, 80) ?? ''}
-scene.styleKeywords: ${imgData.themeAgentDebug.scenePlan?.styleKeywords ?? ''}
-planCheck: ${(imgData.themeAgentDebug.planCheck?.checks ?? []).map((check) => `${check.label}:${check.passed ? 'pass' : 'fail'}`).join(' | ')}
-directedPrompt: ${imgData.themeAgentDebug.directedPrompt ?? ''}
-finalPrompt: ${imgData.themeAgentDebug.finalPrompt ?? ''}` : '',
+  
+  [Theme Agent Debug]
+  toolCallPrompt: ${imgData.themeAgentDebug.toolCallPrompt ?? ''}
+  feedbackRegenerated: ${imgData.themeAgentDebug.feedbackRegenerated ? 'yes' : 'no'}
+  intent.category: ${imgData.themeAgentDebug.intent?.category ?? ''}
+  intent.subCategory: ${imgData.themeAgentDebug.intent?.subCategory ?? ''}
+  intent.categoryScores: ${imgData.themeAgentDebug.intent?.categoryScores ? JSON.stringify(imgData.themeAgentDebug.intent.categoryScores) : ''}
+  intent.styleHints: ${(imgData.themeAgentDebug.intent?.styleHints ?? []).join(', ')}
+  intent.toneHints: ${(imgData.themeAgentDebug.intent?.toneHints ?? []).join(', ')}
+  intent.colorHints: ${(imgData.themeAgentDebug.intent?.colorHints ?? []).join(', ')}
+  scene.sentence: ${imgData.themeAgentDebug.scenePlan?.sceneSentence?.substring(0, 80) ?? ''}
+  scene.styleKeywords: ${imgData.themeAgentDebug.scenePlan?.styleKeywords ?? ''}
+  planCheck: ${(imgData.themeAgentDebug.planCheck?.checks ?? []).map((check) => `${check.label}:${check.passed ? 'pass' : 'fail'}`).join(' | ')}
+  directedPrompt: ${imgData.themeAgentDebug.directedPrompt ?? ''}
+  finalPrompt: ${imgData.themeAgentDebug.finalPrompt ?? ''}` : '',
             ].filter(Boolean);
             latestThemeAgentDebugState = imgData.themeAgentDebug ?? null;
             // ── Preference memory: update project context and customer profile from feedback ──
@@ -878,7 +932,7 @@ finalPrompt: ${imgData.themeAgentDebug.finalPrompt ?? ''}` : '',
                     const decision = decidePreferenceUpdate({
                       adjustment,
                       currentCustomerProfile: loadCustomerVisualProfile('default'),
-                      currentProjectContext: loadProjectVisualContext(pid),
+                      currentProjectContext: await loadProjectVisualContext(pid),
                     });
                     
                     if (decision.projectPatch) {
@@ -891,19 +945,19 @@ finalPrompt: ${imgData.themeAgentDebug.finalPrompt ?? ''}` : '',
                 }
               } catch { /* non-critical — don't block UI */ }
             }
-            addMessageToChat('ai', summaryParts.join(' '));
-            saveCurrentColorsToProject();
+            await addMessageToChat('ai', summaryParts.join(' '));
+            await saveCurrentColorsToProject();
             syncColorEditorFromTheme();
             const pid = getCurrentProjectId();
             if (pid) {
-              const proj = loadProject(pid);
+              const proj = await loadProject(pid);
               if (proj && !proj.themeName && conversationHistory.length > 0) {
                 const firstUserMsg = conversationHistory.find(m => m.role === 'user');
                 if (firstUserMsg) {
                   const raw = firstUserMsg.content.replace(/[\n\r]/g, ' ').trim();
                   proj.themeName = raw.length > 15 ? raw.substring(0, 15) + '...' : raw;
                   ensureProjectNameEn(proj, `${proj.themeName} ${raw}`);
-                  saveProject(proj);
+                  await saveProject(proj);
                   updateProjectNameDisplay(proj);
                 }
               }
@@ -919,6 +973,7 @@ finalPrompt: ${imgData.themeAgentDebug.finalPrompt ?? ''}` : '',
             }
             deps.collapseProjectSidebar();
             deps.setChatPanelWidth(372);
+            await saveChatHistory();
           } else if (tc.tool === 'generate_theme_previews') {
             const prevData = result.data as {
               previews?: ThemePreview[];
@@ -938,11 +993,11 @@ finalPrompt: ${imgData.themeAgentDebug.finalPrompt ?? ''}` : '',
                 `</div>`
               ).join('');
               const previewHtml = `<div style="display:flex;gap:8px;margin:8px 0;">${imageCards}</div>`;
-              addMessageToChat('ai', `🎨 已生成 ${previews.length} 张预览图，请点击选择或描述您的偏好：${previewHtml}`);
+              await addMessageToChat('ai', `🎨 已生成 ${previews.length} 张预览图，请点击选择或描述您的偏好：${previewHtml}`);
+              await saveChatHistory();
             } else {
-              addMessageToChat('ai', '⚠️ 预览图生成失败，请重试。');
+              await addMessageToChat('ai', '⚠️ 预览图生成失败，请重试。');
             }
-            saveChatHistory();
           } else if (tc.tool === 'apply_selected_theme') {
             const appliedData = result.data as {
               imageUrl?: string;
@@ -958,39 +1013,25 @@ finalPrompt: ${imgData.themeAgentDebug.finalPrompt ?? ''}` : '',
               ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${appliedData.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
               : '';
             const contrastPassed = appliedData?.contrastValidation?.passed ?? false;
-            addMessageToChat('ai', [
+            await addMessageToChat('ai', [
               `🎨 主题已应用！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
               appliedData?.dominantColors?.length ? `识别到的候选主色 ${appliedData.dominantColors.slice(0, 3).join(' / ')}。` : '',
               appliedData?.fallbackUsed ? '本次提色未稳定完成，已回退应用默认主色。' : '',
               appliedData?.enforcementReason ?? '',
               `对比度校验：${contrastPassed ? '通过' : '存在风险'}。`,
             ].filter(Boolean).join(' '));
-            saveCurrentColorsToProject();
+            await saveCurrentColorsToProject();
             syncColorEditorFromTheme();
             latestThemePreviews = null;
             deps.expandPreview();
             deps.collapseProjectSidebar();
             deps.setChatPanelWidth(372);
-            requestAnimationFrame(() => {
-              const desktopTab = document.getElementById('desktopTab') as HTMLElement;
-              const desktopPage = document.getElementById('desktopPage') as HTMLElement;
-              const loginTab = document.getElementById('loginTab') as HTMLElement;
-              const loginPage = document.getElementById('loginPage') as HTMLElement;
-              if (desktopTab) desktopTab.classList.add('active-tab');
-              if (desktopPage) desktopPage.classList.add('active-preview');
-              if (loginTab) loginTab.classList.remove('active-tab');
-              if (loginPage) loginPage.classList.remove('active-preview');
-              const indicator = document.querySelector('.topbar-tabs .tab-indicator') as HTMLElement;
-              if (indicator && desktopTab) {
-                indicator.style.left = desktopTab.offsetLeft + 'px';
-                indicator.style.width = desktopTab.offsetWidth + 'px';
-              }
-            });
+            await saveChatHistory();
           } else if (tc.tool === 'save_colors') {
             const saveData = tc.args as { name?: string; nameEn?: string };
             const pid = getCurrentProjectId();
             if (pid && saveData?.name) {
-              const proj = loadProject(pid);
+              const proj = await loadProject(pid);
               if (proj) {
                 proj.themeName = saveData.name;
                 const normalizedNameEn = normalizeNameEn(saveData.nameEn);
@@ -998,23 +1039,25 @@ finalPrompt: ${imgData.themeAgentDebug.finalPrompt ?? ''}` : '',
                 if (normalizedNameEn || derivedNameEn !== 'project') {
                   proj.nameEn = normalizedNameEn || derivedNameEn;
                 }
-                saveProject(proj);
+                await saveProject(proj);
                 updateProjectNameDisplay(proj);
               }
             }
+            await saveChatHistory();
           } else if (tc.tool === 'update_colors') {
-            saveCurrentColorsToProject();
+            await saveCurrentColorsToProject();
             syncColorEditorFromTheme();
             deps.expandPreview();
+            await saveChatHistory();
           }
         } else {
-          addMessageToChat('ai', `⚠️ ${tc.tool}: ${result.error ?? '未知错误'}`);
+          await addMessageToChat('ai', `⚠️ ${tc.tool}: ${result.error ?? '未知错误'}`);
+          await saveChatHistory();
         }
-        saveChatHistory();
       } catch (e) {
         removeToolLoading();
-        addMessageToChat('ai', `❌ ${tc.tool} 执行失败：${(e as Error).message}`);
-        saveChatHistory();
+        await addMessageToChat('ai', `❌ ${tc.tool} 执行失败：${(e as Error).message}`);
+        await saveChatHistory();
       }
     }
 
@@ -1031,5 +1074,8 @@ finalPrompt: ${imgData.themeAgentDebug.finalPrompt ?? ''}` : '',
 
     const guideOptions = parseGuideOptions(fullResponse);
     if (guideOptions.length > 0) addGuideCardsMessage(guideOptions, sendUserMessage);
+
+    activeAbortController = null;
+    setSendBtnStop(false);
   }
 }

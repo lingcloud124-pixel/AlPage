@@ -1,5 +1,46 @@
 import type { ChatMessage, ExportBatch } from './types';
 import { DEFAULT_LIGHT_UI_PRIMARY, deriveColorsFromPrimary, toCssVarRecord } from './theme/color-utils';
+import { authHeaders } from './auth';
+
+// Helper: snake_case → camelCase conversion
+function serverToProject(row: any): Project {
+  return {
+    id: row.id,
+    name: row.name,
+    nameEn: row.name_en ?? undefined,
+    templateType: row.template_type ?? 'light-ui',
+    colors: typeof row.colors === 'string' ? JSON.parse(row.colors || '{}') : (row.colors || {}),
+    bgImageUrl: row.bg_image_url ?? undefined,
+    headerBgImageUrl: row.header_bg_image_url ?? undefined,
+    pinned: row.pinned === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// Helper: camelCase → server payload
+function projectToServer(project: Partial<Project>): Record<string, any> {
+  const result: Record<string, any> = {};
+  if (project.name !== undefined) result.name = project.name;
+  if (project.nameEn !== undefined) result.name_en = project.nameEn;
+  if (project.templateType !== undefined) result.template_type = project.templateType;
+  if (project.colors !== undefined) result.colors = typeof project.colors === 'string' ? project.colors : JSON.stringify(project.colors);
+  if (project.bgImageUrl !== undefined) result.bg_image_url = project.bgImageUrl;
+  if (project.headerBgImageUrl !== undefined) result.header_bg_image_url = project.headerBgImageUrl;
+  if (project.pinned !== undefined) result.pinned = project.pinned ? 1 : 0;
+  return result;
+}
+
+// API helper
+async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  const headers = { 'Content-Type': 'application/json', ...authHeaders(), ...(options.headers || {}) };
+  const res = await fetch(`/api/theme${path}`, { ...options, headers });
+  if (res.status === 401) {
+    window.location.href = '/login.html';
+    throw new Error('Unauthorized');
+  }
+  return res;
+}
 
 export interface Project {
   id: string;
@@ -49,7 +90,7 @@ export function getDefaultColors(): Record<string, string> {
   return toCssVarRecord(deriveColorsFromPrimary(DEFAULT_LIGHT_UI_PRIMARY, 'light-ui'));
 }
 
-export function createProject(name: string, templateType: 'light-ui' | 'dark-ui', trackProjectCreated?: () => void): Project | null {
+export async function createProject(name: string, templateType: 'light-ui' | 'dark-ui', trackProjectCreated?: () => void): Promise<Project | null> {
   const id = Date.now().toString();
   const newProject: Project = {
     id,
@@ -61,10 +102,10 @@ export function createProject(name: string, templateType: 'light-ui' | 'dark-ui'
     updatedAt: Date.now(),
   };
   trackProjectCreated?.();
-  return saveProject(newProject);
+  return await saveProject(newProject);
 }
 
-export function createProjectWithPreset(name: string, templateType: 'light-ui' | 'dark-ui', presetColors: Record<string, string>, presetId: string): Project | null {
+export async function createProjectWithPreset(name: string, templateType: 'light-ui' | 'dark-ui', presetColors: Record<string, string>, presetId: string): Promise<Project | null> {
   const id = Date.now().toString();
   const defaultColors = getDefaultColors();
   const colors = { ...defaultColors, ...presetColors };
@@ -81,72 +122,130 @@ export function createProjectWithPreset(name: string, templateType: 'light-ui' |
   };
 
   localStorage.setItem(`theme-studio-colors-${presetId}`, JSON.stringify(presetColors));
-  return saveProject(newProject);
+  return await saveProject(newProject);
 }
 
-export function loadProject(id: string): Project | null {
-  const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
-  return projects.find(p => p.id === id) || null;
-}
-
-export function saveProject(project: Project): Project | null {
-  if (!project.lifecycle) {
-    project.lifecycle = 'draft';
-  }
-  project.updatedAt = Date.now();
-  const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
-  const existingIndex = projects.findIndex(p => p.id === project.id);
-  if (existingIndex >= 0) {
-    projects[existingIndex] = project;
-  } else {
-    projects.push(project);
-  }
+export async function loadProject(id: string): Promise<Project | null> {
   try {
-    localStorage.setItem('theme-studio-projects', JSON.stringify(projects));
-    return project;
-  } catch (e) {
-    console.error('Failed to save project:', e);
+    const res = await apiFetch(`/projects/${id}`);
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      console.error('Failed to load project:', res.status, res.statusText);
+      return null;
+    }
+    const data = await res.json();
+    return serverToProject(data);
+  } catch (error) {
+    console.error('Failed to load project:', error);
     return null;
   }
 }
 
-export function listProjects(): Project[] {
-  const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
-  return projects.sort((a, b) => b.updatedAt - a.updatedAt);
+export async function saveProject(project: Project): Promise<Project | null> {
+  try {
+    if (!project.lifecycle) {
+      project.lifecycle = 'draft';
+    }
+    project.updatedAt = Date.now();
+    
+    const payload = projectToServer(project);
+    
+    let res: Response;
+    let projectExists = false;
+    if (project.id && project.id !== '0') {
+      const existingRes = await apiFetch(`/projects/${project.id}`);
+      projectExists = existingRes.ok;
+    }
+
+    if (projectExists && project.id && project.id !== '0') {
+      res = await apiFetch(`/projects/${project.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await apiFetch('/projects', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: project.id,
+          ...payload,
+        })
+      });
+    }
+    
+    if (!res.ok) {
+      console.error('Failed to save project:', res.status, res.statusText);
+      return null;
+    }
+    
+    const data = await res.json();
+    if (data.success && !projectExists) {
+      const savedProject = { ...project, id: data.id || project.id || Date.now().toString() };
+      return savedProject;
+    }
+    
+    return project;
+  } catch (error) {
+    console.error('Failed to save project:', error);
+    return null;
+  }
 }
 
-export function activateProject(projectId: string): Project | null {
-  const project = loadProject(projectId);
+export async function listProjects(): Promise<Project[]> {
+  try {
+    const res = await apiFetch('/projects');
+    if (!res.ok) {
+      console.error('Failed to list projects:', res.status, res.statusText);
+      return [];
+    }
+    const data = await res.json();
+    const projects = Array.isArray(data) ? data.map(serverToProject) : [];
+    return projects.sort((a, b) => b.updatedAt - a.updatedAt);
+  } catch (error) {
+    console.error('Failed to list projects:', error);
+    return [];
+  }
+}
+
+export async function activateProject(projectId: string): Promise<Project | null> {
+  const project = await loadProject(projectId);
   if (!project) return null;
   if (project.lifecycle !== 'active') {
     project.lifecycle = 'active';
-    return saveProject(project);
+    return await saveProject(project);
   }
   return project;
 }
 
-export function hasProjectChatHistory(projectId: string): boolean {
+export async function hasProjectChatHistory(projectId: string): Promise<boolean> {
   try {
-    const raw = localStorage.getItem(`theme-studio-chat-${projectId}`);
-    if (!raw) return false;
-    const history = safeJsonParse<Array<{ role: string; content: string; timestamp: number }>>(raw, []);
-    return history.length > 0;
+    const res = await apiFetch(`/projects/${projectId}/messages`);
+    if (!res.ok) {
+      return false;
+    }
+    const messages = await res.json();
+    return Array.isArray(messages) && messages.length > 0;
   } catch {
     return false;
   }
 }
 
-export function deleteProject(id: string): boolean {
+export async function deleteProject(id: string): Promise<boolean> {
   try {
-    const projects = safeJsonParse<Project[]>(localStorage.getItem('theme-studio-projects'), []);
-    const filteredProjects = projects.filter(p => p.id !== id);
-    localStorage.setItem('theme-studio-projects', JSON.stringify(filteredProjects));
-    localStorage.removeItem(`theme-studio-chat-${id}`);
+    const res = await apiFetch(`/projects/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      console.error('Failed to delete project:', res.status, res.statusText);
+      return false;
+    }
+    
     const cur = localStorage.getItem('theme-studio-current-project');
-    if (cur === id) localStorage.removeItem('theme-studio-current-project');
+    if (cur === id) {
+      localStorage.removeItem('theme-studio-current-project');
+      _currentProjectId = null;
+    }
+    
     return true;
-  } catch (e) {
-    console.error('Failed to delete project:', e);
+  } catch (error) {
+    console.error('Failed to delete project:', error);
     return false;
   }
 }
@@ -242,47 +341,66 @@ export function getAvailablePresets(): string[] {
   const saved = Object.keys(localStorage)
     .filter(k => k.startsWith('theme-studio-colors-'))
     .map(k => k.replace('theme-studio-colors-', ''));
-  return [...new Set([...KNOWN_PRESETS, ...saved])];
+  const allPresets = [...KNOWN_PRESETS, ...saved];
+  return Array.from(new Set(allPresets));
 }
 
 export interface SidebarDeps {
-  showWorkspace: (projectId: string) => void;
-  createProject: (name: string, templateType: 'light-ui' | 'dark-ui') => Project | null;
+  showWorkspace: (projectId: string) => Promise<void> | void;
+  createProject: (name: string, templateType: 'light-ui' | 'dark-ui') => Promise<Project | null> | Project | null;
 }
 
-export function populateSidebarProjects(deps: SidebarDeps) {
+export async function populateSidebarProjects(deps: SidebarDeps) {
   const sidebarProjectList = document.getElementById('sidebarProjectList');
   if (!sidebarProjectList) return;
   sidebarProjectList.innerHTML = '';
-  const visibleProjects = listProjects().filter((project) => hasProjectChatHistory(project.id));
+  
+  try {
+    const allProjects = await listProjects();
+    const visibleProjects = [];
+    
+    for (const project of allProjects) {
+      if (await hasProjectChatHistory(project.id)) {
+        visibleProjects.push(project);
+      }
+    }
 
-  if (visibleProjects.length === 0) {
-    const emptyMessage = document.createElement('p');
-    emptyMessage.textContent = '暂无历史项目';
-    emptyMessage.style.textAlign = 'center';
-    emptyMessage.style.color = 'var(--text-muted)';
-    emptyMessage.style.fontStyle = 'italic';
-    emptyMessage.style.margin = '20px 0';
-    sidebarProjectList.appendChild(emptyMessage);
-    return;
-  }
+    if (visibleProjects.length === 0) {
+      const emptyMessage = document.createElement('p');
+      emptyMessage.textContent = '暂无历史项目';
+      emptyMessage.style.textAlign = 'center';
+      emptyMessage.style.color = 'var(--text-muted)';
+      emptyMessage.style.fontStyle = 'italic';
+      emptyMessage.style.margin = '20px 0';
+      sidebarProjectList.appendChild(emptyMessage);
+      return;
+    }
 
-  const pinned = visibleProjects.filter(p => p.pinned);
-  const unpinned = visibleProjects.filter(p => !p.pinned);
+    const pinned = visibleProjects.filter(p => p.pinned);
+    const unpinned = visibleProjects.filter(p => !p.pinned);
 
-  if (pinned.length > 0) {
-    const pinnedHeader = document.createElement('div');
-    pinnedHeader.className = 'sidebar-section-label';
-    pinnedHeader.textContent = '置顶项目';
-    sidebarProjectList.appendChild(pinnedHeader);
-    pinned.forEach(p => sidebarProjectList.appendChild(createProjectItem(p, deps)));
-  }
-  if (unpinned.length > 0) {
-    const historyHeader = document.createElement('div');
-    historyHeader.className = 'sidebar-section-label';
-    historyHeader.textContent = '历史项目';
-    sidebarProjectList.appendChild(historyHeader);
-    unpinned.forEach(p => sidebarProjectList.appendChild(createProjectItem(p, deps)));
+    if (pinned.length > 0) {
+      const pinnedHeader = document.createElement('div');
+      pinnedHeader.className = 'sidebar-section-label';
+      pinnedHeader.textContent = '置顶项目';
+      sidebarProjectList.appendChild(pinnedHeader);
+      pinned.forEach(p => sidebarProjectList.appendChild(createProjectItem(p, deps)));
+    }
+    if (unpinned.length > 0) {
+      const historyHeader = document.createElement('div');
+      historyHeader.className = 'sidebar-section-label';
+      historyHeader.textContent = '历史项目';
+      sidebarProjectList.appendChild(historyHeader);
+      unpinned.forEach(p => sidebarProjectList.appendChild(createProjectItem(p, deps)));
+    }
+  } catch (error) {
+    console.error('Failed to populate sidebar projects:', error);
+    const errorMessage = document.createElement('p');
+    errorMessage.textContent = '加载项目失败，请刷新页面重试';
+    errorMessage.style.textAlign = 'center';
+    errorMessage.style.color = 'var(--error-color)';
+    errorMessage.style.margin = '20px 0';
+    sidebarProjectList.appendChild(errorMessage);
   }
 }
 
@@ -305,11 +423,11 @@ function createProjectItem(project: Project, deps: SidebarDeps): HTMLElement {
     projectItem.classList.add('active');
   }
 
-  nameSpan.addEventListener('click', () => {
+  nameSpan.addEventListener('click', async () => {
     document.querySelectorAll('.sidebar-project-item').forEach(item => item.classList.remove('active'));
     projectItem.classList.add('active');
     closeAllProjectMenus();
-    deps.showWorkspace(project.id);
+    await deps.showWorkspace(project.id);
   });
 
   menuBtn.addEventListener('click', (e) => {
@@ -320,44 +438,57 @@ function createProjectItem(project: Project, deps: SidebarDeps): HTMLElement {
 
     const menu = document.createElement('div');
     menu.className = 'sidebar-project-menu';
+    projectItem.appendChild(menu);
+    requestAnimationFrame(() => {
+      const list = projectItem.closest('.sidebar-project-list');
+      if (list) {
+        const listRect = list.getBoundingClientRect();
+        const itemRect = projectItem.getBoundingClientRect();
+        const spaceBelow = listRect.bottom - itemRect.bottom;
+        if (spaceBelow < 100) {
+          menu.style.bottom = '100%';
+          menu.style.top = 'auto';
+        }
+      }
+    });
 
     const pinToggle = document.createElement('div');
     pinToggle.className = 'sidebar-project-menu-item';
     pinToggle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L12 22"/><path d="M17 7L7 7"/><path d="M15 2L9 2"/><path d="M18 22L6 22"/></svg> ${project.pinned ? '取消置顶' : '置顶'}`;
-    pinToggle.addEventListener('click', (ev) => {
+    pinToggle.addEventListener('click', async (ev) => {
       ev.stopPropagation();
       project.pinned = !project.pinned;
-      saveProject(project);
+      await saveProject(project);
       closeAllProjectMenus();
-      populateSidebarProjects(deps);
+      await populateSidebarProjects(deps);
     });
 
     const deleteBtn = document.createElement('div');
     deleteBtn.className = 'sidebar-project-menu-item sidebar-project-menu-delete';
     deleteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> 删除`;
-    deleteBtn.addEventListener('click', (ev) => {
+    deleteBtn.addEventListener('click', async (ev) => {
       ev.stopPropagation();
       closeAllProjectMenus();
 
       const modal = document.getElementById('deleteConfirmModal');
-      const confirmDelete = () => {
-        deleteProject(project.id);
+      const confirmDelete = async () => {
+        await deleteProject(project.id);
         closeAllProjectMenus();
         if (currentPid === project.id) {
-          const remaining = listProjects();
+          const remaining = await listProjects();
           if (remaining.length > 0) {
-            deps.showWorkspace(remaining[0].id);
+            await Promise.resolve(deps.showWorkspace(remaining[0].id));
           } else {
-            const newProj = deps.createProject('未命名项目', 'light-ui');
-            if (newProj) deps.showWorkspace(newProj.id);
+            const newProj = await deps.createProject('未命名项目', 'light-ui');
+            if (newProj) await Promise.resolve(deps.showWorkspace(newProj.id));
           }
         }
-        populateSidebarProjects(deps);
+        await populateSidebarProjects(deps);
       };
 
       if (!modal) {
         if (confirm(`确定删除「${project.name}」吗？`)) {
-          confirmDelete();
+          await confirmDelete();
         }
         return;
       }
@@ -367,25 +498,28 @@ function createProjectItem(project: Project, deps: SidebarDeps): HTMLElement {
         messageEl.textContent = `确定删除「${project.name}」吗？此操作不可撤销。`;
       }
 
-      modal.classList.add('active');
-
       const cancelBtn = document.getElementById('deleteCancelBtn');
       const okBtn = document.getElementById('deleteOkBtn');
 
-      const cleanup = () => {
+      const handleCancel = () => {
         modal.classList.remove('active');
-        cancelBtn?.replaceWith(cancelBtn.cloneNode(false));
-        okBtn?.replaceWith(okBtn.cloneNode(false));
+        cancelBtn?.removeEventListener('click', handleCancel);
+        okBtn?.removeEventListener('click', handleOk);
       };
 
-      document.getElementById('deleteCancelBtn')?.addEventListener('click', () => {
-        cleanup();
-      });
+      const handleOk = async () => {
+        await confirmDelete();
+        modal.classList.remove('active');
+        cancelBtn?.removeEventListener('click', handleCancel);
+        okBtn?.removeEventListener('click', handleOk);
+      };
 
-      document.getElementById('deleteOkBtn')?.addEventListener('click', () => {
-        confirmDelete();
-        cleanup();
-      });
+      cancelBtn?.removeEventListener('click', handleCancel);
+      okBtn?.removeEventListener('click', handleOk);
+      cancelBtn?.addEventListener('click', handleCancel);
+      okBtn?.addEventListener('click', handleOk);
+
+      modal.classList.add('active');
     });
 
     menu.appendChild(pinToggle);

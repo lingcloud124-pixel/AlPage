@@ -10,7 +10,6 @@ output/
 .sisyphus/
 test-results/
 screenshots/
-web/node_modules/
 web/dist/
 web/screenshots/
 web/test-screenshots/
@@ -28,4 +27,5 @@ temp/
 tests/latest/
 tests/history/
 tests/fixtures/zips/
-OPENCODE-LOCAL-SETUP.md
+server/data/
+server/node_modules/

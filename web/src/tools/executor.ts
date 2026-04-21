@@ -218,7 +218,7 @@ export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
     let analysisUrl = imageUrl;
 
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+      const proxyUrl = `/api/theme/proxy-image?url=${encodeURIComponent(imageUrl)}`;
       try {
         const resp = await fetch(proxyUrl);
         if (resp.ok) {
@@ -471,15 +471,25 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           templateType,
         );
 
-        onProgress?.({ type: 'image_generating' });
+        onProgress?.({ type: 'image_generating', data: { current: 0, total: exploratoryDirections.length } });
 
-        const previewPromises = exploratoryDirections.map(async (direction) => {
+        const results: Array<{
+          url: string; style: string; prompt: string;
+          directionLabel: string; directionDescription: string;
+          planCheck: ReturnType<typeof checkThemeScenePlan>;
+          scenePlan: import('./theme-scene-planner').ThemeScenePlan;
+        }> = [];
+        for (let i = 0; i < exploratoryDirections.length; i++) {
+          const direction = exploratoryDirections[i];
           const planCheck = checkThemeScenePlan(direction.plan);
           const directed = buildDirectedPrompt(direction.plan);
           const finalPrompt = buildPromptWithPreferredHue(directed.prompt, preferredHueHint, templateType);
+
+          onProgress?.({ type: 'image_generating', data: { current: i + 1, total: exploratoryDirections.length, label: direction.directionLabel } });
+
           const result = await generateImage(finalPrompt);
           
-          return {
+          results.push({
             url: result.success && result.url ? result.url : '',
             style: direction.styleId,
             prompt: finalPrompt,
@@ -487,10 +497,14 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
             directionDescription: direction.directionDescription,
             planCheck,
             scenePlan: direction.plan,
-          };
-        });
-        
-        const results = await Promise.all(previewPromises);
+          });
+
+          onProgress?.({ type: 'image_generated', data: { current: i + 1, total: exploratoryDirections.length } });
+
+          if (i < exploratoryDirections.length - 1) {
+            await new Promise(r => setTimeout(r, 2000));
+          }
+        }
         const previews: ThemePreview[] = results.filter(r => r.url).map(r => ({
           url: r.url,
           style: r.style,

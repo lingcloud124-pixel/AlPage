@@ -256,6 +256,30 @@ export function enrichToolCallsWithColorHints(
     }
   }
 
+  if (!hasGeneratePipeline && /方向\s*[ABCabc·]/u.test(context.assistantMessage)) {
+    const templateType = inferTemplateTypeFromText(context.assistantMessage);
+    const prompt = buildGenerationPromptFromPlan({
+      userMessage: context.userMessage,
+      priorAssistantMessage: context.assistantMessage,
+      priorUserMessage: context.priorUserMessage,
+      templateType,
+    });
+    const primaryHint = inferPrimaryHintFromText(context.userMessage, templateType)
+      ?? inferPrimaryHintFromText(context.assistantMessage, templateType);
+
+    return [
+      {
+        tool: 'generate_theme_previews',
+        args: {
+          templateType,
+          prompt,
+          ...(primaryHint ? { primaryHint } : {}),
+        },
+      },
+      ...enriched,
+    ];
+  }
+
   return enriched;
 }
 
