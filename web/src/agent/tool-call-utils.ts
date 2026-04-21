@@ -183,7 +183,6 @@ export function enrichToolCallsWithColorHints(
 
       return {
         ...toolCall,
-        tool: 'generate_theme_previews',
         args: {
           ...toolCall.args,
           templateType,
@@ -204,7 +203,7 @@ export function enrichToolCallsWithColorHints(
 
     return [
       {
-        tool: 'generate_theme_previews',
+        tool: 'generate_theme_pipeline',
         args: {
           templateType,
           prompt: buildGenerationPromptFromPlan({
@@ -243,7 +242,7 @@ export function enrichToolCallsWithColorHints(
 
       return [
         {
-          tool: 'generate_theme_previews',
+          tool: 'generate_theme_pipeline',
           args: {
             templateType,
             prompt: directedPrompt,
@@ -269,7 +268,7 @@ export function enrichToolCallsWithColorHints(
 
     return [
       {
-        tool: 'generate_theme_previews',
+        tool: 'generate_theme_pipeline',
         args: {
           templateType,
           prompt,

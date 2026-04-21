@@ -56,7 +56,7 @@ describe('web theme tool call color hints', () => {
       assistantMessage: '好的，我开始为您生成。',
     });
 
-    expect(enriched[0].tool).toBe('generate_theme_previews');
+    expect(enriched[0].tool).toBe('generate_theme_pipeline');
     expect(enriched[0].args.primaryHint).toBe('red');
     expect(String(enriched[0].args.prompt)).toContain('2026');
     expect(String(enriched[0].args.prompt)).toContain('fireworks');

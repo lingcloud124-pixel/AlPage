@@ -3,6 +3,7 @@ import {
   chatCompletion,
   loadSettings,
   parseToolCallsFromContent,
+  type ChatCompletionResult,
 } from './agent/chat-client';
 import { authHeaders } from './auth';
 import { enrichToolCallsWithColorHints } from './agent/tool-call-utils';
@@ -683,10 +684,11 @@ export function setupChatInterface(deps: ChatDeps) {
     let thinkingText = '';
     let displayBuffer = '';
     let insideThinkTag = false;
+    let completionResult: ChatCompletionResult | null = null;
 
     try {
       let firstToken = true;
-      fullResponse = await chatCompletion(
+      completionResult = await chatCompletion(
         { messages, temperature: 0.7 },
         (token) => {
           if (contentEl) {
@@ -774,6 +776,8 @@ export function setupChatInterface(deps: ChatDeps) {
 
     conversationSendBtn?.removeEventListener('click', stopHandler);
 
+    fullResponse = completionResult?.content || fullResponse;
+
     if (contentEl) {
       contentEl.classList.remove('streaming');
       const cleaned = stripToolCallsFromDisplay(fullResponse);
@@ -792,7 +796,10 @@ export function setupChatInterface(deps: ChatDeps) {
     });
     saveChatHistory();
 
-    const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '')), {
+    let toolCalls = (completionResult?.toolCalls?.length ?? 0) > 0
+      ? completionResult!.toolCalls
+      : parseToolCallsFromContent(fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, ''));
+    toolCalls = enrichToolCallsWithColorHints(toolCalls, {
       userMessage,
       assistantMessage: fullResponse,
       priorAssistantMessage,
@@ -835,23 +842,12 @@ export function setupChatInterface(deps: ChatDeps) {
         const result = await executeTool(tc, (event) => {
           if (tc.tool === 'generate_theme_pipeline' || tc.tool === 'generate_theme_previews') {
             if (event.type === 'image_generating') {
-              const d = event.data as { current?: number; total?: number; label?: string } | undefined;
-              const cur = d?.current ?? 1;
-              const tot = d?.total ?? 3;
-              const label = d?.label ?? '';
-              showToolLoading(`🎨 正在生成预览图 ${cur}/${tot}${label ? ` · ${label}` : ''}，请稍候...`);
+              showToolLoading('🎨 正在生成主题背景图，请稍候...');
             } else if (event.type === 'image_generated') {
-              const d = event.data as { current?: number; total?: number } | undefined;
-              const cur = d?.current ?? 1;
-              const tot = d?.total ?? 3;
-              if (cur < tot) {
-                showToolLoading(`✅ 第 ${cur} 张完成，正在生成第 ${cur + 1} 张...`);
-              } else {
-                removeToolLoading();
-                addMessageToChat('ai', `🖼️ ${tot} 张预览图全部生成完毕，正在准备展示...`);
-                showToolLoading('📋 正在整理预览...');
-                saveChatHistory();
-              }
+              removeToolLoading();
+              addMessageToChat('ai', '🖼️ 背景图生成完毕，正在提取配色...');
+              showToolLoading('📋 正在提取配色并应用...');
+              saveChatHistory();
             }
           }
         });
