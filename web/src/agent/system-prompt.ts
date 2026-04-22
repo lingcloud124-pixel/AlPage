@@ -110,22 +110,26 @@ templateType: 节日/活动/常规用 "light-ui"，科技/深色风格用 "dark-
 
 ${isDarkUI ? 
 `**色调偏移公式**：
-- Primary = 背景主色调 H
-- Primary-hover = H + 26° (亮度≈85%，极浅色，L值≈214-216)
-- Header-font = H + 22° (亮度≈90%，浅色文字)
-- Alter-color = darken(primary, 15-20%)
-- Alter-color-hover-on = darken(primaryHover, 15%)
+- Primary = 用户图片提取出的主色
+- Primary-hover = H + 26°，提亮到浅暖 hover 区间（接近样例包 '#fdd0a3'）
+- Header-font = 固定浅暖色 '#FFE4CF'
+- Header-font-hover = '$primary-color'
+- Portal-header-bg-extend-color = 基于主色推导，比主色更亮、更纯一点
+- Alter-color = 与主色同 hue，略深一档
+- Alter-color-hover-on = 与主色同 hue、较低饱和度、亮度约 48%
 
 **亮度排序**（从深到浅，必须严格遵守）：
-alter(47-59) < primary(64-68) < alter-hover(97-100) < primary-hover(214-216) < header-font(180+)
+alter < primary < portal-header / alter-hover < primary-hover < header-font
 
 **关键约束（违反任何一条即不合格）**：
 1. sidebar-panel-bg 必须等于 header-font-color（同一色值）
-2. primary-hover 必须是极浅色（HSL亮度214-216）
-3. 文字使用浅色，背景使用深色
-4. 边框使用纯灰色 #EEEEEE
-5. login-bg-color 使用深色（主色或alter色）
-6. 所有色值必须是有效的6位十六进制格式 #RRGGBB`
+2. search-font-color = header-font-color
+3. search-input-border-color = primary-color
+4. search-placehold-font-color = primary-color
+5. sidebar-accordionpanel-header-bg = primary-color，sidebar-accordionpanel-header-bgon = alter-color
+6. 边框使用纯灰色 #EEEEEE
+7. 登录页专用强调色使用 '#f8c28c / #fdd0a3' 这组金橙色，不混入全局 vars
+8. 所有色值必须是有效的6位十六进制格式 #RRGGBB`
 :
 `**透明度计算**（白色混合法）：
 - primary-opacity-10 = blendWhite(primary, 0.1) = 主色10% + 白色90%

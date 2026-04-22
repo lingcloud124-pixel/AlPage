@@ -86,9 +86,28 @@ const ZHIPU_DEFAULTS: AISettings = {
   uiTheme: 'dark',
 };
 
+<<<<<<< Updated upstream
 function getDefaultExportRoot(): string {
   const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
   return home ? `${home}/Desktop/ThemeStudio-Exports` : '';
+=======
+function getNonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function getUiTheme(value: unknown): 'dark' | 'light' | undefined {
+  return value === 'dark' || value === 'light' ? value : undefined;
+}
+
+function normalizeEndpoint(endpoint: string, fallback: string): string {
+  const trimmed = endpoint.trim().replace(/\/+$/, '');
+  if (!trimmed) return fallback;
+  if (trimmed.startsWith('/')) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+>>>>>>> Stashed changes
 }
 
 export function getEffectiveExportRoot(settings?: { exportRoot?: string }): string {
@@ -118,9 +137,25 @@ export function loadSettings(): AISettings {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return { ...ZHIPU_DEFAULTS };
     const parsed = JSON.parse(raw) as Partial<AISettings>;
+<<<<<<< Updated upstream
     const settings = {
       ...ZHIPU_DEFAULTS,
       ...parsed,
+=======
+    const apiEndpoint = migrateEndpoint(getNonEmptyString(parsed.apiEndpoint), DEFAULT_CHAT_ENDPOINT) ?? ZHIPU_DEFAULTS.apiEndpoint;
+    const imageApiEndpoint = migrateEndpoint(getNonEmptyString(parsed.imageApiEndpoint), DEFAULT_IMAGE_ENDPOINT) ?? ZHIPU_DEFAULTS.imageApiEndpoint;
+    return {
+      ...ZHIPU_DEFAULTS,
+      ...parsed,
+      apiEndpoint,
+      apiKey: getNonEmptyString(parsed.apiKey) ?? ZHIPU_DEFAULTS.apiKey,
+      model: getNonEmptyString(parsed.model) ?? ZHIPU_DEFAULTS.model,
+      imageApiEndpoint,
+      imageApiKey: getNonEmptyString(parsed.imageApiKey) ?? ZHIPU_DEFAULTS.imageApiKey,
+      imageModel: getNonEmptyString(parsed.imageModel) ?? ZHIPU_DEFAULTS.imageModel,
+      exportRoot: getNonEmptyString(parsed.exportRoot) ?? ZHIPU_DEFAULTS.exportRoot,
+      uiTheme: getUiTheme(parsed.uiTheme) ?? ZHIPU_DEFAULTS.uiTheme,
+>>>>>>> Stashed changes
     };
 
     if (settings.model === 'qwen3.6-plus') {
@@ -145,7 +180,18 @@ export function loadSettings(): AISettings {
 }
 
 export function saveSettings(settings: AISettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  const normalized = {
+    ...settings,
+    apiEndpoint: getNonEmptyString(settings.apiEndpoint) ?? DEFAULT_CHAT_ENDPOINT,
+    apiKey: getNonEmptyString(settings.apiKey),
+    model: getNonEmptyString(settings.model) ?? ZHIPU_DEFAULTS.model,
+    imageApiEndpoint: getNonEmptyString(settings.imageApiEndpoint) ?? DEFAULT_IMAGE_ENDPOINT,
+    imageApiKey: getNonEmptyString(settings.imageApiKey),
+    imageModel: getNonEmptyString(settings.imageModel) ?? ZHIPU_DEFAULTS.imageModel,
+    exportRoot: getNonEmptyString(settings.exportRoot) ?? '',
+    uiTheme: getUiTheme(settings.uiTheme) ?? ZHIPU_DEFAULTS.uiTheme,
+  };
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(normalized));
 }
 
 export function getImageSettings(): { endpoint: string; apiKey: string; model: string } {

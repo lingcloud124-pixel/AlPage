@@ -9,7 +9,7 @@ import {
   populateSidebarProjects,
   closeAllProjectMenus,
 } from './project-manager';
-import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck } from './theme-engine';
+import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, resetThemeTargetStyles } from './theme-engine';
 import { loadAndRenderChatHistory, setupChatInterface, showDefaultChatView } from './chat-manager';
 import { setupMainActions, showNotification } from './package-manager';
 import {
@@ -23,6 +23,7 @@ import {
   setupTabSwitching,
   setupResizableDivider,
   setupPreviewPanel,
+  applyStoredPreviewTemplateOverride,
   setupCollapsibleColorPanel,
   setupSettingsDialog,
   setupProjectActionMenu,
@@ -48,7 +49,12 @@ async function showWorkspace(projectId: string): Promise<void> {
   setCurrentProjectId(projectId);
 
   const previewPanel = document.getElementById('previewPanel');
-  if (previewPanel) previewPanel.removeAttribute('style');
+  if (previewPanel) {
+    previewPanel.style.removeProperty('flex');
+    previewPanel.style.removeProperty('width');
+    previewPanel.style.removeProperty('min-width');
+  }
+  resetThemeTargetStyles();
 
   const project = await loadProject(projectId);
   if (project) {
@@ -71,6 +77,7 @@ async function showWorkspace(projectId: string): Promise<void> {
         setThemeVar('--theme-header-bg-image', `url('${project.headerBgImageUrl}')`);
       }
       syncColorEditorFromTheme();
+      applyStoredPreviewTemplateOverride();
       expandPreview();
       syncWorkbenchLayoutForActiveTab(true, 'mainPageTab');
       document.getElementById('loginTab')?.classList.remove('active-tab');
@@ -79,13 +86,20 @@ async function showWorkspace(projectId: string): Promise<void> {
       document.getElementById('mainPage')?.classList.add('active-preview');
     } else {
       syncColorEditorFromTheme();
+      applyStoredPreviewTemplateOverride();
       collapsePreview();
       syncWorkbenchLayoutForActiveTab(false, 'loginTab');
       showDefaultChatView();
     }
   }
 
+<<<<<<< Updated upstream
   await loadAndRenderChatHistory(messagesContainer);
+=======
+  applyStoredPreviewTemplateOverride();
+
+  loadAndRenderChatHistory(messagesContainer);
+>>>>>>> Stashed changes
 }
 
 function runHealthCheck() {

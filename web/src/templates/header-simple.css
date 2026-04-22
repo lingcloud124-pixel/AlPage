@@ -1,7 +1,7 @@
 .template-header-simple {
   width: 1920px;
   height: 60px;
-  background-color: var(--primary-color);
+  background-color: var(--portal-header-bg-extend-color, var(--primary-color));
   background-image: var(--theme-header-bg-image, none);
   background-size: cover;
   background-position: center;
@@ -10,7 +10,7 @@
   justify-content: space-between;
   padding: 0 20px;
   box-sizing: border-box;
-  color: white;
+  color: var(--header-font-color, #333333);
   position: relative;
   overflow: hidden;
 }
@@ -44,19 +44,19 @@
 }
 
 .nav-item {
-  color: white;
+  color: inherit;
   text-decoration: none;
   padding: 6px 0;
-  transition: opacity 0.2s ease;
+  transition: color 0.2s ease;
   position: relative;
 }
 
 .nav-item:hover {
-  opacity: 0.8;
+  color: var(--header-font-color-hover, var(--primary-color));
 }
 
 .nav-item.active {
-  font-weight: bold;
+  font-weight: 400;
 }
 
 .nav-item.active::after {
@@ -65,8 +65,8 @@
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 2px;
-  background-color: white;
+  height: 1px;
+  background-color: var(--primary-color);
 }
 
 .header-simple-search,
@@ -90,7 +90,8 @@
 }
 
 .icon-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: color-mix(in srgb, var(--header-font-color) 12%, transparent);
+  color: var(--header-font-color-hover, var(--primary-color));
 }
 
 .header-simple-avatar {
@@ -108,4 +109,12 @@
 
 .username {
   font-size: 14px;
+}
+
+.template-header-simple svg [fill="white"] {
+  fill: currentColor;
+}
+
+.template-header-simple svg [stroke="white"] {
+  stroke: currentColor;
 }

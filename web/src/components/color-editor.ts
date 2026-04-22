@@ -59,6 +59,7 @@ const LINKED_LIGHT_BG_VARS = [
 ] as const;
 
 function applyLinkedLightBgVars(target: HTMLElement, varName: string, value: string): boolean {
+  if (getActiveTemplateType() === 'dark-ui') return false;
   if (!LINKED_LIGHT_BG_VARS.includes(varName as typeof LINKED_LIGHT_BG_VARS[number])) return false;
   for (const linkedVar of LINKED_LIGHT_BG_VARS) {
     target.style.setProperty(linkedVar, value);

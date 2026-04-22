@@ -562,3 +562,108 @@
     display: none;
   }
 }
+
+#previewPanel[data-template-type="dark-ui"] .template-login {
+  --preview-login-panel: color-mix(in srgb, var(--login-bg-color, var(--alter-color)) 50%, transparent);
+  --preview-login-surface: color-mix(in srgb, var(--login-bg-color, var(--alter-color)) 86%, #000000 14%);
+  --preview-login-border: var(--login-accent-color, #f8c28c);
+  --preview-login-text: var(--login-accent-color, #f8c28c);
+  --preview-login-text-soft: color-mix(in srgb, var(--login-accent-color, #f8c28c) 78%, transparent);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-panel-wrapper {
+  background-color: var(--preview-login-panel);
+  backdrop-filter: blur(14px);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-topbar,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-header,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-tab,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-input,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-input ~ label,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-forgot,
+#previewPanel[data-template-type="dark-ui"] .template-login .qr-text,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-copyright,
+#previewPanel[data-template-type="dark-ui"] .template-login .verification-btn,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-lang-option {
+  color: var(--preview-login-text);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-input,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-captcha-img {
+  border-bottom-color: var(--preview-login-border);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-tab-line,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-tab-indicator {
+  background-color: var(--preview-login-border);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-tab.active,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-input:focus ~ label,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-input.filled ~ label,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-input:not(:placeholder-shown) ~ label {
+  color: var(--login-accent-color, #f8c28c);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-input:focus,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-input.focused,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-captcha-img,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-captcha-img:hover {
+  border-bottom-color: var(--login-accent-color, #f8c28c);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-lang-trigger:hover {
+  background-color: color-mix(in srgb, var(--login-accent-color, #f8c28c) 12%, transparent);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-lang-dropdown {
+  background: var(--preview-login-surface);
+  border-color: var(--preview-login-border);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.3);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-lang-option:hover,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-lang-option.active {
+  background-color: color-mix(in srgb, var(--login-accent-color, #f8c28c) 16%, transparent);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-submit-btn,
+#previewPanel[data-template-type="dark-ui"] .template-login .verification-btn {
+  background-color: var(--login-accent-color, #f8c28c);
+  color: var(--primary-color);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-submit-btn:hover,
+#previewPanel[data-template-type="dark-ui"] .template-login .verification-btn:hover {
+  background-color: var(--login-accent-hover-color, #fdd0a3);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .button-spinner {
+  border-color: color-mix(in srgb, var(--primary-color) 28%, transparent);
+  border-top-color: var(--primary-color);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .qr-placeholder {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--login-accent-color, #f8c28c) 18%, transparent),
+    color-mix(in srgb, var(--login-accent-color, #f8c28c) 32%, transparent)
+  );
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-captcha-img,
+#previewPanel[data-template-type="dark-ui"] .template-login .captcha-text,
+#previewPanel[data-template-type="dark-ui"] .template-login .qr-footer {
+  color: var(--preview-login-text-soft);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-eye-icon {
+  color: var(--preview-login-text-soft);
+}
+
+#previewPanel[data-template-type="dark-ui"] .template-login .login-eye-icon:hover,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-captcha-img:hover,
+#previewPanel[data-template-type="dark-ui"] .template-login .login-forgot:hover {
+  color: var(--login-accent-hover-color, #fdd0a3);
+}

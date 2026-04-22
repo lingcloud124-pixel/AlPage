@@ -44,12 +44,20 @@ describe('global colors builder', () => {
 
     expect(result.headerFontColor).toBe('#FEDECC');
     expect(result.portalHeaderSimpleBgExtendColor).toBe('$portal-header-bg-extend-color');
-    expect(result.portalHeaderSimpleFontColorTop).toBe('#FFE4CF');
+    expect(result.portalHeaderSimpleFontColorTop).toBe('#FEDECC');
     expect(result.portalHeaderSimplePureExtendColor).toBe('#A7160B');
     expect(result.sidebarPanelBg).toBe('#FEDECC');
     expect(result.sidebarAccordionPanelHeaderBg).toBe('#A7160B');
     expect(result.searchFontColor).toBe('#FEDECC');
-    expect(result.loginPrimaryColor).toBe('#FFD3B2');
+    expect(result.portalHeaderBgExtendColor).toBe('#A7160B');
+    expect(result.loginBgColor).toBe('#8A1209');
+    expect(result.loginPrimaryColor).toBe('#f8c28c');
+    expect(result.loginPrimaryHover).toBe('#fdd0a3');
+    expect(result.sidebarColor).toBe('#333333');
+    expect(result.sidebarIconColor).toBe('#DCB496');
+    expect(result.sidebarAccordionPanelFont).toBe('#333333');
+    expect(result.searchInputBorderColor).toBe('#A7160B');
+    expect(result.searchPlaceholdFontColor).toBe('#A7160B');
     expect(result.singleHeaderFontColor).toBe('$header-font-color');
     expect(result.tlayoutHeaderBgExtendColor).toBe('$portal-header-bg-extend-color');
   });

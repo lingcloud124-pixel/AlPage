@@ -10,7 +10,8 @@ import { getCurrentProjectId, loadProject, saveProject, deleteProject, listProje
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, loadDefaultTemplates } from './theme-engine';
 import { loadAndRenderChatHistory, setupChatInterface } from './chat-manager';
 import { showNotification, setupMainActions } from './package-manager';
-import { initializeColorEditor } from './components/color-editor';
+import { initializeColorEditor, syncColorEditorFromTheme } from './components/color-editor';
+import { DEFAULT_DARK_UI_PRIMARY, DEFAULT_LIGHT_UI_PRIMARY, deriveColorsFromPrimary } from './theme/color-utils';
 import type { AISettings } from './types';
 import { normalizeExportRoot } from './export/export-paths';
 import { pickDirectoryViaBridge } from './export/export-bridge';
@@ -18,6 +19,7 @@ import { getEffectiveExportRoot } from './agent/chat-client';
 import { getUser, login } from './auth';
 
 let previewTemplatesLoaded = false;
+const PREVIEW_TEMPLATE_OVERRIDE_KEY = 'theme-studio-preview-template-override';
 
 export function applyUiTheme(mode: 'dark' | 'light' = 'dark') {
   document.body.dataset.uiTheme = mode;
@@ -88,6 +90,90 @@ export function expandPreview() {
     previewTemplatesLoaded = true;
   }
   requestAnimationFrame(() => (window as any).resizePreview?.());
+}
+
+function normalizePreviewTemplateType(value: string | null | undefined): 'light-ui' | 'dark-ui' | null {
+  if (value === 'light-ui' || value === 'dark-ui') return value;
+  return null;
+}
+
+function getPreviewTemplateModeBadge(): HTMLElement | null {
+  return document.getElementById('templateModeBadge');
+}
+
+function getPreviewTemplateButtons(): HTMLButtonElement[] {
+  return [
+    document.getElementById('forceLightUiBtn') as HTMLButtonElement | null,
+    document.getElementById('forceDarkUiBtn') as HTMLButtonElement | null,
+  ].filter((button): button is HTMLButtonElement => !!button);
+}
+
+function updatePreviewTemplateControls(templateType: 'light-ui' | 'dark-ui'): void {
+  const badge = getPreviewTemplateModeBadge();
+  if (badge) {
+    badge.textContent = templateType === 'dark-ui' ? '当前预览: Dark-UI' : '当前预览: Light-UI';
+    badge.dataset.templateType = templateType;
+  }
+
+  for (const button of getPreviewTemplateButtons()) {
+    button.dataset.active = String(button.dataset.templateType === templateType);
+  }
+}
+
+export function applyPreviewTemplateMode(
+  templateType: 'light-ui' | 'dark-ui',
+  options: { persist?: boolean; rederive?: boolean; expand?: boolean } = {},
+): void {
+  const { persist = true, rederive = true, expand = true } = options;
+  const projectId = getCurrentProjectId();
+  const project = projectId ? loadProject(projectId) : null;
+  const fallbackPrimary = templateType === 'dark-ui' ? DEFAULT_DARK_UI_PRIMARY : DEFAULT_LIGHT_UI_PRIMARY;
+  const target = getThemeTarget();
+  const currentPrimary = project?.colors?.['primary-color']
+    ?? project?.colors?.['--primary-color']
+    ?? getComputedStyle(target).getPropertyValue('--primary-color').trim()
+    ?? fallbackPrimary;
+  const primary = /^#[0-9a-fA-F]{6}$/.test(currentPrimary) ? currentPrimary : fallbackPrimary;
+
+  applyTemplateSpecificThemeVars(templateType);
+
+  if (rederive) {
+    const colors = deriveColorsFromPrimary(primary, templateType);
+    for (const [key, value] of Object.entries(colors)) {
+      setThemeVar(`--${key}`, value);
+    }
+
+    if (project) {
+      project.templateType = templateType;
+      project.colors = { ...project.colors, ...colors };
+      saveProject(project);
+    }
+  } else if (project && project.templateType !== templateType) {
+    project.templateType = templateType;
+    saveProject(project);
+  }
+
+  if (persist) {
+    localStorage.setItem(PREVIEW_TEMPLATE_OVERRIDE_KEY, templateType);
+  }
+
+  updatePreviewTemplateControls(templateType);
+  syncColorEditorFromTheme();
+  if (expand) {
+    expandPreview();
+  }
+}
+
+export function applyStoredPreviewTemplateOverride(): void {
+  const override = normalizePreviewTemplateType(localStorage.getItem(PREVIEW_TEMPLATE_OVERRIDE_KEY));
+  if (override) {
+    applyPreviewTemplateMode(override, { persist: false, rederive: true, expand: false });
+    return;
+  }
+
+  const target = getThemeTarget();
+  const templateType = normalizePreviewTemplateType(target.getAttribute('data-template-type')) ?? 'light-ui';
+  updatePreviewTemplateControls(templateType);
 }
 
 export function collapsePreview() {
@@ -170,6 +256,14 @@ export function setupPreviewPanel() {
   if (!previewPanel) return;
   const closeBtn = previewPanel.querySelector('.preview-close-btn');
   if (closeBtn) closeBtn.addEventListener('click', collapsePreview);
+  const forceLightBtn = document.getElementById('forceLightUiBtn');
+  const forceDarkBtn = document.getElementById('forceDarkUiBtn');
+  forceLightBtn?.addEventListener('click', () => applyPreviewTemplateMode('light-ui'));
+  forceDarkBtn?.addEventListener('click', () => applyPreviewTemplateMode('dark-ui'));
+  const activeTemplate = normalizePreviewTemplateType(previewPanel.getAttribute('data-template-type')) ?? 'light-ui';
+  updatePreviewTemplateControls(activeTemplate);
+  (window as any).__forceLightUiPreview = () => applyPreviewTemplateMode('light-ui');
+  (window as any).__forceDarkUiPreview = () => applyPreviewTemplateMode('dark-ui');
 }
 
 async function loadHeaderIntoMainPage(headerId: string) {

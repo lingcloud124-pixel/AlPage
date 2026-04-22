@@ -12,6 +12,8 @@ const LINKED_LIGHT_BG_VARS = [
 ] as const;
 
 function applyLinkedLightBgVars(target: HTMLElement, name: string, value: string): boolean {
+  const templateType = target.getAttribute('data-template-type');
+  if (templateType === 'dark-ui') return false;
   if (!LINKED_LIGHT_BG_VARS.includes(name as typeof LINKED_LIGHT_BG_VARS[number])) return false;
   for (const varName of LINKED_LIGHT_BG_VARS) {
     target.style.setProperty(varName, value);
@@ -35,6 +37,7 @@ export function applyThemeImageAssignments(templateId: string, imageUrl: string)
 
 export function applyTemplateSpecificThemeVars(templateType: 'light-ui' | 'dark-ui'): void {
   const target = getThemeTarget();
+  target.setAttribute('data-template-type', templateType);
   target.style.removeProperty('--login-accent-color');
   target.style.removeProperty('--login-accent-hover-color');
   for (const [name, value] of Object.entries(getTemplateSpecificThemeVars(templateType))) {
@@ -49,15 +52,42 @@ export function getThemeTarget(): HTMLElement {
 const COLOR_VAR_NAMES = [
   'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
   'primary-color-opacity-10', 'primary-color-opacity-20', 'primary-color-opacity-30',
-  'header-font-color', 'auxiliary-gray', 'auxiliary-gray-dark',
+  'header-font-color', 'header-font-color-hover', 'auxiliary-gray', 'auxiliary-gray-dark',
   'body-bg-color', 'portal-header-bg-extend-color', 'portal-header-complex-bg-extend-color',
   'login-bg-color', 'panel-bg-color',
-  'sidebar-panel-bg', 'sidebar-color', 'sidebar-icon-color',
+  'sidebar-panel-bg', 'sidebar-color', 'sidebar-icon-color', 'sidebar-icon-color-hover',
+  'sidebar-accordionpanel-font', 'sidebar-accordionpanel-header-bg', 'sidebar-accordionpanel-header-bgon',
+  'sidebar-item-current-color', 'sidebar-item-current-hex',
+  'search-font-color', 'search-input-border-color', 'search-placehold-font-color',
   'border-color', 'border-icon-color',
   'gradient-start', 'gradient-mid',
 ];
 
+<<<<<<< Updated upstream
 export async function saveCurrentColorsToProject(): Promise<void> {
+=======
+const IMAGE_VAR_NAMES = [
+  'theme-login-bg-image',
+  'theme-header-bg-image',
+  'theme-sidebar-bg-image',
+  'theme-desktop-feature-image',
+  'theme-desktop-accent-image',
+] as const;
+
+export function resetThemeTargetStyles(): void {
+  const target = getThemeTarget();
+  for (const v of COLOR_VAR_NAMES) {
+    target.style.removeProperty(`--${v}`);
+  }
+  for (const v of IMAGE_VAR_NAMES) {
+    target.style.removeProperty(`--${v}`);
+  }
+  target.style.removeProperty('--login-accent-color');
+  target.style.removeProperty('--login-accent-hover-color');
+}
+
+export function saveCurrentColorsToProject(): void {
+>>>>>>> Stashed changes
   const pid = getCurrentProjectId();
   if (!pid) return;
   const project = await loadProject(pid);

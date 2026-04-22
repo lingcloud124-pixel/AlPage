@@ -17,9 +17,16 @@ const proxy = {
 
 export default defineConfig({
   root: '.',
+<<<<<<< Updated upstream
     plugins: [tailwindcss()],
+=======
+  plugins: [tailwindcss(), imageProxyPlugin()],
+>>>>>>> Stashed changes
   server: {
+    host: '0.0.0.0',
     port: 5173,
+    strictPort: true,
+    allowedHosts: ['localhost', '127.0.0.1'],
     open: true,
     fs: {
       strict: false,
@@ -28,7 +35,10 @@ export default defineConfig({
     proxy,
   },
   preview: {
+    host: '0.0.0.0',
     port: 4173,
+    strictPort: true,
+    allowedHosts: ['localhost', '127.0.0.1'],
     proxy,
   },
   build: {
