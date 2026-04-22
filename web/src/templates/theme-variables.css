@@ -26,7 +26,6 @@
    * 文字色系 (4)
    * ======================== */
   --header-font-color: #333333;
-  --header-font-color-hover: var(--primary-color);
   --auxiliary-gray: #999999;
   --auxiliary-gray-dark: #666666;
   --white: #FFFFFF;
@@ -47,19 +46,6 @@
   --sidebar-panel-bg: #FBFCF2;
   --sidebar-color: #333333;
   --sidebar-icon-color: #2C615C;
-  --sidebar-icon-color-hover: #FFFFFF;
-  --sidebar-accordionpanel-font: #333333;
-  --sidebar-accordionpanel-header-bg: var(--primary-color);
-  --sidebar-accordionpanel-header-bgon: var(--alter-color);
-  --sidebar-item-current-color: #FFFFFF;
-  --sidebar-item-current-hex: var(--alter-color);
-
-  /* ========================
-   * 搜索 (3)
-   * ======================== */
-  --search-font-color: #333333;
-  --search-input-border-color: #333333;
-  --search-placehold-font-color: #2C615C;
 
   /* ========================
    * 边框 (2)

@@ -168,10 +168,10 @@
   height: 34px;
   box-sizing: border-box;
   padding: 0 8px;
-  border: 1px solid var(--search-input-border-color, var(--primary-color));
+  border: 1px solid var(--primary-color);
   border-radius: 4px;
   background: transparent;
-  color: var(--search-font-color, var(--primary-color));
+  color: var(--primary-color);
   font-size: 16px;
   font-family: var(--font-family);
 }
@@ -184,14 +184,14 @@
   background: transparent;
   border: none;
   outline: none;
-  color: var(--search-font-color, var(--primary-color));
+  color: var(--primary-color);
   font-size: 13px;
   width: 100%;
   font-family: var(--font-family);
 }
 
 .search-input::placeholder {
-  color: color-mix(in srgb, var(--search-placehold-font-color, var(--primary-color)) 72%, transparent);
+  color: color-mix(in srgb, var(--primary-color) 72%, transparent);
 }
 
 .header-divider {
@@ -1426,126 +1426,4 @@
   .featured-story-body {
     grid-template-columns: 1fr;
   }
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop {
-  --preview-shell-bg: var(--body-bg-color, #F8F8F8);
-  --preview-surface: var(--panel-bg-color, #FFFFFF);
-  --preview-surface-border: var(--border-color, #EEEEEE);
-  --preview-content-text: var(--sidebar-color, #333333);
-  --preview-muted-text: var(--auxiliary-gray-dark, #666666);
-  --preview-card-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .desktop-wrapper {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--portal-header-bg-extend-color) 8%, var(--preview-shell-bg)) 0%,
-      var(--preview-shell-bg) 180px
-    ),
-    var(--preview-shell-bg);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .desktop-content,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .desktop-calendar-panel,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .desktop-announcement-panel,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .desktop-shortcut-panel {
-  background-color: transparent;
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .quick-links-bar,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .widget-card,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .multitab-todo-shell,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .multitab-todo-card,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .calendar-card,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .schedule-card,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .news-card,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .data-card {
-  background: var(--preview-surface);
-  border-color: var(--preview-surface-border);
-  box-shadow: var(--preview-card-shadow);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .multitab-todo-tab {
-  background: color-mix(in srgb, var(--primary-color-opacity-20) 90%, white 10%);
-  color: var(--preview-content-text);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .multitab-todo-tab:not(.is-active)::after {
-  background: color-mix(in srgb, var(--border-color, #EEEEEE) 100%, transparent);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .header-search {
-  border-color: var(--search-input-border-color, var(--header-font-color));
-  background: color-mix(in srgb, var(--portal-header-bg-extend-color) 16%, transparent);
-  color: var(--search-font-color, var(--header-font-color));
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .nav-link:hover,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .header-icon-btn:hover {
-  color: var(--header-font-color-hover, var(--primary-color));
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .search-input {
-  color: var(--search-font-color, var(--header-font-color, #FFE4CF));
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .search-input::placeholder {
-  color: var(--search-placehold-font-color, var(--header-font-color, #FFE4CF));
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .desktop-sidebar {
-  background: var(--sidebar-panel-bg, #FFE4CF);
-  border-right-color: color-mix(in srgb, var(--border-color, #EEEEEE) 100%, transparent);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .sidebar-theme-image {
-  opacity: 0.12;
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .sidebar-primary-item {
-  background: var(--sidebar-accordionpanel-header-bg, var(--primary-color));
-  color: var(--sidebar-item-current-color, #FFFFFF);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .sidebar-secondary-item.active {
-  background: var(--sidebar-item-current-hex, var(--alter-color));
-  color: var(--sidebar-item-current-color, #FFFFFF);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .sidebar-secondary-item.active::after {
-  background: color-mix(in srgb, var(--sidebar-item-current-color, #FFFFFF) 18%, transparent);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .sidebar-secondary-item,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .sidebar-current-title,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .quick-link-label,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .widget-title,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .multitab-todo-summary,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .tab-btn,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .event-time,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .event-title {
-  color: var(--preview-content-text);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .view-more-link {
-  color: var(--primary-color);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .multitab-todo-item-meta,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .calendar-subtitle,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .schedule-subtitle,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .news-meta,
-#previewPanel[data-template-type="dark-ui"] .template-desktop .data-card-caption {
-  color: var(--preview-muted-text);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .event-title {
-  background: color-mix(in srgb, var(--primary-color-opacity-10) 100%, white 0%);
-}
-
-#previewPanel[data-template-type="dark-ui"] .template-desktop .header-icon-btn {
-  color: color-mix(in srgb, var(--header-font-color) 80%, transparent);
-  opacity: 0.92;
 }

@@ -4089,24 +4089,6 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
   align-items: center;
 }
 
-.preview-template-badge {
-  display: inline-flex;
-  align-items: center;
-  height: 30px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border-subtle);
-  background: var(--surface-2);
-  color: var(--text-secondary);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.preview-template-badge[data-template-type="dark-ui"] {
-  background: color-mix(in srgb, var(--primary-color) 16%, var(--surface-2));
-  color: var(--header-font-color, var(--text-primary));
-}
-
 .project-name {
   font-size: 13px;
   font-weight: 500;
@@ -4176,21 +4158,9 @@ body[data-ui-theme="light"] .topbar-action-btn {
   background-color: var(--surface-1);
 }
 
-.topbar-template-btn[data-active="true"] {
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
-  color: #fff;
-}
-
 .topbar-action-btn:hover {
   background-color: var(--border-strong);
   color: var(--text-primary);
-}
-
-.topbar-template-btn[data-active="true"]:hover {
-  background-color: var(--alter-color);
-  border-color: var(--alter-color);
-  color: #fff;
 }
 
 /* Project Switcher in Chat Panel */

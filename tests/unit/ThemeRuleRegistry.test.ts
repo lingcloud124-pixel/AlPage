@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
-  DARK_UI_PALETTE_RULES,
   DARK_UI_SPECIAL_COLORS,
   HEADER_TYPE_RELATIONS,
   PEN_EXPORT_RULES,
@@ -16,9 +15,6 @@ describe('theme rule registry', () => {
     expect(DARK_UI_SPECIAL_COLORS.login.primaryText).toBe('#f8c28c');
     expect(DARK_UI_SPECIAL_COLORS.login.buttonBackground).toBe('#f8c28c');
     expect(DARK_UI_SPECIAL_COLORS.login.buttonHoverBackground).toBe('#fdd0a3');
-    expect(DARK_UI_PALETTE_RULES.fixed.sidebarColor).toBe('#333333');
-    expect(DARK_UI_PALETTE_RULES.fixed.sidebarIconColor).toBe('#DCB496');
-    expect(DARK_UI_PALETTE_RULES.relationships.sidebarPanelBg).toBe('header-font-color');
   });
 
   test('includes login background export rules for light-ui and dark-ui templates', () => {
@@ -43,13 +39,12 @@ describe('theme rule registry', () => {
     expect(HEADER_TYPE_RELATIONS['light-ui'].singleMenu.pencilAvailable).toBe(false);
   });
 
-  test('header relations and dark-ui palette config are sourced from the shared json config', () => {
+  test('header relations and dark-ui special colors are sourced from the shared json config', () => {
     const config = JSON.parse(
       fs.readFileSync(path.join(projectRoot, 'config', 'theme-relations.json'), 'utf8'),
     );
 
     expect(DARK_UI_SPECIAL_COLORS).toStrictEqual(config.darkUiSpecialColors);
-    expect(DARK_UI_PALETTE_RULES).toStrictEqual(config.darkUiPaletteRules);
     expect(HEADER_TYPE_RELATIONS).toStrictEqual(config.headerTypeRelations);
   });
 });

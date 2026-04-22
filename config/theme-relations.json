@@ -6,33 +6,6 @@
       "buttonHoverBackground": "#fdd0a3"
     }
   },
-  "darkUiPaletteRules": {
-    "fixed": {
-      "headerFontColor": "#FFE4CF",
-      "headerFontColorHover": "#A7160B",
-      "sidebarColor": "#333333",
-      "sidebarIconColor": "#DCB496",
-      "sidebarAccordionPanelFont": "#333333",
-      "sidebarAccordionPanelHeaderBg": "#A7160B",
-      "auxiliaryGray": "#999999",
-      "auxiliaryGrayDark": "#666666",
-      "bodyBgColor": "#F8F8F8",
-      "panelBgColor": "#FFFFFF",
-      "borderColor": "#EEEEEE",
-      "borderIconColor": "#EEEEEE"
-    },
-    "relationships": {
-      "portalHeaderBgExtendColor": "primary-color",
-      "portalHeaderComplexBgExtendColor": "primary-color",
-      "sidebarPanelBg": "header-font-color",
-      "loginBgColor": "alter-color",
-      "gradientStart": "primary-color",
-      "gradientMid": "primary-color-hover",
-      "searchFontColor": "header-font-color",
-      "searchInputBorderColor": "primary-color",
-      "searchPlaceholdFontColor": "primary-color"
-    }
-  },
   "headerTypeRelations": {
     "light-ui": {
       "default": {

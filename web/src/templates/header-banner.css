@@ -19,7 +19,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: var(--theme-header-bg-image, var(--portal-header-complex-bg-extend-color, var(--portal-header-bg-extend-color, var(--primary-color))));
+  background: var(--theme-header-bg-image, var(--primary-color));
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -32,11 +32,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--gradient-mid) 8%, transparent) 0%,
-    color-mix(in srgb, var(--gradient-start) 36%, transparent) 100%
-  );
+  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.4) 100%);
   z-index: 2;
 }
 
@@ -61,22 +57,22 @@
 .banner-title {
   font-size: 36px;
   font-weight: bold;
-  color: var(--header-font-color, #333333);
+  color: white;
   margin: 0;
 }
 
 .banner-subtitle {
   font-size: 16px;
-  color: color-mix(in srgb, var(--header-font-color, #333333) 78%, transparent);
+  color: rgba(255, 255, 255, 0.8);
   margin: 0;
 }
 
 .banner-button {
   padding: 12px 24px;
-  border: 1px solid var(--header-font-color, #333333);
+  border: 2px solid white;
   border-radius: 6px;
   background: transparent;
-  color: var(--header-font-color, #333333);
+  color: var(--primary-color);
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
@@ -85,8 +81,8 @@
 }
 
 .banner-button:hover {
-  background-color: var(--header-font-color, #333333);
-  color: var(--primary-color);
+  background-color: white;
+  color: var(--text-dark-color);
 }
 
 .header-user-section {
@@ -112,7 +108,7 @@
 .username {
   font-size: 16px;
   font-weight: bold;
-  color: var(--header-font-color, #333333);
+  color: white;
 }
 
 .icon-btn {
@@ -126,14 +122,8 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  color: var(--header-font-color, #333333);
 }
 
 .icon-btn:hover {
-  background-color: color-mix(in srgb, var(--header-font-color) 12%, transparent);
-  color: var(--header-font-color-hover, var(--primary-color));
-}
-
-.template-header-banner svg [stroke="white"] {
-  stroke: currentColor;
+  background-color: rgba(255, 255, 255, 0.2);
 }

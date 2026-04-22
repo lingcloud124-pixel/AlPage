@@ -1,5 +1,3 @@
-import themeRelations from '../../../config/theme-relations.json';
-
 /**
  * 品牌色推导工具
  * 输入一个 #hex 主色，自动推导出全套 CSS 变量色值
@@ -222,7 +220,6 @@ export interface DerivedColors {
   'primary-color-opacity-20': string;
   'primary-color-opacity-30': string;
   'header-font-color': string;
-  'header-font-color-hover': string;
   'auxiliary-gray': string;
   'auxiliary-gray-dark': string;
   'body-bg-color': string;
@@ -233,15 +230,6 @@ export interface DerivedColors {
   'sidebar-panel-bg': string;
   'sidebar-color': string;
   'sidebar-icon-color': string;
-  'sidebar-icon-color-hover': string;
-  'sidebar-accordionpanel-font': string;
-  'sidebar-accordionpanel-header-bg': string;
-  'sidebar-accordionpanel-header-bgon': string;
-  'sidebar-item-current-color': string;
-  'sidebar-item-current-hex': string;
-  'search-font-color': string;
-  'search-input-border-color': string;
-  'search-placehold-font-color': string;
   'border-color': string;
   'border-icon-color': string;
   'gradient-start': string;
@@ -280,9 +268,6 @@ export interface ThemeGenerationReport {
 }
 
 export const DEFAULT_LIGHT_UI_PRIMARY = '#2C615C';
-export const DEFAULT_DARK_UI_PRIMARY = '#A7160B';
-
-const DARK_UI_PALETTE_RULES = themeRelations.darkUiPaletteRules;
 
 function getHueDistance(a: number, b: number): number {
   const delta = Math.abs(a - b) % 360;
@@ -583,7 +568,6 @@ function deriveLightUiColors(primaryHex: string): DerivedColors {
   
   // 4. 固定灰色系
   const headerFontColor = '#333333';
-  const headerFontColorHover = primaryColor;
   const auxiliaryGray = '#999999';
   const auxiliaryGrayDark = '#666666';
   
@@ -602,15 +586,6 @@ function deriveLightUiColors(primaryHex: string): DerivedColors {
   // 8. sidebar 相关
   const sidebarColor = '#333333';
   const sidebarIconColor = primaryColor;
-  const sidebarIconColorHover = '#FFFFFF';
-  const sidebarAccordionPanelFont = '#333333';
-  const sidebarAccordionPanelHeaderBg = primaryColor;
-  const sidebarAccordionPanelHeaderBgOn = alterColor;
-  const sidebarItemCurrentColor = '#FFFFFF';
-  const sidebarItemCurrentHex = alterColor;
-  const searchFontColor = headerFontColor;
-  const searchInputBorderColor = headerFontColor;
-  const searchPlaceholdFontColor = primaryColor;
   
   // 9. 边框色
   const borderColor = '#E5E7EB';
@@ -629,7 +604,6 @@ function deriveLightUiColors(primaryHex: string): DerivedColors {
     'primary-color-opacity-20': primaryColorOpacity20,
     'primary-color-opacity-30': primaryColorOpacity30,
     'header-font-color': headerFontColor,
-    'header-font-color-hover': headerFontColorHover,
     'auxiliary-gray': auxiliaryGray,
     'auxiliary-gray-dark': auxiliaryGrayDark,
     'body-bg-color': bodyBgColor,
@@ -640,15 +614,6 @@ function deriveLightUiColors(primaryHex: string): DerivedColors {
     'sidebar-panel-bg': sidebarPanelBg,
     'sidebar-color': sidebarColor,
     'sidebar-icon-color': sidebarIconColor,
-    'sidebar-icon-color-hover': sidebarIconColorHover,
-    'sidebar-accordionpanel-font': sidebarAccordionPanelFont,
-    'sidebar-accordionpanel-header-bg': sidebarAccordionPanelHeaderBg,
-    'sidebar-accordionpanel-header-bgon': sidebarAccordionPanelHeaderBgOn,
-    'sidebar-item-current-color': sidebarItemCurrentColor,
-    'sidebar-item-current-hex': sidebarItemCurrentHex,
-    'search-font-color': searchFontColor,
-    'search-input-border-color': searchInputBorderColor,
-    'search-placehold-font-color': searchPlaceholdFontColor,
     'border-color': borderColor,
     'border-icon-color': borderIconColor,
     'gradient-start': gradientStart,
@@ -664,57 +629,62 @@ export function toCssVarRecord(colors: DerivedColors): Record<string, string> {
 
 /**
  * Dark-UI 模板的颜色推导逻辑
- * 核心规则：主色直接取自图片，其他颜色按样例包抽出的 Dark-UI 使用关系推导。
- * @param primaryHex - 从图片提取的主色 hex 值
+ * 核心规则：色调偏移 primary → primary-hover(+26°) → header-font(+22°)
+ * 亮度排序：alter(47-59) < primary(64-68) < alter-hover(97-100) < primary-hover(214-216) < header-font(180+)
+ * @param primaryHex - 主色 hex 值（深色基准）
  */
 function deriveDarkUiColors(primaryHex: string): DerivedColors {
   const hsl = hexToHsl(primaryHex);
   const baseH = hsl.h;
   const baseS = Math.max(20, hsl.s);
-  const baseL = hsl.l;
-  const fixed = DARK_UI_PALETTE_RULES.fixed;
-  const primaryColor = primaryHex;
-  const headerFontColor = fixed.headerFontColor;
-  const headerFontColorHover = primaryColor;
 
-  // 母版样例关系：
-  // primary-hover ≈ 主色色相偏暖 26°，并提升到浅暖 hover 区间。
-  const primaryColorHover = hslToHex((baseH + 26) % 360, Math.min(100, baseS + 8), 82);
+  // primary = 深色基准，确保亮度在 64-68 范围
+  const primaryColor = hslToHex(baseH, baseS, Math.min(68, Math.max(64, hsl.l)));
 
-  // alter-color ≈ 主色稍深一档，用于登录底/深交互。
-  const alterColor = hslToHex(baseH, Math.max(28, Math.min(92, baseS - 5)), Math.max(28, Math.min(36, baseL - 3)));
+  // primary-hover = H+26°, 极浅色 (L≈85)
+  const primaryColorHover = hslToHex((baseH + 26) % 360, baseS, 85);
 
-  // alter-hover-on ≈ 仍保持主色色相，但往样例包的浅红 hover 亮度靠拢。
-  const alterColorHoverOn = hslToHex(baseH, Math.max(30, Math.min(58, baseS - 37)), 48);
+  // alter-color = darken(primary, 17)
+  const alterColor = darken(primaryColor, 17);
 
-  const primaryColorOpacity10 = blendWhite(primaryColor, 0.1);
-  const primaryColorOpacity20 = blendWhite(primaryColor, 0.2);
-  const primaryColorOpacity30 = blendWhite(primaryColor, 0.3);
+  // alter-color-hover-on = darken(primaryHover, 15)
+  const alterColorHoverOn = darken(primaryColorHover, 15);
 
-  const auxiliaryGray = fixed.auxiliaryGray;
-  const auxiliaryGrayDark = fixed.auxiliaryGrayDark;
-  const bodyBgColor = fixed.bodyBgColor;
+  // opacity 变体 — 向黑色混合（深色系越深越暗）
+  const primaryColorOpacity10 = darken(primaryColor, 3);
+  const primaryColorOpacity20 = darken(primaryColor, 6);
+  const primaryColorOpacity30 = darken(primaryColor, 9);
 
-  // 样例包里页眉延展色 / 登录背景都比主色更亮一点、更纯一点。
-  const portalHeaderBgExtendColor = hslToHex((baseH + 4) % 360, Math.min(100, baseS + 12), Math.max(38, Math.min(42, baseL + 3)));
-  const portalHeaderComplexBgExtendColor = portalHeaderBgExtendColor;
-  const loginBgColor = portalHeaderBgExtendColor;
+  // header-font = H+22°, 浅色文字 (L≈90)
+  const headerFontColor = hslToHex((baseH + 22) % 360, baseS, 90);
 
-  const panelBgColor = fixed.panelBgColor;
+  // 固定灰色系
+  const auxiliaryGray = '#999999';
+  const auxiliaryGrayDark = '#666666';
+
+  // 背景色 — 深色系
+  const bodyBgColor = '#F8F8F8';
+  const portalHeaderBgExtendColor = alterColor;
+  const portalHeaderComplexBgExtendColor = alterColor;
+
+  // 登录背景 — 使用 alter 色（最深）
+  const loginBgColor = alterColor;
+
+  // panel 背景色
+  const panelBgColor = '#FFFFFF';
+
+  // sidebar-panel-bg = header-font-color（强制约束）
   const sidebarPanelBg = headerFontColor;
-  const sidebarColor = fixed.sidebarColor;
-  const sidebarIconColor = fixed.sidebarIconColor;
-  const sidebarIconColorHover = '#FFFFFF';
-  const sidebarAccordionPanelFont = fixed.sidebarAccordionPanelFont;
-  const sidebarAccordionPanelHeaderBg = primaryColor;
-  const sidebarAccordionPanelHeaderBgOn = alterColor;
-  const sidebarItemCurrentColor = '#FFFFFF';
-  const sidebarItemCurrentHex = alterColor;
-  const searchFontColor = headerFontColor;
-  const searchInputBorderColor = primaryColor;
-  const searchPlaceholdFontColor = primaryColor;
-  const borderColor = fixed.borderColor;
-  const borderIconColor = fixed.borderIconColor;
+
+  // sidebar 相关
+  const sidebarColor = '#333333';
+  const sidebarIconColor = hslToHex((baseH + 22) % 360, baseS, 73);
+
+  // 边框色 — 纯灰
+  const borderColor = '#EEEEEE';
+  const borderIconColor = '#EEEEEE';
+
+  // 渐变色 — 从深到浅
   const gradientStart = primaryColor;
   const gradientMid = primaryColorHover;
 
@@ -727,7 +697,6 @@ function deriveDarkUiColors(primaryHex: string): DerivedColors {
     'primary-color-opacity-20': primaryColorOpacity20,
     'primary-color-opacity-30': primaryColorOpacity30,
     'header-font-color': headerFontColor,
-    'header-font-color-hover': headerFontColorHover,
     'auxiliary-gray': auxiliaryGray,
     'auxiliary-gray-dark': auxiliaryGrayDark,
     'body-bg-color': bodyBgColor,
@@ -738,15 +707,6 @@ function deriveDarkUiColors(primaryHex: string): DerivedColors {
     'sidebar-panel-bg': sidebarPanelBg,
     'sidebar-color': sidebarColor,
     'sidebar-icon-color': sidebarIconColor,
-    'sidebar-icon-color-hover': sidebarIconColorHover,
-    'sidebar-accordionpanel-font': sidebarAccordionPanelFont,
-    'sidebar-accordionpanel-header-bg': sidebarAccordionPanelHeaderBg,
-    'sidebar-accordionpanel-header-bgon': sidebarAccordionPanelHeaderBgOn,
-    'sidebar-item-current-color': sidebarItemCurrentColor,
-    'sidebar-item-current-hex': sidebarItemCurrentHex,
-    'search-font-color': searchFontColor,
-    'search-input-border-color': searchInputBorderColor,
-    'search-placehold-font-color': searchPlaceholdFontColor,
     'border-color': borderColor,
     'border-icon-color': borderIconColor,
     'gradient-start': gradientStart,
