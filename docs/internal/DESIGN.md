@@ -178,8 +178,8 @@ body[data-ui-theme="light"] {
 
 | 规则 | 适用场景 | 文档 |
 |------|---------|------|
-| Light-UI | 浅色主题（默认） | `rules/light-ui-color-rules.md` |
-| Dark-UI | 深色主题 | `rules/dark-ui-color-rules.md` |
+| Light-UI | 浅色主题（默认） | `archive/legacy-tools/rules/light-ui-color-rules.md` |
+| Dark-UI | 深色主题 | `archive/legacy-tools/rules/dark-ui-color-rules.md` |
 
 **核心区别**：
 
@@ -593,10 +593,10 @@ web/
 | 文档 | 路径 | 说明 |
 |------|------|------|
 | 产品定义 | `PRODUCT.md` | 功能规划、分期计划 |
-| 配色规则(Dark) | `rules/dark-ui-color-rules.md` | Dark-UI 色值计算规则 |
-| 配色规则(Light) | `rules/light-ui-color-rules.md` | Light-UI 色值计算规则 |
-| 切图导出规则 | `rules/export-rules.md` | 截图尺寸、格式、命名规范 |
-| 图片生成规则 | `rules/image-generation-rules.md` | AI 背景图生成规则 |
+| 配色规则(Dark) | `archive/legacy-tools/rules/dark-ui-color-rules.md` | Dark-UI 色值计算规则 |
+| 配色规则(Light) | `archive/legacy-tools/rules/light-ui-color-rules.md` | Light-UI 色值计算规则 |
+| 切图导出规则 | `archive/legacy-tools/rules/export-rules.md` | 截图尺寸、格式、命名规范 |
+| 图片生成规则 | `archive/legacy-tools/rules/image-generation-rules.md` | AI 背景图生成规则 |
 | AI 对话 SOP | `SKILL.md` | Agent 专注创建 + 迭代，导出归产品功能 |
 | AI 持久记忆 | `AGENTS.md` | 项目状态、架构、技术债、决策记录 |
 | 打包脚本 | `theme_builder.py` | 生成 15 个 zip 包 |

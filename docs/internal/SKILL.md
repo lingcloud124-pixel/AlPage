@@ -2,7 +2,7 @@
 
 ## ⚠️ 规则优先级声明
 
-**本 Skill 执行全流程时，`rules/` 目录下的规则文件是最高权威，优先级高于任何临时决策。使用本 Skill 即意味着严格遵守以下所有规则。**
+**本 Skill 执行全流程时，`archive/legacy-tools/rules/` 目录下的规则文件是最高权威，优先级高于任何临时决策。使用本 Skill 即意味着严格遵守以下所有规则。**
 
 > **核心原则：规则不是参考，是必须遵守的铁律。每次触发本 Skill，必须逐条检查规则清单，不允许跳步、不允许凭感觉、不允许"差不多就行"。**
 
@@ -12,7 +12,7 @@
 
 **当用户触发此 Skill 时，你必须立即执行以下操作：**
 
-1. 读取 `rules/` 下所有 4 个规则文件
+1. 读取 `archive/legacy-tools/rules/` 下所有 4 个规则文件
 2. 如果 `colors/{nameEn}.json` 已存在，读取它
 3. **向用户报告当前状态：**
    ```
@@ -105,7 +105,7 @@ theme_builder.py 按需输出所选产品 zip 文件
 - 用户反馈后只做结构化局部修正，不盲目整段重写
 - 导出/打包阶段绝不允许 Theme Agent 重新改图或动态改方向
 
-#### 必须遵守 rules/image-generation-rules.md：
+#### 必须遵守 archive/legacy-tools/rules/image-generation-rules.md：
 
 | 检查项 | 规则 | 验证方法 |
 |--------|------|---------|
@@ -139,7 +139,7 @@ AlterColor = 更深（L更低）
 
 ### 步骤 3：计算完整配色方案
 
-根据主色调计算完整配色方案，使用 `deriveColorsFromPrimary()` 函数，必须遵守 `rules/dark-ui-color-rules.md` 或 `rules/light-ui-color-rules.md`。
+根据主色调计算完整配色方案，使用 `deriveColorsFromPrimary()` 函数，必须遵守 `archive/legacy-tools/rules/dark-ui-color-rules.md` 或 `archive/legacy-tools/rules/light-ui-color-rules.md`。
 
 #### Dark-UI 配色计算：
 ```javascript
@@ -308,7 +308,7 @@ Topic Automation/
 ├── SKILL.md                        # 本文件（AI 辅助时使用）
 ├── AGENTS.md                       # AI 持久记忆（项目状态 + 架构）
 ├── theme_builder.py                # 统一打包工具（生成15个zip包）
-├── rules/                          # 📐 技术规则（⭐ MUST READ EVERY TIME）
+├── archive/legacy-tools/rules/     # 📐 技术规则（⭐ MUST READ EVERY TIME）
 │   ├── dark-ui-color-rules.md
 │   ├── light-ui-color-rules.md
 │   ├── image-generation-rules.md
@@ -345,10 +345,10 @@ Topic Automation/
 
 | 文档 | 用途 | 关键约束 |
 |------|------|---------|
-| [rules/dark-ui-color-rules.md](rules/dark-ui-color-rules.md) | Dark-UI 配色规则 | 色调偏移、亮度排序、sidebar-panel-bg=header-font |
-| [rules/light-ui-color-rules.md](rules/light-ui-color-rules.md) | Light-UI 配色规则 | 白色混合透明度、亮度排序 |
-| [rules/image-generation-rules.md](rules/image-generation-rules.md) | MiniMax API 调用 | url 格式（非 base64）、禁止 prompt_optimizer |
-| [rules/export-rules.md](rules/export-rules.md) | 截图输出规范 | 尺寸/命名/格式必须100%一致 |
+| [archive/legacy-tools/rules/dark-ui-color-rules.md](../../archive/legacy-tools/rules/dark-ui-color-rules.md) | Dark-UI 配色规则 | 色调偏移、亮度排序、sidebar-panel-bg=header-font |
+| [archive/legacy-tools/rules/light-ui-color-rules.md](../../archive/legacy-tools/rules/light-ui-color-rules.md) | Light-UI 配色规则 | 白色混合透明度、亮度排序 |
+| [archive/legacy-tools/rules/image-generation-rules.md](../../archive/legacy-tools/rules/image-generation-rules.md) | MiniMax API 调用 | url 格式（非 base64）、禁止 prompt_optimizer |
+| [archive/legacy-tools/rules/export-rules.md](../../archive/legacy-tools/rules/export-rules.md) | 截图输出规范 | 尺寸/命名/格式必须100%一致 |
 
 ---
 
