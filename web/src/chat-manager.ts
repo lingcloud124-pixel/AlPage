@@ -3,6 +3,7 @@ import {
   chatCompletion,
   loadSettings,
   parseToolCallsFromContent,
+  type ChatCompletionResult,
 } from './agent/chat-client';
 import { authHeaders } from './auth';
 import { enrichToolCallsWithColorHints } from './agent/tool-call-utils';
@@ -20,7 +21,6 @@ import { parseThemeFeedback } from './tools/theme-feedback-refiner';
 import { decidePreferenceUpdate } from './tools/theme-preference-updater';
 import { updateProjectVisualContext, loadProjectVisualContext } from './tools/project-visual-context-store';
 import { updateCustomerVisualProfile, loadCustomerVisualProfile } from './tools/customer-visual-profile-store';
-import type { ThemePreview } from './tools/executor';
 
 const conversationHistory: ChatMessage[] = [];
 let activeAbortController: AbortController | null = null;
@@ -30,18 +30,13 @@ export interface ThemeAgentDebugState {
   feedbackRegenerated?: boolean;
   intent?: import('./tools/theme-intent-parser').ThemeIntent;
   scenePlan?: import('./tools/theme-scene-planner').ThemeScenePlan;
-  scenePlans?: import('./tools/theme-scene-planner').ThemeScenePlan[];
   planCheck?: { passed?: boolean; checks?: Array<{ label: string; passed: boolean; reason?: string }> };
-  planChecks?: Array<{ passed?: boolean; checks?: Array<{ label: string; passed: boolean; reason?: string }> }>;
   directedPrompt?: string;
-  directedPrompts?: string[];
   finalPrompt?: string;
-  finalPrompts?: string[];
   preferredHueHint?: string;
 }
 
 let latestThemeAgentDebugState: ThemeAgentDebugState | null = null;
-let latestThemePreviews: Array<{ url: string; style: string; prompt: string }> | null = null;
 
 export function getConversationHistory() { return conversationHistory; }
 export function getActiveAbortController() { return activeAbortController; }
@@ -409,23 +404,6 @@ export interface ChatDeps {
 }
 
 export function setupChatInterface(deps: ChatDeps) {
-  (globalThis as any).__selectThemePreview = (index: number) => {
-    if (!latestThemePreviews || index < 0 || index >= latestThemePreviews.length) return;
-    const selected = latestThemePreviews[index];
-    const styleLabels: Record<string, string> = { photography: 'A', '3D-render': 'B', watercolor: 'C', abstract: 'C', illustration: 'B' };
-    const label = styleLabels[selected.style] ?? `${index + 1}`;
-    const input = document.getElementById('conversationMessageInput') as HTMLTextAreaElement | null
-      ?? document.getElementById('messageInput') as HTMLTextAreaElement | null;
-    if (input) {
-      input.value = `我选择第${label}张图`;
-      input.dispatchEvent(new Event('input'));
-      setTimeout(() => {
-        const sendBtn = document.getElementById('conversationSendBtn') as HTMLButtonElement | null
-          ?? document.getElementById('sendBtn') as HTMLButtonElement | null;
-        sendBtn?.click();
-      }, 50);
-    }
-  };
   const defaultMessageInput = document.getElementById('messageInput') as HTMLTextAreaElement | null;
   const conversationMessageInput = document.getElementById('conversationMessageInput') as HTMLTextAreaElement | null;
   const defaultSendBtn = document.getElementById('sendBtn') as HTMLButtonElement | null;
@@ -691,10 +669,11 @@ export function setupChatInterface(deps: ChatDeps) {
     let thinkingText = '';
     let displayBuffer = '';
     let insideThinkTag = false;
+    let completionResult: ChatCompletionResult | null = null;
 
     try {
       let firstToken = true;
-      fullResponse = await chatCompletion(
+      completionResult = await chatCompletion(
         { messages, temperature: 0.7 },
         (token) => {
           if (contentEl) {
@@ -782,6 +761,8 @@ export function setupChatInterface(deps: ChatDeps) {
 
     conversationSendBtn?.removeEventListener('click', stopHandler);
 
+    fullResponse = completionResult?.content || fullResponse;
+
     if (contentEl) {
       contentEl.classList.remove('streaming');
       const cleaned = stripToolCallsFromDisplay(fullResponse);
@@ -800,14 +781,16 @@ export function setupChatInterface(deps: ChatDeps) {
     });
     await saveChatHistory();
 
-    const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '')), {
+    let toolCalls = (completionResult?.toolCalls?.length ?? 0) > 0
+      ? completionResult!.toolCalls
+      : parseToolCallsFromContent(fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, ''));
+    toolCalls = enrichToolCallsWithColorHints(toolCalls, {
       userMessage,
       assistantMessage: fullResponse,
       priorAssistantMessage,
       priorUserMessage,
       templateType,
       latestThemeAgentDebugState,
-      latestThemePreviews,
     });
     const TOOL_GLOBAL_TIMEOUT = 120_000;
     const toolStartTime = Date.now();
@@ -836,30 +819,19 @@ export function setupChatInterface(deps: ChatDeps) {
         break;
       }
       try {
-        showToolLoading(tc.tool === 'generate_theme_pipeline' || tc.tool === 'generate_theme_previews'
+        showToolLoading(tc.tool === 'generate_theme_pipeline'
           ? '主题正在生成中，请稍后'
           : `⚙️ 正在执行 ${tc.tool}...`);
 
         const result = await executeTool(tc, (event) => {
-          if (tc.tool === 'generate_theme_pipeline' || tc.tool === 'generate_theme_previews') {
+          if (tc.tool === 'generate_theme_pipeline') {
             if (event.type === 'image_generating') {
-              const d = event.data as { current?: number; total?: number; label?: string } | undefined;
-              const cur = d?.current ?? 1;
-              const tot = d?.total ?? 3;
-              const label = d?.label ?? '';
-              showToolLoading(`🎨 正在生成预览图 ${cur}/${tot}${label ? ` · ${label}` : ''}，请稍候...`);
+              showToolLoading('🎨 正在生成主题背景图，请稍候...');
             } else if (event.type === 'image_generated') {
-              const d = event.data as { current?: number; total?: number } | undefined;
-              const cur = d?.current ?? 1;
-              const tot = d?.total ?? 3;
-              if (cur < tot) {
-                showToolLoading(`✅ 第 ${cur} 张完成，正在生成第 ${cur + 1} 张...`);
-              } else {
-                removeToolLoading();
-                addMessageToChat('ai', `🖼️ ${tot} 张预览图全部生成完毕，正在准备展示...`);
-                showToolLoading('📋 正在整理预览...');
-                void saveChatHistory();
-              }
+              removeToolLoading();
+              addMessageToChat('ai', '🖼️ 背景图生成完毕，正在提取配色...');
+              showToolLoading('📋 正在提取配色并应用...');
+              saveChatHistory();
             }
           }
         });
@@ -979,59 +951,6 @@ export function setupChatInterface(deps: ChatDeps) {
               indicator.style.left = loginBtn.offsetLeft + 'px';
               indicator.style.width = loginBtn.offsetWidth + 'px';
             }
-            deps.collapseProjectSidebar();
-            deps.setChatPanelWidth(372);
-            await saveChatHistory();
-          } else if (tc.tool === 'generate_theme_previews') {
-            const prevData = result.data as {
-              previews?: ThemePreview[];
-              themeAgentDebug?: ThemeAgentDebugState;
-              intent?: { category?: string };
-              preferredHueHint?: string;
-            };
-            latestThemeAgentDebugState = prevData?.themeAgentDebug ?? null;
-            latestThemePreviews = prevData?.previews ?? null;
-            const previews = prevData?.previews ?? [];
-            if (previews.length > 0) {
-              const imageCards = previews.map((p, i) =>
-                `<div style="flex:1;min-width:0;text-align:center;">` +
-                `<img src="${p.url}" style="width:100%;border-radius:8px;border:2px solid #333;cursor:pointer;" onclick="window.__selectThemePreview(${i})" />` +
-                `<div style="margin-top:4px;font-size:13px;color:#ddd;font-weight:600;">${p.directionLabel ?? `图 ${i + 1}`}</div>` +
-                (p.directionDescription ? `<div style="margin-top:2px;font-size:11px;color:#888;">${p.directionDescription}</div>` : '') +
-                `</div>`
-              ).join('');
-              const previewHtml = `<div style="display:flex;gap:8px;margin:8px 0;">${imageCards}</div>`;
-              await addMessageToChat('ai', `🎨 已生成 ${previews.length} 张预览图，请点击选择或描述您的偏好：${previewHtml}`);
-              await saveChatHistory();
-            } else {
-              await addMessageToChat('ai', '⚠️ 预览图生成失败，请重试。');
-            }
-          } else if (tc.tool === 'apply_selected_theme') {
-            const appliedData = result.data as {
-              imageUrl?: string;
-              primaryColor?: string;
-              fallbackUsed?: boolean;
-              preferredHueHint?: string;
-              dominantColors?: string[];
-              generationReport?: { checks?: Array<{ label: string; passed: boolean }> };
-              contrastValidation?: { passed?: boolean; failures?: string[] };
-              enforcementReason?: string;
-            };
-            const colorTag = appliedData?.primaryColor
-              ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${appliedData.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
-              : '';
-            const contrastPassed = appliedData?.contrastValidation?.passed ?? false;
-            await addMessageToChat('ai', [
-              `🎨 主题已应用！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
-              appliedData?.dominantColors?.length ? `识别到的候选主色 ${appliedData.dominantColors.slice(0, 3).join(' / ')}。` : '',
-              appliedData?.fallbackUsed ? '本次提色未稳定完成，已回退应用默认主色。' : '',
-              appliedData?.enforcementReason ?? '',
-              `对比度校验：${contrastPassed ? '通过' : '存在风险'}。`,
-            ].filter(Boolean).join(' '));
-            await saveCurrentColorsToProject();
-            syncColorEditorFromTheme();
-            latestThemePreviews = null;
-            deps.expandPreview();
             deps.collapseProjectSidebar();
             deps.setChatPanelWidth(372);
             await saveChatHistory();

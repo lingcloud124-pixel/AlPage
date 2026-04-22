@@ -1,5 +1,66 @@
-import type { ChatRequest, ChatResponse, AISettings } from '../types';
+import type { ChatRequest, ChatResponse, AISettings, ToolDefinition, ToolCall } from '../types';
 import { authHeaders } from '../auth';
+
+const THEME_TOOLS: ToolDefinition[] = [
+  {
+    type: 'function',
+    function: {
+      name: 'generate_theme_pipeline',
+      description: '生成1张主题背景图，自动提取配色并应用到预览。调用后系统会自动完成生图、提色、配色、应用全流程。',
+      parameters: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'English description of the desired background image theme and scene' },
+          templateType: { type: 'string', enum: ['light-ui', 'dark-ui'], description: 'UI template type' },
+          primaryHint: { type: 'string', description: 'Dominant color hint, e.g. red, blue, gold, green, purple, pink, or #RRGGBB' },
+        },
+        required: ['prompt'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_colors',
+      description: '微调主题配色，直接修改某个或多个CSS颜色变量的值',
+      parameters: {
+        type: 'object',
+        properties: {
+          colors: {
+            type: 'object',
+            description: 'CSS variable name to hex color mapping',
+            additionalProperties: { type: 'string' },
+          },
+        },
+        required: ['colors'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'save_colors',
+      description: '保存当前配色方案',
+      parameters: {
+        type: 'object',
+        properties: {
+          nameEn: { type: 'string', description: 'English name for the color scheme' },
+          name: { type: 'string', description: 'Chinese name for the color scheme' },
+          templateType: { type: 'string', enum: ['light-ui', 'dark-ui'] },
+        },
+        required: ['nameEn', 'name', 'templateType'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'validate_colors',
+      description: '验证当前配色方案的对比度和可访问性',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+];
 
 export const SETTINGS_KEY = 'themeStudioSettings';
 // Backend API endpoints
@@ -188,11 +249,16 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
   }
 }
 
+export interface ChatCompletionResult {
+  content: string;
+  toolCalls: ToolCall[];
+}
+
 export async function chatCompletion(
   request: ChatRequest,
   onToken?: (token: string) => void,
   externalSignal?: AbortSignal,
-): Promise<string> {
+): Promise<ChatCompletionResult> {
   const settings = loadSettings();
   // apiKey requirement removed - server holds the key now
 
@@ -222,7 +288,7 @@ export async function chatCompletion(
         body: JSON.stringify({
           model: settings.model || 'MiniMax-M2.7',
           messages: request.messages,
-          tools: request.tools,
+          tools: request.tools ?? THEME_TOOLS,
           temperature: request.temperature ?? 0.7,
           stream: true,
         }),
@@ -260,6 +326,7 @@ export async function chatCompletion(
     let contentStarted = false;
     let streamParseErrorCount = 0;
     let streamParseErrorSample = '';
+    const toolCallMap = new Map<number, { id: string; name: string; arguments: string }>();
 
     while (true) {
       const { done, value } = await reader.read();
@@ -288,6 +355,18 @@ export async function chatCompletion(
             fullContent += delta.content;
             onToken?.(delta.content);
           }
+          if (delta?.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0;
+              if (!toolCallMap.has(idx)) {
+                toolCallMap.set(idx, { id: tc.id ?? '', name: '', arguments: '' });
+              }
+              const entry = toolCallMap.get(idx)!;
+              if (tc.id) entry.id = tc.id;
+              if (tc.function?.name) entry.name += tc.function.name;
+              if (tc.function?.arguments) entry.arguments += tc.function.arguments;
+            }
+          }
         } catch (error) {
           streamParseErrorCount += 1;
           if (!streamParseErrorSample) streamParseErrorSample = data.slice(0, 160);
@@ -310,7 +389,18 @@ export async function chatCompletion(
     }
 
     const cleaned = fullContent.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '').replace(/<thinkblocking>[\s\S]*$/g, '');
-    return cleaned;
+
+    const collectedToolCalls: ToolCall[] = [];
+    for (const [, entry] of toolCallMap) {
+      if (!entry.name) continue;
+      let args: Record<string, unknown> = {};
+      if (entry.arguments) {
+        try { args = JSON.parse(entry.arguments); } catch { /* ignore */ }
+      }
+      collectedToolCalls.push({ tool: entry.name, args, id: entry.id });
+    }
+
+    return { content: cleaned, toolCalls: collectedToolCalls };
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
       throw new Error('请求超时（5分钟内未收到新的响应数据），请重试');
@@ -350,6 +440,38 @@ export function parseToolCallsFromContent(content: string): Array<{ tool: string
     while ((match = inlineRegex.exec(content)) !== null) {
       try {
         toolCalls.push({ tool: match[1], args: JSON.parse(match[2]) });
+      } catch (error) {
+        invalidInlineToolCallCount += 1;
+        if (!invalidToolCallSample) invalidToolCallSample = match[0].slice(0, 160);
+        void error;
+      }
+    }
+  }
+
+  if (toolCalls.length === 0) {
+    const toolCallBlockRegex = /\[TOOL_CALL\]\s*\{([^]*?)\}\s*\[\/TOOL_CALL\]/g;
+    while ((match = toolCallBlockRegex.exec(content)) !== null) {
+      try {
+        const inner = match[1].trim();
+        const toolMatch = inner.match(/\btool\s*(?:=>|=|:)\s*"([^"]+)"/);
+        if (!toolMatch) continue;
+        const toolName = toolMatch[1];
+        const args: Record<string, unknown> = {};
+        const argRegex = /--(\w[\w-]*)\s+(?:"([^"]*)"|(\S+))/g;
+        let argMatch;
+        while ((argMatch = argRegex.exec(inner)) !== null) {
+          args[argMatch[1]] = argMatch[2] ?? argMatch[3];
+        }
+        const argsBlockMatch = inner.match(/"args"\s*(?:=>|=|:)\s*\{([^}]*)\}/);
+        if (argsBlockMatch) {
+          try {
+            const parsedArgs = JSON.parse('{' + argsBlockMatch[1] + '}');
+            Object.assign(args, parsedArgs);
+          } catch { /* ignore */ }
+        }
+        if (Object.keys(args).length > 0 || toolName) {
+          toolCalls.push({ tool: toolName, args });
+        }
       } catch (error) {
         invalidInlineToolCallCount += 1;
         if (!invalidToolCallSample) invalidToolCallSample = match[0].slice(0, 160);

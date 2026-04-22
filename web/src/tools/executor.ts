@@ -10,7 +10,7 @@ import {
 } from '../theme/color-utils';
 import { buildThemeImageAssignments } from '../templates/theme-images';
 import { parseThemeIntent } from './theme-intent-parser';
-import { buildThemeScenePlan, type PreferenceContext, buildExploratoryScenePlans, type ExploratoryDirection } from './theme-scene-planner';
+import { buildThemeScenePlan, type PreferenceContext } from './theme-scene-planner';
 import { buildDirectedPrompt } from './theme-prompt-director';
 import { checkThemeScenePlan } from './theme-plan-checker';
 import { updateProjectVisualContext, loadProjectVisualContext } from './project-visual-context-store';
@@ -103,14 +103,6 @@ function buildPromptWithPreferredHue(
   const directive = hueDirectiveMap[hint.label];
   if (!directive) return bgPrompt;
   return `${bgPrompt.trim().replace(/\s+$/, '')} ${directive}`.trim();
-}
-
-export interface ThemePreview {
-  url: string;
-  style: string;
-  prompt: string;
-  directionLabel: string;
-  directionDescription: string;
 }
 
 export function pickBestThemeCandidate(
@@ -396,10 +388,6 @@ function validateToolArgs(tool: string, args: Record<string, unknown>): string |
       return null;
     case 'load_colors':
       if (!args.nameEn) return 'load_colors 需要 nameEn 参数';
-      return null;
-    case 'apply_selected_theme':
-      if (!args.imageUrl && !args.selectedImageUrl && !args.url) return 'apply_selected_theme 需要 imageUrl 参数';
-      return null;
     default:
       return null;
   }
@@ -440,161 +428,6 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
 
       case 'load_colors':
         return loadColors(args as { nameEn: string });
-
-      case 'generate_theme_previews': {
-        const rawBgPrompt = (args.prompt ?? args.description ?? '') as string;
-        const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
-        const feedbackRegenerated = Boolean(args.themeFeedbackRegenerated);
-        const intent = parseThemeIntent(rawBgPrompt, templateType);
-        const projectId = (globalThis as any).__themeStudioCurrentProjectId as string | undefined;
-        const prefContext: PreferenceContext | undefined = projectId ? (() => {
-          try {
-            const profile = loadCustomerVisualProfile('default');
-            const projectCtx = loadProjectVisualContext(projectId);
-            const hasProfile = profile.preferredStyles.length > 0
-              || profile.preferredCompositions.length > 0
-              || profile.dislikedTraits.length > 0
-              || profile.preferredBrightness !== 'balanced';
-            const hasProject = projectCtx.mustHaveElements.length > 0 || projectCtx.avoidElements.length > 0;
-            return (hasProfile || hasProject) ? {
-              customerProfile: profile,
-              projectMustHaveElements: projectCtx.mustHaveElements,
-              projectAvoidElements: projectCtx.avoidElements,
-            } : undefined;
-          } catch { return undefined; }
-        })() : undefined;
-        
-        const exploratoryDirections = buildExploratoryScenePlans(intent, prefContext);
-        const preferredHueHint = resolveEffectivePreferredHueHint(
-          (args.primaryHint ?? args.preferredHue ?? args.colorDirection ?? '') as string,
-          rawBgPrompt,
-          templateType,
-        );
-
-        onProgress?.({ type: 'image_generating', data: { current: 0, total: exploratoryDirections.length } });
-
-        const results: Array<{
-          url: string; style: string; prompt: string;
-          directionLabel: string; directionDescription: string;
-          planCheck: ReturnType<typeof checkThemeScenePlan>;
-          scenePlan: import('./theme-scene-planner').ThemeScenePlan;
-        }> = [];
-        for (let i = 0; i < exploratoryDirections.length; i++) {
-          const direction = exploratoryDirections[i];
-          const planCheck = checkThemeScenePlan(direction.plan);
-          const directed = buildDirectedPrompt(direction.plan);
-          const finalPrompt = buildPromptWithPreferredHue(directed.prompt, preferredHueHint, templateType);
-
-          onProgress?.({ type: 'image_generating', data: { current: i + 1, total: exploratoryDirections.length, label: direction.directionLabel } });
-
-          const result = await generateImage(finalPrompt);
-          
-          results.push({
-            url: result.success && result.url ? result.url : '',
-            style: direction.styleId,
-            prompt: finalPrompt,
-            directionLabel: direction.directionLabel,
-            directionDescription: direction.directionDescription,
-            planCheck,
-            scenePlan: direction.plan,
-          });
-
-          onProgress?.({ type: 'image_generated', data: { current: i + 1, total: exploratoryDirections.length } });
-
-          if (i < exploratoryDirections.length - 1) {
-            await new Promise(r => setTimeout(r, 2000));
-          }
-        }
-        const previews: ThemePreview[] = results.filter(r => r.url).map(r => ({
-          url: r.url,
-          style: r.style,
-          prompt: r.prompt,
-          directionLabel: r.directionLabel,
-          directionDescription: r.directionDescription,
-        }));
-        
-        const scenePlans = results.map(r => r.scenePlan);
-        const planChecks = results.map(r => r.planCheck);
-
-        if (previews.length === 0) {
-          return { success: false, error: '所有预览图生成失败，请重试' } as ToolResult;
-        }
-
-        return {
-          success: true,
-          data: {
-            previews,
-            intent,
-            scenePlans,
-            planChecks,
-            themeAgentDebug: {
-              toolCallPrompt: rawBgPrompt,
-              feedbackRegenerated,
-              intent,
-              scenePlans,
-              planChecks,
-              preferredHueHint,
-            },
-            preferredHueHint,
-          },
-        };
-      }
-
-      case 'apply_selected_theme': {
-        const imageUrl = (args.imageUrl ?? args.selectedImageUrl ?? args.url ?? '') as string;
-        const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
-        const preferredHueHint = (args.primaryHint ?? args.preferredHue ?? args.colorDirection ?? '') as string;
-        if (!imageUrl) return { success: false, error: 'apply_selected_theme 需要 imageUrl 参数' };
-
-        const analyzeResult = await analyzeImageAsync(imageUrl);
-        const dominantColors = (analyzeResult.data as Record<string, unknown>)?.dominantColors as string[] | undefined;
-        if (!analyzeResult.success || !dominantColors || dominantColors.length === 0) {
-          const fallbackHex = resolvePreferredHueHint(preferredHueHint, templateType)?.fallbackHex
-            ?? (templateType === 'dark-ui' ? '#1A2845' : '#1565C0');
-          const colors = deriveColorsFromPrimary(fallbackHex, templateType);
-          const report = buildThemeGenerationReport(fallbackHex, colors, templateType);
-          const contrast = validateColorScheme({ ...colors });
-          updateColors({ ...colors });
-          applyThemeImages('login', imageUrl);
-          applyThemeImages('desktop', imageUrl);
-          return {
-            success: true,
-            data: {
-              primaryColor: fallbackHex,
-              imageUrl,
-              applied: true,
-              fallbackUsed: true,
-              preferredHueHint,
-              fallbackReason: analyzeResult.error ?? '未识别到可用主色候选',
-              dominantColors: [],
-              generationReport: report,
-              contrastValidation: contrast,
-            },
-          };
-        }
-
-        const selected = pickBestThemeCandidate(dominantColors, templateType, preferredHueHint);
-        const contrast = validateColorScheme({ ...selected.derivedColors });
-        updateColors({ ...selected.derivedColors });
-        applyThemeImages('login', imageUrl);
-        applyThemeImages('desktop', imageUrl);
-
-        return {
-          success: true,
-          data: {
-            primaryColor: selected.primaryColor,
-            imageUrl,
-            applied: true,
-            preferredHueHint,
-            enforcedPreferredHue: selected.enforcedPreferredHue,
-            enforcementReason: selected.enforcementReason,
-            dominantColors,
-            generationReport: selected.report,
-            triedCandidates: selected.triedCandidates,
-            contrastValidation: contrast,
-          },
-        };
-      }
 
       case 'generate_theme_pipeline': {
         const rawBgPrompt = (args.prompt ?? args.description ?? '') as string;
