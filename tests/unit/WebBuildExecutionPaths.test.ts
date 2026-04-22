@@ -12,5 +12,6 @@ describe('web build execution paths', () => {
     expect(resolved.baseDir).toBe('/Users/demo/Documents/Theme Studio/projects/project-123-project/exports/20240413-091959');
     expect(resolved.assetsDir).toBe('/Users/demo/Documents/Theme Studio/projects/project-123-project/exports/20240413-091959/素材包');
     expect(resolved.packagesDir).toBe('/Users/demo/Documents/Theme Studio/projects/project-123-project/exports/20240413-091959/输出包');
+    expect(resolved.metadataDir).toBe('/Users/demo/Documents/Theme Studio/projects/project-123-project/exports/20240413-091959/.build-meta');
   });
 });

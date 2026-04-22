@@ -31,4 +31,16 @@ describe('web build export config', () => {
     expect(yaml).toContain('headerSideheader: "header-sideheader.png"');
     expect(yaml).toContain('loginBackground: "bg-login.jpg"');
   });
+
+  test('truncates packaging title to 10 characters', () => {
+    const yaml = buildExportRequestYaml({
+      name: '这是一个超过十个字符的主题名称',
+      nameEn: 'very-long-theme-name',
+      themeColor: '#2C615C',
+      selectedProducts: ['mk'],
+    });
+
+    expect(yaml).toContain('title: "这是一个超过十个字符"');
+    expect(yaml).not.toContain('title: "这是一个超过十个字符的主题名称"');
+  });
 });

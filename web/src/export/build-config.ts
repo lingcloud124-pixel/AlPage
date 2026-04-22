@@ -34,7 +34,20 @@ const IMAGE_FILE_MAP = {
   loginLogo: '',
 } as const;
 
+const MAX_PACKAGE_TITLE_LENGTH = 10;
+
+function truncateByCharacters(value: string, maxLength: number): string {
+  return Array.from(value).slice(0, maxLength).join('');
+}
+
+export function clampPackageTitle(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '未命名主题';
+  return truncateByCharacters(trimmed, MAX_PACKAGE_TITLE_LENGTH);
+}
+
 export function buildExportRequestYaml(options: ExportRequestOptions): string {
+  const packageTitle = clampPackageTitle(options.name);
   const productsYaml = options.selectedProducts.map((product) => `  - ${product}`).join('\n');
   const normalizedColors = Object.entries(options.colors ?? {})
     .map(([name, value]) => [name.startsWith('--') ? name.slice(2) : name, value] as const)
@@ -47,8 +60,8 @@ export function buildExportRequestYaml(options: ExportRequestOptions): string {
     ? `nameEn: "${options.nameEn.trim()}"\n`
     : '';
 
-  return `${nameEnYaml}title: "${options.name}"
-subtitle: "${options.subtitle ?? options.name}"
+  return `${nameEnYaml}title: "${packageTitle}"
+subtitle: "${options.subtitle ?? packageTitle}"
 buttonText: "${options.buttonText ?? '立即进入'}"
 themeColor: "${options.themeColor}"
 templateType: "${options.templateType}"

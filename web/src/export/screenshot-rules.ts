@@ -1,6 +1,5 @@
-import penExportRules from '../../../config/pen-export-rules.json';
+import outputMapping from '../../../config/image-output-mapping.json';
 import { getTemplateConfig } from '../theme/template-registry';
-import themeRelations from '../../../config/theme-relations.json';
 
 export interface ScreenshotTarget {
   selector: string;
@@ -9,128 +8,79 @@ export interface ScreenshotTarget {
   height: number;
   format: 'png' | 'jpeg';
   templateId?: string;
-  clipY?: number;
-  clipHeight?: number;
+}
+
+type TemplateType = 'light-ui' | 'dark-ui';
+
+interface OutputMappingItem {
+  id: string;
+  output: string;
+  width?: number;
+  height?: number;
+  widthByTheme?: Record<TemplateType, number>;
+  heightByTheme?: Record<TemplateType, number>;
+  format: 'PNG' | 'JPEG';
+  recipe: string;
+}
+
+interface ScreenshotTargets {
+  login: ScreenshotTarget[];
+  header: ScreenshotTarget[];
+  desktop: ScreenshotTarget[];
 }
 
 function stripExtension(fileName: string): string {
   return fileName.replace(/\.(png|jpe?g)$/i, '');
 }
 
-export function getScreenshotTargets(templateType: 'light-ui' | 'dark-ui') {
-  const config = penExportRules[templateType];
+function resolveDimension(item: OutputMappingItem, templateType: TemplateType, key: 'width' | 'height'): number {
+  const direct = item[key];
+  if (typeof direct === 'number') {
+    return direct;
+  }
+
+  const themed = key === 'width' ? item.widthByTheme : item.heightByTheme;
+  if (themed && typeof themed[templateType] === 'number') {
+    return themed[templateType];
+  }
+
+  throw new Error(`Missing ${key} for screenshot target ${item.id}`);
+}
+
+function toFormat(value: 'PNG' | 'JPEG'): 'png' | 'jpeg' {
+  return value === 'JPEG' ? 'jpeg' : 'png';
+}
+
+export function getScreenshotTargets(templateType: TemplateType): ScreenshotTargets {
   const loginTemplate = getTemplateConfig('login');
   const desktopTemplate = getTemplateConfig('desktop');
-  const relationSet = themeRelations.headerTypeRelations;
-  const relations = {
-    ...relationSet['light-ui'],
-    ...(relationSet[templateType] ?? {}),
-  };
 
-  const login: ScreenshotTarget[] = [
-    {
-      selector: '.login-bg',
-      outputName: stripExtension(config.loginBackground.full.outputFile),
-      width: loginTemplate?.width ?? config.loginBackground.full.width,
-      height: loginTemplate?.height ?? config.loginBackground.full.height,
-      format: 'jpeg',
-      templateId: 'login',
-    },
-    {
-      selector: '.template-login',
-      outputName: 'login_thumb',
-      width: loginTemplate?.width ?? config.loginBackground.full.width,
-      height: loginTemplate?.height ?? config.loginBackground.full.height,
-      format: 'jpeg',
-      templateId: 'login',
-    },
-  ];
+  const login = (outputMapping.login as OutputMappingItem[]).map((item) => ({
+    selector: item.recipe === 'login-background' ? '.login-bg' : '.template-login',
+    outputName: stripExtension(item.output),
+    width: resolveDimension(item, templateType, 'width'),
+    height: resolveDimension(item, templateType, 'height'),
+    format: toFormat(item.format),
+    templateId: loginTemplate?.id,
+  }));
 
-  const header: ScreenshotTarget[] = [
-    {
-      selector: '.template-header-default',
-      outputName: stripExtension(config.headers.default.outputFile),
-      width: config.headers.default.width,
-      height: config.headers.default.height,
-      format: 'png',
-      templateId: 'header-default',
-    },
-    {
-      selector: '.template-header-complex',
-      outputName: stripExtension(config.headers.complex.outputFile),
-      width: config.headers.complex.width,
-      height: config.headers.complex.height,
-      format: 'png',
-      templateId: 'header-complex',
-    },
-    {
-      selector: '.template-header-menu',
-      outputName: stripExtension(config.headers.menu.outputFile),
-      width: config.headers.menu.width,
-      height: config.headers.menu.height,
-      format: 'png',
-      templateId: 'header-menu',
-    },
-    {
-      selector: '.template-header-banner',
-      outputName: stripExtension(config.headers.banner.outputFile),
-      width: config.headers.banner.width,
-      height: config.headers.banner.height,
-      format: 'png',
-      templateId: 'header-banner',
-    },
-    {
-      selector: '.template-sidebar',
-      outputName: stripExtension(config.headers.sideHeader.outputFile),
-      width: config.headers.sideHeader.width,
-      height: config.headers.sideHeader.height,
-      format: 'png',
-      templateId: 'sidebar',
-    },
-    {
-      selector: '.template-header-simple-multitab',
-      outputName: stripExtension(relations.simpleMultiTab.outputFile),
-      width: getTemplateConfig('header-simple-multitab')?.width ?? config.headers.complex.width,
-      height: getTemplateConfig('header-simple-multitab')?.height ?? config.headers.complex.height,
-      format: 'png',
-      templateId: 'header-simple-multitab',
-    },
-    {
-      selector: '.template-header-simple',
-      outputName: stripExtension(relations.simple.outputFile),
-      width: getTemplateConfig('header-simple')?.width ?? config.headers.default.width,
-      height: getTemplateConfig('header-simple')?.height ?? config.headers.default.height,
-      format: 'png',
-      templateId: 'header-simple',
-    },
-    {
-      selector: '.template-header-v16-default',
-      outputName: stripExtension(relations.singleMenu.outputFile),
-      width: getTemplateConfig('header-v16-default')?.width ?? config.headers.default.width,
-      height: getTemplateConfig('header-v16-default')?.height ?? config.headers.default.height,
-      format: 'png',
-      templateId: 'header-v16-default',
-    },
-    {
-      selector: '.template-header-v16-search',
-      outputName: stripExtension(relations.zoneNav.outputFile),
-      width: getTemplateConfig('header-v16-search')?.width ?? config.headers.default.width,
-      height: getTemplateConfig('header-v16-search')?.height ?? config.headers.default.height,
-      format: 'png',
-      templateId: 'header-v16-search',
-    },
-  ];
+  const header = (outputMapping.headerSidebar as OutputMappingItem[]).map((item) => ({
+    selector: item.recipe === 'sidebar' ? '.template-sidebar' : '.template-header-default',
+    outputName: stripExtension(item.output),
+    width: resolveDimension(item, templateType, 'width'),
+    height: resolveDimension(item, templateType, 'height'),
+    format: toFormat(item.format),
+    templateId: item.recipe === 'sidebar' ? 'sidebar' : 'header-default',
+  }));
 
-  const desktop: ScreenshotTarget[] = [
-    {
-      selector: '.desktop-wrapper',
-      outputName: 'desktop',
-      width: desktopTemplate?.width ?? 1920,
-      height: desktopTemplate?.height ?? 1079,
-      format: 'png',
-      templateId: 'desktop',
-    },
-  ];
+  const desktop = (outputMapping.thumbnails as OutputMappingItem[]).map((item) => ({
+    selector: '.desktop-wrapper',
+    outputName: stripExtension(item.output),
+    width: resolveDimension(item, templateType, 'width'),
+    height: resolveDimension(item, templateType, 'height'),
+    format: toFormat(item.format),
+    templateId: desktopTemplate?.id,
+  }));
 
   return { login, header, desktop };
 }

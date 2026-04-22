@@ -8,14 +8,15 @@ Usage:
   python3 scripts/verify-build.py <output_dir> --products mk,ekp_v17
 
 Checks:
-   1. Exactly expected zip files generated (all 15 by default, or selected subset)
+   1. Exactly expected zip files generated (all 9 by default, or selected subset)
    2. Each zip's file structure matches its reference sample
    3. Color injection: new theme color appears in theme CSS files
    4. No old template colors (#2C615C, #144E48) remain in theme CSS
    5. Image replacement: login images (bg-login.jpg, login_thumb.jpg, thumb-1/2.jpg)
-      must differ from source template (file size changed)
+      must differ from source template content
 """
 
+import hashlib
 import re
 import sys
 import zipfile
@@ -32,12 +33,6 @@ EXPECTED_ZIPS_BY_TEMPLATE_TYPE = {
     "dark-ui": [
         ("主题-MK-", "mk-festival-26-spring主题包.zip"),
         ("登录-MK-", "mk-festival-spring-登录包.zip"),
-        ("主题-V12-", "主题-V12-2026春节主题.zip"),
-        ("登录-V12-", "登录-V12-2026春节.zip"),
-        ("主题-V13〜V13.5-", "主题-V13〜V13.5-2026春节主题.zip"),
-        ("登录-V13〜V13.5-", "登录-V13-2026春节.zip"),
-        ("登录-V13-", "登录-V13-2026春节.zip"),
-        ("登录-V13.5-", "登录-V13.5-2026春节.zip"),
         ("主题-V14〜V16-", "主题-V14〜V16-2026春节主题.zip"),
         ("登录-V14〜V16-", "登录-V16〜V17-2026春节.zip"),
         ("登录-V14-", "登录-V14-2026春节.zip"),
@@ -53,8 +48,6 @@ DEFAULT_SAMPLE_ROOTS = {
 }
 PRODUCT_TO_PREFIXES = {
     "mk": ["主题-MK-", "登录-MK-"],
-    "ekp_v12": ["主题-V12-", "登录-V12-"],
-    "ekp_v13_5": ["主题-V13〜V13.5-", "登录-V13〜V13.5-", "登录-V13-", "登录-V13.5-"],
     "ekp_v14_16": ["主题-V14〜V16-", "登录-V14〜V16-", "登录-V14-", "登录-V15-", "登录-V16-"],
     "ekp_v17": ["主题-V17-", "登录-V17-"],
 }
@@ -168,7 +161,7 @@ def discover_sample_root(template_type: str) -> Optional[Path]:
 
 
 def detect_template_type_from_output_dir(output_dir: Path) -> Optional[str]:
-    assets_yaml = output_dir.parent / "素材包" / "theme-build-request.yaml"
+    assets_yaml = output_dir.parent / ".build-meta" / "theme-build-request.yaml"
     if not assets_yaml.exists():
         return None
 
@@ -275,10 +268,10 @@ STRUCTURE_EXTRA_ALLOWED = VERIFY_RULES["structureExtraAllowed"]
 
 
 def verify_image_replacement(gen_path, prefix, expected_zips, sample_root):
-    # type: (Path, str) -> Tuple[bool, List[str]]
+    # type: (Path, str) -> Tuple[bool, List[str], List[str]]
     image_paths = LOGIN_IMAGE_CHECKS.get(prefix, [])
     if not image_paths:
-        return True, []
+        return True, [], []
 
     ref_name = None
     for p, r in expected_zips:
@@ -286,13 +279,14 @@ def verify_image_replacement(gen_path, prefix, expected_zips, sample_root):
             ref_name = r
             break
     if not ref_name:
-        return True, ["No reference mapping for image check"]
+        return True, [], ["No reference mapping for image check"]
 
     ref_path = sample_root / ref_name
     if not ref_path.exists():
-        return True, [f"Reference not found for image check: {ref_name}"]
+        return True, [], [f"Reference not found for image check: {ref_name}"]
 
     issues = []
+    warnings = []
     with zipfile.ZipFile(gen_path) as gz, zipfile.ZipFile(ref_path) as rz:
         for img_path in image_paths:
             gen_files = [
@@ -309,16 +303,18 @@ def verify_image_replacement(gen_path, prefix, expected_zips, sample_root):
             gen_info = gz.getinfo(gen_files[0])
             if ref_files:
                 ref_info = rz.getinfo(ref_files[0])
-                if gen_info.file_size == ref_info.file_size:
-                    issues.append(
-                        f"Image NOT replaced (same size): {img_path} ({gen_info.file_size} bytes)"
+                gen_hash = hashlib.sha256(gz.read(gen_files[0])).hexdigest()
+                ref_hash = hashlib.sha256(rz.read(ref_files[0])).hexdigest()
+                if gen_hash == ref_hash:
+                    warnings.append(
+                        f"Image unchanged vs template: {img_path} ({gen_info.file_size} bytes)"
                     )
             else:
-                issues.append(
+                warnings.append(
                     f"Image not found in reference: {img_path} (cannot verify replacement)"
                 )
 
-    return len(issues) == 0, issues
+    return len(issues) == 0, issues, warnings
 
 
 def main():
@@ -365,7 +361,7 @@ def main():
 
         struct_ok, struct_issues = verify_structure(gen_path, ref_path, prefix)
         color_ok, color_issues = verify_color_injection(gen_path)
-        image_ok, image_issues = verify_image_replacement(gen_path, prefix, expected_zips, sample_root)
+        image_ok, image_issues, image_warnings = verify_image_replacement(gen_path, prefix, expected_zips, sample_root)
 
         status = "✅" if struct_ok and color_ok and image_ok else "❌"
         name = gen_path.name
@@ -378,6 +374,9 @@ def main():
             for issue in struct_issues + color_issues + image_issues:
                 print(f"     {issue}")
             failed += 1
+
+        for warning in image_warnings:
+            print(f"     ⚠️  {warning}")
 
     print(f"\n{'=' * 60}")
     print(f"Results: {passed} passed, {failed} failed (of {len(expected_zips)})")

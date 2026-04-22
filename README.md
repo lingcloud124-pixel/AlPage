@@ -61,7 +61,7 @@ Topic Automation/
 ├── README.md             # 项目说明文档
 ├── scripts/
 │   ├── install-skill.sh  # Skill 安装脚本
-│   ├── theme_builder.py  # 统一打包工具（生成15个zip包）
+│   ├── theme_builder.py  # 统一打包工具（生成9个zip包）
 │   ├── update-pen-theme.py # 历史 pen 文件更新器（非当前主链路）
 │   ├── verify-build.py   # 打包后验证工具
 │   └── ...               # 其他历史脚本/辅助脚本
@@ -86,10 +86,10 @@ Topic Automation/
 
 | 类型 | 版本 | 说明 |
 |------|------|------|
-| 主体 | MK, V12, V13, V13.5, V14, V15, V16, V17 | 完整主体样式包 |
-| 登录 | MK, V12, V13, V13.5, V14, V15, V16, V17 | 登录页样式包 |
+| 主体 | MK, V14, V15, V16, V17 | 完整主体样式包 |
+| 登录 | MK, V14, V15, V16, V17 | 登录页样式包 |
 
-**注意**: 系统生成15个zip包：MK(主题+登录), V12(主题+登录), V13〜V13.5(主题+V13登录+V13.5登录+V13_5登录变体), V14〜V16(主题+V14登录+V15登录+V16登录), V17(主题+登录)。
+**注意**: 当前系统生成9个zip包：MK(主题+登录), V14〜V16(主题+V14登录+V15登录+V16登录), V17(主题+登录)。EKP V12、V13、V13.5 已不再支持打包。
 
 ---
 
@@ -102,10 +102,15 @@ A: 告诉它："这是主题自动化项目，用 npm install 安装依赖"
 A: 运行 `bash scripts/install-skill.sh`，然后重启 OpenCode
 
 **Q: 如何使用主题打包功能**
-A: Web 应用里点击“打包”，先勾选产品，再由本地导出桥接在后台执行截图和标准脚本打包。手动方式仍可使用 `python3 theme_builder.py --config theme-build-request.yaml`。
+A: Web 应用里点击“打包”，先勾选产品，再由统一导出链在后台执行：
+1. 固定当前项目快照
+2. 基于背景图生成登录背景、登录缩略图、页眉和左导航素材
+3. 基于确认后的 HTML 预览截图生成 `desktop.png`、`layout-banner.jpg`、`thumb.jpg`、`banner_personal.png`、`study_banner.png` 等封面图
+4. 调用 `theme_builder.py` 标准打包并验证
+手动方式仍可使用 `python3 theme_builder.py --config theme-build-request.yaml`，但 Web 主链的素材准备入口是 `scripts/prepare_export_assets.py`。
 
 **Q: manifest.json 配置文件需要手动编辑吗**
-A: 当前 Web 主链路不依赖手动编辑 `manifest.json`。该文件主要属于历史工具链参考范围，现行主链路以项目快照 + 截图 + `theme_builder.py` 打包为准。
+A: 当前 Web 主链路不依赖手动编辑 `manifest.json`。该文件主要属于历史工具链参考范围，现行主链路以项目快照 + `scripts/prepare_export_assets.py` + `theme_builder.py` 打包为准。
 
 **Q: 批量打包失败 "Unable to determine theme type"**
 A: 这是旧 TypeScript 工具链的 bug。新的 `theme_builder.py` 已正确处理主题类型检测，不会出现此问题。

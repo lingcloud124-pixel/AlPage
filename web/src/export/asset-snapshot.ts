@@ -7,6 +7,8 @@ export type AssetPipelineStepId =
   | 'icon-recolor'
   | 'thumbnails';
 
+export type ExportAssetSourceType = 'background-image' | 'preview-html';
+
 export interface AssetPipelineStep {
   id: AssetPipelineStepId;
   name: string;
@@ -24,8 +26,13 @@ export interface ExportAssetSnapshot {
     selectedProducts: string[];
   };
   sourceImages: {
-    background: string;
+    background?: string;
     headerBackground?: string;
+  };
+  assetSources: {
+    login: ExportAssetSourceType;
+    headerSidebar: ExportAssetSourceType;
+    thumbnails: ExportAssetSourceType;
   };
   colors: Record<string, string>;
   paths: {
@@ -54,7 +61,7 @@ export const DEFAULT_PIPELINE_STEPS: AssetPipelineStep[] = [
   {
     id: 'login-background',
     name: '处理登录页背景素材',
-    description: '基于当前背景图生成登录背景图、背景 PNG 和登录缩略图。',
+    description: '优先基于当前背景图生成登录背景图、背景 PNG 和登录缩略图；未提供时回退默认背景图。',
   },
   {
     id: 'header-sidebar',
@@ -83,9 +90,6 @@ function normalizeCssVariables(cssVariables: Record<string, string>): Record<str
 
 export function buildExportAssetSnapshot(args: BuildExportAssetSnapshotArgs): ExportAssetSnapshot {
   const sourceBackground = args.project.bgImageUrl?.trim();
-  if (!sourceBackground) {
-    throw new Error('当前项目缺少背景图，无法固定导出素材快照');
-  }
 
   return {
     version: 1,
@@ -98,8 +102,13 @@ export function buildExportAssetSnapshot(args: BuildExportAssetSnapshotArgs): Ex
       selectedProducts: [...args.selectedProducts],
     },
     sourceImages: {
-      background: sourceBackground,
+      background: sourceBackground || undefined,
       headerBackground: args.project.headerBgImageUrl?.trim() || undefined,
+    },
+    assetSources: {
+      login: 'background-image',
+      headerSidebar: 'background-image',
+      thumbnails: 'preview-html',
     },
     colors: normalizeCssVariables({ ...args.project.colors, ...args.cssVariables }),
     paths: {
