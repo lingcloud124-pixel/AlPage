@@ -129,7 +129,7 @@ web/
 
 **核心原则**：
 1. 先出图，再配色，保证主题色与背景图色调匹配
-2. `rules/` 目录下规则是最高权威
+2. `archive/legacy-tools/rules/` 目录下规则是最高权威
 3. 颜色必须由图片决定，不能凭空编造
 4. CSS 变量驱动所有颜色，不硬编码
 5. 项目持久化（localStorage），用户可随时打开历史项目继续编辑或重新打包
@@ -184,8 +184,8 @@ Theme Agent 只允许影响：
 
 | 规则 | 文件 | 核心要点 |
 |------|------|---------|
-| Light-UI | `rules/light-ui-color-rules.md` | 白色混合透明度、亮度排序 |
-| Dark-UI | `rules/dark-ui-color-rules.md` | 色调偏移 +22°/+26°、sidebar-panel-bg = header-font |
+| Light-UI | `archive/legacy-tools/rules/light-ui-color-rules.md` | 白色混合透明度、亮度排序 |
+| Dark-UI | `archive/legacy-tools/rules/dark-ui-color-rules.md` | 色调偏移 +22°/+26°、sidebar-panel-bg = header-font |
 
 ### 背景图生成
 
@@ -407,7 +407,7 @@ Topic Automation/
 1. **读取此文件**（AGENTS.md）了解项目
 2. 根据用户意图判断需要什么上下文：
    - Web 应用开发 → 读 `DESIGN.md` + `PRODUCT.md`
-   - 配色规则 → 读 `rules/` 全部规则
+- 配色规则 → 读 `archive/legacy-tools/rules/` 全部规则
 3. 向用户简要报告你了解的上下文
 
 ### Web 应用开发时

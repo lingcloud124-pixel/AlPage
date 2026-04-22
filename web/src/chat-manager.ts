@@ -531,11 +531,20 @@ export function setupChatInterface(deps: ChatDeps) {
     showConversationChatView();
     (globalThis as any).__themeStudioCurrentProjectId = getCurrentProjectId() ?? undefined;
 
+    const userMessageTimestamp = Date.now();
+    const userMessageId = userMessageTimestamp.toString();
+
     if (hasImages) {
       const imagesToSend = [...pendingImages];
       pendingImages.length = 0;
       renderImagePreviewBar();
       const msgEl = addMessageToChat('user', content || '上传了参考图片');
+      conversationHistory.push({
+        id: userMessageId,
+        role: 'user',
+        content: content || '上传了参考图片',
+        timestamp: userMessageTimestamp,
+      });
       const contentEl = msgEl.querySelector('.message-content') as HTMLElement;
       if (contentEl) {
         imagesToSend.forEach(src => {
@@ -566,6 +575,12 @@ export function setupChatInterface(deps: ChatDeps) {
       });
     } else {
       addMessageToChat('user', content);
+      conversationHistory.push({
+        id: userMessageId,
+        role: 'user',
+        content,
+        timestamp: userMessageTimestamp,
+      });
       await saveChatHistory();
     }
 
@@ -624,13 +639,6 @@ export function setupChatInterface(deps: ChatDeps) {
     const priorUserMessage = [...conversationHistory]
       .reverse()
       .find((message) => message.role === 'user' && message.content.trim() !== userMessage.trim())?.content ?? '';
-
-    conversationHistory.push({
-      id: Date.now().toString(),
-      role: 'user',
-      content: userMessage,
-      timestamp: Date.now(),
-    });
 
     const settings = loadSettings();
     // API key check removed - server holds the key now
@@ -790,7 +798,7 @@ export function setupChatInterface(deps: ChatDeps) {
       content: fullResponse,
       timestamp: Date.now(),
     });
-    saveChatHistory();
+    await saveChatHistory();
 
     const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '')), {
       userMessage,
@@ -850,7 +858,7 @@ export function setupChatInterface(deps: ChatDeps) {
                 removeToolLoading();
                 addMessageToChat('ai', `🖼️ ${tot} 张预览图全部生成完毕，正在准备展示...`);
                 showToolLoading('📋 正在整理预览...');
-                saveChatHistory();
+                void saveChatHistory();
               }
             }
           }
