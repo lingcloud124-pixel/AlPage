@@ -1,38 +1,85 @@
 import { Router } from 'express';
 import http from 'http';
 import https from 'https';
-import { Readable } from 'stream';
+import { getModelConfig } from './model-config.js';
+import { getSecurityConfig } from '../db.js';
 
 const router = Router();
 
+function resolveTarget(endpoint: string): { client: typeof http | typeof https; options: http.RequestOptions } {
+  const parsed = new URL(endpoint);
+  const client = parsed.protocol === 'https:' ? https : http;
+  const options: http.RequestOptions = {
+    hostname: parsed.hostname,
+    port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+    path: parsed.pathname + parsed.search,
+    method: 'POST',
+    timeout: 300000,
+  };
+  return { client, options };
+}
+
+function validateProxyImageHost(url: string): boolean {
+  try {
+    const securityConfig = getSecurityConfig();
+    
+    if (securityConfig?.enabled_features?.proxyImage === false) {
+      return false;
+    }
+    
+    const allowedHosts = securityConfig?.proxy_image_hosts || [];
+    if (allowedHosts.length === 0) {
+      return true;
+    }
+    
+    const parsedUrl = new URL(url);
+    const host = parsedUrl.hostname;
+    
+    return allowedHosts.some((allowedHost: string) => {
+      if (allowedHost === '*') return true;
+      if (allowedHost === host) return true;
+      
+      if (allowedHost.startsWith('*.') && allowedHost.length > 2) {
+        const domain = allowedHost.slice(2);
+        return host.endsWith('.' + domain) || host === domain;
+      }
+      
+      return false;
+    });
+  } catch (error) {
+    console.error('Error validating proxy image host:', error);
+    return false;
+  }
+}
+
 router.post('/chat', async (req, res) => {
   try {
-    const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY;
-    if (!MINIMAX_API_KEY) {
-      return res.status(500).json({ error: 'MINIMAX_API_KEY not configured' });
+    const config = getModelConfig();
+    const securityConfig = getSecurityConfig();
+    if (securityConfig?.enabled_features?.chat === false) {
+      return res.status(403).json({ error: '对话功能已关闭' });
     }
+    if (!config.chatEndpoint || !config.chatApiKey) {
+      return res.status(500).json({ error: 'Chat model not configured. Please configure in /admin' });
+    }
+
+    const { client, options } = resolveTarget(config.chatEndpoint);
+    options.headers = {
+      'Authorization': `Bearer ${config.chatApiKey}`,
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream',
+    };
 
     const requestBody = {
       ...req.body,
-      model: req.body?.model || 'MiniMax-M2.7',
+      model: req.body?.model || config.chatModel || 'MiniMax-M2.7',
       extra_body: {
         ...(req.body?.extra_body || {}),
         reasoning_split: true,
       },
     };
 
-    const proxyReq = https.request({
-      hostname: 'api.minimaxi.com',
-      port: 443,
-      path: '/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${MINIMAX_API_KEY}`,
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
-      },
-      timeout: 300000,
-    });
+    const proxyReq = client.request(options);
 
     proxyReq.on('response', (proxyRes) => {
       const contentType = proxyRes.headers['content-type'] || 'application/json';
@@ -128,22 +175,23 @@ router.post('/chat', async (req, res) => {
 
 router.post('/image', async (req, res) => {
   try {
-    const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY;
-    if (!MINIMAX_API_KEY) {
-      return res.status(500).json({ error: 'MINIMAX_API_KEY not configured' });
+    const config = getModelConfig();
+    const securityConfig = getSecurityConfig();
+    if (securityConfig?.enabled_features?.image === false) {
+      return res.status(403).json({ error: '生图功能已关闭' });
+    }
+    if (!config.imageEndpoint || !config.imageApiKey) {
+      return res.status(500).json({ error: 'Image model not configured. Please configure in /admin' });
     }
 
-    const proxyReq = https.request({
-      hostname: 'api.minimaxi.com',
-      port: 443,
-      path: '/v1/image_generation',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${MINIMAX_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: 180000,
-    });
+    const { client, options } = resolveTarget(config.imageEndpoint);
+    options.headers = {
+      'Authorization': `Bearer ${config.imageApiKey}`,
+      'Content-Type': 'application/json',
+    };
+    options.timeout = 180000;
+
+    const proxyReq = client.request(options);
 
     proxyReq.on('response', (proxyRes) => {
       res.writeHead(proxyRes.statusCode!, {
@@ -184,14 +232,18 @@ router.post('/image', async (req, res) => {
 router.get('/proxy-image', async (req, res) => {
   try {
     const { url } = req.query;
-    
+
     if (!url || typeof url !== 'string') {
       return res.status(400).json({ error: 'URL parameter is required' });
     }
 
+    if (!validateProxyImageHost(url)) {
+      return res.status(403).json({ error: 'Proxy image host not allowed' });
+    }
+
     const parsedUrl = new URL(url);
     const client = parsedUrl.protocol === 'https:' ? https : http;
-    
+
     const proxyReq = client.request({
       hostname: parsedUrl.hostname,
       port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
@@ -207,9 +259,8 @@ router.get('/proxy-image', async (req, res) => {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', '*');
-      
       res.setHeader('Cache-Control', 'public, max-age=86400');
-      
+
       if (proxyRes.headers['content-type']) {
         res.setHeader('Content-Type', proxyRes.headers['content-type']);
       }

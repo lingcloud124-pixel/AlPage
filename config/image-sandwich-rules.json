@@ -1,9 +1,8 @@
 {
   "light-ui": {
     "sidebar": {
-      "baseColorVar": "tlayout-header-bg-extend-color",
-      "gradientColorVar": "tlayout-header-bg-extend-color",
-      "fallbackColorVar": "portal-header-bg-extend-color",
+      "baseColorVar": "portal-header-bg-extend-color",
+      "gradientColorVar": "portal-header-bg-extend-color",
       "fallbackColor": "#F1F1F1",
       "gradientDirection": "vertical",
       "gradientOpacityStart": 1,
@@ -11,9 +10,8 @@
       "imageOpacity": 1
     },
     "header": {
-      "baseColorVar": "tlayout-header-bg-extend-color",
-      "gradientColorVar": "tlayout-header-bg-extend-color",
-      "fallbackColorVar": "portal-header-bg-extend-color",
+      "baseColorVar": "portal-header-bg-extend-color",
+      "gradientColorVar": "portal-header-bg-extend-color",
       "fallbackColor": "#F1F1F1",
       "gradientDirection": "horizontal",
       "gradientOpacityStart": 0.6,

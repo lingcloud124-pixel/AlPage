@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db, saveDb } from '../db.js';
 import { updateExportJob } from '../export-jobs-store.js';
+import { getSecurityConfig } from '../db.js';
 
 const router = Router();
 
@@ -76,6 +77,11 @@ router.get('/projects/:id/export-jobs', async (req, res) => {
 
 router.post('/export-jobs', async (req, res) => {
   try {
+    const securityConfig = getSecurityConfig();
+    if (securityConfig?.enabled_features?.export === false) {
+      return res.status(403).json({ error: '主题导出功能已关闭' });
+    }
+
     const userId = (req as any).userId as number;
     const { projectId, confirmedVersionId, selectedProducts } = req.body ?? {};
 

@@ -5,6 +5,21 @@
     "notes": "MK版本，支持大部分页眉类型"
   },
   {
+    "version": "V12",
+    "supportedHeaders": ["header-default", "header-complex", "sidebar"],
+    "notes": "V12不支持菜单式、横幅、多页签页眉"
+  },
+  {
+    "version": "V13",
+    "supportedHeaders": ["header-default", "header-complex", "sidebar"],
+    "notes": "同V12"
+  },
+  {
+    "version": "V13.5",
+    "supportedHeaders": ["header-default", "header-complex", "header-menu", "sidebar"],
+    "notes": "V13.5新增菜单式页眉"
+  },
+  {
     "version": "V14",
     "supportedHeaders": ["header-default", "header-complex", "header-menu", "header-banner", "sidebar"],
     "notes": "V14开始全面支持各类页眉"

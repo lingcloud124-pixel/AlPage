@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme Studio - 后台管理</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --border: #2a2d3a;
+      --text: #e4e4e7;
+      --muted: #71717a;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --input-bg: #12131a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .container { max-width: 720px; margin: 0 auto; padding: 40px 20px; }
+    h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    .card h2 { font-size: 16px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .card h2 .badge { font-size: 11px; background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+    .login-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center; }
+    .login-form { max-width: 300px; margin: 0 auto; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; margin-top: 14px; }
+    label:first-of-type { margin-top: 0; }
+    input { width: 100%; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; }
+    input:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--muted); }
+    textarea { width: 100%; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; resize: vertical; }
+    textarea:focus { border-color: var(--accent); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .actions { display: flex; gap: 12px; margin-top: 24px; }
+    button { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all .2s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-secondary { background: var(--border); color: var(--text); }
+    .btn-secondary:hover { background: #3d4051; }
+    .toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; font-size: 14px; color: #fff; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 100; }
+    .toast.show { opacity: 1; }
+    .toast.success { background: var(--success); }
+    .toast.error { background: var(--danger); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+    th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .add-user-row { display: flex; gap: 8px; margin-top: 16px; }
+    .add-user-row input { flex: 1; }
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .status-dot.ok { background: var(--success); }
+    .status-dot.warn { background: #f59e0b; }
+    .status-dot.err { background: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="login-section" id="loginSection">
+      <h2>管理员登录</h2>
+      <div class="login-form">
+        <label>管理员密码</label>
+        <input type="password" id="adminPassword" placeholder="输入管理员密码">
+        <button class="btn-primary" onclick="authenticateAdmin()" style="margin-top: 16px;">进入管理面板</button>
+      </div>
+    </div>
+    
+    <div id="adminPanel" style="display: none;">
+      <h1>Theme Studio 后台管理</h1>
+      <p class="subtitle">配置 AI 模型和管理用户，配置保存后立即生效</p>
+
+      <div class="card">
+        <h2>对话模型 <span class="badge">Chat</span></h2>
+        <label>API Endpoint</label>
+        <input type="text" id="chatEndpoint" placeholder="https://api.example.com/v1/chat/completions">
+        <div class="row">
+          <div>
+            <label>API Key</label>
+            <input type="password" id="chatApiKey" placeholder="sk-...">
+          </div>
+          <div>
+            <label>模型名称</label>
+            <input type="text" id="chatModel" placeholder="MiniMax-M2.7">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>生图模型 <span class="badge">Image</span></h2>
+        <label>API Endpoint</label>
+        <input type="text" id="imageEndpoint" placeholder="https://api.example.com/v1/image_generation">
+        <div class="row">
+          <div>
+            <label>API Key</label>
+            <input type="password" id="imageApiKey" placeholder="sk-...">
+          </div>
+          <div>
+            <label>模型名称</label>
+            <input type="text" id="imageModel" placeholder="image-01">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>安全设置 <span class="badge">Security</span></h2>
+        
+        <label>跨域资源共享 (CORS) 允许域名列表</label>
+        <textarea id="corsAllowlist" placeholder="每行一个域名，例如&#10;http://localhost:3000&#10;https://your-domain.com&#10;*.mycompany.com" rows="4"></textarea>
+        <p class="subtitle" style="margin-top: 6px; font-size: 12px;">支持通配符 (*), 用换行分割多个域名</p>
+        
+        <label style="margin-top: 16px;">代理图片允许的域名列表</label>
+        <textarea id="proxyImageAllowlist" placeholder="每行一个域名，例如&#10;images.unsplash.com&#10;cdn.example.com" rows="3"></textarea>
+        <p class="subtitle" style="margin-top: 6px; font-size: 12px;">仅允许这些来源通过服务端代理图片，一行一个域名</p>
+
+        <div class="row" style="margin-top: 16px;">
+          <div>
+            <label>每日图片生成额度（每用户）</label>
+            <input type="number" id="dailyImageGenLimit" placeholder="例如: 100">
+          </div>
+          <div>
+            <label>每日主题调整对话额度（每用户）</label>
+            <input type="number" id="dailyChatAdjustLimit" placeholder="例如: 50">
+          </div>
+        </div>
+        <p class="subtitle" style="margin-top: 6px; font-size: 12px;">按用户、按自然日统计，全局统一生效</p>
+        
+        <label style="margin-top: 16px;">功能启用开关</label>
+        <div class="row" style="margin-top: 8px;">
+          <div>
+            <input type="checkbox" id="enableThemeExport" style="width: auto; margin-right: 8px;">
+            <label style="display: inline; margin-top: 0;" for="enableThemeExport">开启主题导出功能</label>
+          </div>
+          <div>
+            <input type="checkbox" id="enableProxyImage" style="width: auto; margin-right: 8px;">
+            <label style="display: inline; margin-top: 0;" for="enableProxyImage">开启代理图片功能</label>
+          </div>
+        </div>
+        <div class="row" style="margin-top: 8px;">
+          <div>
+            <input type="checkbox" id="enableImageGeneration" style="width: auto; margin-right: 8px;">
+            <label style="display: inline; margin-top: 0;" for="enableImageGeneration">开启图像生成</label>
+          </div>
+          <div>
+            <input type="checkbox" id="enableChat" style="width: auto; margin-right: 8px;">
+            <label style="display: inline; margin-top: 0;" for="enableChat">开启对话功能</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" onclick="saveConfig()">保存配置</button>
+          <button class="btn-primary" onclick="testConnection()" style="background: transparent; border: 1px solid var(--accent); color: var(--accent);">测试连接</button>
+      </div>
+      <p id="connectionStatus" style="margin-top: 12px; font-size: 13px;"></p>
+
+      <div class="card" style="margin-top: 32px;">
+        <h2>用户管理</h2>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>标识</th><th>显示名称</th><th>操作</th></tr>
+          </thead>
+          <tbody id="userTableBody"></tbody>
+        </table>
+        <div class="add-user-row">
+          <input type="text" id="newUserName" placeholder="新用户显示名称">
+          <button class="btn-primary btn-sm" onclick="addUser()">添加</button>
+        </div>
+      </div>
+      
+      <div class="actions" style="margin-top: 24px;">
+        <button class="btn-secondary" onclick="logoutAdmin()">退出管理账户</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let authHeaders = {};
+    
+    function toast(msg, type = 'success') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast ${type} show`;
+      setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    function isAuthenticated() {
+      return Object.keys(authHeaders).length > 0;
+    }
+    
+    async function authenticateAdmin() {
+      const password = document.getElementById('adminPassword').value;
+      if (!password) {
+        toast('请输入管理员密码', 'error');
+        return;
+      }
+      
+      try {
+        // Set the authorization header for API requests
+        authHeaders = {
+          'Authorization': `Bearer ${password}`,
+          'X-Admin-Password': password,
+          'Content-Type': 'application/json'
+        };
+        
+        // Save the token in session storage to persist after page refresh
+        sessionStorage.setItem('adminAuth', password);
+        
+        // Test authentication by trying to fetch model config
+        const res = await fetch('/api/model-config', { 
+          headers: authHeaders 
+        });
+        if (res.status === 401 || res.status === 403) {
+          throw new Error('认证失败，请检查密码');
+        }
+        
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+        toast('认证成功，欢迎使用管理面板');
+        
+        // Load configurations now that we're authenticated
+        loadConfig();
+        loadUsers();
+        
+      } catch (e) {
+        toast(e.message || '认证失败，请检查密码', 'error');
+        authHeaders = {}; // Clear invalid auth
+        sessionStorage.removeItem('adminAuth'); // Clear invalid auth from storage
+      }
+    }
+    
+    function logoutAdmin() {
+      if (confirm('确认退出登录？')) {
+        authHeaders = {};
+        sessionStorage.removeItem('adminAuth');
+        document.getElementById('adminPanel').style.display = 'none';
+        document.getElementById('loginSection').style.display = 'block';
+        document.getElementById('adminPassword').value = '';
+      }
+    }
+    
+    async function loadConfig() {
+      if (!isAuthenticated()) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+      
+      try {
+        // Get existing model config
+        const res = await fetch('/api/model-config', { headers: authHeaders });
+        const data = await res.json();
+        document.getElementById('chatEndpoint').value = data.chatEndpoint || '';
+        document.getElementById('chatApiKey').value = data.chatApiKey || '';
+        document.getElementById('chatModel').value = data.chatModel || '';
+        document.getElementById('imageEndpoint').value = data.imageEndpoint || '';
+        document.getElementById('imageApiKey').value = data.imageApiKey || '';
+        document.getElementById('imageModel').value = data.imageModel || '';
+        
+        // Now get the security config
+        const securityRes = await fetch('/api/security-config', { headers: authHeaders });
+        const securityData = await securityRes.json();
+        document.getElementById('corsAllowlist').value = securityData.corsOrigins?.join('\n') || '';
+        document.getElementById('proxyImageAllowlist').value = securityData.proxyImageHosts?.join('\n') || '';
+        document.getElementById('dailyImageGenLimit').value = securityData.dailyImageGenLimit ?? '100';
+        document.getElementById('dailyChatAdjustLimit').value = securityData.dailyChatAdjustLimit ?? '50';
+        
+        // Handle boolean flags
+        document.getElementById('enableThemeExport').checked = securityData.enabledFeatures?.export !== false;
+        document.getElementById('enableProxyImage').checked = securityData.enabledFeatures?.proxyImage !== false;
+        document.getElementById('enableImageGeneration').checked = securityData.enabledFeatures?.image !== false;
+        document.getElementById('enableChat').checked = securityData.enabledFeatures?.chat !== false;
+        
+      } catch (e) {
+        console.error("Error loading configuration:", e);
+        toast('加载配置失败: ' + e.message, 'error');
+      }
+    }
+
+    async function saveConfig() {
+      if (!isAuthenticated()) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+      
+      try {
+        const body = {
+          chatEndpoint: document.getElementById('chatEndpoint').value,
+          chatApiKey: document.getElementById('chatApiKey').value,
+          chatModel: document.getElementById('chatModel').value,
+          imageEndpoint: document.getElementById('imageEndpoint').value,
+          imageApiKey: document.getElementById('imageApiKey').value,
+          imageModel: document.getElementById('imageModel').value,
+          
+          // Additional security configuration
+          corsAllowlist: document.getElementById('corsAllowlist').value
+            .split('\n')
+            .map(item => item.trim())
+            .filter(item => item.length > 0),
+          proxyImageHosts: document.getElementById('proxyImageAllowlist').value
+            .split('\n')
+            .map(item => item.trim())
+            .filter(item => item.length > 0),
+          rateLimits: undefined,
+          enabledFeatures: {
+            export: document.getElementById('enableThemeExport').checked,
+            proxyImage: document.getElementById('enableProxyImage').checked,
+            image: document.getElementById('enableImageGeneration').checked,
+            chat: document.getElementById('enableChat').checked,
+            cors: true,
+            quota: true,
+            adminAuth: true,
+            rateLimiting: true
+          },
+          dailyImageGenLimit: parseInt(document.getElementById('dailyImageGenLimit').value) || 100,
+          dailyChatAdjustLimit: parseInt(document.getElementById('dailyChatAdjustLimit').value) || 50
+        };
+        
+        const [modelRes, securityRes] = await Promise.allSettled([
+          fetch('/api/model-config', {
+            method: 'PUT',
+            headers: authHeaders,
+            body: JSON.stringify({
+              chatEndpoint: body.chatEndpoint,
+              chatApiKey: body.chatApiKey,
+              chatModel: body.chatModel,
+              imageEndpoint: body.imageEndpoint,
+              imageApiKey: body.imageApiKey,
+              imageModel: body.imageModel,
+            }),
+          }),
+          fetch('/api/security-config', {
+            method: 'PUT',
+            headers: authHeaders,
+            body: JSON.stringify({
+              corsOrigins: body.corsAllowlist,
+              proxyImageHosts: body.proxyImageHosts,
+              ...(body.rateLimits ? { rateLimits: body.rateLimits } : {}),
+              enabledFeatures: body.enabledFeatures,
+              dailyImageGenLimit: body.dailyImageGenLimit,
+              dailyChatAdjustLimit: body.dailyChatAdjustLimit,
+            })
+          })
+        ]);
+        
+        // Check individual responses
+        let successCount = 0;
+        if (modelRes.status === 'fulfilled' && modelRes.value.ok) {
+          const modelData = await modelRes.value.json();
+          if (modelData.success) {
+            successCount++;
+          } else {
+            toast(modelData.error || '模型配置保存失败', 'error');
+          }
+        } else if (modelRes.reason) {
+          toast('模型配置保存失败: ' + modelRes.reason.message, 'error');
+        }
+        
+        if (securityRes.status === 'fulfilled' && securityRes.value.ok) {
+          const securityData = await securityRes.value.json();
+          if (securityData.success) {
+            successCount++;
+          } else {
+            toast(securityData.error || '安全配置保存失败', 'error');
+          }
+        } else if (securityRes.reason) {
+          toast('安全配置保存失败: ' + securityRes.reason.message, 'error');
+        }
+        
+        if (successCount > 0) {
+          toast(`配置已保存 (${successCount}/2 成功)`);
+        }
+        
+      } catch (e) {
+        toast('保存失败: ' + e.message, 'error');
+      }
+    }
+
+    async function testConnection() {
+      if (!isAuthenticated()) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+      
+      const statusEl = document.getElementById('connectionStatus');
+      statusEl.innerHTML = '测试中...';
+      try {
+        const [chatRes, imageRes] = await Promise.allSettled([
+          fetch('/api/health', { headers: authHeaders }).then(r => r.json()),
+          fetch('/api/health', { headers: authHeaders }).then(r => r.json()),
+        ]);
+        statusEl.innerHTML = '<span class="status-dot ok"></span>服务正常运行';
+      } catch (e) {
+        statusEl.innerHTML = '<span class="status-dot err"></span>连接失败: ' + e.message;
+      }
+    }
+
+    async function loadUsers() {
+      if (!isAuthenticated()) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/auth/users', { headers: authHeaders });
+        const users = await res.json();
+        const tbody = document.getElementById('userTableBody');
+        tbody.innerHTML = users.map(u => `
+          <tr>
+            <td>${u.id}</td>
+            <td>${u.name}</td>
+            <td>${u.display_name}</td>
+            <td>${u.id > 3 ? `<button class="btn-danger btn-sm" onclick="deleteUser(${u.id})">删除</button>` : ''}</td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        toast('加载用户失败: ' + e.message, 'error');
+      }
+    }
+
+    async function addUser() {
+      if (!isAuthenticated()) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+      
+      const name = document.getElementById('newUserName').value.trim();
+      if (!name) {
+        toast('请输入用户名称', 'error');
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/users', {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({ displayName: name }),
+        });
+        const data = await res.json();
+        if (data.id) {
+          document.getElementById('newUserName').value = '';
+          toast('用户已添加');
+          loadUsers();
+        } else {
+          toast(data.error || '添加失败', 'error');
+        }
+      } catch (e) {
+        toast('添加失败: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteUser(id) {
+      if (!isAuthenticated()) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      } 
+      
+      if (!confirm('确认删除该用户？')) return;
+      try {
+        await fetch(`/api/auth/users/${id}`, { 
+          method: 'DELETE', 
+          headers: authHeaders 
+        });
+        toast('用户已删除');
+        loadUsers();
+      } catch (e) {
+        toast('删除失败: ' + e.message, 'error');
+      }
+    }
+    
+    // Check if we already have a stored session on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      const storedAuth = sessionStorage.getItem('adminAuth');
+      if (storedAuth) {
+        // Simulate authentication with stored token
+        authHeaders = {
+          'Authorization': `Bearer ${storedAuth}`,
+          'X-Admin-Password': storedAuth,
+          'Content-Type': 'application/json'
+        };
+        
+        // Try to load data to verify if token is still valid
+        fetch('/api/model-config', { headers: authHeaders })
+          .then(res => {
+            if (res.status === 401 || res.status === 403) {
+              // Token expired
+              sessionStorage.removeItem('adminAuth');
+              toast('登录状态已过期，请重新登录', 'error');
+              return false;
+            } else {
+              // Valid, show admin panel
+              document.getElementById('loginSection').style.display = 'none';
+              document.getElementById('adminPanel').style.display = 'block';
+              
+              // Load configurations now that we're authenticated
+              loadConfig();
+              loadUsers();
+              return true;
+            }
+          })
+          .catch(() => {
+            // Network error or other issues - clear token
+            sessionStorage.removeItem('adminAuth');
+            toast('网络错误，请重新登录', 'error');
+          });
+      }
+    });
+  </script>
+</body>
+</html>
