@@ -9,7 +9,7 @@ import {
   populateSidebarProjects,
   closeAllProjectMenus,
 } from './project-manager';
-import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck } from './theme-engine';
+import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, resetThemeTargetStyles } from './theme-engine';
 import { loadAndRenderChatHistory, setupChatInterface, showDefaultChatView } from './chat-manager';
 import { setupMainActions, showNotification } from './package-manager';
 import {
@@ -52,6 +52,7 @@ async function showWorkspace(projectId: string): Promise<void> {
 
   const project = await loadProject(projectId);
   if (project) {
+    resetThemeTargetStyles();
     applyTemplateSpecificThemeVars(project.templateType);
     const projectNameElement = document.getElementById('projectName');
     if (projectNameElement) projectNameElement.textContent = getProjectThemeLabel(project);
