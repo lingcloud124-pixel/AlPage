@@ -122,67 +122,71 @@
   </div>
 
   <script type="module">
-    import { login } from './src/auth.js';
-    
-    // Check if already logged in and redirect
-    const checkAuthAndRedirect = async () => {
-      try {
-        const token = localStorage.getItem('theme-studio-token');
-        if (token) {
-          // Verify token with backend
-          const response = await fetch('/api/auth/me', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (response.ok) {
-            window.location.href = '/index.html';
-            return;
-          } else {
-            // Token invalid, clear storage
-            localStorage.removeItem('theme-studio-token');
-            localStorage.removeItem('theme-studio-user');
-          }
-        }
-      } catch (error) {
-        console.warn('Auth check failed:', error);
-        // Continue to login page
+    import { fetchUsers, setUser } from './src/auth.js';
+
+    async function hydrateUserButtons() {
+      const users = await fetchUsers();
+      const buttons = Array.from(document.querySelectorAll('.login-user-btn'));
+      buttons.forEach((button, index) => {
+        const user = users[index];
+        if (!user) return;
+        button.dataset.userId = String(user.id);
+        button.dataset.userName = user.name;
+        const avatar = button.querySelector('.login-user-avatar');
+        const name = button.querySelector('.login-user-name');
+        if (avatar) avatar.textContent = user.display_name.slice(0, 1).toUpperCase();
+        if (name) name.textContent = user.display_name;
+      });
+      return users;
+    }
+
+    function checkAuthAndRedirect() {
+      const stored = localStorage.getItem('theme-studio-user');
+      if (stored) {
+        window.location.href = '/index.html';
       }
-    };
-    
-    // Handle login button clicks
-    const handleLoginClick = async (event) => {
+    }
+
+    async function handleLoginClick(event) {
       const button = event.target.closest('.login-user-btn');
       if (!button) return;
-      
-      const userName = button.dataset.user;
-      if (!userName) return;
-      
+
+      const userId = button.dataset.userId;
+      const userName = button.dataset.userName;
+      const displayName = button.querySelector('.login-user-name')?.textContent;
+      if (!userId || !userName || !displayName) return;
+
       try {
-        // Show loading state
         const buttons = document.querySelectorAll('.login-user-btn');
         buttons.forEach(btn => {
           btn.disabled = true;
           btn.style.opacity = '0.7';
         });
-        
-        await login(userName);
+
+        setUser({
+          id: Number(userId),
+          name: userName,
+          display_name: displayName,
+        });
         window.location.href = '/index.html';
       } catch (error) {
         console.error('Login failed:', error);
         alert('登录失败，请重试');
-        // Restore buttons
+        const buttons = document.querySelectorAll('.login-user-btn');
         buttons.forEach(btn => {
           btn.disabled = false;
           btn.style.opacity = '1';
         });
       }
-    };
-    
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
       checkAuthAndRedirect();
+      try {
+        await hydrateUserButtons();
+      } catch (error) {
+        console.error('Load users failed:', error);
+      }
       document.addEventListener('click', handleLoginClick);
     });
   </script>

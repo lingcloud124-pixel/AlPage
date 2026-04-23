@@ -70,7 +70,9 @@ export function safeJsonParse<T>(json: string | null, fallback: T): T {
 }
 
 let _currentProjectId: string | null = null;
-export function getCurrentProjectId() { return _currentProjectId; }
+export function getCurrentProjectId() {
+  return _currentProjectId ?? localStorage.getItem('theme-studio-current-project');
+}
 export function setCurrentProjectId(id: string | null) {
   _currentProjectId = id;
   if (id) localStorage.setItem('theme-studio-current-project', id);

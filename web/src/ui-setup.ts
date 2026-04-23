@@ -15,7 +15,7 @@ import type { AISettings } from './types';
 import { normalizeExportRoot } from './export/export-paths';
 import { pickDirectoryViaBridge } from './export/export-bridge';
 import { getEffectiveExportRoot } from './agent/chat-client';
-import { getUser, login } from './auth';
+import { fetchUsers, getUser, switchUser } from './auth';
 
 let previewTemplatesLoaded = false;
 
@@ -333,7 +333,17 @@ export function setupSettingsDialog() {
     const uiThemeSelect = document.getElementById('uiThemeMode') as HTMLSelectElement;
     const currentUser = getUser();
 
-    if (accountSelector && currentUser?.name) accountSelector.value = currentUser.name;
+    if (accountSelector) {
+      fetchUsers().then(users => {
+        accountSelector.innerHTML = users
+          .map(user => `<option value="${user.name}">${user.display_name}</option>`)
+          .join('');
+        if (currentUser?.name) accountSelector.value = currentUser.name;
+      }).catch(() => {
+        if (currentUser?.name) accountSelector.value = currentUser.name;
+      });
+    }
+
     if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || DEFAULT_CHAT_ENDPOINT;
     if (apiKeyInput) apiKeyInput.value = ''; // Server holds the key
     if (modelNameInput) modelNameInput.value = settings.modelName || settings.model || 'MiniMax-M2.7';
@@ -407,9 +417,12 @@ export function setupSettingsDialog() {
     applyUiTheme(settings.uiTheme as 'dark' | 'light');
 
     if (selectedAccount && selectedAccount !== currentUser?.name) {
-      await login(selectedAccount);
-      window.location.reload();
-      return;
+      const users = await fetchUsers();
+      const selectedUser = users.find(user => user.name === selectedAccount);
+      if (selectedUser) {
+        switchUser(selectedUser);
+        return;
+      }
     }
 
     settingsModal.classList.remove('active');
