@@ -54,8 +54,8 @@ TEMPLATE_ZIPS_BY_TYPE = {
     },
     "dark-ui": {
         "mk": {
-            "theme": "mk-festival-26-spring.zip",
-            "login": "login26-festival-spring.zip",
+            "theme": "mk-festival-26-spring主题包.zip",
+            "login": "mk-festival-spring-登录包.zip",
         },
         "ekp_v14_16": {
             "theme": "主题-V14〜V16-2026春节主题.zip",

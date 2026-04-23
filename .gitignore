@@ -15,7 +15,8 @@ web/screenshots/
 web/test-screenshots/
 web/test-results/
 *.zip
-assets/references/samples/
+!assets/references/samples/**/*.zip
+!assets/references/samples/**/.gitkeep
 .playwright-cli/
 .ruff_cache/
 designs/backgrounds/generated-*.png

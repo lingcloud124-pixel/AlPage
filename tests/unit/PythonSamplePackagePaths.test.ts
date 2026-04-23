@@ -10,8 +10,8 @@ describe('python sample package paths', () => {
 
     expect(source).toContain('"light-ui": LOCAL_SAMPLES_DIR / "light"');
     expect(source).toContain('"dark-ui": LOCAL_SAMPLES_DIR / "dark"');
-    expect(source).toContain('"theme": "mk-festival-26-spring.zip"');
-    expect(source).toContain('"login": "login26-festival-spring.zip"');
+    expect(source).toContain('"theme": "mk-festival-26-spring主题包.zip"');
+    expect(source).toContain('"login": "mk-festival-spring-登录包.zip"');
     expect(source).not.toContain('LOCAL_SAMPLES_DIR / "light样例包"');
     expect(source).not.toContain('LOCAL_SAMPLES_DIR / "dark样例包"');
   });
@@ -21,10 +21,11 @@ describe('python sample package paths', () => {
 
     expect(source).toContain('"light-ui": LOCAL_SAMPLES_DIR / "light"');
     expect(source).toContain('"dark-ui": LOCAL_SAMPLES_DIR / "dark"');
-    expect(source).toContain('("主题-MK-", "mk-festival-26-spring.zip")');
-    expect(source).toContain('("登录-MK-", "login26-festival-spring.zip")');
+    expect(source).toContain('("主题-MK-", "mk-festival-26-spring主题包.zip")');
+    expect(source).toContain('("登录-MK-", "mk-festival-spring-登录包.zip")');
     expect(source).not.toContain('LOCAL_SAMPLES_DIR / "light样例包"');
     expect(source).not.toContain('LOCAL_SAMPLES_DIR / "dark样例包"');
+    expect(source).not.toContain('assets/references/samples/主题样例包');
   });
 
   test('build verifier treats the configured theme color as allowed even if it matches a template color', () => {

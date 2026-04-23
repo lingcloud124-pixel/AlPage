@@ -31,8 +31,8 @@ LIGHT_EXPECTED_ZIPS = [(item["prefix"], item["reference"]) for item in VERIFY_RU
 EXPECTED_ZIPS_BY_TEMPLATE_TYPE = {
     "light-ui": LIGHT_EXPECTED_ZIPS,
     "dark-ui": [
-        ("主题-MK-", "mk-festival-26-spring.zip"),
-        ("登录-MK-", "login26-festival-spring.zip"),
+        ("主题-MK-", "mk-festival-26-spring主题包.zip"),
+        ("登录-MK-", "mk-festival-spring-登录包.zip"),
         ("主题-V14〜V16-", "主题-V14〜V16-2026春节主题.zip"),
         ("登录-V14〜V16-", "登录-V16〜V17-2026春节.zip"),
         ("登录-V14-", "登录-V14-2026春节.zip"),
@@ -144,14 +144,6 @@ def discover_sample_root(template_type: str) -> Optional[Path]:
         f"*/Topic Automation/assets/references/samples/{dir_name}",
         f"*/*/Topic Automation/assets/references/samples/{dir_name}",
     ]
-
-    if template_type == "light-ui":
-        search_patterns.extend(
-            [
-                "*/Topic Automation/assets/references/samples/主题样例包",
-                "*/*/Topic Automation/assets/references/samples/主题样例包",
-            ]
-        )
 
     for pattern in search_patterns:
         for candidate in desktop_dir.glob(pattern):
