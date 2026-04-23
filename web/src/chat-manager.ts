@@ -800,7 +800,11 @@ export function setupChatInterface(deps: ChatDeps) {
     });
     await saveChatHistory();
 
-    const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '')), {
+    const cleanedResponse = fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '');
+    console.log('[DEBUG] cleanedResponse 长度:', cleanedResponse.length);
+    console.log('[DEBUG] cleanedResponse 最后200字:', cleanedResponse.slice(-200));
+
+    const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(cleanedResponse), {
       userMessage,
       assistantMessage: fullResponse,
       priorAssistantMessage,
@@ -808,6 +812,10 @@ export function setupChatInterface(deps: ChatDeps) {
       templateType,
       latestThemeAgentDebugState,
       latestThemePreviews,
+    });
+    console.log('[DEBUG] 解析到 toolCalls 数量:', toolCalls.length);
+    toolCalls.forEach((tc, i) => {
+      console.log(`[DEBUG] toolCall[${i}]:`, tc.tool, JSON.stringify(tc.args).slice(0, 200));
     });
     const TOOL_GLOBAL_TIMEOUT = 120_000;
     const toolStartTime = Date.now();

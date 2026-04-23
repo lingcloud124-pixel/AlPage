@@ -324,6 +324,26 @@ export async function chatCompletion(
   }
 }
 
+export function extractBalancedJson(text: string, startIdx: number): string | null {
+  if (startIdx >= text.length || text[startIdx] !== '{') return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = startIdx; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') {
+      depth--;
+      if (depth === 0) return text.slice(startIdx, i + 1);
+    }
+  }
+  return null;
+}
+
 export function parseToolCallsFromContent(content: string): Array<{ tool: string; args: Record<string, unknown> }> {
   const toolCalls: Array<{ tool: string; args: Record<string, unknown> }> = [];
   let invalidJsonBlockCount = 0;
@@ -346,14 +366,19 @@ export function parseToolCallsFromContent(content: string): Array<{ tool: string
   }
 
   if (toolCalls.length === 0) {
-    const inlineRegex = /\{"tool"\s*:\s*"([^"]+)"\s*,\s*"args"\s*:\s*(\{[^}]*\})\s*\}/g;
-    while ((match = inlineRegex.exec(content)) !== null) {
-      try {
-        toolCalls.push({ tool: match[1], args: JSON.parse(match[2]) });
-      } catch (error) {
-        invalidInlineToolCallCount += 1;
-        if (!invalidToolCallSample) invalidToolCallSample = match[0].slice(0, 160);
-        void error;
+    const inlineRegex = /\{"tool"\s*:\s*"([^"]+)"\s*,\s*"args"\s*:\s*/g;
+    let inlineMatch;
+    while ((inlineMatch = inlineRegex.exec(content)) !== null) {
+      const startIdx = inlineRegex.lastIndex;
+      const argsJson = extractBalancedJson(content, startIdx);
+      if (argsJson) {
+        try {
+          toolCalls.push({ tool: inlineMatch[1], args: JSON.parse(argsJson) });
+        } catch (error) {
+          invalidInlineToolCallCount += 1;
+          if (!invalidToolCallSample) invalidToolCallSample = argsJson.slice(0, 160);
+          void error;
+        }
       }
     }
   }

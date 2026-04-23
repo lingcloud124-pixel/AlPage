@@ -9,6 +9,51 @@ function normalizeTemplateType(value: unknown): 'light-ui' | 'dark-ui' {
   return value === 'dark-ui' ? 'dark-ui' : 'light-ui';
 }
 
+function extractDirectionsFromText(text: string): Array<{ label: string; prompt: string }> {
+  if (!text) return [];
+  const directions: Array<{ label: string; prompt: string }> = [];
+  const labels = ['A', 'B', 'C'];
+  const parts = text.split(/\*\*\s*方向\s*([ABCabc])/u);
+  if (parts.length < 4) return [];
+
+  for (let i = 1; i + 1 < parts.length; i += 2) {
+    const letter = parts[i].toUpperCase();
+    const idx = labels.indexOf(letter);
+    if (idx < 0) continue;
+    let content = parts[i + 1] || '';
+    content = content.replace(/\*\*/g, '').trim();
+    const nextLabelIdx = content.search(/方向\s*[ABCabc]/u);
+    if (nextLabelIdx > 0) content = content.slice(0, nextLabelIdx).trim();
+    const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+    let labelLine = lines[0] || '';
+    let promptLines = lines.slice(1);
+    if (labelLine.startsWith('·') || labelLine.startsWith('·')) {
+      labelLine = labelLine.replace(/^[·\s]+/, '').trim();
+    }
+    const labelMatch = labelLine.match(/^[·\s]*([^：:]{1,20})[：:]?\s*$/);
+    if (labelMatch) {
+      labelLine = labelMatch[1].trim();
+      promptLines = lines.slice(1);
+    } else {
+      const colonIdx = labelLine.search(/[：:]/);
+      if (colonIdx > 0) {
+        labelLine = labelLine.slice(0, colonIdx).trim();
+        const rest = labelLine.slice(colonIdx + 1).trim();
+        if (rest) promptLines = [rest, ...promptLines];
+      }
+    }
+    const promptText = promptLines.join('。').replace(/[。;；\s]+$/u, '').trim();
+    if (promptText.length > 20) {
+      directions.push({
+        label: `${letter} · ${labelLine}`,
+        prompt: promptText,
+      });
+    }
+  }
+
+  return directions;
+}
+
 function stripMarkdown(text: string): string {
   return text
     .replace(/\*\*(.*?)\*\*/g, '$1')
@@ -149,6 +194,25 @@ export function enrichToolCallsWithColorHints(
         ?? inferPrimaryHintFromText(prompt, templateType)
         ?? inferPrimaryHintFromText(context.assistantMessage, templateType);
 
+    const rawDirections = toolCall.args.directions;
+    const hasDirections = Array.isArray(rawDirections) && rawDirections.length > 0;
+
+    if (!hasDirections) {
+      const extracted = extractDirectionsFromText(context.assistantMessage);
+      if (extracted.length > 0) {
+        console.log('[enrichToolCalls] directions 为空，从回复文本提取到', extracted.length, '个方向');
+        return {
+          ...toolCall,
+          tool: 'generate_theme_previews',
+          args: {
+            directions: extracted,
+            templateType,
+            ...(inferredHint ? { primaryHint: inferredHint } : {}),
+          },
+        };
+      }
+    }
+
     const finalPrompt = prompt.trim() || (
       isSimpleConfirmationMessage(context.userMessage) && context.priorAssistantMessage
         ? buildGenerationPromptFromPlan({
@@ -186,6 +250,7 @@ export function enrichToolCallsWithColorHints(
         tool: 'generate_theme_previews',
         args: {
           ...toolCall.args,
+          directions: hasDirections ? rawDirections : undefined,
           templateType,
           ...((regeneratedPrompt || finalPrompt) ? { prompt: regeneratedPrompt || finalPrompt } : {}),
           ...(inferredHint ? { primaryHint: inferredHint } : {}),
@@ -197,87 +262,25 @@ export function enrichToolCallsWithColorHints(
   const hasGeneratePipeline = enriched.some((toolCall) =>
     toolCall.tool === 'generate_theme_pipeline' || toolCall.tool === 'generate_theme_previews');
   if (!hasGeneratePipeline && isSimpleConfirmationMessage(context.userMessage) && context.priorAssistantMessage) {
+    const extractedDirections = extractDirectionsFromText(context.priorAssistantMessage);
     const templateType = inferTemplateTypeFromText(context.priorAssistantMessage);
     const primaryHint = inferPrimaryHintFromText(context.priorAssistantMessage, templateType)
       ?? inferPrimaryHintFromText(context.priorUserMessage, templateType)
       ?? inferPrimaryHintFromText(context.assistantMessage, templateType);
 
-    return [
-      {
-        tool: 'generate_theme_previews',
-        args: {
-          templateType,
-          prompt: buildGenerationPromptFromPlan({
-            userMessage: context.userMessage,
-            priorAssistantMessage: context.priorAssistantMessage,
-            priorUserMessage: context.priorUserMessage,
-            templateType,
-            primaryHint,
-          }),
-          ...(primaryHint ? { primaryHint } : {}),
-        },
-      },
-      ...enriched,
-    ];
-  }
-
-  if (!hasGeneratePipeline && context.latestThemeAgentDebugState?.intent && (context.latestThemeAgentDebugState?.scenePlan || context.latestThemeAgentDebugState?.scenePlans?.[0])) {
-    const adjustment = parseThemeFeedback(context.userMessage);
-    const hasAdjustment = Object.values(adjustment).some((value) =>
-      Array.isArray(value) ? value.length > 0 : value !== undefined,
-    );
-
-    if (hasAdjustment) {
-      const basePlan = context.latestThemeAgentDebugState.scenePlan
-        ?? context.latestThemeAgentDebugState.scenePlans![0];
-      const regenerated = buildRegeneratedScenePlan(
-        context.latestThemeAgentDebugState.intent,
-        basePlan,
-        adjustment,
-      );
-      const directedPrompt = buildDirectedPrompt(regenerated.nextScenePlan).prompt;
-      const templateType = context.latestThemeAgentDebugState.intent.templateType ?? 'light-ui';
-      const primaryHint = inferPrimaryHintFromText(context.userMessage, templateType)
-        ?? inferPrimaryHintFromText(context.priorAssistantMessage, templateType)
-        ?? inferPrimaryHintFromText(context.priorUserMessage, templateType);
-
+    if (extractedDirections.length > 0) {
       return [
         {
           tool: 'generate_theme_previews',
           args: {
+            directions: extractedDirections,
             templateType,
-            prompt: directedPrompt,
             ...(primaryHint ? { primaryHint } : {}),
-            themeFeedbackRegenerated: true,
           },
         },
         ...enriched,
       ];
     }
-  }
-
-  if (!hasGeneratePipeline && /方向\s*[ABCabc·]/u.test(context.assistantMessage)) {
-    const templateType = inferTemplateTypeFromText(context.assistantMessage);
-    const prompt = buildGenerationPromptFromPlan({
-      userMessage: context.userMessage,
-      priorAssistantMessage: context.assistantMessage,
-      priorUserMessage: context.priorUserMessage,
-      templateType,
-    });
-    const primaryHint = inferPrimaryHintFromText(context.userMessage, templateType)
-      ?? inferPrimaryHintFromText(context.assistantMessage, templateType);
-
-    return [
-      {
-        tool: 'generate_theme_previews',
-        args: {
-          templateType,
-          prompt,
-          ...(primaryHint ? { primaryHint } : {}),
-        },
-      },
-      ...enriched,
-    ];
   }
 
   return enriched;
