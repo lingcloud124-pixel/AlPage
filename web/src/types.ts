@@ -136,6 +136,53 @@ export interface AISettings {
   uiTheme?: 'dark' | 'light';
 }
 
+export interface ConfirmedProjectSnapshot {
+  projectId: string;
+  name: string;
+  nameEn: string;
+  templateType: 'light-ui' | 'dark-ui';
+  colors: Record<string, string>;
+  bgImageUrl?: string;
+  headerBgImageUrl?: string;
+  sourceUpdatedAt: number;
+  confirmedAt: number;
+}
+
+export interface ConfirmedProjectVersion {
+  id: string;
+  projectId: string;
+  createdAt: number;
+  updatedAt: number;
+  projectSnapshot: ConfirmedProjectSnapshot;
+}
+
+export type ServerExportJobStatus =
+  | 'queued'
+  | 'preparing'
+  | 'capturing'
+  | 'packaging'
+  | 'verifying'
+  | 'completed'
+  | 'failed';
+
+export interface ServerExportJobResult {
+  downloadUrl?: string;
+  artifactPath?: string;
+  packageCount?: number;
+}
+
+export interface ServerExportJob {
+  id: string;
+  projectId: string;
+  confirmedVersionId: string;
+  status: ServerExportJobStatus;
+  selectedProducts: string[];
+  error?: string;
+  result?: ServerExportJobResult;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export type ExportBatchStatus =
   | 'queued'
   | 'bridge_unavailable'

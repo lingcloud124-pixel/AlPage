@@ -57,6 +57,39 @@ export async function initDb(): Promise<void> {
     );
   `);
 
+  // Create theme_confirmed_versions table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS theme_confirmed_versions (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      snapshot_json TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (project_id) REFERENCES theme_projects(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+  `);
+
+  // Create theme_export_jobs table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS theme_export_jobs (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      confirmed_version_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      selected_products TEXT NOT NULL,
+      result_json TEXT,
+      error TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (project_id) REFERENCES theme_projects(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (confirmed_version_id) REFERENCES theme_confirmed_versions(id) ON DELETE CASCADE
+    );
+  `);
+
   // Seed users
   const stmt = db.prepare('INSERT OR IGNORE INTO users (id, name, display_name) VALUES (?, ?, ?)');
   stmt.bind([1, 'customer-a', '客户A']);

@@ -31,8 +31,8 @@ LIGHT_EXPECTED_ZIPS = [(item["prefix"], item["reference"]) for item in VERIFY_RU
 EXPECTED_ZIPS_BY_TEMPLATE_TYPE = {
     "light-ui": LIGHT_EXPECTED_ZIPS,
     "dark-ui": [
-        ("主题-MK-", "mk-festival-26-spring主题包.zip"),
-        ("登录-MK-", "mk-festival-spring-登录包.zip"),
+        ("主题-MK-", "mk-festival-26-spring.zip"),
+        ("登录-MK-", "login26-festival-spring.zip"),
         ("主题-V14〜V16-", "主题-V14〜V16-2026春节主题.zip"),
         ("登录-V14〜V16-", "登录-V16〜V17-2026春节.zip"),
         ("登录-V14-", "登录-V14-2026春节.zip"),
@@ -43,8 +43,8 @@ EXPECTED_ZIPS_BY_TEMPLATE_TYPE = {
     ],
 }
 DEFAULT_SAMPLE_ROOTS = {
-    "light-ui": LOCAL_SAMPLES_DIR / "light样例包",
-    "dark-ui": LOCAL_SAMPLES_DIR / "dark样例包",
+    "light-ui": LOCAL_SAMPLES_DIR / "light",
+    "dark-ui": LOCAL_SAMPLES_DIR / "dark",
 }
 PRODUCT_TO_PREFIXES = {
     "mk": ["主题-MK-", "登录-MK-"],
@@ -172,6 +172,18 @@ def detect_template_type_from_output_dir(output_dir: Path) -> Optional[str]:
     return None
 
 
+def detect_theme_color_from_output_dir(output_dir: Path) -> Optional[str]:
+    assets_yaml = output_dir.parent / ".build-meta" / "theme-build-request.yaml"
+    if not assets_yaml.exists():
+        return None
+
+    content = assets_yaml.read_text(encoding="utf-8", errors="replace")
+    match = re.search(r'^themeColor:\s*"?(#[0-9a-fA-F]{3,8})"?\s*$', content, re.MULTILINE)
+    if match:
+        return match.group(1)
+    return None
+
+
 def resolve_template_type(output_dir: Path, explicit_template_type: Optional[str]) -> str:
     template_type = explicit_template_type or detect_template_type_from_output_dir(output_dir) or "light-ui"
     if template_type not in EXPECTED_ZIPS_BY_TEMPLATE_TYPE:
@@ -224,11 +236,15 @@ def verify_structure(gen_path, ref_path, prefix=""):
         return len(issues) == 0, issues
 
 
-def verify_color_injection(gen_path):
+def verify_color_injection(gen_path, theme_color: Optional[str] = None):
     # type: (Path) -> Tuple[bool, List[str]]
     issues = []
     has_theme_css = False
     old_color_found = []
+    allowed_theme_colors = set()
+    if theme_color:
+        allowed_theme_colors.add(theme_color.lower())
+        allowed_theme_colors.add(theme_color.upper())
 
     with zipfile.ZipFile(gen_path) as zf:
         for name in zf.namelist():
@@ -248,6 +264,8 @@ def verify_color_injection(gen_path):
                 has_theme_css = True
                 content = zf.read(name).decode("utf-8", errors="replace")
                 for color in OLD_COLORS:
+                    if color in allowed_theme_colors:
+                        continue
                     if color in content:
                         old_color_found.append(f"{color} in {name}")
                         break
@@ -324,10 +342,13 @@ def main():
         sys.exit(1)
 
     template_type = resolve_template_type(output_dir, explicit_template_type)
+    theme_color = detect_theme_color_from_output_dir(output_dir)
     sample_root = resolve_sample_root(template_type, explicit_sample_root)
 
     print(f"🔍 Verifying build: {output_dir}")
     print(f"🎨 Template type: {template_type}")
+    if theme_color:
+        print(f"🎯 Theme color: {theme_color}")
     print(f"📚 Sample root: {sample_root}\n")
 
     expected_zips = EXPECTED_ZIPS_BY_TEMPLATE_TYPE[template_type]
@@ -360,7 +381,7 @@ def main():
         ref_path = sample_root / ref_name
 
         struct_ok, struct_issues = verify_structure(gen_path, ref_path, prefix)
-        color_ok, color_issues = verify_color_injection(gen_path)
+        color_ok, color_issues = verify_color_injection(gen_path, theme_color)
         image_ok, image_issues, image_warnings = verify_image_replacement(gen_path, prefix, expected_zips, sample_root)
 
         status = "✅" if struct_ok and color_ok and image_ok else "❌"

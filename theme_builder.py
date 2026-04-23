@@ -33,8 +33,8 @@ PROJECT_ROOT = Path(__file__).parent
 LOCAL_SAMPLES_DIR = PROJECT_ROOT / "assets" / "references" / "samples"
 
 DEFAULT_SAMPLES_ROOTS = {
-    "light-ui": LOCAL_SAMPLES_DIR / "light样例包",
-    "dark-ui": LOCAL_SAMPLES_DIR / "dark样例包",
+    "light-ui": LOCAL_SAMPLES_DIR / "light",
+    "dark-ui": LOCAL_SAMPLES_DIR / "dark",
 }
 
 TEMPLATE_ZIPS_BY_TYPE = {
@@ -54,8 +54,8 @@ TEMPLATE_ZIPS_BY_TYPE = {
     },
     "dark-ui": {
         "mk": {
-            "theme": "mk-festival-26-spring主题包.zip",
-            "login": "mk-festival-spring-登录包.zip",
+            "theme": "mk-festival-26-spring.zip",
+            "login": "login26-festival-spring.zip",
         },
         "ekp_v14_16": {
             "theme": "主题-V14〜V16-2026春节主题.zip",
@@ -369,7 +369,7 @@ def resolve_samples_root(template_type: str, configured_root: Optional[str] = No
         warn(f"Configured sample root not found: {configured}")
 
     default_root = DEFAULT_SAMPLES_ROOTS.get(
-        template_type, Path(__file__).parent / "assets/references/samples/主题样例包"
+        template_type, Path(__file__).parent / "assets/references/samples/light"
     )
     if default_root.exists():
         return default_root.resolve()

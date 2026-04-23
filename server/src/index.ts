@@ -8,6 +8,9 @@ const [
   { authRouter },
   { projectsRouter },
   { messagesRouter },
+  { confirmedVersionsRouter },
+  { exportJobsRouter },
+  { startExportJobRunner },
   { aiProxyRouter },
   { authMiddleware },
 ] = await Promise.all([
@@ -17,6 +20,9 @@ const [
   import('./routes/auth.js'),
   import('./routes/projects.js'),
   import('./routes/messages.js'),
+  import('./routes/confirmed-versions.js'),
+  import('./routes/export-jobs.js'),
+  import('./export-job-runner.js'),
   import('./routes/ai-proxy.js'),
   import('./middleware/auth.js'),
 ]);
@@ -33,10 +39,13 @@ app.use('/api/auth', authRouter);
 app.use('/api/theme', authMiddleware);
 app.use('/api/theme/projects', projectsRouter);
 app.use('/api/theme/projects', messagesRouter);
+app.use('/api/theme/projects', confirmedVersionsRouter);
+app.use('/api/theme', exportJobsRouter);
 app.use('/api/theme', aiProxyRouter);
 
 async function start() {
   await initDb();
+  startExportJobRunner();
   console.log(`Theme Studio API running on port ${PORT}`);
   app.listen(PORT);
 }

@@ -11,8 +11,8 @@
 
 - **项目名**: Theme Studio（主题自动化 / Topic Automation）
 - **项目路径**: `/Users/gulingfei/Desktop/APP（vibe-coding）/Topic Automation`
-- **核心用途**: 用户在 Web 界面描述需求 → AI 生成背景图 → 提取配色 → HTML 模板实时预览 → 用户按需选择产品 → 后台截图打包 → 生成 15 个 OA 主题 zip 包
-- **目标产品**: EKp / MK / KK 等 OA 系统（版本 V12 ~ V17）
+- **核心用途**: 用户在 Web 界面描述需求 → AI 生成背景图 → 提取配色 → HTML 模板实时预览 → 用户按需选择产品 → 后台截图打包 → 生成 9 个 OA 主题 zip 包
+- **目标产品**: EKp / MK / KK 等 OA 系统（当前支持 V14 ~ V17）
 - **Skill 名称**: `theme-automation`
 
 ---
@@ -203,7 +203,7 @@ Theme Agent 只允许影响：
 
 ### 打包
 
-- 15 个 zip：MK(2) + V12(2) + V13_5(4) + V14_16(5) + V17(2)
+- 9 个 zip：MK(2) + V14_16(5) + V17(2)
 - 前端只负责创建导出任务，不直接拼 zip
 - 本地桥接层负责执行 `web/scripts/screenshot.ts`、`web/scripts/build.ts`、`theme_builder.py`
 - 深度验证：`python3 scripts/deep-verify.py`
@@ -348,7 +348,7 @@ Topic Automation/
 │
 ├── src/                   # TypeScript 源码（27 文件，活跃维护）
 │   ├── core/              # 核心模块
-│   │   ├── ThemeDetector.ts    # 主题类型检测（V12~V17）
+│   │   ├── ThemeDetector.ts    # 主题类型检测（历史兼容 + 当前版本）
 │   │   ├── ColorUpdater.ts     # CSS 颜色更新
 │   │   ├── ImageProcessor.ts   # 图片处理
 │   │   ├── MetadataUpdater.ts  # 元数据更新
@@ -535,7 +535,7 @@ Topic Automation/
 | 日期 | 决策 | 原因 |
 |------|------|------|
 | 2026-04-09 | 废弃 `run-updater.mjs`，改用 `theme_builder.py` | 旧工具链 bug 多，13包→15包 |
-| 2026-04-09 | 引入 `verify-build.py` 自动验证 | 避免人工检查 15 个 zip |
+| 2026-04-09 | 引入 `verify-build.py` 自动验证 | 避免人工检查多个 zip |
 | 2026-04-09 | 强制阶段锁定机制 | 防止 AI 跳步 |
 | 2026-04-10 | 阶段从 5 阶段简化为 4 阶段 | 合并冗余步骤 |
 | 2026-04-11 | Web 端架构重构：原生 HTML 模板替代 .pen 渲染引擎 | 性能和可维护性 |

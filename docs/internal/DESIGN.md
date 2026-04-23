@@ -599,5 +599,5 @@ web/
 | 图片生成规则 | `archive/legacy-tools/rules/image-generation-rules.md` | AI 背景图生成规则 |
 | AI 对话 SOP | `SKILL.md` | Agent 专注创建 + 迭代，导出归产品功能 |
 | AI 持久记忆 | `AGENTS.md` | 项目状态、架构、技术债、决策记录 |
-| 打包脚本 | `theme_builder.py` | 生成 15 个 zip 包 |
+| 打包脚本 | `theme_builder.py` | 生成 9 个 zip 包 |
 | 验证脚本 | `scripts/verify-build.py` | 验证包结构和色值 |
