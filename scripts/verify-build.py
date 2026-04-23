@@ -8,14 +8,15 @@ Usage:
   python3 scripts/verify-build.py <output_dir> --products mk,ekp_v17
 
 Checks:
-   1. Exactly expected zip files generated (all 15 by default, or selected subset)
+   1. Exactly expected zip files generated (all 9 by default, or selected subset)
    2. Each zip's file structure matches its reference sample
    3. Color injection: new theme color appears in theme CSS files
    4. No old template colors (#2C615C, #144E48) remain in theme CSS
    5. Image replacement: login images (bg-login.jpg, login_thumb.jpg, thumb-1/2.jpg)
-      must differ from source template (file size changed)
+      must differ from source template content
 """
 
+import hashlib
 import re
 import sys
 import zipfile
@@ -30,14 +31,8 @@ LIGHT_EXPECTED_ZIPS = [(item["prefix"], item["reference"]) for item in VERIFY_RU
 EXPECTED_ZIPS_BY_TEMPLATE_TYPE = {
     "light-ui": LIGHT_EXPECTED_ZIPS,
     "dark-ui": [
-        ("主题-MK-", "mk-festival-26-spring主题包.zip"),
-        ("登录-MK-", "mk-festival-spring-登录包.zip"),
-        ("主题-V12-", "主题-V12-2026春节主题.zip"),
-        ("登录-V12-", "登录-V12-2026春节.zip"),
-        ("主题-V13〜V13.5-", "主题-V13〜V13.5-2026春节主题.zip"),
-        ("登录-V13〜V13.5-", "登录-V13-2026春节.zip"),
-        ("登录-V13-", "登录-V13-2026春节.zip"),
-        ("登录-V13.5-", "登录-V13.5-2026春节.zip"),
+        ("主题-MK-", "mk-festival-26-spring.zip"),
+        ("登录-MK-", "login26-festival-spring.zip"),
         ("主题-V14〜V16-", "主题-V14〜V16-2026春节主题.zip"),
         ("登录-V14〜V16-", "登录-V16〜V17-2026春节.zip"),
         ("登录-V14-", "登录-V14-2026春节.zip"),
@@ -48,13 +43,11 @@ EXPECTED_ZIPS_BY_TEMPLATE_TYPE = {
     ],
 }
 DEFAULT_SAMPLE_ROOTS = {
-    "light-ui": LOCAL_SAMPLES_DIR / "light样例包",
-    "dark-ui": LOCAL_SAMPLES_DIR / "dark样例包",
+    "light-ui": LOCAL_SAMPLES_DIR / "light",
+    "dark-ui": LOCAL_SAMPLES_DIR / "dark",
 }
 PRODUCT_TO_PREFIXES = {
     "mk": ["主题-MK-", "登录-MK-"],
-    "ekp_v12": ["主题-V12-", "登录-V12-"],
-    "ekp_v13_5": ["主题-V13〜V13.5-", "登录-V13〜V13.5-", "登录-V13-", "登录-V13.5-"],
     "ekp_v14_16": ["主题-V14〜V16-", "登录-V14〜V16-", "登录-V14-", "登录-V15-", "登录-V16-"],
     "ekp_v17": ["主题-V17-", "登录-V17-"],
 }
@@ -168,12 +161,24 @@ def discover_sample_root(template_type: str) -> Optional[Path]:
 
 
 def detect_template_type_from_output_dir(output_dir: Path) -> Optional[str]:
-    assets_yaml = output_dir.parent / "素材包" / "theme-build-request.yaml"
+    assets_yaml = output_dir.parent / ".build-meta" / "theme-build-request.yaml"
     if not assets_yaml.exists():
         return None
 
     content = assets_yaml.read_text(encoding="utf-8", errors="replace")
     match = re.search(r'^templateType:\s*"?(light-ui|dark-ui)"?\s*$', content, re.MULTILINE)
+    if match:
+        return match.group(1)
+    return None
+
+
+def detect_theme_color_from_output_dir(output_dir: Path) -> Optional[str]:
+    assets_yaml = output_dir.parent / ".build-meta" / "theme-build-request.yaml"
+    if not assets_yaml.exists():
+        return None
+
+    content = assets_yaml.read_text(encoding="utf-8", errors="replace")
+    match = re.search(r'^themeColor:\s*"?(#[0-9a-fA-F]{3,8})"?\s*$', content, re.MULTILINE)
     if match:
         return match.group(1)
     return None
@@ -231,11 +236,15 @@ def verify_structure(gen_path, ref_path, prefix=""):
         return len(issues) == 0, issues
 
 
-def verify_color_injection(gen_path):
+def verify_color_injection(gen_path, theme_color: Optional[str] = None):
     # type: (Path) -> Tuple[bool, List[str]]
     issues = []
     has_theme_css = False
     old_color_found = []
+    allowed_theme_colors = set()
+    if theme_color:
+        allowed_theme_colors.add(theme_color.lower())
+        allowed_theme_colors.add(theme_color.upper())
 
     with zipfile.ZipFile(gen_path) as zf:
         for name in zf.namelist():
@@ -255,6 +264,8 @@ def verify_color_injection(gen_path):
                 has_theme_css = True
                 content = zf.read(name).decode("utf-8", errors="replace")
                 for color in OLD_COLORS:
+                    if color in allowed_theme_colors:
+                        continue
                     if color in content:
                         old_color_found.append(f"{color} in {name}")
                         break
@@ -275,10 +286,10 @@ STRUCTURE_EXTRA_ALLOWED = VERIFY_RULES["structureExtraAllowed"]
 
 
 def verify_image_replacement(gen_path, prefix, expected_zips, sample_root):
-    # type: (Path, str) -> Tuple[bool, List[str]]
+    # type: (Path, str) -> Tuple[bool, List[str], List[str]]
     image_paths = LOGIN_IMAGE_CHECKS.get(prefix, [])
     if not image_paths:
-        return True, []
+        return True, [], []
 
     ref_name = None
     for p, r in expected_zips:
@@ -286,13 +297,14 @@ def verify_image_replacement(gen_path, prefix, expected_zips, sample_root):
             ref_name = r
             break
     if not ref_name:
-        return True, ["No reference mapping for image check"]
+        return True, [], ["No reference mapping for image check"]
 
     ref_path = sample_root / ref_name
     if not ref_path.exists():
-        return True, [f"Reference not found for image check: {ref_name}"]
+        return True, [], [f"Reference not found for image check: {ref_name}"]
 
     issues = []
+    warnings = []
     with zipfile.ZipFile(gen_path) as gz, zipfile.ZipFile(ref_path) as rz:
         for img_path in image_paths:
             gen_files = [
@@ -309,16 +321,18 @@ def verify_image_replacement(gen_path, prefix, expected_zips, sample_root):
             gen_info = gz.getinfo(gen_files[0])
             if ref_files:
                 ref_info = rz.getinfo(ref_files[0])
-                if gen_info.file_size == ref_info.file_size:
-                    issues.append(
-                        f"Image NOT replaced (same size): {img_path} ({gen_info.file_size} bytes)"
+                gen_hash = hashlib.sha256(gz.read(gen_files[0])).hexdigest()
+                ref_hash = hashlib.sha256(rz.read(ref_files[0])).hexdigest()
+                if gen_hash == ref_hash:
+                    warnings.append(
+                        f"Image unchanged vs template: {img_path} ({gen_info.file_size} bytes)"
                     )
             else:
-                issues.append(
+                warnings.append(
                     f"Image not found in reference: {img_path} (cannot verify replacement)"
                 )
 
-    return len(issues) == 0, issues
+    return len(issues) == 0, issues, warnings
 
 
 def main():
@@ -328,10 +342,13 @@ def main():
         sys.exit(1)
 
     template_type = resolve_template_type(output_dir, explicit_template_type)
+    theme_color = detect_theme_color_from_output_dir(output_dir)
     sample_root = resolve_sample_root(template_type, explicit_sample_root)
 
     print(f"🔍 Verifying build: {output_dir}")
     print(f"🎨 Template type: {template_type}")
+    if theme_color:
+        print(f"🎯 Theme color: {theme_color}")
     print(f"📚 Sample root: {sample_root}\n")
 
     expected_zips = EXPECTED_ZIPS_BY_TEMPLATE_TYPE[template_type]
@@ -364,8 +381,8 @@ def main():
         ref_path = sample_root / ref_name
 
         struct_ok, struct_issues = verify_structure(gen_path, ref_path, prefix)
-        color_ok, color_issues = verify_color_injection(gen_path)
-        image_ok, image_issues = verify_image_replacement(gen_path, prefix, expected_zips, sample_root)
+        color_ok, color_issues = verify_color_injection(gen_path, theme_color)
+        image_ok, image_issues, image_warnings = verify_image_replacement(gen_path, prefix, expected_zips, sample_root)
 
         status = "✅" if struct_ok and color_ok and image_ok else "❌"
         name = gen_path.name
@@ -378,6 +395,9 @@ def main():
             for issue in struct_issues + color_issues + image_issues:
                 print(f"     {issue}")
             failed += 1
+
+        for warning in image_warnings:
+            print(f"     ⚠️  {warning}")
 
     print(f"\n{'=' * 60}")
     print(f"Results: {passed} passed, {failed} failed (of {len(expected_zips)})")

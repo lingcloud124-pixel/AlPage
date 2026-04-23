@@ -2,7 +2,7 @@
 """
 Unified Theme Package Builder
 
-Supports: MK (modern), EKP v12/v13.5/v14~v16/v17
+Supports: MK (modern), EKP v14~v16/v17
 Usage:
   python3 theme_builder.py --config theme-build-request.yaml
   python3 theme_builder.py --config theme-build-request.yaml --output ./output
@@ -33,8 +33,8 @@ PROJECT_ROOT = Path(__file__).parent
 LOCAL_SAMPLES_DIR = PROJECT_ROOT / "assets" / "references" / "samples"
 
 DEFAULT_SAMPLES_ROOTS = {
-    "light-ui": LOCAL_SAMPLES_DIR / "light样例包",
-    "dark-ui": LOCAL_SAMPLES_DIR / "dark样例包",
+    "light-ui": LOCAL_SAMPLES_DIR / "light",
+    "dark-ui": LOCAL_SAMPLES_DIR / "dark",
 }
 
 TEMPLATE_ZIPS_BY_TYPE = {
@@ -42,14 +42,6 @@ TEMPLATE_ZIPS_BY_TYPE = {
         "mk": {
             "theme": "主题-MK-2026清明主题.zip",
             "login": "登录-MK-2026清明.zip",
-        },
-        "ekp_v12": {
-            "theme": "主题-V12-2026清明主题.zip",
-            "login": "登录-V12-2026清明.zip",
-        },
-        "ekp_v13_5": {
-            "theme": "主题-V13〜V13.5-2026清明主题.zip",
-            "login": "登录-V13-2026清明.zip",
         },
         "ekp_v14_16": {
             "theme": "主题-V14〜V16-2026清明主题.zip",
@@ -62,16 +54,8 @@ TEMPLATE_ZIPS_BY_TYPE = {
     },
     "dark-ui": {
         "mk": {
-            "theme": "mk-festival-26-spring主题包.zip",
-            "login": "mk-festival-spring-登录包.zip",
-        },
-        "ekp_v12": {
-            "theme": "主题-V12-2026春节主题.zip",
-            "login": "登录-V12-2026春节.zip",
-        },
-        "ekp_v13_5": {
-            "theme": "主题-V13〜V13.5-2026春节主题.zip",
-            "login": "登录-V13-2026春节.zip",
+            "theme": "mk-festival-26-spring.zip",
+            "login": "login26-festival-spring.zip",
         },
         "ekp_v14_16": {
             "theme": "主题-V14〜V16-2026春节主题.zip",
@@ -85,18 +69,12 @@ TEMPLATE_ZIPS_BY_TYPE = {
 }
 
 VERSION_LABELS = {
-    "ekp_v12": "V12",
-    "ekp_v13_5": "V13〜V13.5",
     "ekp_v14_16": "V14〜V16",
     "ekp_v17": "V17",
 }
 
 LOGIN_VARIANTS_BY_TYPE = {
     "light-ui": {
-        "ekp_v13_5": [
-            {"label": "V13", "template": "登录-V13-2026清明.zip"},
-            {"label": "V13.5", "template": "登录-V13.5-2026清明.zip"},
-        ],
         "ekp_v14_16": [
             {"label": "V14", "template": "登录-V14-2026清明.zip"},
             {"label": "V15", "template": "登录-V15-2026清明.zip"},
@@ -104,10 +82,6 @@ LOGIN_VARIANTS_BY_TYPE = {
         ],
     },
     "dark-ui": {
-        "ekp_v13_5": [
-            {"label": "V13", "template": "登录-V13-2026春节.zip"},
-            {"label": "V13.5", "template": "登录-V13.5-2026春节.zip"},
-        ],
         "ekp_v14_16": [
             {"label": "V14", "template": "登录-V14-2026春节.zip"},
             {"label": "V15", "template": "登录-V15-2026春节.zip"},
@@ -174,11 +148,13 @@ RGB_REPLACEMENTS = [
     (r"44,\s*97,\s*92", None),  # green RGB secondary
 ]
 
+MAX_PACKAGE_TITLE_LENGTH = 10
+
 DIRECT_THEME_PATTERNS: List[Tuple[str, List[str]]] = [
     ("shenergy-enterprise", [r"申能", r"\bshenergy\b"]),
     ("happy-xishuangbanna", [r"西双版纳", r"\bxishuangbanna\b"]),
     ("maldives-vacation", [r"马尔代夫", r"\bmaldives\b"]),
-    ("mount-tai-summit", [r"泰山", r"\bmount\s*tai\b"]),
+    ("mount-tai", [r"泰山", r"\bmount\s*tai\b"]),
     ("superman-superhero", [r"超级英雄", r"超人", r"\bsuper(hero|man)\b"]),
     ("yellow-duck", [r"小黄鸭", r"\byellow duck\b"]),
     ("watermelon-harvest", [r"西瓜", r"\bwatermelon\b"]),
@@ -188,7 +164,7 @@ DIRECT_THEME_PATTERNS: List[Tuple[str, List[str]]] = [
     ("football-match", [r"足球", r"\bfootball\b", r"\bsoccer\b"]),
     ("interstellar", [r"星际", r"宇宙", r"太空", r"\binterstellar\b", r"\bspace\b"]),
     ("ice-wonderland", [r"冰雪", r"冰川", r"雪境", r"\bice\b", r"\bsnow\b"]),
-    ("panda-night", [r"熊猫", r"\bpanda\b"]),
+    ("panda", [r"熊猫", r"\bpanda\b"]),
     ("sanya", [r"三亚", r"\bsanya\b"]),
     ("gaokao", [r"高考", r"\bgaokao\b"]),
     ("christmas", [r"圣诞", r"\bchristmas\b"]),
@@ -198,11 +174,11 @@ DIRECT_THEME_PATTERNS: List[Tuple[str, List[str]]] = [
     ("winter-solstice", [r"冬至", r"\bwinter solstice\b"]),
     ("women-day", [r"妇女节", r"女神节", r"\bwomen'?s day\b"]),
     ("childrens-day", [r"儿童节", r"六一", r"\bchildren'?s day\b"]),
-    ("20th-anniversary", [r"20周年", r"二十周年", r"\b20th anniversary\b"]),
+    ("anniversary", [r"周年", r"周年", r"\banniversary\b"]),
     ("1024", [r"1024", r"程序员节"]),
     ("qingming", [r"清明", r"\bqingming\b"]),
     ("national-day", [r"国庆", r"\bnational day\b"]),
-    ("dark-ui-spring", [r"暗夜春", r"春.*暗色", r"暗色.*春", r"\bdark\b.*\bspring\b", r"\bspring\b.*\bdark\b"]),
+    ("dark-spring", [r"暗夜春", r"春.*暗色", r"暗色.*春", r"\bdark\b.*\bspring\b", r"\bspring\b.*\bdark\b"]),
     ("corporate-blue", [r"企业蓝", r"\bcorporate blue\b"]),
     ("overtime-worker", [r"加班", r"夜班", r"深夜", r"\bovertime\b", r"\bnight shift\b"]),
     ("work-hard", [r"奋斗", r"拼搏", r"加油干", r"\bwork hard\b"]),
@@ -393,7 +369,7 @@ def resolve_samples_root(template_type: str, configured_root: Optional[str] = No
         warn(f"Configured sample root not found: {configured}")
 
     default_root = DEFAULT_SAMPLES_ROOTS.get(
-        template_type, Path(__file__).parent / "assets/references/samples/主题样例包"
+        template_type, Path(__file__).parent / "assets/references/samples/light"
     )
     if default_root.exists():
         return default_root.resolve()
@@ -564,6 +540,24 @@ def replace_image(src: Path, dest: Path) -> bool:
         return False
     ensure_dir(dest.parent)
     shutil.copy2(src, dest)
+    return True
+
+
+def replace_image_bottom_crop(src: Path, dest: Path, width: int, height: int) -> bool:
+    """Crop the bottom area from an image and save it to destination."""
+    if Image is None:
+        warn("Pillow not installed, cannot crop image_down fallback")
+        return replace_image(src, dest)
+    if not src.exists():
+        warn(f"Image not found: {src}, skipping")
+        return False
+
+    ensure_dir(dest.parent)
+    with Image.open(src) as image:
+        left = max(0, (image.width - width) // 2)
+        top = max(0, image.height - height)
+        cropped = image.crop((left, top, left + min(width, image.width), top + min(height, image.height)))
+        cropped.save(dest)
     return True
 
 
@@ -901,7 +895,7 @@ def build_ekp_package(
     """
     Build EKP (legacy) theme + login packages for a specific version.
 
-    product_key: one of ekp_v12, ekp_v13_5, ekp_v14_16, ekp_v17
+    product_key: one of ekp_v14_16, ekp_v17
     Returns list of output zip paths.
     """
     if config_base is None:
@@ -990,12 +984,14 @@ def build_ekp_package(
         ekl_image_map = {
             "header_tlayout_frame_bg.png": images.get("headerSimple"),
             "header_complex_frame_bg.png": images.get("headerClassic"),
+            "header_simple_frame_bg.png": images.get("headerSimpleFrame", "header_simple_frame_bg.png"),
             "header_menu_frame_bg.png": images.get("headerMenu"),
             "header_zone_frame_bg.png": images.get("headerTabs"),
             "header_zone_nav_frame_bg.png": images.get("headerIcon", images.get("headerTabs")),
             "header_single_menu_frame_bg.png": images.get("headerSingleMenuFrameBg", images.get("headerSideheader")),
             "header-banner.png": images.get("headerBanner"),
             "header-sideheader.png": images.get("headerSideheader"),
+            "image_down.png": images.get("imageDown", images.get("headerSideheader")),
             "banner_personal.png": images.get("bannerPersonal", images.get("layoutBanner")),
             "study_banner.png": images.get("studyBanner", images.get("layoutBanner")),
         }
@@ -1005,7 +1001,10 @@ def build_ekp_package(
                 if src:
                     dest = image_style_dir / filename
                     if dest.parent.exists():
-                        shutil.copy2(src, dest)
+                        if filename == "image_down.png" and not images.get("imageDown"):
+                            replace_image_bottom_crop(src, dest, width=200, height=488)
+                        else:
+                            shutil.copy2(src, dest)
                         log(f"Replaced {filename}")
 
     icon_files, icon_pixels = recolor_icon_directory(
@@ -1049,7 +1048,8 @@ def build_ekp_package(
 
     # ---- Modify config.ini ----
     config_ini = inner_login_dir / "config.ini"
-    login_id = f"ekp_login_{version_label}_{current_year}_{name_en}"
+    # login_id = f"ekp_login_{version_label}_{current_year}_{name_en}"
+    login_id = f"login_{version_label}_{name_en}"
     login_name = f"ekp_login_{version_label}_{current_year}_{title}"
     if config_ini.exists():
         content = read_text(config_ini)
@@ -1060,8 +1060,6 @@ def build_ekp_package(
 
     # ---- Modify login.jsp ----
     login_jsp = inner_login_dir / "login.jsp"
-    login_id = f"ekp_login_{version_label}_{current_year}_{name_en}"
-    login_name = f"ekp_login_{version_label}_{current_year}_{title}"
     if login_jsp.exists():
         content = read_text(login_jsp)
         content = content.replace("$loginId$", login_id)
@@ -1092,7 +1090,7 @@ def build_ekp_package(
                 replace_image(src, login_static / "images" / "bg-login.jpg")
             log("Replaced EKP login background")
 
-            # Replace bg_login_iframe.png (V12 login iframe background)
+            # Replace bg_login_iframe.png when the template contains iframe backgrounds
             for iframe_loc in ["images/bg_login_iframe.png"]:
                 iframe_dest = login_static / iframe_loc
                 if iframe_dest.exists():
@@ -1147,7 +1145,7 @@ def build_ekp_package(
     shutil.rmtree(login_extract_dir, ignore_errors=True)
 
     # -------------------------------------------------------------------------
-    # Login variants (V13.5 from V13 template, V14/V15 from V16 template)
+    # Login variants (V14/V15 from V16 template)
     # -------------------------------------------------------------------------
     variants = get_login_variants(template_type).get(product_key, [])
     for variant in variants:
@@ -1347,13 +1345,21 @@ def load_config(config_path: Path) -> dict:
         return yaml.safe_load(f)
 
 
+def clamp_package_title(value: str) -> str:
+    title = (value or "").strip()
+    if not title:
+        return "未命名主题"
+    return "".join(list(title)[:MAX_PACKAGE_TITLE_LENGTH])
+
+
 def build_all(config_path: Path, output_dir: Path):
     cfg = load_config(config_path)
 
-    title = cfg.get("title", "未命名主题")
+    title = clamp_package_title(cfg.get("title", "未命名主题"))
+    cfg["title"] = title
     name_en = normalize_name_en(cfg.get("nameEn")) or derive_name_en_from_text(title)
     cfg["nameEn"] = name_en
-    subtitle = cfg.get("subtitle", "")
+    subtitle = cfg.get("subtitle", "") or title
     button_text = cfg.get("buttonText", "立即进入")
     theme_color = cfg.get("themeColor", "#144e48")
     header_font = cfg.get("headerFont", "#333333")

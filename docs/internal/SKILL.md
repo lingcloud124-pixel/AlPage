@@ -307,7 +307,7 @@ alterColorHoverOn = darken(primaryHover, 15%)
 Topic Automation/
 ├── SKILL.md                        # 本文件（AI 辅助时使用）
 ├── AGENTS.md                       # AI 持久记忆（项目状态 + 架构）
-├── theme_builder.py                # 统一打包工具（生成15个zip包）
+├── theme_builder.py                # 统一打包工具（生成9个zip包）
 ├── archive/legacy-tools/rules/     # 📐 技术规则（⭐ MUST READ EVERY TIME）
 │   ├── dark-ui-color-rules.md
 │   ├── light-ui-color-rules.md

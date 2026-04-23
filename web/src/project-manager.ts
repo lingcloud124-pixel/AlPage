@@ -1,4 +1,4 @@
-import type { ChatMessage, ExportBatch } from './types';
+import type { ChatMessage, ConfirmedProjectVersion, ExportBatch, ServerExportJob } from './types';
 import { DEFAULT_LIGHT_UI_PRIMARY, deriveColorsFromPrimary, toCssVarRecord } from './theme/color-utils';
 import { authHeaders } from './auth';
 
@@ -52,6 +52,8 @@ export interface Project {
   colors: Record<string, string>;
   bgImageUrl?: string;
   headerBgImageUrl?: string;
+  confirmedVersions?: ConfirmedProjectVersion[];
+  serverExportJobs?: ServerExportJob[];
   exportBatches?: ExportBatch[];
   pinned?: boolean;
   createdAt: number;

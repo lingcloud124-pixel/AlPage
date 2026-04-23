@@ -1,35 +1,50 @@
 import { describe, expect, test } from 'vitest';
 
-import { HEADER_TYPE_RELATIONS, PEN_EXPORT_RULES } from '../../src/config/themeRuleRegistry';
-import {
-  getExpectedExportSizes,
-  REQUIRED_EXPORT_FILES,
-  buildSourceImageFileMap,
-} from '../../scripts/lib/export-asset-rules.mjs';
+import outputMapping from '../../config/image-output-mapping.json';
+import sandwichRules from '../../config/image-sandwich-rules.json';
+import assetSources from '../../config/export-asset-sources.json';
 
 describe('export asset rules', () => {
-  test('required export files include the current packaging-critical assets', () => {
-    expect(REQUIRED_EXPORT_FILES).toContain(PEN_EXPORT_RULES['light-ui'].loginBackground.full.outputFile);
-    expect(REQUIRED_EXPORT_FILES).toContain(PEN_EXPORT_RULES['light-ui'].headers.banner.outputFile);
-    expect(REQUIRED_EXPORT_FILES).toContain('login_thumb.jpg');
-    expect(REQUIRED_EXPORT_FILES).toContain('login_bg/thumb-1.jpg');
-    expect(REQUIRED_EXPORT_FILES).toContain('login_bg/thumb-2.jpg');
+  test('required export files include packaging-critical background and preview assets', () => {
+    const requiredFiles = [
+      ...outputMapping.login.map((item) => item.output),
+      ...outputMapping.headerSidebar.map((item) => item.output),
+      ...outputMapping.thumbnails.map((item) => item.output),
+    ];
+
+    expect(requiredFiles).toContain('bg-login.jpg');
+    expect(requiredFiles).toContain('login_thumb.jpg');
+    expect(requiredFiles).toContain('login_bg/thumb-1.jpg');
+    expect(requiredFiles).toContain('header-banner.png');
+    expect(requiredFiles).toContain('header-sideheader.png');
+    expect(requiredFiles).toContain('desktop.png');
+    expect(requiredFiles).toContain('layout-banner.jpg');
+    expect(requiredFiles).toContain('thumb.jpg');
   });
 
-  test('source image file map aligns critical names with current registry conventions', () => {
-    const fileMap = buildSourceImageFileMap();
+  test('light-ui and dark-ui sideheader dimensions stay aligned with output mapping', () => {
+    const sideHeader = outputMapping.headerSidebar.find((item) => item.output === 'header-sideheader.png');
 
-    expect(fileMap.headerBanner).toBe(PEN_EXPORT_RULES['light-ui'].headers.banner.outputFile);
-    expect(fileMap.headerComplex).toBe(PEN_EXPORT_RULES['light-ui'].headers.complex.outputFile);
-    expect(fileMap.headerSimple).toBe(PEN_EXPORT_RULES['light-ui'].headers.default.outputFile);
-    expect(fileMap.headerSideheader).toBe(PEN_EXPORT_RULES['light-ui'].headers.sideHeader.outputFile);
-    expect(fileMap.headerSingleMenuFrameBg).toBe(HEADER_TYPE_RELATIONS['light-ui'].singleMenu.outputFile);
-    expect(fileMap.headerZoneFrameBg).toBe(HEADER_TYPE_RELATIONS['light-ui'].simple.outputFile);
-    expect(fileMap.headerZoneNavFrameBg).toBe(HEADER_TYPE_RELATIONS['light-ui'].zoneNav.outputFile);
+    expect(sideHeader?.widthByTheme?.['light-ui']).toBe(200);
+    expect(sideHeader?.heightByTheme?.['light-ui']).toBe(900);
+    expect(sideHeader?.widthByTheme?.['dark-ui']).toBe(200);
+    expect(sideHeader?.heightByTheme?.['dark-ui']).toBe(488);
   });
 
-  test('export size rules honor template-specific sideheader dimensions', () => {
-    expect(getExpectedExportSizes('light-ui')['header-sideheader.png']).toEqual({ width: 200, height: 900 });
-    expect(getExpectedExportSizes('dark-ui')['header-sideheader.png']).toEqual({ width: 200, height: 488 });
+  test('light-ui sandwich rules use the PDF variable name first and keep compatibility fallback', () => {
+    expect(sandwichRules['light-ui'].header.baseColorVar).toBe('tlayout-header-bg-extend-color');
+    expect(sandwichRules['light-ui'].header.gradientColorVar).toBe('tlayout-header-bg-extend-color');
+    expect(sandwichRules['light-ui'].header.fallbackColorVar).toBe('portal-header-bg-extend-color');
+    expect(sandwichRules['light-ui'].sidebar.baseColorVar).toBe('tlayout-header-bg-extend-color');
+  });
+
+  test('asset source config clearly separates background-image and preview-html groups', () => {
+    const groups = Object.fromEntries(assetSources.groups.map((group) => [group.id, group.sourceType]));
+
+    expect(groups).toEqual({
+      login: 'background-image',
+      headerSidebar: 'background-image',
+      thumbnails: 'preview-html',
+    });
   });
 });

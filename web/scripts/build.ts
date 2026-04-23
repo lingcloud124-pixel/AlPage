@@ -25,6 +25,13 @@ interface ResolveBuildDirectoriesOptions {
   exportDir?: string;
 }
 
+interface BuildDirectories {
+  baseDir: string;
+  assetsDir: string;
+  packagesDir: string;
+  metadataDir: string;
+}
+
 const DEFAULT_SELECTED_PRODUCTS = ['mk', 'ekp_v14_16', 'ekp_v17'];
 
 function getVerifySelectionArgs(selectedProducts?: string[]) {
@@ -42,11 +49,12 @@ function resolveBuildDirectories(options: ResolveBuildDirectoriesOptions) {
     baseDir,
     assetsDir: path.join(baseDir, '素材包'),
     packagesDir: path.join(baseDir, '输出包'),
+    metadataDir: path.join(baseDir, '.build-meta'),
   };
 }
 
 async function buildAll(options: BuildOptions): Promise<void> {
-  const { baseDir, assetsDir, packagesDir } = resolveBuildDirectories(options);
+  const { baseDir, assetsDir, packagesDir, metadataDir } = resolveBuildDirectories(options) as BuildDirectories;
   const cssVariables = options.cssVariables ?? {};
 
   console.log(`\n🏗️ Theme Studio Build`);
@@ -59,6 +67,7 @@ async function buildAll(options: BuildOptions): Promise<void> {
     console.log('📝 Step 1: 固定项目快照并生成构建配置...');
     fs.mkdirSync(assetsDir, { recursive: true });
     fs.mkdirSync(packagesDir, { recursive: true });
+    fs.mkdirSync(metadataDir, { recursive: true });
     const yaml = buildExportRequestYaml({
       name: options.name,
       nameEn: options.nameEn,
@@ -69,7 +78,7 @@ async function buildAll(options: BuildOptions): Promise<void> {
       colors: options.cssVariables,
       selectedProducts: options.selectedProducts ?? DEFAULT_SELECTED_PRODUCTS,
     });
-    const yamlPath = path.join(assetsDir, 'theme-build-request.yaml');
+    const yamlPath = path.join(metadataDir, 'theme-build-request.yaml');
     fs.writeFileSync(yamlPath, yaml, 'utf-8');
     const assetSnapshot = buildExportAssetSnapshot({
       project: {
@@ -87,16 +96,20 @@ async function buildAll(options: BuildOptions): Promise<void> {
       nameEn: options.nameEn,
       exportDir: baseDir,
     });
-    const snapshotPath = path.join(assetsDir, 'asset-snapshot.json');
+    const snapshotPath = path.join(metadataDir, 'asset-snapshot.json');
     fs.writeFileSync(snapshotPath, `${JSON.stringify(assetSnapshot, null, 2)}\n`, 'utf-8');
     console.log(`   ✅ 配置已生成: ${yamlPath}`);
     console.log(`   ✅ 快照已生成: ${snapshotPath}\n`);
 
-    // Step 2: Prepare assets via Python pipeline
-    console.log('🖼️ Step 2: 按 5 步素材流水线准备素材...');
+    // Critical invariant: this is the single export entrypoint for asset preparation.
+    // Future refactors must preserve the build.ts -> prepare_export_assets.py ->
+    // asset_pipeline.py / screenshot.ts -> theme_builder.py -> verify-build.py chain.
+    // See docs/internal/IMPORTANT-EXPORT-INVARIANTS.md before changing this flow.
+    // Step 2: Prepare assets via unified asset pipeline
+    console.log('🖼️ Step 2: 按统一素材流水线准备背景图素材并执行预览截图...');
     options.onStatus?.('capturing');
     const assetPrepPath = path.join(PROJECT_ROOT, 'scripts', 'prepare_export_assets.py');
-    execSync(`python3 "${assetPrepPath}" --snapshot "${snapshotPath}" --output "${assetsDir}"`, {
+    execSync(`python3 "${assetPrepPath}" --snapshot "${snapshotPath}" --output "${assetsDir}" --metadata-dir "${metadataDir}"`, {
       stdio: 'inherit',
       cwd: PROJECT_ROOT,
     });

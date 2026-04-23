@@ -386,6 +386,7 @@ export function setupSettingsDialog() {
   async function saveSettingsForm() {
     const accountSelector = document.getElementById('accountSelector') as HTMLSelectElement;
     const uiThemeSelect = document.getElementById('uiThemeMode') as HTMLSelectElement;
+    const exportRootInput = document.getElementById('exportRoot') as HTMLInputElement | null;
 
     const settings = {
       apiEndpoint: DEFAULT_CHAT_ENDPOINT,
@@ -396,7 +397,7 @@ export function setupSettingsDialog() {
       imageApiKey: '',
       imageModel: 'image-01',
       imageModelName: 'image-01',
-      exportRoot: '',
+      exportRoot: exportRootInput?.value ? normalizeExportRoot(exportRootInput.value) : '',
       uiTheme: (uiThemeSelect?.value as 'dark' | 'light') || 'dark',
     };
 

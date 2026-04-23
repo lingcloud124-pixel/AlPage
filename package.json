@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "dev:all": "bash scripts/dev-all.sh",
     "test": "vitest",
     "test:unit": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:types": "tsc --noEmit",
-    "build": "tsc",
+    "test:types": "tsc -p server/tsconfig.json --noEmit && tsc -p web/tsconfig.json --noEmit",
+    "build": "tsc -p server/tsconfig.json",
     "update": "echo '⚠️  Use python3 theme_builder.py instead. See SKILL.md for details.' && exit 1"
   },
   "dependencies": {

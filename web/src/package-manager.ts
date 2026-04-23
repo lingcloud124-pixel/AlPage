@@ -1,12 +1,13 @@
 import { getAllCSSVariables } from './theme-engine';
 import { appendExportBatchToProject, appendExportJobRequest, buildExportJobRequest, updateExportBatchInProject } from './export/export-job';
-import { dispatchExportJobToBridge } from './export/export-bridge';
+import { dispatchExportJobToBridge, pickDirectoryViaBridge } from './export/export-bridge';
 import { renderExportHistoryHtml } from './export/export-history-view';
 import { openExportDirectory } from './export/export-open-client';
 import { fetchExportJobStatus } from './export/export-status-client';
 import { getCurrentProjectId, loadProject, saveProject, safeJsonParse } from './project-manager';
 import type { ExportBatchStatus } from './types';
-import { loadSettings, getEffectiveExportRoot } from './agent/chat-client';
+import { loadSettings, saveSettings, getEffectiveExportRoot } from './agent/chat-client';
+import { normalizeExportRoot } from './export/export-paths';
 
 const EXPORT_JOB_QUEUE_KEY = 'theme-studio-export-jobs';
 
@@ -89,6 +90,21 @@ function closePackageModal() {
   if (modal) modal.classList.remove('active');
 }
 
+async function promptExportRootSelection(): Promise<string> {
+  const pickedPath = await pickDirectoryViaBridge(window);
+  if (!pickedPath) {
+    throw new Error('无法唤起系统目录选择，请先启动本地导出桥接服务');
+  }
+
+  const exportRoot = normalizeExportRoot(pickedPath);
+  const settings = loadSettings();
+  saveSettings({
+    ...settings,
+    exportRoot,
+  });
+  return exportRoot;
+}
+
 async function startPackagingProcess() {
   const startBtn = document.getElementById('packageStartBtn') as HTMLButtonElement;
   if (startBtn) { startBtn.textContent = '打包中...'; startBtn.disabled = true; }
@@ -119,8 +135,19 @@ async function startPackagingProcess() {
       return;
     }
 
-    const settings = loadSettings();
-    const exportRoot = getEffectiveExportRoot(settings);
+    let exportRoot = '';
+    try {
+      exportRoot = await promptExportRootSelection();
+    } catch (error) {
+      const settings = loadSettings();
+      const fallbackExportRoot = settings.exportRoot?.trim() ? getEffectiveExportRoot(settings) : '';
+      if (!fallbackExportRoot) {
+        showNotification((error as Error).message || '请选择导出目录后再执行打包');
+        if (startBtn) { startBtn.textContent = '开始打包'; startBtn.disabled = false; }
+        return;
+      }
+      exportRoot = fallbackExportRoot;
+    }
 
     const vars = getAllCSSVariables();
     const request = buildExportJobRequest({
@@ -140,10 +167,10 @@ async function startPackagingProcess() {
     if (!dispatchResult.accepted) {
       markLatestExportBatchStatus(updatedProject.id, request.batch.id, 'bridge_unavailable');
       renderExportHistory();
-      showNotification(`已创建导出任务（${selectedProducts.length} 个产品），等待本地导出桥接服务接入`);
+      showNotification('导出桥接不可用，无法执行本地打包。请先启动本地导出桥接后重试。');
     } else {
       trackExportJobStatus(updatedProject.id, request.batch.id);
-      showNotification(`已提交导出任务（${selectedProducts.length} 个产品），正在后台处理`);
+      showNotification(`已提交导出任务（${selectedProducts.length} 个产品），正在导出到：${exportRoot}`);
     }
 
     setTimeout(() => {

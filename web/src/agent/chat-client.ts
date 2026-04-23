@@ -26,7 +26,11 @@ const ZHIPU_DEFAULTS: AISettings = {
 };
 
 function getDefaultExportRoot(): string {
-  const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
+  const runtimeProcess =
+    typeof globalThis !== 'undefined' && 'process' in globalThis
+      ? (globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process
+      : undefined;
+  const home = runtimeProcess?.env?.HOME ?? runtimeProcess?.env?.USERPROFILE ?? '';
   return home ? `${home}/Desktop/ThemeStudio-Exports` : '';
 }
 

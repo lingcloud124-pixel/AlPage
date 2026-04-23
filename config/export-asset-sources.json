@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "groups": [
+    {
+      "id": "login",
+      "sourceType": "background-image",
+      "description": "登录背景和登录缩略图统一来自当前项目确认的背景图。"
+    },
+    {
+      "id": "headerSidebar",
+      "sourceType": "background-image",
+      "description": "页眉和左侧导航素材统一按 PDF 三明治规则使用当前项目确认的背景图。"
+    },
+    {
+      "id": "thumbnails",
+      "sourceType": "preview-html",
+      "description": "封面图和展示缩略图统一来自当前项目确认后的 HTML 预览截图。"
+    }
+  ]
+}

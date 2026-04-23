@@ -15,6 +15,12 @@ except ImportError as exc:
     ) from exc
 
 
+DEFAULT_THEME_IMAGES = {
+    "light-ui": "web/public/backgrounds/qingming-bg.png",
+    "dark-ui": "web/public/backgrounds/panda-night-bg.png",
+}
+
+
 def _load_json(path: Path) -> Dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
@@ -29,6 +35,19 @@ def _normalize_color(value: str, fallback: str) -> Tuple[int, int, int]:
     if not raw:
         raw = fallback
     return ImageColor.getrgb(raw)
+
+
+def _resolve_rule_color(colors: Dict[str, str], rule: Dict[str, Any], color_key: str) -> str:
+    primary_var = rule.get(color_key, "")
+    fallback_var = rule.get(f"{color_key}Fallback", "") or rule.get("fallbackColorVar", "")
+    fallback_color = rule.get("fallbackColor", "#000000")
+
+    for candidate in (primary_var, fallback_var):
+        if candidate:
+            value = colors.get(candidate)
+            if value:
+                return value
+    return fallback_color
 
 
 def _download_remote_image(source: str, output_dir: Path) -> Path:
@@ -59,7 +78,8 @@ def _resolve_source_image(snapshot: Dict[str, Any], project_root: Path, output_d
         or ""
     )
     if not source:
-        raise ValueError("Asset snapshot is missing sourceImages.background")
+        template_type = snapshot.get("project", {}).get("templateType", "light-ui")
+        source = DEFAULT_THEME_IMAGES.get(template_type, DEFAULT_THEME_IMAGES["light-ui"])
 
     parsed = urlparse(source)
     if parsed.scheme in {"http", "https"}:
@@ -162,8 +182,8 @@ def _render_sandwich(
     colors: Dict[str, str],
 ) -> Image.Image:
     fallback = rule.get("fallbackColor", "#F1F1F1")
-    base_rgb = _normalize_color(colors.get(rule.get("baseColorVar", ""), fallback), fallback)
-    gradient_rgb = _normalize_color(colors.get(rule.get("gradientColorVar", ""), fallback), fallback)
+    base_rgb = _normalize_color(_resolve_rule_color(colors, rule, "baseColorVar"), fallback)
+    gradient_rgb = _normalize_color(_resolve_rule_color(colors, rule, "gradientColorVar"), fallback)
 
     base = Image.new("RGBA", (width, height), (*base_rgb, 255))
     cover = _cover_resize(source, width, height)
@@ -289,12 +309,43 @@ def _prepare_thumbnails(
         manifest[item["id"]] = str(output_path)
 
 
-def prepare_assets_from_snapshot(snapshot: Dict[str, Any], output_dir: Path, project_root: Path) -> Dict[str, Any]:
+def _collect_preview_capture_tasks(
+    output_dir: Path,
+    mapping: List[Dict[str, Any]],
+    manifest: Dict[str, str],
+) -> List[Dict[str, Any]]:
+    tasks: List[Dict[str, Any]] = []
+    for item in mapping:
+        output_path = output_dir / item["output"]
+        _ensure_dir(output_path.parent)
+        manifest[item["id"]] = str(output_path)
+        tasks.append(
+            {
+                "id": item["id"],
+                "output": item["output"],
+                "width": int(item["width"]),
+                "height": int(item["height"]),
+                "format": item["format"],
+                "recipe": item["recipe"],
+            }
+        )
+    return tasks
+
+
+def prepare_assets_from_snapshot(
+    snapshot: Dict[str, Any],
+    output_dir: Path,
+    project_root: Path,
+    metadata_dir: Path | None = None,
+) -> Dict[str, Any]:
     _ensure_dir(output_dir)
+    metadata_root = metadata_dir or output_dir
+    _ensure_dir(metadata_root)
     config_dir = project_root / "config"
     sandwich_rules = _load_json(config_dir / "image-sandwich-rules.json")
     output_mapping = _load_json(config_dir / "image-output-mapping.json")
     pipeline = _load_json(config_dir / "export-asset-pipeline.json")
+    asset_sources = _load_json(config_dir / "export-asset-sources.json")
 
     template_type = snapshot["project"]["templateType"]
     colors = snapshot.get("colors", {})
@@ -312,15 +363,20 @@ def prepare_assets_from_snapshot(snapshot: Dict[str, Any], output_dir: Path, pro
         template_type,
         manifest,
     )
-    _prepare_thumbnails(source, output_dir, output_mapping["thumbnails"], colors, manifest)
+    thumbnail_tasks = _collect_preview_capture_tasks(output_dir, output_mapping["thumbnails"], manifest)
 
-    snapshot_copy = output_dir / "asset-snapshot.json"
+    snapshot_copy = metadata_root / "asset-snapshot.json"
     snapshot_copy.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     return {
         "version": 1,
         "templateType": template_type,
         "sourceImage": str(source_path),
+        "assetSources": {
+            group["id"]: group["sourceType"]
+            for group in asset_sources.get("groups", [])
+        },
         "steps": pipeline.get("steps", []),
         "assets": manifest,
+        "pendingPreviewCaptures": thumbnail_tasks,
     }
