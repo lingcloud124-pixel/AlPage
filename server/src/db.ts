@@ -171,7 +171,10 @@ export { db };
 
 export function getSecurityConfig(): any {
   const stmt = db.prepare('SELECT * FROM security_config WHERE id = 1');
-  const row = stmt.getAsObject();
+  let row: Record<string, unknown> | null = null;
+  if (stmt.step()) {
+    row = stmt.getAsObject() as Record<string, unknown>;
+  }
   stmt.free();
   
   if (!row) {

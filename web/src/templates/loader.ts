@@ -73,6 +73,7 @@ export async function renderTemplate(
 }
 
 const LINKED_LIGHT_BG_VARS = [
+  '--tlayout-header-bg-extend-color',
   '--portal-header-bg-extend-color',
   '--sidebar-panel-bg',
   '--gradient-start',

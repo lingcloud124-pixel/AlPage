@@ -56,9 +56,11 @@ def main() -> int:
 
     if not args.skip_preview_capture and manifest.get("pendingPreviewCaptures"):
         screenshot_script = PROJECT_ROOT / "web" / "scripts" / "screenshot.ts"
+        tsx_loader = PROJECT_ROOT / "web" / "node_modules" / "tsx" / "dist" / "loader.mjs"
         command = [
-            "npx",
-            "tsx",
+            "node",
+            "--import",
+            str(tsx_loader),
             str(screenshot_script),
             "--manifest",
             str(manifest_path),

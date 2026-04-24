@@ -11,9 +11,9 @@
    * 主题色系 (4)
    * ======================== */
   --primary-color: #2C615C;
-  --primary-color-hover: #44978f;
-  --alter-color: #1c2725;
-  --alter-color-hover-on: #6bbdb4;
+  --primary-color-hover: #35817A;
+  --alter-color: #1A3A37;
+  --alter-color-hover-on: #7B9C99;
 
   /* ========================
    * 透明度变体 (3)
@@ -35,29 +35,30 @@
    * 背景色系 (5)
    * ======================== */
   --body-bg-color: #F8F8F8;
-  --portal-header-bg-extend-color: #FBFCF2;
-  --portal-header-complex-bg-extend-color: #FBFCF2;
-  --login-bg-color: #FDFFF6;
+  --tlayout-header-bg-extend-color: #F6F6F4;
+  --portal-header-bg-extend-color: #F6F6F4;
+  --portal-header-complex-bg-extend-color: #F6F6F4;
+  --login-bg-color: #F8F9F6;
   --panel-bg-color: #FFFFFF;
 
   /* ========================
    * 侧边栏 (3)
    * ======================== */
-  --sidebar-panel-bg: #FBFCF2;
-  --sidebar-color: #333333;
-  --sidebar-icon-color: #2C615C;
+  --sidebar-panel-bg: #F7F7F3;
+  --sidebar-color: #000000;
+  --sidebar-icon-color: #778281;
 
   /* ========================
    * 边框 (2)
    * ======================== */
-  --border-color: #E5E7EB;
-  --border-icon-color: #E5E7EB;
+  --border-color: #D8D8D8;
+  --border-icon-color: #CFD2D2;
 
   /* ========================
    * 渐变组件色 (2)
    * ======================== */
-  --gradient-start: #FBFCF2;
-  --gradient-mid: #dfe7e7;
+  --gradient-start: #F6F6F4;
+  --gradient-mid: #EAEFEF;
 
   /* ========================
    * 背景图变量

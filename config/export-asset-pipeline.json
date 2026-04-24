@@ -24,7 +24,7 @@
     {
       "id": "thumbnails",
       "name": "处理封面图和缩略图素材",
-      "description": "生成 desktop、layout-banner、fullscreen-sideheader、fullscreen-sidenav、center-sidenav、thumb、banner_personal、study_banner 等展示素材。"
+      "description": "生成 desktop、layout-banner、fullscreen-sideheader、fullscreen-sidenav、center-sidenav、thumb、study_banner 等展示素材。"
     }
   ]
 }

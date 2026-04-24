@@ -1,4 +1,14 @@
-import { config } from 'dotenv';
+import { config as loadEnv } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join, resolve } from 'path';
+
+[
+  resolve(process.cwd(), '.env'),
+  resolve(process.cwd(), '..', '.env'),
+  resolve(process.cwd(), '..', 'web', '.env'),
+].forEach((envPath) => {
+  loadEnv({ path: envPath, override: false });
+});
 
 const [
   { default: express },
@@ -34,11 +44,7 @@ const [
   import('./middleware/quota.js'),
 ]);
 
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-config({ path: join(__dirname, '..', '..', '.env') });
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 

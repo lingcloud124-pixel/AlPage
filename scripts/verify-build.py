@@ -210,6 +210,10 @@ def verify_structure(gen_path, ref_path, prefix=""):
             n for n in rz.namelist() if not n.endswith("/") and ".DS_Store" not in n
         )
 
+        if prefix.startswith("主题-MK-") or prefix.startswith("登录-MK-"):
+            gen_files = normalize_mk_structure_paths(gen_files)
+            ref_files = normalize_mk_structure_paths(ref_files)
+
         if gen_files == ref_files:
             return True, []
 
@@ -226,6 +230,18 @@ def verify_structure(gen_path, ref_path, prefix=""):
         if only_gen:
             issues.append(f"Extra: {only_gen[:5]}")
         return len(issues) == 0, issues
+
+
+def normalize_mk_structure_paths(paths):
+    # type: (List[str]) -> List[str]
+    roots = sorted({path.split("/", 1)[0] for path in paths if "/" in path})
+    normalized = []
+    for path in paths:
+        updated = path
+        for root in roots:
+            updated = updated.replace(root, "__MK_PACKAGE__")
+        normalized.append(updated)
+    return sorted(normalized)
 
 
 def verify_color_injection(gen_path, theme_color: Optional[str] = None):

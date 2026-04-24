@@ -21,9 +21,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageDraw
 except ImportError:
     Image = None
+    ImageDraw = None
 
 # =============================================================================
 # Constants
@@ -409,7 +410,13 @@ def resolve_path(p: Any, base: Optional[Path] = None) -> Optional[Path]:
         if Path(sp).is_absolute()
         else (base / sp if base else Path(sp).resolve())
     )
-    return resolved if resolved.exists() else None
+    if resolved.exists():
+        return resolved
+    if base and not Path(sp).is_absolute():
+        fallback = base.parent / "素材包" / sp
+        if fallback.exists():
+            return fallback
+    return None
 
 
 def load_json(path: Path) -> dict:
@@ -431,6 +438,51 @@ def read_text(path: Path) -> str:
 def write_text(path: Path, content: str):
     with path.open("w", encoding="utf-8") as f:
         f.write(content)
+
+
+def replace_text_in_tree(root: Path, replacements: List[Tuple[str, str]]) -> int:
+    """Replace plain-text occurrences in UTF-8 decodable files under a directory."""
+    changed = 0
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        updated = content
+        for old, new in replacements:
+            updated = updated.replace(old, new)
+        if updated != content:
+            path.write_text(updated, encoding="utf-8")
+            changed += 1
+    return changed
+
+
+def rename_tree_entries(root: Path, replacements: List[Tuple[str, str]]) -> None:
+    """Rename files and directories when their names contain replacement tokens."""
+    paths = sorted(root.rglob("*"), key=lambda item: len(item.parts), reverse=True)
+    for path in paths:
+        renamed = path.name
+        for old, new in replacements:
+            renamed = renamed.replace(old, new)
+        if renamed != path.name:
+            path.rename(path.with_name(renamed))
+
+
+def build_mk_theme_slug(template_name: str, name_en: str) -> str:
+    slug = normalize_name_en(name_en) or "project"
+    if template_name.startswith("mk-festival-"):
+        return f"mk-festival-{slug}"
+    return f"mk-{slug}"
+
+
+def build_mk_login_slug(template_name: str, name_en: str) -> str:
+    slug = normalize_name_en(name_en) or "project"
+    match = re.match(r"^(login\d+-festival-).+$", template_name)
+    if match:
+        return f"{match.group(1)}{slug}"
+    return f"login-{slug}"
 
 
 # =============================================================================
@@ -561,6 +613,61 @@ def replace_image_bottom_crop(src: Path, dest: Path, width: int, height: int) ->
     return True
 
 
+def _resolve_light_sidebar_overlay_color(colors: Optional[Dict[str, str]] = None) -> str:
+    palette = colors or {}
+    return (
+        palette.get("tlayout-header-bg-extend-color")
+        or palette.get("portal-header-bg-extend-color")
+        or "#F1F1F1"
+    )
+
+
+def _resolve_dark_sidebar_overlay_color(colors: Optional[Dict[str, str]] = None) -> str:
+    palette = colors or {}
+    return palette.get("header-font-color") or "#F1F1F1"
+
+
+def replace_image_bottom_crop_with_sidebar_gradient(
+    src: Path,
+    dest: Path,
+    width: int,
+    height: int,
+    template_type: str,
+    colors: Optional[Dict[str, str]] = None,
+) -> bool:
+    """Crop the bottom area, then apply the sidebar vertical gradient overlay."""
+    if Image is None or ImageDraw is None:
+        warn("Pillow not installed, cannot render image_down sidebar gradient")
+        return replace_image_bottom_crop(src, dest, width, height)
+    if not src.exists():
+        warn(f"Image not found: {src}, skipping")
+        return False
+
+    ensure_dir(dest.parent)
+    with Image.open(src).convert("RGBA") as image:
+        left = max(0, (image.width - width) // 2)
+        top = max(0, image.height - height)
+        cropped = image.crop((left, top, left + min(width, image.width), top + min(height, image.height)))
+
+        if template_type == "dark-ui":
+            overlay_hex = _resolve_dark_sidebar_overlay_color(colors)
+        else:
+            overlay_hex = _resolve_light_sidebar_overlay_color(colors)
+
+        overlay_rgb = hex_to_rgb(overlay_hex)
+        overlay = Image.new("RGBA", cropped.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        max_steps = max(cropped.height - 1, 1)
+        for y in range(cropped.height):
+            ratio = y / max_steps
+            alpha = round((1.0 + (0.2 - 1.0) * ratio) * 255)
+            draw.line([(0, y), (cropped.width, y)], fill=(*overlay_rgb, alpha))
+
+        merged = Image.alpha_composite(cropped, overlay)
+        merged.save(dest)
+    return True
+
+
 def _hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
     clean = str(hex_color).strip().lstrip("#")
     if len(clean) == 3:
@@ -577,6 +684,7 @@ def recolor_icon_directory(
     base_dir: Path,
     relative_dirs: List[str],
     colors: Optional[Dict[str, str]] = None,
+    exclude_names: Optional[List[str]] = None,
     threshold: float = 80.0,
 ) -> Tuple[int, int]:
     if Image is None:
@@ -596,6 +704,7 @@ def recolor_icon_directory(
         "#dcb496": palette.get("sidebar-icon-color", "#9B8FC7"),
     }
     mappings = [(_hex_to_rgb(source), _hex_to_rgb(target)) for source, target in replacement_map.items()]
+    excluded = set(exclude_names or [])
 
     files_processed = 0
     pixels_changed = 0
@@ -604,6 +713,8 @@ def recolor_icon_directory(
         if not icon_dir.exists():
             continue
         for icon_path in icon_dir.rglob("*.png"):
+            if icon_path.name in excluded:
+                continue
             with Image.open(icon_path).convert("RGBA") as image:
                 pixels = image.load()
                 modified = 0
@@ -633,6 +744,7 @@ def build_mk_package(
     work_dir: Path,
     output_dir: Path,
     title: str,
+    name_en: str,
     subtitle: str,
     button_text: str,
     theme_color: str,
@@ -659,8 +771,6 @@ def build_mk_package(
     template_zips = get_template_zips(template_type)
     theme_zip = sample_root / template_zips["mk"]["theme"]
     theme_extract_dir = work_dir / "mk_theme_extract"
-    theme_name = "mk-festival-26-qingm"  # inner folder name in zip
-
     log(f"Unzipping MK theme: {theme_zip}")
     if theme_zip.exists():
         shutil.unpack_archive(theme_zip, theme_extract_dir)
@@ -678,31 +788,69 @@ def build_mk_package(
         error("Could not find MK theme inner directory")
         return []
 
+    old_theme_slug = inner_theme_dir.name
+    new_theme_slug = build_mk_theme_slug(old_theme_slug, name_en)
+    old_theme_package = f"@user-theme/{old_theme_slug}"
+    new_theme_package = f"@user-theme/{new_theme_slug}"
+    theme_display_title = f"{title}-主题"
+    theme_variant_title = f"{title}主题"
+    theme_variant_en = name_en or new_theme_slug
+
     # ---- Modify config.json ----
     config_file = inner_theme_dir / "config.json"
     if config_file.exists():
         config = load_json(config_file)
+        config["name"] = new_theme_package
         walk_and_set_locale(config, "loginTitle", title)
         walk_and_set_locale(config, "loginTitleDesc", subtitle)
         walk_and_set_locale(config, "loginBtnText", button_text)
         dump_json(config_file, config)
         log(f"Updated config.json: title='{title}', btn='{button_text}'")
 
+    theme_index = inner_theme_dir / "index.json"
+    if theme_index.exists():
+        index_data = load_json(theme_index)
+        index_data["name"] = new_theme_package
+        if isinstance(index_data.get("title"), dict):
+            index_data["title"]["zh-cn"] = theme_display_title
+        if isinstance(index_data.get("desc"), dict):
+            index_data["desc"]["zh-cn"] = theme_display_title
+        for skin in index_data.get("skins", []):
+            if isinstance(skin, dict):
+                skin["name"] = str(skin.get("name", "")).replace(old_theme_package, new_theme_package)
+                if isinstance(skin.get("title"), dict):
+                    skin["title"]["zh-cn"] = theme_variant_title
+                    skin["title"]["en-us"] = theme_variant_en
+        dump_json(theme_index, index_data)
+
+    theme_meta = inner_theme_dir / "meta.json"
+    if theme_meta.exists():
+        meta_data = load_json(theme_meta)
+        meta_data["name"] = new_theme_package
+        if isinstance(meta_data.get("title"), dict):
+            meta_data["title"]["zh-cn"] = theme_display_title
+        if isinstance(meta_data.get("desc"), dict):
+            meta_data["desc"]["zh-cn"] = title
+        variants = meta_data.get("variants", {})
+        if isinstance(variants, dict):
+            for variant in variants.values():
+                if isinstance(variant, dict):
+                    variant["name"] = str(variant.get("name", "")).replace(old_theme_package, new_theme_package)
+                    if isinstance(variant.get("title"), dict):
+                        variant["title"]["zh-cn"] = theme_variant_title
+                        variant["title"]["en-us"] = theme_variant_en
+        dump_json(theme_meta, meta_data)
+
     # ---- Modify sample/sample.json ----
     sample_config = inner_theme_dir / "sample" / "sample.json"
     if sample_config.exists():
         sample = load_json(sample_config)
+        sample["renderID"] = new_theme_package
         if sample.get("config", {}).get("render"):
             sample["config"]["render"]["loginTitle"] = title
             sample["config"]["render"]["loginTitleDesc"] = subtitle
             sample["config"]["render"]["loginBtnText"] = button_text
-            sample["config"]["render"]["logoURL"] = (
-                "@user-login/login26-festival-spring/static/logo.png"
-            )
-            sample["config"]["render"]["backgroundURL"] = (
-                "@user-login/login26-festival-spring/static/background.png"
-            )
-            dump_json(sample_config, sample)
+        dump_json(sample_config, sample)
 
     # ---- Inject theme color into CSS ----
     for css_name in ["style.css", "simple.css"]:
@@ -756,11 +904,39 @@ def build_mk_package(
         inner_theme_dir,
         ["static", "icon", "src/static", "src/static/icon"],
         colors,
+        exclude_names=[
+            "header-banner.png",
+            "header-classic.png",
+            "header-icon.png",
+            "header-sideheader.png",
+            "header-simple.png",
+            "header-tabs.png",
+        ],
     )
     if icon_files > 0:
         log(f"Recolored MK icons: {icon_files} files / {icon_pixels} pixels")
 
+    theme_text_updates = replace_text_in_tree(
+        inner_theme_dir,
+        [
+            (old_theme_package, new_theme_package),
+            (old_theme_slug, new_theme_slug),
+        ],
+    )
+    rename_tree_entries(
+        inner_theme_dir,
+        [
+            (old_theme_slug, new_theme_slug),
+        ],
+    )
+    if new_theme_slug != old_theme_slug:
+        inner_theme_dir = inner_theme_dir.rename(inner_theme_dir.with_name(new_theme_slug))
+    if theme_text_updates > 0:
+        log(f"Updated MK theme package identifiers in {theme_text_updates} text files")
+
     # ---- Repack theme zip ----
+    # MK delivery must preserve the template's outer wrapper directory so the
+    # import format stays identical to the sample package.
     theme_output = output_dir / f"主题-MK-{title}.zip"
     repack_dir(theme_extract_dir, theme_output, inner_theme_dir.name)
     outputs.append(theme_output)
@@ -774,8 +950,6 @@ def build_mk_package(
     # -------------------------------------------------------------------------
     login_zip = sample_root / template_zips["mk"]["login"]
     login_extract_dir = work_dir / "mk_login_extract"
-    login_name = "login26-festival-qingm"
-
     log(f"Unzipping MK login: {login_zip}")
     if login_zip.exists():
         shutil.unpack_archive(login_zip, login_extract_dir)
@@ -792,10 +966,17 @@ def build_mk_package(
         error("Could not find MK login inner directory")
         return outputs
 
+    old_login_slug = inner_login_dir.name
+    new_login_slug = build_mk_login_slug(old_login_slug, name_en)
+    old_login_package = f"@user-login/{old_login_slug}"
+    new_login_package = f"@user-login/{new_login_slug}"
+    login_display_title = f"登录-{title}"
+
     # ---- Modify config.json ----
     login_config = inner_login_dir / "config.json"
     if login_config.exists():
         cfg = load_json(login_config)
+        cfg["name"] = new_login_package
         walk_and_set_locale(cfg, "loginTitle", title)
         walk_and_set_locale(cfg, "loginTitleDesc", subtitle)
         walk_and_set_locale(cfg, "loginBtnText", button_text)
@@ -805,23 +986,49 @@ def build_mk_package(
     login_data = inner_login_dir / "data.json"
     if login_data.exists():
         content = read_text(login_data)
+        content = content.replace(old_login_package, new_login_package)
         content = content.replace("$loginTitle$", title)
         content = content.replace("$loginBtnText$", button_text)
         write_text(login_data, content)
+
+    login_index = inner_login_dir / "index.json"
+    if login_index.exists():
+        index_data = load_json(login_index)
+        if isinstance(index_data, list):
+            for entry in index_data:
+                if isinstance(entry, dict):
+                    entry["name"] = new_login_package
+                    if isinstance(entry.get("title"), dict):
+                        entry["title"]["zh-cn"] = login_display_title
+                    if isinstance(entry.get("desc"), dict):
+                        entry["desc"]["zh-cn"] = login_display_title
+        dump_json(login_index, index_data)
+
+    login_meta = inner_login_dir / "meta.json"
+    if login_meta.exists():
+        meta_data = load_json(login_meta)
+        meta_data["name"] = new_login_package
+        if isinstance(meta_data.get("title"), dict):
+            meta_data["title"]["zh-cn"] = login_display_title
+        if isinstance(meta_data.get("desc"), dict):
+            meta_data["desc"]["zh-cn"] = login_display_title
+        dump_json(login_meta, meta_data)
 
     # ---- Modify sample/sample.json ----
     login_sample = inner_login_dir / "sample" / "sample.json"
     if login_sample.exists():
         sample = load_json(login_sample)
+        sample["renderID"] = new_login_package
+        sample["composeID"] = new_login_package
         if sample.get("config", {}).get("render"):
             sample["config"]["render"]["loginTitle"] = title
             sample["config"]["render"]["loginTitleDesc"] = subtitle
             sample["config"]["render"]["loginBtnText"] = button_text
             sample["config"]["render"]["logoURL"] = (
-                "@user-login/login26-festival-spring/static/logo.png"
+                f"{new_login_package}/static/logo.png"
             )
             sample["config"]["render"]["backgroundURL"] = (
-                "@user-login/login26-festival-spring/static/background.png"
+                f"{new_login_package}/static/background.png"
             )
             dump_json(login_sample, sample)
 
@@ -861,7 +1068,28 @@ def build_mk_package(
                 replace_image(login_thumb, existing)
                 log(f"Replaced login sample thumbnail {existing.name}")
 
+    login_text_updates = replace_text_in_tree(
+        inner_login_dir,
+        [
+            (old_login_package, new_login_package),
+            (old_login_slug, new_login_slug),
+            ("@user-login/login26-festival-spring", new_login_package),
+            ("@user-login/login-test-rcj77", new_login_package),
+        ],
+    )
+    rename_tree_entries(
+        inner_login_dir,
+        [
+            (old_login_slug, new_login_slug),
+        ],
+    )
+    if new_login_slug != old_login_slug:
+        inner_login_dir = inner_login_dir.rename(inner_login_dir.with_name(new_login_slug))
+    if login_text_updates > 0:
+        log(f"Updated MK login package identifiers in {login_text_updates} text files")
+
     # ---- Repack login zip ----
+    # MK login packages must keep the template wrapper directory unchanged.
     login_output = output_dir / f"登录-MK-{title}.zip"
     repack_dir(login_extract_dir, login_output, inner_login_dir.name)
     outputs.append(login_output)
@@ -984,7 +1212,7 @@ def build_ekp_package(
         ekl_image_map = {
             "header_tlayout_frame_bg.png": images.get("headerSimple"),
             "header_complex_frame_bg.png": images.get("headerClassic"),
-            "header_simple_frame_bg.png": images.get("headerSimpleFrame", "header_simple_frame_bg.png"),
+            "header_simple_frame_bg.png": images.get("headerSimpleFrame", images.get("headerSimple")),
             "header_menu_frame_bg.png": images.get("headerMenu"),
             "header_zone_frame_bg.png": images.get("headerTabs"),
             "header_zone_nav_frame_bg.png": images.get("headerIcon", images.get("headerTabs")),
@@ -1002,7 +1230,14 @@ def build_ekp_package(
                     dest = image_style_dir / filename
                     if dest.parent.exists():
                         if filename == "image_down.png" and not images.get("imageDown"):
-                            replace_image_bottom_crop(src, dest, width=200, height=488)
+                            replace_image_bottom_crop_with_sidebar_gradient(
+                                src,
+                                dest,
+                                width=200,
+                                height=488,
+                                template_type=template_type,
+                                colors=colors,
+                            )
                         else:
                             shutil.copy2(src, dest)
                         log(f"Replaced {filename}")
@@ -1097,8 +1332,8 @@ def build_ekp_package(
                     replace_image(src, iframe_dest)
                     log("Replaced bg_login_iframe.png")
 
-            login_thumb_src = config_base / "login_thumb.jpg"
-            if login_thumb_src.exists():
+            login_thumb_src = resolve_path(images.get("loginThumb"), config_base) if images.get("loginThumb") else None
+            if login_thumb_src:
                 for thumb_loc in ["login_thumb.jpg"]:
                     thumb_dest = login_static / thumb_loc
                     if thumb_dest.parent.exists():
@@ -1106,9 +1341,12 @@ def build_ekp_package(
                         log("Replaced login_thumb.jpg")
                         break
 
-            for thumb_name in ["thumb-1.jpg", "thumb-2.jpg"]:
-                thumb_src = config_base / "login_bg" / thumb_name
-                if thumb_src.exists():
+            login_thumb_variants = {
+                "thumb-1.jpg": resolve_path(images.get("loginThumb1"), config_base) if images.get("loginThumb1") else None,
+                "thumb-2.jpg": resolve_path(images.get("loginThumb2"), config_base) if images.get("loginThumb2") else None,
+            }
+            for thumb_name, thumb_src in login_thumb_variants.items():
+                if thumb_src:
                     thumb_dest = login_static / "login_bg" / thumb_name
                     if thumb_dest.parent.exists():
                         replace_image(thumb_src, thumb_dest)
@@ -1185,8 +1423,8 @@ def build_ekp_package(
                     replace_image(src, variant_inner / "images" / "bg-login.jpg")
                 log(f"Replaced {variant_label} login background")
 
-                login_thumb_src = config_base / "login_thumb.jpg"
-                if login_thumb_src.exists():
+                login_thumb_src = resolve_path(images.get("loginThumb"), config_base) if images.get("loginThumb") else None
+                if login_thumb_src:
                     for thumb_loc in ["login_thumb.jpg"]:
                         thumb_dest = variant_inner / thumb_loc
                         if thumb_dest.parent.exists():
@@ -1194,9 +1432,12 @@ def build_ekp_package(
                             log(f"Replaced {variant_label} login_thumb.jpg")
                             break
 
-                for thumb_name in ["thumb-1.jpg", "thumb-2.jpg"]:
-                    thumb_src = config_base / "login_bg" / thumb_name
-                    if thumb_src.exists():
+                login_thumb_variants = {
+                    "thumb-1.jpg": resolve_path(images.get("loginThumb1"), config_base) if images.get("loginThumb1") else None,
+                    "thumb-2.jpg": resolve_path(images.get("loginThumb2"), config_base) if images.get("loginThumb2") else None,
+                }
+                for thumb_name, thumb_src in login_thumb_variants.items():
+                    if thumb_src:
                         thumb_dest = variant_inner / "login_bg" / thumb_name
                         if thumb_dest.parent.exists():
                             replace_image(thumb_src, thumb_dest)
@@ -1393,6 +1634,7 @@ def build_all(config_path: Path, output_dir: Path):
                 work_dir=work_base / "mk",
                 output_dir=output_dir,
                 title=title,
+                name_en=name_en,
                 subtitle=subtitle,
                 button_text=button_text,
                 theme_color=theme_color,

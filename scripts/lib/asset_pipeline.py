@@ -148,6 +148,53 @@ def _build_linear_gradient(
     return gradient
 
 
+def _lerp_rgb(
+    left: Tuple[int, int, int],
+    right: Tuple[int, int, int],
+    ratio: float,
+) -> Tuple[int, int, int]:
+    return tuple(
+        round(start + (end - start) * ratio)
+        for start, end in zip(left, right)
+    )
+
+
+def _build_mirrored_horizontal_gradient(
+    size: Tuple[int, int],
+    start_color: Tuple[int, int, int],
+    mid_color: Tuple[int, int, int],
+    left_coverage: float,
+    right_coverage: float,
+) -> Image.Image:
+    width, height = size
+    gradient = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(gradient)
+
+    def draw_component(x_start: int, x_end: int, outer_edge: str) -> None:
+        component_width = max(1, x_end - x_start)
+        max_steps = max(component_width - 1, 1)
+        for x in range(x_start, x_end):
+            if outer_edge == "left":
+                distance = x - x_start
+            else:
+                distance = x_end - x - 1
+            ratio = distance / max_steps
+            if ratio <= 0.5:
+                color = _lerp_rgb(start_color, mid_color, ratio / 0.5 if ratio else 0)
+                alpha = 255
+            else:
+                color = mid_color
+                fade_ratio = (ratio - 0.5) / 0.5
+                alpha = round(255 * max(0.0, 1.0 - fade_ratio))
+            draw.line([(x, 0), (x, height)], fill=(*color, alpha))
+
+    left_width = max(1, round(width * left_coverage))
+    right_width = max(1, round(width * right_coverage))
+    draw_component(0, min(width, left_width), "left")
+    draw_component(max(0, width - right_width), width, "right")
+    return gradient
+
+
 def _with_overlay(image: Image.Image, overlay: Image.Image, alpha: float = 1.0) -> Image.Image:
     if alpha >= 1:
         return Image.alpha_composite(image, overlay)
@@ -183,7 +230,6 @@ def _render_sandwich(
 ) -> Image.Image:
     fallback = rule.get("fallbackColor", "#F1F1F1")
     base_rgb = _normalize_color(_resolve_rule_color(colors, rule, "baseColorVar"), fallback)
-    gradient_rgb = _normalize_color(_resolve_rule_color(colors, rule, "gradientColorVar"), fallback)
 
     base = Image.new("RGBA", (width, height), (*base_rgb, 255))
     cover = _cover_resize(source, width, height)
@@ -193,13 +239,31 @@ def _render_sandwich(
         cover.putalpha(cover_alpha_channel)
     merged = Image.alpha_composite(base, cover)
 
-    gradient = _build_linear_gradient(
-        (width, height),
-        gradient_rgb,
-        rule.get("gradientDirection", "horizontal"),
-        float(rule.get("gradientOpacityStart", 1)),
-        float(rule.get("gradientOpacityEnd", 1)),
-    )
+    if rule.get("gradientMode") == "mirrored-horizontal":
+        start_rgb = _normalize_color(
+            _resolve_rule_color(colors, rule, "gradientStartVar"),
+            fallback,
+        )
+        mid_rgb = _normalize_color(
+            _resolve_rule_color(colors, rule, "gradientMidVar"),
+            fallback,
+        )
+        gradient = _build_mirrored_horizontal_gradient(
+            (width, height),
+            start_rgb,
+            mid_rgb,
+            float(rule.get("leftCoverage", 0.5)),
+            float(rule.get("rightCoverage", 0.5)),
+        )
+    else:
+        gradient_rgb = _normalize_color(_resolve_rule_color(colors, rule, "gradientColorVar"), fallback)
+        gradient = _build_linear_gradient(
+            (width, height),
+            gradient_rgb,
+            rule.get("gradientDirection", "horizontal"),
+            float(rule.get("gradientOpacityStart", 1)),
+            float(rule.get("gradientOpacityEnd", 1)),
+        )
     return Image.alpha_composite(merged, gradient)
 
 

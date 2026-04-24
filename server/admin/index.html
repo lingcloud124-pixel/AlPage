@@ -193,10 +193,36 @@
     function isAuthenticated() {
       return Object.keys(authHeaders).length > 0;
     }
+
+    function showAdminPanel() {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
+    }
+
+    async function tryEnterAdminWithoutPassword() {
+      const headers = { 'Content-Type': 'application/json' };
+      const res = await fetch('/api/model-config', { headers });
+      if (!res.ok) return false;
+      authHeaders = headers;
+      showAdminPanel();
+      loadConfig();
+      loadUsers();
+      return true;
+    }
     
     async function authenticateAdmin() {
       const password = document.getElementById('adminPassword').value;
       if (!password) {
+        try {
+          const entered = await tryEnterAdminWithoutPassword();
+          if (entered) {
+            toast('当前环境未启用管理员密码，已直接进入管理面板');
+            return;
+          }
+        } catch (_e) {
+          // Fall through to the existing password prompt below.
+        }
+
         toast('请输入管理员密码', 'error');
         return;
       }
@@ -220,8 +246,7 @@
           throw new Error('认证失败，请检查密码');
         }
         
-        document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('adminPanel').style.display = 'block';
+        showAdminPanel();
         toast('认证成功，欢迎使用管理面板');
         
         // Load configurations now that we're authenticated
@@ -475,6 +500,11 @@
     // Check if we already have a stored session on page load
     document.addEventListener('DOMContentLoaded', function() {
       const storedAuth = sessionStorage.getItem('adminAuth');
+      if (!storedAuth) {
+        tryEnterAdminWithoutPassword().catch(() => {});
+        return;
+      }
+
       if (storedAuth) {
         // Simulate authentication with stored token
         authHeaders = {
@@ -493,8 +523,7 @@
               return false;
             } else {
               // Valid, show admin panel
-              document.getElementById('loginSection').style.display = 'none';
-              document.getElementById('adminPanel').style.display = 'block';
+              showAdminPanel();
               
               // Load configurations now that we're authenticated
               loadConfig();

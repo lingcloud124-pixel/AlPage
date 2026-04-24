@@ -34,6 +34,19 @@ cleanup() {
   exit "$exit_code"
 }
 
+wait_for_any_pid() {
+  while true; do
+    for pid in "${PIDS[@]}"; do
+      if ! kill -0 "$pid" 2>/dev/null; then
+        wait "$pid"
+        return $?
+      fi
+    done
+
+    sleep 1
+  done
+}
+
 trap cleanup EXIT INT TERM
 
 echo "Starting Theme Studio dev services..."
@@ -46,4 +59,4 @@ start_service "server" "${ROOT_DIR}/server" npm run dev
 start_service "web" "${ROOT_DIR}/web" npm run dev -- --host 127.0.0.1
 start_service "bridge" "${ROOT_DIR}/web" npm run export-bridge
 
-wait -n "${PIDS[@]}"
+wait_for_any_pid

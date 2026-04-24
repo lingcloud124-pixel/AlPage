@@ -153,9 +153,15 @@ alter(47-59) < primary(64-68) < alter-hover(97-100) < primary-hover(214-216) < h
 - primary-opacity-20 = blendWhite(primary, 0.2) = 主色20% + 白色80%
 - primary-opacity-30 = blendWhite(primary, 0.3) = 主色30% + 白色70%
 
-**Alter颜色计算**：
-- alter-color = desaturate(darken(primary, 15%), 20%)
-- alter-color-hover-on = lighten(primaryHover, 15%)
+**Light-UI 固化规则**：
+- alter-color = darken(primary, 11%)
+- primary-hover = adjust(primary, L + 8%, S + 4%)
+- alter-color-hover-on = mix(#FFFFFF, primary, 62.5%)
+- tlayout / portal / complex header extend = mix(#FFFFFF, primary, 5%) + 轻微暖化
+- login-bg-color = mix(#FFFFFF, primary, 4%) + 轻微暖化
+- sidebar-panel-bg = mix(#FFFFFF, primary, 5%) + 微暖偏移
+- sidebar-icon-color = mix(#8A8A8A, primary, 20%)
+- border-icon-color = mix(#D8D8D8, primary, 5%)
 
 **亮度排序**（从浅到深，必须严格遵守）：
 primary-hover(65-80%) > primary(45-60%) > alter(35-50%) > alter-hover(25-40%)
@@ -164,7 +170,9 @@ primary-hover(65-80%) > primary(45-60%) > alter(35-50%) > alter-hover(25-40%)
 1. header-font-color 固定为深色 #333333
 2. 主色应为中浅色（HSL亮度45-60%）
 3. 使用白色混合计算透明度变体
-4. login-bg-color 使用浅色/白色系
+4. login-bg-color 使用浅色/白色系，且不再与 header-extend 强制相等
+5. sidebar-color 固定为 #000000，sidebar-icon-color 不直接等于主色
+6. border-color 固定为 #D8D8D8
 5. 所有色值必须是有效的6位十六进制格式 #RRGGBB`}
 
 ## 当前上下文

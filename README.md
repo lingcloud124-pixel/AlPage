@@ -108,6 +108,14 @@ A: Web 应用里点击“打包”，先勾选产品，再由统一导出链在�
 4. 调用 `theme_builder.py` 标准打包并验证
 手动方式仍可使用 `python3 theme_builder.py --config theme-build-request.yaml`，但 Web 主链的素材准备入口是 `scripts/prepare_export_assets.py`。
 
+**Q: 能不能跳过前台按钮，直接检查打包内容是否正确**
+A: 可以，根目录直接运行下面两条命令即可：
+1. 直接打包并校验：`npm run export:check -- "清明主题" qingming '#2C615C' light-ui /绝对路径/bg.jpg mk,ekp_v17`
+2. 只校验已有输出包：`npm run export:verify -- output/20260423-qingming/输出包 --products mk,ekp_v17`
+
+`export:check` 会依次执行项目快照固定、素材准备、截图、`theme_builder.py` 打包、`verify-build.py` 校验。
+如果主色以 `#` 开头，命令里要像示例那样加引号，避免被 shell 当成注释。
+
 **Q: manifest.json 配置文件需要手动编辑吗**
 A: 当前 Web 主链路不依赖手动编辑 `manifest.json`。该文件主要属于历史工具链参考范围，现行主链路以项目快照 + `scripts/prepare_export_assets.py` + `theme_builder.py` 打包为准。
 

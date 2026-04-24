@@ -6,6 +6,7 @@ import { getCurrentProjectId, loadProject, saveProject } from './project-manager
 import type { Project } from './project-manager';
 
 const LINKED_LIGHT_BG_VARS = [
+  '--tlayout-header-bg-extend-color',
   '--portal-header-bg-extend-color',
   '--sidebar-panel-bg',
   '--gradient-start',
@@ -53,7 +54,7 @@ const COLOR_VAR_NAMES = [
   'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
   'primary-color-opacity-10', 'primary-color-opacity-20', 'primary-color-opacity-30',
   'header-font-color', 'header-font-color-hover', 'auxiliary-gray', 'auxiliary-gray-dark',
-  'body-bg-color', 'portal-header-bg-extend-color', 'portal-header-complex-bg-extend-color',
+  'body-bg-color', 'tlayout-header-bg-extend-color', 'portal-header-bg-extend-color', 'portal-header-complex-bg-extend-color',
   'login-bg-color', 'panel-bg-color',
   'sidebar-panel-bg', 'sidebar-color', 'sidebar-icon-color', 'sidebar-icon-color-hover',
   'sidebar-accordionpanel-font', 'sidebar-accordionpanel-header-bg', 'sidebar-accordionpanel-header-bgon',

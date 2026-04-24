@@ -4,6 +4,7 @@ import {
   setCurrentProjectId,
   createProject,
   loadProject,
+  listProjects,
   saveProject,
   getProjectThemeLabel,
   populateSidebarProjects,
@@ -30,6 +31,7 @@ import {
 import { loadDefaultTemplates } from './theme-engine';
 import { loadSettings } from './agent/chat-client';
 import { checkAuth } from './auth';
+import { pickFallbackWorkspaceProject } from './workspace-recovery';
 
 declare global {
   interface Window {
@@ -38,6 +40,12 @@ declare global {
 }
 
 async function showWorkspace(projectId: string): Promise<void> {
+  const project = await loadProject(projectId);
+  if (!project) {
+    await recoverMissingWorkspaceProject(projectId);
+    return;
+  }
+
   const homePage = document.getElementById('homePage');
   const workspaceView = document.getElementById('workspaceView');
   const messagesContainer = document.getElementById('messagesContainer') as HTMLElement;
@@ -50,43 +58,63 @@ async function showWorkspace(projectId: string): Promise<void> {
   const previewPanel = document.getElementById('previewPanel');
   if (previewPanel) previewPanel.removeAttribute('style');
 
-  const project = await loadProject(projectId);
-  if (project) {
-    resetThemeTargetStyles();
-    applyTemplateSpecificThemeVars(project.templateType);
-    const projectNameElement = document.getElementById('projectName');
-    if (projectNameElement) projectNameElement.textContent = getProjectThemeLabel(project);
-    const chatProjectName = document.getElementById('chatProjectName');
-    if (chatProjectName) chatProjectName.textContent = project.name;
+  resetThemeTargetStyles();
+  applyTemplateSpecificThemeVars(project.templateType);
+  const projectNameElement = document.getElementById('projectName');
+  if (projectNameElement) projectNameElement.textContent = getProjectThemeLabel(project);
+  const chatProjectName = document.getElementById('chatProjectName');
+  if (chatProjectName) chatProjectName.textContent = project.name;
 
-    if (project.colors && Object.keys(project.colors).length > 0) {
-      for (const [key, value] of Object.entries(project.colors)) {
-        const cssVar = key.startsWith('--') ? key : `--${key}`;
-        if (/^#[0-9a-fA-F]{6}$/.test(value)) setThemeVar(cssVar, value);
-      }
-      if (project.bgImageUrl) {
-        applyThemeImageAssignments('login', project.bgImageUrl);
-        applyThemeImageAssignments('desktop', project.bgImageUrl);
-      }
-      if (project.headerBgImageUrl) {
-        setThemeVar('--theme-header-bg-image', `url('${project.headerBgImageUrl}')`);
-      }
-      syncColorEditorFromTheme();
-      expandPreview();
-      syncWorkbenchLayoutForActiveTab(true, 'mainPageTab');
-      document.getElementById('loginTab')?.classList.remove('active-tab');
-      document.getElementById('loginPage')?.classList.remove('active-preview');
-      document.getElementById('mainPageTab')?.classList.add('active-tab');
-      document.getElementById('mainPage')?.classList.add('active-preview');
-    } else {
-      syncColorEditorFromTheme();
-      collapsePreview();
-      syncWorkbenchLayoutForActiveTab(false, 'loginTab');
-      showDefaultChatView();
+  if (project.colors && Object.keys(project.colors).length > 0) {
+    for (const [key, value] of Object.entries(project.colors)) {
+      const cssVar = key.startsWith('--') ? key : `--${key}`;
+      if (/^#[0-9a-fA-F]{6}$/.test(value)) setThemeVar(cssVar, value);
     }
+    if (project.bgImageUrl) {
+      applyThemeImageAssignments('login', project.bgImageUrl);
+      applyThemeImageAssignments('desktop', project.bgImageUrl);
+    }
+    if (project.headerBgImageUrl) {
+      setThemeVar('--theme-header-bg-image', `url('${project.headerBgImageUrl}')`);
+    }
+    syncColorEditorFromTheme();
+    expandPreview();
+    syncWorkbenchLayoutForActiveTab(true, 'mainPageTab');
+    document.getElementById('loginTab')?.classList.remove('active-tab');
+    document.getElementById('loginPage')?.classList.remove('active-preview');
+    document.getElementById('mainPageTab')?.classList.add('active-tab');
+    document.getElementById('mainPage')?.classList.add('active-preview');
+  } else {
+    syncColorEditorFromTheme();
+    collapsePreview();
+    syncWorkbenchLayoutForActiveTab(false, 'loginTab');
+    showDefaultChatView();
   }
 
   await loadAndRenderChatHistory(messagesContainer);
+}
+
+async function recoverMissingWorkspaceProject(missingProjectId: string): Promise<void> {
+  if (localStorage.getItem('theme-studio-current-project') === missingProjectId || getCurrentProjectId() === missingProjectId) {
+    setCurrentProjectId(null);
+  }
+
+  const recovery = await pickFallbackWorkspaceProject(missingProjectId, {
+    listProjects,
+    createProject,
+  });
+
+  if (recovery.project) {
+    showNotification(
+      recovery.reason === 'created'
+        ? '当前项目不存在，已自动创建新项目'
+        : '当前项目不存在，已自动切换到最近的可用项目',
+    );
+    await showWorkspace(recovery.project.id);
+    return;
+  }
+
+  showNotification('当前项目不存在，请刷新页面后重试');
 }
 
 function runHealthCheck() {
