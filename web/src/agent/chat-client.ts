@@ -90,14 +90,14 @@ export function saveSettings(settings: AISettings): void {
 export function getImageSettings(): { endpoint: string; apiKey: string; model: string } {
   return {
     endpoint: '/api/theme',
-    apiKey: '',  // Server holds the key
-    model: 'image-01',
+    apiKey: '',
+    model: 'jimeng-4.0',
   };
 }
 
 export async function generateImage(prompt: string): Promise<{ success: boolean; url?: string; error?: string }> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 180_000);
+  const timeoutId = setTimeout(() => controller.abort(), 300_000);
 
   try {
     const MAX_PROMPT_LENGTH = 1500;
@@ -155,6 +155,11 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
         1026: '图片描述涉及敏感内容，请调整描述',
         2013: '传入参数异常，请检查请求参数',
         2049: '无效的 API Key',
+        50411: '输入图片审核未通过',
+        50412: '输入文本审核未通过',
+        50413: '输入文本含敏感词，请调整描述',
+        50429: '请求过快，请稍后再试',
+        50500: '服务内部错误，请重试',
       };
       const detail = errorMap[baseStatusCode] ?? baseStatusMsg ?? `未知错误 (${baseStatusCode})`;
       return { success: false, error: `图像生成失败: ${detail}` };

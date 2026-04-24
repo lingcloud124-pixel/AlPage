@@ -137,7 +137,6 @@ export function buildGenerationPromptFromPlan(context: {
   if (parts.length === 0) {
     pushUnique(parts, 'festive seasonal celebration background');
   }
-  pushUnique(parts, 'no text');
   pushUnique(parts, 'no UI elements');
 
   return parts.join(', ');
@@ -261,14 +260,17 @@ export function enrichToolCallsWithColorHints(
 
   const hasGeneratePipeline = enriched.some((toolCall) =>
     toolCall.tool === 'generate_theme_pipeline' || toolCall.tool === 'generate_theme_previews');
-  if (!hasGeneratePipeline && isSimpleConfirmationMessage(context.userMessage) && context.priorAssistantMessage) {
-    const extractedDirections = extractDirectionsFromText(context.priorAssistantMessage);
-    const templateType = inferTemplateTypeFromText(context.priorAssistantMessage);
-    const primaryHint = inferPrimaryHintFromText(context.priorAssistantMessage, templateType)
-      ?? inferPrimaryHintFromText(context.priorUserMessage, templateType)
-      ?? inferPrimaryHintFromText(context.assistantMessage, templateType);
+
+  if (!hasGeneratePipeline) {
+    const sourceText = context.assistantMessage || context.priorAssistantMessage || '';
+    const extractedDirections = extractDirectionsFromText(sourceText);
+    const templateType = inferTemplateTypeFromText(sourceText);
+    const primaryHint = inferPrimaryHintFromText(context.userMessage, templateType)
+      ?? inferPrimaryHintFromText(sourceText, templateType)
+      ?? inferPrimaryHintFromText(context.priorUserMessage, templateType);
 
     if (extractedDirections.length > 0) {
+      console.log('[enrichToolCalls] 未解析到工具调用，从回复文本提取到', extractedDirections.length, '个方向，自动构建 generate_theme_previews');
       return [
         {
           tool: 'generate_theme_previews',
