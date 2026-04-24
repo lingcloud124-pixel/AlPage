@@ -1,5 +1,4 @@
 import { config } from 'dotenv';
-config();
 
 const [
   { default: express },
@@ -39,6 +38,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+config({ path: join(__dirname, '..', '..', '.env') });
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 

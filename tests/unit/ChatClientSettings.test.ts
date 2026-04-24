@@ -32,7 +32,7 @@ describe('chat client settings', async () => {
     const settings = mod.loadSettings();
 
     expect(settings.apiEndpoint).toBe('/api/theme/chat');
-    expect(settings.model).toBe('qwen3.6-plus');
+    expect(settings.model).toBe('MiniMax-M2.7');
   });
 
   test('saveSettings persists values for later chat requests', () => {

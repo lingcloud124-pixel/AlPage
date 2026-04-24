@@ -102,6 +102,7 @@ export function getImageSettings(): { endpoint: string; apiKey: string; model: s
 export async function generateImage(prompt: string): Promise<{ success: boolean; url?: string; error?: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 180_000);
+  const imageSettings = getImageSettings();
 
   try {
     const MAX_PROMPT_LENGTH = 1500;
@@ -123,7 +124,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
           ...authHeaders(),
         },
         body: JSON.stringify({
-          model: 'image-01',
+          model: imageSettings.model,
           prompt: truncatedPrompt,
           width: 1920,
           height: 1080,

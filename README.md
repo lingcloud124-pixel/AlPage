@@ -10,12 +10,11 @@ npm install
 cd web && npm install
 cd ..
 
-# 配置 API 密钥（.env 文件不会被 git 追踪，需自行创建）
+# 配置服务器环境变量（.env 文件不会被 git 追踪，需自行创建）
 cp .env.example .env
-# 编辑 .env，填入 MINIMAX_API_KEY
+# 编辑 .env，设置 ADMIN_PASSWORD（后台管理口令）
 
-cp web/.env.example web/.env
-# 编辑 web/.env，填入 VITE_DASHSCOPE_API_KEY 和 VITE_MINIMAX_API_KEY
+# 启动后访问 /admin 页面配置模型（API Key、Endpoint、Model）
 ```
 
 ### 1. 安装 Skill（可选，用于 AI 辅助）
@@ -118,9 +117,9 @@ A: 这是旧 TypeScript 工具链的 bug。新的 `theme_builder.py` 已正确�
 **Q: 如何查看生成的主题包**
 A: Web 导出默认输出到你在设置中配置的导出根目录下：`projects/{projectId}-{nameEn}/exports/{timestamp}/输出包/`。根目录脚本默认仍可输出到项目内 `output/`。
 
-**Q: 克隆到其他电脑后打开是旧页面，没有 API 密钥**
-A: `node_modules/`、`web/dist/` 和 `.env` 文件均被 git 忽略。正确步骤：
+**Q: 克隆到其他电脑后没有 API 密钥**
+A: `.env` 文件被 git 忽略。正确步骤：
 1. `npm install && cd web && npm install && cd ..`
-2. `cp .env.example .env` 并填入 `MINIMAX_API_KEY`
-3. `cp web/.env.example web/.env` 并填入聊天和图片 API 密钥
-4. `cd web && npm run dev`（**不是**直接打开 `index.html`）
+2. `cp .env.example .env` 并设置 `ADMIN_PASSWORD`
+3. `cd web && npm run dev`（**不是**直接打开 `index.html`）
+4. 启动后访问 `/admin`，在页面中配置模型 API Key、Endpoint 和 Model Name

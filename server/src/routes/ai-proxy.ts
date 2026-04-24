@@ -6,6 +6,46 @@ import { getSecurityConfig } from '../db.js';
 
 const router = Router();
 
+type ImageProvider = 'minimax' | 'ark';
+
+function detectImageProvider(endpoint: string): ImageProvider {
+  const normalized = endpoint.toLowerCase();
+  if (normalized.includes('volces.com') || normalized.includes('/api/v3/images/generations')) {
+    return 'ark';
+  }
+  return 'minimax';
+}
+
+function buildImageRequestBody(
+  provider: ImageProvider,
+  requestBody: Record<string, unknown>,
+  configuredModel: string,
+): Record<string, unknown> {
+  const prompt = typeof requestBody.prompt === 'string' ? requestBody.prompt : '';
+  const requestedModel = typeof requestBody.model === 'string' && requestBody.model.trim()
+    ? requestBody.model
+    : configuredModel;
+
+  if (provider === 'ark') {
+    const width = typeof requestBody.width === 'number' ? requestBody.width : 1920;
+    const height = typeof requestBody.height === 'number' ? requestBody.height : 1080;
+    return {
+      model: requestedModel,
+      prompt,
+      size: `${width}x${height}`,
+      response_format: requestBody.response_format ?? 'url',
+      watermark: requestBody.watermark ?? false,
+    };
+  }
+
+  return {
+    ...requestBody,
+    model: requestedModel,
+    prompt,
+    response_format: requestBody.response_format ?? 'url',
+  };
+}
+
 function resolveTarget(endpoint: string): { client: typeof http | typeof https; options: http.RequestOptions } {
   const parsed = new URL(endpoint);
   const client = parsed.protocol === 'https:' ? https : http;
@@ -185,6 +225,7 @@ router.post('/image', async (req, res) => {
     }
 
     const { client, options } = resolveTarget(config.imageEndpoint);
+    const provider = detectImageProvider(config.imageEndpoint);
     options.headers = {
       'Authorization': `Bearer ${config.imageApiKey}`,
       'Content-Type': 'application/json',
@@ -218,7 +259,11 @@ router.post('/image', async (req, res) => {
       }
     });
 
-    const body = JSON.stringify(req.body);
+    const body = JSON.stringify(buildImageRequestBody(
+      provider,
+      (req.body ?? {}) as Record<string, unknown>,
+      config.imageModel || 'image-01',
+    ));
     proxyReq.write(body);
     proxyReq.end();
   } catch (error) {
