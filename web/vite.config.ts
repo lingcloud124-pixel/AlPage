@@ -2,11 +2,6 @@ import { defineConfig, type Plugin } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 
 const proxy = {
-  '/api/export': {
-    target: 'http://127.0.0.1:5174',
-    changeOrigin: true,
-    rewrite: (proxyPath: string) => proxyPath.replace(/^\/api\/export/, ''),
-  },
   '/api': {
     target: 'http://localhost:3001',
     changeOrigin: true,
