@@ -1,8 +1,5 @@
 import type { ToolCall } from '../types';
 import { resolvePreferredHueHint } from '../theme/color-utils';
-import { parseThemeFeedback } from '../tools/theme-feedback-refiner';
-import { buildRegeneratedScenePlan } from '../tools/theme-regeneration-director';
-import { buildDirectedPrompt } from '../tools/theme-prompt-director';
 import type { ThemeAgentDebugState } from '../chat-manager';
 
 function normalizeTemplateType(value: unknown): 'light-ui' | 'dark-ui' {
@@ -14,12 +11,11 @@ function extractDirectionsFromText(text: string): Array<{ label: string; prompt:
   const directions: Array<{ label: string; prompt: string }> = [];
   const labels = ['A', 'B', 'C'];
   const parts = text.split(/\*\*\s*方向\s*([ABCabc])/u);
-  if (parts.length < 4) return [];
+  if (parts.length < 3) return [];
 
   for (let i = 1; i + 1 < parts.length; i += 2) {
     const letter = parts[i].toUpperCase();
-    const idx = labels.indexOf(letter);
-    if (idx < 0) continue;
+    if (labels.indexOf(letter) < 0) continue;
     let content = parts[i + 1] || '';
     content = content.replace(/\*\*/g, '').trim();
     const nextLabelIdx = content.search(/方向\s*[ABCabc]/u);
@@ -224,38 +220,17 @@ export function enrichToolCallsWithColorHints(
         : ''
     );
 
-    const regeneratedPrompt = (!isSimpleConfirmationMessage(context.userMessage)
-      && context.latestThemeAgentDebugState?.intent
-      && (context.latestThemeAgentDebugState?.scenePlan || context.latestThemeAgentDebugState?.scenePlans?.[0]))
-      ? (() => {
-          const adjustment = parseThemeFeedback(context.userMessage);
-          const hasAdjustment = Object.values(adjustment).some((value) =>
-            Array.isArray(value) ? value.length > 0 : value !== undefined,
-          );
-          if (!hasAdjustment) return '';
-          const basePlan = context.latestThemeAgentDebugState.scenePlan
-            ?? context.latestThemeAgentDebugState.scenePlans![0];
-          const regenerated = buildRegeneratedScenePlan(
-            context.latestThemeAgentDebugState.intent,
-            basePlan,
-            adjustment,
-          );
-          return buildDirectedPrompt(regenerated.nextScenePlan).prompt;
-        })()
-      : '';
-
-      return {
-        ...toolCall,
-        tool: 'generate_theme_previews',
-        args: {
-          ...toolCall.args,
-          directions: hasDirections ? rawDirections : undefined,
-          templateType,
-          ...((regeneratedPrompt || finalPrompt) ? { prompt: regeneratedPrompt || finalPrompt } : {}),
-          ...(inferredHint ? { primaryHint: inferredHint } : {}),
-          ...(regeneratedPrompt ? { themeFeedbackRegenerated: true } : {}),
-        },
-      };
+    return {
+      ...toolCall,
+      tool: 'generate_theme_previews',
+      args: {
+        ...toolCall.args,
+        directions: hasDirections ? rawDirections : undefined,
+        templateType,
+        ...(finalPrompt ? { prompt: finalPrompt } : {}),
+        ...(inferredHint ? { primaryHint: inferredHint } : {}),
+      },
+    };
   });
 
   const hasGeneratePipeline = enriched.some((toolCall) =>
@@ -282,6 +257,35 @@ export function enrichToolCallsWithColorHints(
         },
         ...enriched,
       ];
+    }
+
+    if (isSimpleConfirmationMessage(context.userMessage) && context.priorAssistantMessage) {
+      const templateType = inferTemplateTypeFromText(context.priorAssistantMessage);
+      const primaryHint = inferPrimaryHintFromText(context.userMessage, templateType)
+        ?? inferPrimaryHintFromText(context.priorAssistantMessage, templateType)
+        ?? inferPrimaryHintFromText(context.priorUserMessage, templateType)
+        ?? inferPrimaryHintFromText(context.assistantMessage, templateType);
+      const finalPrompt = buildGenerationPromptFromPlan({
+        userMessage: context.userMessage,
+        priorAssistantMessage: context.priorAssistantMessage,
+        priorUserMessage: context.priorUserMessage,
+        templateType,
+        primaryHint: typeof primaryHint === 'string' ? primaryHint : undefined,
+      });
+      if (finalPrompt) {
+        console.log('[enrichToolCalls] 简单确认消息，自动生成 generate_theme_previews');
+        return [
+          {
+            tool: 'generate_theme_previews',
+            args: {
+              prompt: finalPrompt,
+              templateType,
+              ...(primaryHint ? { primaryHint } : {}),
+            },
+          },
+          ...enriched,
+        ];
+      }
     }
   }
 
