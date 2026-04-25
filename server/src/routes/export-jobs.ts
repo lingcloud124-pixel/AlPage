@@ -101,7 +101,7 @@ router.post('/export-jobs', async (req, res) => {
     const body = req.body ?? {};
 
     const projectId = body.projectId ?? body.batch?.projectSnapshot?.projectId;
-    const confirmedVersionId = body.confirmedVersionId ?? '';
+    let confirmedVersionId = body.confirmedVersionId ?? '';
     const selectedProducts = Array.isArray(body.selectedProducts)
       ? body.selectedProducts
       : Array.isArray(body.batch?.selectedProducts)
@@ -109,6 +109,7 @@ router.post('/export-jobs', async (req, res) => {
         : Array.isArray(body.buildOptions?.selectedProducts)
           ? body.buildOptions.selectedProducts
           : [];
+    const projectSnapshot = body.batch?.projectSnapshot;
 
     if (!projectId || selectedProducts.length === 0) {
       return res.status(400).json({ error: 'projectId and selectedProducts are required' });
@@ -123,6 +124,25 @@ router.post('/export-jobs', async (req, res) => {
     }
 
     const now = Date.now();
+    if (!confirmedVersionId && projectSnapshot && typeof projectSnapshot === 'object') {
+      confirmedVersionId = `confirmed-${now}`;
+      const snapshotStmt = db.prepare(`
+        INSERT INTO theme_confirmed_versions (
+          id, project_id, user_id, snapshot_json, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      snapshotStmt.bind([
+        confirmedVersionId,
+        projectId,
+        userId,
+        JSON.stringify(projectSnapshot),
+        now,
+        now,
+      ]);
+      snapshotStmt.step();
+      snapshotStmt.free();
+    }
+
     const exportJobId = body.batch?.id ?? `job-${now}`;
     const stmt = db.prepare(`
       INSERT INTO theme_export_jobs (

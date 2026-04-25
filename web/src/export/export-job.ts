@@ -4,6 +4,7 @@ import { buildProjectExportNameEn } from '../project-naming';
 import { buildExportRequestYaml } from './build-config';
 import { buildExportAssetSnapshot, type ExportAssetSnapshot } from './asset-snapshot';
 import { buildExportBatchPaths } from './export-paths';
+import { buildLivePreviewProjectSnapshot } from './live-preview-snapshot';
 
 export interface BuildExportJobRequestArgs {
   project: Project;
@@ -38,9 +39,10 @@ function getProjectExportNameEn(project: Project): string {
 
 export function buildExportJobRequest(args: BuildExportJobRequestArgs): ExportJobRequest {
   const timestamp = args.now ?? Date.now();
-  const name = getProjectExportName(args.project);
-  const nameEn = getProjectExportNameEn(args.project);
-  const cssVariables = { ...args.project.colors, ...args.cssVariables };
+  const liveProjectSnapshot = buildLivePreviewProjectSnapshot(args.project, args.cssVariables);
+  const name = getProjectExportName(liveProjectSnapshot);
+  const nameEn = getProjectExportNameEn(liveProjectSnapshot);
+  const cssVariables = { ...liveProjectSnapshot.colors, ...args.cssVariables };
   const themeColor = cssVariables['primary-color'] || cssVariables['--primary-color'] || '#2C615C';
   const headerFont = cssVariables['header-font-color'] || cssVariables['--header-font-color'] || '#333333';
   const exportPaths = args.exportRoot
@@ -60,13 +62,13 @@ export function buildExportJobRequest(args: BuildExportJobRequestArgs): ExportJo
     projectDir: exportPaths?.projectDir,
     exportDir: exportPaths?.exportDir,
     projectSnapshot: {
-      projectId: args.project.id,
+      projectId: liveProjectSnapshot.id,
       name,
       nameEn,
-      templateType: args.project.templateType,
+      templateType: liveProjectSnapshot.templateType,
       colors: cssVariables,
-      bgImageUrl: args.project.bgImageUrl,
-      headerBgImageUrl: args.project.headerBgImageUrl,
+      bgImageUrl: liveProjectSnapshot.bgImageUrl,
+      headerBgImageUrl: liveProjectSnapshot.headerBgImageUrl,
     },
   };
 
@@ -76,13 +78,13 @@ export function buildExportJobRequest(args: BuildExportJobRequestArgs): ExportJo
       name,
       nameEn,
       themeColor,
-      templateType: args.project.templateType,
+      templateType: liveProjectSnapshot.templateType,
       headerFont,
       selectedProducts: args.selectedProducts,
       colors: cssVariables,
     }),
     assetSnapshot: buildExportAssetSnapshot({
-      project: args.project,
+      project: liveProjectSnapshot,
       cssVariables,
       selectedProducts: args.selectedProducts,
       nameEn,
@@ -92,10 +94,10 @@ export function buildExportJobRequest(args: BuildExportJobRequestArgs): ExportJo
     buildOptions: {
       name,
       nameEn,
-      templateType: args.project.templateType,
+      templateType: liveProjectSnapshot.templateType,
       themeColor,
       cssVariables,
-      themeImageUrl: args.project.bgImageUrl,
+      themeImageUrl: liveProjectSnapshot.bgImageUrl,
       selectedProducts: [...args.selectedProducts],
     },
   };
