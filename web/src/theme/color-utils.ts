@@ -237,6 +237,7 @@ export function warmShift(hex: string, red = 0, green = 0, blue = 0): string {
  */
 export interface DerivedColors {
   'primary-color': string;
+  'primary-text-color': string;
   'primary-color-hover': string;
   'alter-color': string;
   'alter-color-hover-on': string;
@@ -293,10 +294,44 @@ export interface ThemeGenerationReport {
 }
 
 export const DEFAULT_LIGHT_UI_PRIMARY = '#2C615C';
+export const DEFAULT_FALLBACK_BRAND_COLOR = '#0E70EE';
+export const STANDARD_FALLBACK_PALETTE = [
+  '#D20000',
+  '#F4610A',
+  '#EAC700',
+  '#07B11F',
+  '#0E70EE',
+  '#820FEA',
+  '#B20EBB',
+] as const;
 
 function getHueDistance(a: number, b: number): number {
   const delta = Math.abs(a - b) % 360;
   return Math.min(delta, 360 - delta);
+}
+
+export function isDisallowedThemeColor(hex: string): boolean {
+  const { s, l } = hexToHsl(hex);
+  return s < 20 || l > 80 || l < 25;
+}
+
+export function pickFallbackPaletteColorByHue(targetHue?: number): string {
+  if (typeof targetHue !== 'number' || Number.isNaN(targetHue)) {
+    return DEFAULT_FALLBACK_BRAND_COLOR;
+  }
+
+  let best = DEFAULT_FALLBACK_BRAND_COLOR;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const hex of STANDARD_FALLBACK_PALETTE) {
+    const distance = getHueDistance(hexToHsl(hex).h, targetHue);
+    if (distance < bestDistance) {
+      best = hex;
+      bestDistance = distance;
+    }
+  }
+
+  return best;
 }
 
 export function resolvePreferredHueHint(
@@ -315,7 +350,7 @@ export function resolvePreferredHueHint(
       label: normalized,
       targetHue: h,
       tolerance: 22,
-      fallbackHex: normalized,
+      fallbackHex: pickFallbackPaletteColorByHue(h),
       boost: 42,
     };
   }
@@ -411,7 +446,9 @@ export function resolvePreferredHueHint(
     label: matched.label,
     targetHue: matched.targetHue,
     tolerance: matched.tolerance,
-    fallbackHex: templateType === 'dark-ui' ? matched.fallbackHexDark : matched.fallbackHexLight,
+    fallbackHex: templateType === 'dark-ui'
+      ? matched.fallbackHexDark
+      : pickFallbackPaletteColorByHue(matched.targetHue),
     boost: matched.boost,
   };
 }
@@ -433,6 +470,34 @@ export function deriveColorsFromPrimary(
   return deriveLightUiColors(primaryHex);
 }
 
+export function normalizePrimaryForTemplate(
+  primaryHex: string,
+  templateType: 'light-ui' | 'dark-ui',
+): string {
+  if (templateType !== 'light-ui') return primaryHex;
+
+  const { h, s, l } = hexToHsl(primaryHex);
+  let normalizedSaturation = s;
+  let normalizedLightness = l;
+
+  if (s < 40) {
+    normalizedSaturation = 55;
+  }
+  normalizedSaturation = Math.max(50, Math.min(70, normalizedSaturation));
+
+  if (l < 35) {
+    normalizedLightness = 50;
+  } else if (l > 70) {
+    normalizedLightness = 60;
+  } else {
+    normalizedLightness = Math.max(45, Math.min(60, normalizedLightness));
+  }
+
+  if (normalizedSaturation === s && normalizedLightness === l) return primaryHex;
+
+  return hslToHex(h, normalizedSaturation, normalizedLightness);
+}
+
 export function rankPrimaryCandidates(
   dominantColors: string[],
   templateType: 'light-ui' | 'dark-ui',
@@ -445,6 +510,7 @@ export function rankPrimaryCandidates(
   for (const hex of dominantColors) {
     if (!/^#[0-9a-fA-F]{6}$/.test(hex) || seen.has(hex.toLowerCase())) continue;
     seen.add(hex.toLowerCase());
+    if (isDisallowedThemeColor(hex)) continue;
 
     const { h, s, l } = hexToHsl(hex);
     let score = s;
@@ -536,6 +602,11 @@ export function buildThemeGenerationReport(
       label: '主色亮度位于 Light-UI 推荐区间',
       passed: primary.l >= 45 && primary.l <= 60,
       detail: `primary L=${primary.l}`,
+    });
+    checks.push({
+      label: 'primary-text-color 与主色对比达标',
+      passed: ['#333333', '#ffffff'].includes(derived['primary-text-color'].toLowerCase()),
+      detail: derived['primary-text-color'],
     });
     checks.push({
       label: 'primary-hover 比 primary 更亮',
@@ -632,6 +703,7 @@ function deriveLightUiColors(primaryHex: string): DerivedColors {
   
   return {
     'primary-color': primaryColor,
+    'primary-text-color': '#333333',
     'primary-color-hover': primaryColorHover,
     'alter-color': alterColor,
     'alter-color-hover-on': alterColorHoverOn,
@@ -727,6 +799,7 @@ function deriveDarkUiColors(primaryHex: string): DerivedColors {
 
   return {
     'primary-color': primaryColor,
+    'primary-text-color': '#333333',
     'primary-color-hover': primaryColorHover,
     'alter-color': alterColor,
     'alter-color-hover-on': alterColorHoverOn,

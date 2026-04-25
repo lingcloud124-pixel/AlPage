@@ -92,10 +92,11 @@ export function saveSettings(settings: AISettings): void {
 }
 
 export function getImageSettings(): { endpoint: string; apiKey: string; model: string } {
+  const settings = loadSettings();
   return {
     endpoint: '/api/theme',
     apiKey: '',
-    model: 'jimeng-4.0',
+    model: settings.imageModel || 'image-01',
   };
 }
 

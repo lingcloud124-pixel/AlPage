@@ -4,7 +4,7 @@ import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { getConfirmedVersionSnapshot, listQueuedExportJobs, updateExportJob } from './export-jobs-store.js';
-import { buildServerExportRequestYaml } from './export-request-yaml.js';
+import { buildServerExportAssetSnapshot, buildServerExportYaml } from './export-build-shared.js';
 
 const STEP_DELAY_MS = 50;
 const execFileAsync = promisify(execFile);
@@ -48,38 +48,24 @@ async function runJob(jobId: string): Promise<void> {
   const templateType = (snapshot.templateType === 'dark-ui' ? 'dark-ui' : 'light-ui');
   const colors = typeof snapshot.colors === 'object' && snapshot.colors ? snapshot.colors as Record<string, string> : {};
 
-  const assetSnapshot = {
-    version: 1,
-    generatedAt: new Date().toISOString(),
+  const assetSnapshot = buildServerExportAssetSnapshot({
     project: {
-      id: snapshot.projectId ?? preparing.projectId,
-      name: snapshot.name ?? preparing.projectId,
-      nameEn: snapshot.nameEn ?? preparing.projectId,
+      id: String(snapshot.projectId ?? preparing.projectId),
+      name: String(snapshot.name ?? preparing.projectId),
+      themeName: String(snapshot.name ?? preparing.projectId),
+      nameEn: typeof snapshot.nameEn === 'string' ? snapshot.nameEn : undefined,
       templateType,
-      selectedProducts: preparing.selectedProducts,
+      colors,
+      bgImageUrl: typeof snapshot.bgImageUrl === 'string' ? snapshot.bgImageUrl : undefined,
+      headerBgImageUrl: typeof snapshot.headerBgImageUrl === 'string' ? snapshot.headerBgImageUrl : undefined,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     },
-    sourceImages: {
-      background: snapshot.bgImageUrl,
-      headerBackground: snapshot.headerBgImageUrl,
-    },
-    assetSources: {
-      login: 'background-image',
-      headerSidebar: 'background-image',
-      thumbnails: 'preview-html',
-    },
-    colors,
-    paths: {
-      exportDir: batchDir,
-    },
-    pipeline: {
-      steps: [
-        { id: 'project-snapshot', name: '固定当前项目快照', description: '服务端确认态快照' },
-        { id: 'login-background', name: '处理登录页背景素材', description: '基于背景图生成登录素材' },
-        { id: 'header-sidebar', name: '处理页眉和左侧导航素材', description: '基于背景图生成页眉与左导航切图' },
-        { id: 'thumbnails', name: '处理封面图和缩略图素材', description: '后续阶段接入 HTML 预览截图' },
-      ],
-    },
-  };
+    cssVariables: colors,
+    selectedProducts: preparing.selectedProducts,
+    nameEn: typeof snapshot.nameEn === 'string' ? snapshot.nameEn : String(snapshot.projectId ?? preparing.projectId),
+    exportDir: batchDir,
+  });
   fs.writeFileSync(assetSnapshotPath, `${JSON.stringify(assetSnapshot, null, 2)}\n`, 'utf8');
 
   await delay(STEP_DELAY_MS);
@@ -116,10 +102,20 @@ async function runJob(jobId: string): Promise<void> {
   updateExportJob(jobId, { status: 'packaging', error: null });
 
   const yamlPath = path.join(metadataDir, 'theme-build-request.yaml');
-  const yaml = buildServerExportRequestYaml({
+  const primaryColor = colors['primary-color']
+    || colors['--primary-color']
+    || '#2C615C';
+  const headerFont = colors['header-font-color']
+    || colors['--header-font-color']
+    || '';
+  const yaml = buildServerExportYaml({
     name: String(snapshot.name ?? preparing.projectId),
     nameEn: typeof snapshot.nameEn === 'string' ? snapshot.nameEn : undefined,
+    subtitle: String(snapshot.name ?? preparing.projectId),
+    buttonText: '立即进入',
+    themeColor: primaryColor,
     templateType,
+    headerFont,
     selectedProducts: preparing.selectedProducts,
     colors,
   });

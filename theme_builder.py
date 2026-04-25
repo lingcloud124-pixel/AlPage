@@ -1060,11 +1060,7 @@ def build_mk_package(
             replace_image(src, login_static / "logo.png")
             log("Replaced login logo")
 
-    login_thumb = (
-        resolve_path(images.get("loginThumb"), config_base) if images.get("loginThumb")
-        else (config_base / "login_thumb.jpg") if (config_base / "login_thumb.jpg").exists()
-        else None
-    )
+    login_thumb = resolve_path(images.get("loginThumb"), config_base) if images.get("loginThumb") else None
     sample_thumb_dir = inner_login_dir / "sample" / "thumbnail"
     if sample_thumb_dir.exists() and login_thumb:
         for existing in sample_thumb_dir.iterdir():
@@ -1336,11 +1332,7 @@ def build_ekp_package(
                     replace_image(src, iframe_dest)
                     log("Replaced bg_login_iframe.png")
 
-            login_thumb_src = (
-                resolve_path(images.get("loginThumb"), config_base) if images.get("loginThumb")
-                else (config_base / "login_thumb.jpg") if (config_base / "login_thumb.jpg").exists()
-                else None
-            )
+            login_thumb_src = resolve_path(images.get("loginThumb"), config_base) if images.get("loginThumb") else None
             if login_thumb_src:
                 for thumb_loc in ["login_thumb.jpg"]:
                     thumb_dest = login_static / thumb_loc
@@ -1350,16 +1342,8 @@ def build_ekp_package(
                         break
 
             login_thumb_variants = {
-                "thumb-1.jpg": (
-                    resolve_path(images.get("loginThumb1"), config_base) if images.get("loginThumb1")
-                    else (config_base / "login_bg" / "thumb-1.jpg") if (config_base / "login_bg" / "thumb-1.jpg").exists()
-                    else None
-                ),
-                "thumb-2.jpg": (
-                    resolve_path(images.get("loginThumb2"), config_base) if images.get("loginThumb2")
-                    else (config_base / "login_bg" / "thumb-2.jpg") if (config_base / "login_bg" / "thumb-2.jpg").exists()
-                    else None
-                ),
+                "thumb-1.jpg": resolve_path(images.get("loginThumb1"), config_base) if images.get("loginThumb1") else None,
+                "thumb-2.jpg": resolve_path(images.get("loginThumb2"), config_base) if images.get("loginThumb2") else None,
             }
             for thumb_name, thumb_src in login_thumb_variants.items():
                 if thumb_src:
@@ -1439,11 +1423,7 @@ def build_ekp_package(
                     replace_image(src, variant_inner / "images" / "bg-login.jpg")
                 log(f"Replaced {variant_label} login background")
 
-                login_thumb_src = (
-                    resolve_path(images.get("loginThumb"), config_base) if images.get("loginThumb")
-                    else (config_base / "login_thumb.jpg") if (config_base / "login_thumb.jpg").exists()
-                    else None
-                )
+                login_thumb_src = resolve_path(images.get("loginThumb"), config_base) if images.get("loginThumb") else None
                 if login_thumb_src:
                     for thumb_loc in ["login_thumb.jpg"]:
                         thumb_dest = variant_inner / thumb_loc
@@ -1453,16 +1433,8 @@ def build_ekp_package(
                             break
 
                 login_thumb_variants = {
-                    "thumb-1.jpg": (
-                        resolve_path(images.get("loginThumb1"), config_base) if images.get("loginThumb1")
-                        else (config_base / "login_bg" / "thumb-1.jpg") if (config_base / "login_bg" / "thumb-1.jpg").exists()
-                        else None
-                    ),
-                    "thumb-2.jpg": (
-                        resolve_path(images.get("loginThumb2"), config_base) if images.get("loginThumb2")
-                        else (config_base / "login_bg" / "thumb-2.jpg") if (config_base / "login_bg" / "thumb-2.jpg").exists()
-                        else None
-                    ),
+                    "thumb-1.jpg": resolve_path(images.get("loginThumb1"), config_base) if images.get("loginThumb1") else None,
+                    "thumb-2.jpg": resolve_path(images.get("loginThumb2"), config_base) if images.get("loginThumb2") else None,
                 }
                 for thumb_name, thumb_src in login_thumb_variants.items():
                     if thumb_src:
