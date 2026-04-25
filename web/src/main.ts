@@ -178,7 +178,14 @@ async function showWorkspaceDirectly(): Promise<void> {
   expandProjectSidebar();
   setChatPanelWidth(null);
   if (storedId) {
-    await showWorkspace(storedId);
+    const project = await loadProject(storedId);
+    if (project) {
+      await showWorkspace(storedId);
+    } else {
+      localStorage.removeItem('theme-studio-current-project');
+      const defaultProject = await createProject('未命名项目', 'light-ui');
+      if (defaultProject) await showWorkspace(defaultProject.id);
+    }
   } else {
     const defaultProject = await createProject('未命名项目', 'light-ui');
     if (defaultProject) await showWorkspace(defaultProject.id);

@@ -94,14 +94,14 @@ export function saveSettings(settings: AISettings): void {
 export function getImageSettings(): { endpoint: string; apiKey: string; model: string } {
   return {
     endpoint: '/api/theme',
-    apiKey: '',  // Server holds the key
-    model: 'image-01',
+    apiKey: '',
+    model: 'jimeng-4.0',
   };
 }
 
 export async function generateImage(prompt: string): Promise<{ success: boolean; url?: string; error?: string }> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 180_000);
+  const timeoutId = setTimeout(() => controller.abort(), 300_000);
   const imageSettings = getImageSettings();
 
   try {
@@ -160,6 +160,11 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
         1026: '图片描述涉及敏感内容，请调整描述',
         2013: '传入参数异常，请检查请求参数',
         2049: '无效的 API Key',
+        50411: '输入图片审核未通过',
+        50412: '输入文本审核未通过',
+        50413: '输入文本含敏感词，请调整描述',
+        50429: '请求过快，请稍后再试',
+        50500: '服务内部错误，请重试',
       };
       const detail = errorMap[baseStatusCode] ?? baseStatusMsg ?? `未知错误 (${baseStatusCode})`;
       return { success: false, error: `图像生成失败: ${detail}` };
@@ -329,6 +334,26 @@ export async function chatCompletion(
   }
 }
 
+export function extractBalancedJson(text: string, startIdx: number): string | null {
+  if (startIdx >= text.length || text[startIdx] !== '{') return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = startIdx; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') {
+      depth--;
+      if (depth === 0) return text.slice(startIdx, i + 1);
+    }
+  }
+  return null;
+}
+
 export function parseToolCallsFromContent(content: string): Array<{ tool: string; args: Record<string, unknown> }> {
   const toolCalls: Array<{ tool: string; args: Record<string, unknown> }> = [];
   let invalidJsonBlockCount = 0;
@@ -351,14 +376,19 @@ export function parseToolCallsFromContent(content: string): Array<{ tool: string
   }
 
   if (toolCalls.length === 0) {
-    const inlineRegex = /\{"tool"\s*:\s*"([^"]+)"\s*,\s*"args"\s*:\s*(\{[^}]*\})\s*\}/g;
-    while ((match = inlineRegex.exec(content)) !== null) {
-      try {
-        toolCalls.push({ tool: match[1], args: JSON.parse(match[2]) });
-      } catch (error) {
-        invalidInlineToolCallCount += 1;
-        if (!invalidToolCallSample) invalidToolCallSample = match[0].slice(0, 160);
-        void error;
+    const inlineRegex = /\{"tool"\s*:\s*"([^"]+)"\s*,\s*"args"\s*:\s*/g;
+    let inlineMatch;
+    while ((inlineMatch = inlineRegex.exec(content)) !== null) {
+      const startIdx = inlineRegex.lastIndex;
+      const argsJson = extractBalancedJson(content, startIdx);
+      if (argsJson) {
+        try {
+          toolCalls.push({ tool: inlineMatch[1], args: JSON.parse(argsJson) });
+        } catch (error) {
+          invalidInlineToolCallCount += 1;
+          if (!invalidToolCallSample) invalidToolCallSample = argsJson.slice(0, 160);
+          void error;
+        }
       }
     }
   }

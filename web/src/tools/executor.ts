@@ -9,13 +9,8 @@ import {
   type DerivedColors,
 } from '../theme/color-utils';
 import { buildThemeImageAssignments } from '../templates/theme-images';
-import { parseThemeIntent } from './theme-intent-parser';
-import { buildThemeScenePlan, type PreferenceContext, buildExploratoryScenePlans, type ExploratoryDirection } from './theme-scene-planner';
-import { buildDirectedPrompt } from './theme-prompt-director';
-import { checkThemeScenePlan } from './theme-plan-checker';
 import { updateProjectVisualContext, loadProjectVisualContext } from './project-visual-context-store';
 import { loadCustomerVisualProfile } from './customer-visual-profile-store';
-import { reviewGeneratedImage, type ImageReviewResult } from './theme-image-reviewer';
 
 const COLOR_VARS = [
   'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
@@ -442,69 +437,63 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         return loadColors(args as { nameEn: string });
 
       case 'generate_theme_previews': {
-        const rawBgPrompt = (args.prompt ?? args.description ?? '') as string;
         const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
         const feedbackRegenerated = Boolean(args.themeFeedbackRegenerated);
-        const intent = parseThemeIntent(rawBgPrompt, templateType);
-        const projectId = (globalThis as any).__themeStudioCurrentProjectId as string | undefined;
-        const prefContext: PreferenceContext | undefined = projectId ? (() => {
-          try {
-            const profile = loadCustomerVisualProfile('default');
-            const projectCtx = loadProjectVisualContext(projectId);
-            const hasProfile = profile.preferredStyles.length > 0
-              || profile.preferredCompositions.length > 0
-              || profile.dislikedTraits.length > 0
-              || profile.preferredBrightness !== 'balanced';
-            const hasProject = projectCtx.mustHaveElements.length > 0 || projectCtx.avoidElements.length > 0;
-            return (hasProfile || hasProject) ? {
-              customerProfile: profile,
-              projectMustHaveElements: projectCtx.mustHaveElements,
-              projectAvoidElements: projectCtx.avoidElements,
-            } : undefined;
-          } catch { return undefined; }
-        })() : undefined;
-        
-        const exploratoryDirections = buildExploratoryScenePlans(intent, prefContext);
         const preferredHueHint = resolveEffectivePreferredHueHint(
           (args.primaryHint ?? args.preferredHue ?? args.colorDirection ?? '') as string,
-          rawBgPrompt,
+          '',
           templateType,
         );
 
-        onProgress?.({ type: 'image_generating', data: { current: 0, total: exploratoryDirections.length } });
+        interface DirectionInput {
+          label: string;
+          prompt: string;
+        }
+
+        const directions = args.directions as DirectionInput[] | undefined;
+        if (!directions || !Array.isArray(directions) || directions.length === 0) {
+          return { success: false, error: 'generate_theme_previews 需要 directions 数组，每个方向包含 label 和 prompt' };
+        }
+
+        const total = directions.length;
+        onProgress?.({ type: 'image_generating', data: { current: 0, total } });
 
         const results: Array<{
           url: string; style: string; prompt: string;
           directionLabel: string; directionDescription: string;
-          planCheck: ReturnType<typeof checkThemeScenePlan>;
-          scenePlan: import('./theme-scene-planner').ThemeScenePlan;
         }> = [];
-        for (let i = 0; i < exploratoryDirections.length; i++) {
-          const direction = exploratoryDirections[i];
-          const planCheck = checkThemeScenePlan(direction.plan);
-          const directed = buildDirectedPrompt(direction.plan);
-          const finalPrompt = buildPromptWithPreferredHue(directed.prompt, preferredHueHint, templateType);
 
-          onProgress?.({ type: 'image_generating', data: { current: i + 1, total: exploratoryDirections.length, label: direction.directionLabel } });
+        for (let i = 0; i < directions.length; i++) {
+          const dir = directions[i];
+          let finalPrompt = dir.prompt ?? '';
+
+          console.log(`[Skill验证] 方向${i + 1}: ${dir.label}`);
+          console.log(`[Skill验证] prompt原文: ${finalPrompt}`);
+          console.log(`[Skill验证] 字符数: ${finalPrompt.length}`);
+
+          if (preferredHueHint) {
+            finalPrompt = buildPromptWithPreferredHue(finalPrompt, preferredHueHint, templateType);
+          }
+
+          onProgress?.({ type: 'image_generating', data: { current: i + 1, total, label: dir.label } });
 
           const result = await generateImage(finalPrompt);
-          
+
           results.push({
             url: result.success && result.url ? result.url : '',
-            style: direction.styleId,
+            style: `direction-${i}`,
             prompt: finalPrompt,
-            directionLabel: direction.directionLabel,
-            directionDescription: direction.directionDescription,
-            planCheck,
-            scenePlan: direction.plan,
+            directionLabel: dir.label ?? `${String.fromCharCode(65 + i)}`,
+            directionDescription: '',
           });
 
-          onProgress?.({ type: 'image_generated', data: { current: i + 1, total: exploratoryDirections.length } });
+          onProgress?.({ type: 'image_generated', data: { current: i + 1, total } });
 
-          if (i < exploratoryDirections.length - 1) {
+          if (i < directions.length - 1) {
             await new Promise(r => setTimeout(r, 2000));
           }
         }
+
         const previews: ThemePreview[] = results.filter(r => r.url).map(r => ({
           url: r.url,
           style: r.style,
@@ -512,9 +501,6 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           directionLabel: r.directionLabel,
           directionDescription: r.directionDescription,
         }));
-        
-        const scenePlans = results.map(r => r.scenePlan);
-        const planChecks = results.map(r => r.planCheck);
 
         if (previews.length === 0) {
           return { success: false, error: '所有预览图生成失败，请重试' } as ToolResult;
@@ -524,16 +510,11 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           success: true,
           data: {
             previews,
-            intent,
-            scenePlans,
-            planChecks,
             themeAgentDebug: {
-              toolCallPrompt: rawBgPrompt,
+              toolCallPrompt: JSON.stringify(directions.map(d => d.label)),
               feedbackRegenerated,
-              intent,
-              scenePlans,
-              planChecks,
               preferredHueHint,
+              directions,
             },
             preferredHueHint,
           },
@@ -600,33 +581,17 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         const rawBgPrompt = (args.prompt ?? args.description ?? '') as string;
         const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
         const feedbackRegenerated = Boolean(args.themeFeedbackRegenerated);
-        const intent = parseThemeIntent(rawBgPrompt, templateType);
-        const projectId = (globalThis as any).__themeStudioCurrentProjectId as string | undefined;
-        const prefContext: PreferenceContext | undefined = projectId ? (() => {
-          try {
-            const profile = loadCustomerVisualProfile('default');
-            const projectCtx = loadProjectVisualContext(projectId);
-            const hasProfile = profile.preferredStyles.length > 0
-              || profile.preferredCompositions.length > 0
-              || profile.dislikedTraits.length > 0
-              || profile.preferredBrightness !== 'balanced';
-            const hasProject = projectCtx.mustHaveElements.length > 0 || projectCtx.avoidElements.length > 0;
-            return (hasProfile || hasProject) ? {
-              customerProfile: profile,
-              projectMustHaveElements: projectCtx.mustHaveElements,
-              projectAvoidElements: projectCtx.avoidElements,
-            } : undefined;
-          } catch { return undefined; }
-        })() : undefined;
-        const scenePlan = buildThemeScenePlan(intent, prefContext);
-        const planCheck = checkThemeScenePlan(scenePlan);
-        const directed = buildDirectedPrompt(scenePlan);
         const preferredHueHint = resolveEffectivePreferredHueHint(
           (args.primaryHint ?? args.preferredHue ?? args.colorDirection ?? '') as string,
           rawBgPrompt,
           templateType,
         );
-        const finalPrompt = buildPromptWithPreferredHue(directed.prompt, preferredHueHint, templateType);
+        let finalPrompt = rawBgPrompt;
+
+        if (preferredHueHint) {
+          finalPrompt = buildPromptWithPreferredHue(finalPrompt, preferredHueHint, templateType);
+        }
+
         if (!finalPrompt) return { success: false, error: 'generate_theme_pipeline 需要 prompt 参数' };
 
         onProgress?.({ type: 'image_generating' });
@@ -649,14 +614,9 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           updateColors({ ...colors });
           applyThemeImages('login', imgResult.url);
           applyThemeImages('desktop', imgResult.url);
-          // Persist accepted scene plan to project visual context
           const projectId = (globalThis as any).__themeStudioCurrentProjectId as string | undefined;
-          if (projectId && scenePlan) {
-            try {
-              updateProjectVisualContext(projectId, {
-                latestAcceptedScenePlan: scenePlan,
-              });
-            } catch { /* non-critical — don't block generation */ }
+          if (projectId) {
+          try { updateProjectVisualContext(projectId, { latestAcceptedScenePlan: undefined }); } catch {}
           }
           return {
             success: true,
@@ -666,34 +626,13 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
               applied: true,
               fallbackUsed: true,
               originalPrompt: rawBgPrompt,
-              intent,
-              scenePlan,
-              planCheck,
-              directedPrompt: directed.prompt,
-              finalPrompt,
-              themeAgentDebug: {
-                toolCallPrompt: rawBgPrompt,
-                feedbackRegenerated,
-                intent,
-                scenePlan,
-                planCheck,
-                directedPrompt: directed.prompt,
-                finalPrompt,
-              },
+              themeAgentDebug: { toolCallPrompt: rawBgPrompt, feedbackRegenerated, finalPrompt, preferredHueHint },
               preferredHueHint,
               fallbackReason: analyzeResult.error ?? '未识别到可用主色候选',
               enforcedPreferredHue: Boolean(preferredHueHint),
               dominantColors: [],
               generationReport: report,
               contrastValidation: contrast,
-              imageReview: reviewGeneratedImage({
-                dominantColors: [],
-                scenePlan, intent, templateType,
-                generationReport: report,
-                contrastValidation: contrast,
-                enforcedPreferredHue: Boolean(preferredHueHint),
-                fallbackUsed: true,
-              }),
             },
           };
         }
@@ -704,13 +643,9 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         applyThemeImages('login', imgResult.url);
         applyThemeImages('desktop', imgResult.url);
 
-        // Persist accepted scene plan to project visual context
-        if (projectId && scenePlan) {
-          try {
-            updateProjectVisualContext(projectId, {
-              latestAcceptedScenePlan: scenePlan,
-            });
-          } catch { /* non-critical — don't block generation */ }
+        const projectId = (globalThis as any).__themeStudioCurrentProjectId as string | undefined;
+        if (projectId) {
+          try { updateProjectVisualContext(projectId, { latestAcceptedScenePlan: undefined }); } catch {}
         }
 
         return {
@@ -720,20 +655,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
             imageUrl: imgResult.url,
             applied: true,
             originalPrompt: rawBgPrompt,
-            intent,
-            scenePlan,
-            planCheck,
-            directedPrompt: directed.prompt,
-            finalPrompt,
-            themeAgentDebug: {
-              toolCallPrompt: rawBgPrompt,
-              feedbackRegenerated,
-              intent,
-              scenePlan,
-              planCheck,
-              directedPrompt: directed.prompt,
-              finalPrompt,
-            },
+            themeAgentDebug: { toolCallPrompt: rawBgPrompt, feedbackRegenerated, finalPrompt, preferredHueHint },
             preferredHueHint,
             enforcedPreferredHue: selected.enforcedPreferredHue,
             enforcementReason: selected.enforcementReason,
@@ -741,14 +663,6 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
             generationReport: selected.report,
             triedCandidates: selected.triedCandidates,
             contrastValidation: contrast,
-            imageReview: reviewGeneratedImage({
-              dominantColors,
-              scenePlan, intent, templateType,
-              generationReport: selected.report,
-              contrastValidation: contrast,
-              enforcedPreferredHue: selected.enforcedPreferredHue,
-              fallbackUsed: false,
-            }),
           },
         };
       }

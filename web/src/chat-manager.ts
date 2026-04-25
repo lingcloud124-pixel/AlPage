@@ -28,16 +28,9 @@ let activeAbortController: AbortController | null = null;
 export interface ThemeAgentDebugState {
   toolCallPrompt?: string;
   feedbackRegenerated?: boolean;
-  intent?: import('./tools/theme-intent-parser').ThemeIntent;
-  scenePlan?: import('./tools/theme-scene-planner').ThemeScenePlan;
-  scenePlans?: import('./tools/theme-scene-planner').ThemeScenePlan[];
-  planCheck?: { passed?: boolean; checks?: Array<{ label: string; passed: boolean; reason?: string }> };
-  planChecks?: Array<{ passed?: boolean; checks?: Array<{ label: string; passed: boolean; reason?: string }> }>;
-  directedPrompt?: string;
-  directedPrompts?: string[];
   finalPrompt?: string;
-  finalPrompts?: string[];
   preferredHueHint?: string;
+  directions?: Array<{ label: string; prompt: string }>;
 }
 
 let latestThemeAgentDebugState: ThemeAgentDebugState | null = null;
@@ -800,7 +793,11 @@ export function setupChatInterface(deps: ChatDeps) {
     });
     await saveChatHistory();
 
-    const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '')), {
+    const cleanedResponse = fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '');
+    console.log('[DEBUG] cleanedResponse 长度:', cleanedResponse.length);
+    console.log('[DEBUG] cleanedResponse 最后200字:', cleanedResponse.slice(-200));
+
+    const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(cleanedResponse), {
       userMessage,
       assistantMessage: fullResponse,
       priorAssistantMessage,
@@ -808,6 +805,10 @@ export function setupChatInterface(deps: ChatDeps) {
       templateType,
       latestThemeAgentDebugState,
       latestThemePreviews,
+    });
+    console.log('[DEBUG] 解析到 toolCalls 数量:', toolCalls.length);
+    toolCalls.forEach((tc, i) => {
+      console.log(`[DEBUG] toolCall[${i}]:`, tc.tool, JSON.stringify(tc.args).slice(0, 200));
     });
     const TOOL_GLOBAL_TIMEOUT = 120_000;
     const toolStartTime = Date.now();
@@ -865,124 +866,7 @@ export function setupChatInterface(deps: ChatDeps) {
         });
         removeToolLoading();
         if (result.success) {
-          if (tc.tool === 'generate_theme_pipeline') {
-            const imgData = result.data as {
-              imageUrl?: string;
-              primaryColor?: string;
-              originalPrompt?: string;
-              directedPrompt?: string;
-              finalPrompt?: string;
-              scenePlan?: { sceneSentence?: string; styleKeywords?: string };
-              intent?: { category?: string; subCategory?: string; styleHints?: string[]; toneHints?: string[]; colorHints?: string[]; uiUseCase?: string };
-              planCheck?: { passed?: boolean; checks?: Array<{ label: string; passed: boolean; reason?: string }> };
-              themeAgentDebug?: ThemeAgentDebugState;
-              preferredHueHint?: string;
-              fallbackUsed?: boolean;
-              fallbackReason?: string;
-              enforcedPreferredHue?: boolean;
-              enforcementReason?: string;
-              generationReport?: { checks?: Array<{ label: string; passed: boolean }> };
-              contrastValidation?: { passed?: boolean; failures?: string[] };
-              dominantColors?: string[];
-              imageReview?: { score: number; acceptable: boolean; summary: string };
-            };
-            const colorTag = imgData?.primaryColor
-              ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${imgData.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
-              : '';
-            const rulePassed = imgData.generationReport?.checks?.every(check => check.passed) ?? false;
-            const contrastPassed = imgData.contrastValidation?.passed ?? false;
-            const summaryParts = [
-              `🎨 配色方案已生成！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
-              imgData.scenePlan?.sceneSentence ? `视觉方向：${imgData.scenePlan.sceneSentence.substring(0, 60)}...` : '',
-              imgData.dominantColors?.length ? `识别到的候选主色 ${imgData.dominantColors.slice(0, 3).join(' / ')}。` : '',
-              imgData.fallbackUsed
-                ? `本次提色未稳定完成，已按${imgData.preferredHueHint || '已确认'}主色方向回退应用。`
-                : '',
-              imgData.enforcedPreferredHue && !imgData.fallbackUsed
-                ? `检测到图片主色与已确认的${imgData.preferredHueHint || '目标'}方向不一致，已强制校正到确认色。`
-                : '',
-              `生成规则校验：${rulePassed ? '通过' : '有待微调'}。`,
-              imgData.fallbackReason ? `回退原因：${imgData.fallbackReason}。` : '',
-              imgData.enforcementReason ? `${imgData.enforcementReason}` : '',
-              `对比度校验：${contrastPassed ? '通过' : '存在风险'}。`,
-              imgData.imageReview ? imgData.imageReview.summary : '',
-              imgData.planCheck?.checks?.length ? `Theme Agent 计划校验：${imgData.planCheck.checks.map((check) => `${check.label}${check.passed ? '✅' : '❌'}`).join(' / ')}。` : '',
-              imgData.themeAgentDebug ? `
-  
-  [Theme Agent Debug]
-  toolCallPrompt: ${imgData.themeAgentDebug.toolCallPrompt ?? ''}
-  feedbackRegenerated: ${imgData.themeAgentDebug.feedbackRegenerated ? 'yes' : 'no'}
-  intent.category: ${imgData.themeAgentDebug.intent?.category ?? ''}
-  intent.subCategory: ${imgData.themeAgentDebug.intent?.subCategory ?? ''}
-  intent.categoryScores: ${imgData.themeAgentDebug.intent?.categoryScores ? JSON.stringify(imgData.themeAgentDebug.intent.categoryScores) : ''}
-  intent.styleHints: ${(imgData.themeAgentDebug.intent?.styleHints ?? []).join(', ')}
-  intent.toneHints: ${(imgData.themeAgentDebug.intent?.toneHints ?? []).join(', ')}
-  intent.colorHints: ${(imgData.themeAgentDebug.intent?.colorHints ?? []).join(', ')}
-  scene.sentence: ${imgData.themeAgentDebug.scenePlan?.sceneSentence?.substring(0, 80) ?? ''}
-  scene.styleKeywords: ${imgData.themeAgentDebug.scenePlan?.styleKeywords ?? ''}
-  planCheck: ${(imgData.themeAgentDebug.planCheck?.checks ?? []).map((check) => `${check.label}:${check.passed ? 'pass' : 'fail'}`).join(' | ')}
-  directedPrompt: ${imgData.themeAgentDebug.directedPrompt ?? ''}
-  finalPrompt: ${imgData.themeAgentDebug.finalPrompt ?? ''}` : '',
-            ].filter(Boolean);
-            latestThemeAgentDebugState = imgData.themeAgentDebug ?? null;
-            // ── Preference memory: update project context and customer profile from feedback ──
-            if (imgData.themeAgentDebug?.feedbackRegenerated && imgData.themeAgentDebug.intent && imgData.themeAgentDebug.scenePlan) {
-              try {
-                const pid = getCurrentProjectId();
-                if (pid) {
-                  const priorUserMsg = conversationHistory.length >= 2
-                    ? conversationHistory[conversationHistory.length - 2]
-                    : undefined;
-                  const feedbackText = priorUserMsg?.role === 'user' ? priorUserMsg.content : '';
-                  
-                  if (feedbackText) {
-                    const adjustment = parseThemeFeedback(feedbackText);
-                    const decision = decidePreferenceUpdate({
-                      adjustment,
-                      currentCustomerProfile: loadCustomerVisualProfile('default'),
-                      currentProjectContext: await loadProjectVisualContext(pid),
-                    });
-                    
-                    if (decision.projectPatch) {
-                      updateProjectVisualContext(pid, decision.projectPatch);
-                    }
-                    if (decision.customerPatch) {
-                      updateCustomerVisualProfile('default', decision.customerPatch);
-                    }
-                  }
-                }
-              } catch { /* non-critical — don't block UI */ }
-            }
-            await addMessageToChat('ai', summaryParts.join(' '));
-            await saveCurrentColorsToProject();
-            syncColorEditorFromTheme();
-            const pid = getCurrentProjectId();
-            if (pid) {
-              const proj = await loadProject(pid);
-              if (proj && !proj.themeName && conversationHistory.length > 0) {
-                const firstUserMsg = conversationHistory.find(m => m.role === 'user');
-                if (firstUserMsg) {
-                  const raw = firstUserMsg.content.replace(/[\n\r]/g, ' ').trim();
-                  proj.themeName = raw.length > 15 ? raw.substring(0, 15) + '...' : raw;
-                  ensureProjectNameEn(proj, `${proj.themeName} ${raw}`);
-                  await saveProject(proj);
-                  updateProjectNameDisplay(proj);
-                }
-              }
-            }
-            deps.expandPreview();
-            const indicator = document.querySelector('.topbar-tabs .tab-indicator') as HTMLElement;
-            const loginBtn = document.getElementById('loginTab') as HTMLElement;
-            document.getElementById('loginTab')?.classList.add('active-tab');
-            document.getElementById('loginPage')?.classList.add('active-preview');
-            if (indicator && loginBtn) {
-              indicator.style.left = loginBtn.offsetLeft + 'px';
-              indicator.style.width = loginBtn.offsetWidth + 'px';
-            }
-            deps.collapseProjectSidebar();
-            deps.setChatPanelWidth(372);
-            await saveChatHistory();
-          } else if (tc.tool === 'generate_theme_previews') {
+          if (tc.tool === 'generate_theme_previews') {
             const prevData = result.data as {
               previews?: ThemePreview[];
               themeAgentDebug?: ThemeAgentDebugState;

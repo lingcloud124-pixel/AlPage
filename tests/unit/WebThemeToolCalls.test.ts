@@ -75,6 +75,6 @@ describe('web theme tool call color hints', () => {
     expect(prompt).toContain('New Year celebration theme');
     expect(prompt).toContain('modern light effects');
     expect(prompt).toContain('abstract 2026 numerals');
-    expect(prompt).toContain('no text');
+    expect(prompt).toContain('no UI elements');
   });
 });
