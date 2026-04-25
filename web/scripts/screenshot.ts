@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { chromium, type Browser, type Page } from 'playwright';
+import sharp from 'sharp';
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, '../..');
 const WEB_ROOT = path.resolve(import.meta.dirname, '..');
@@ -130,13 +131,33 @@ function resolveOutputDir(options: ScreenshotCliOptions, manifestPath: string): 
 }
 
 function buildPageSpec(task: PreviewCaptureTask): PageSpec {
-  const isDesktop = task.recipe === 'desktop-thumbnail';
   return {
-    pagePath: isDesktop ? '/desktop-preview.html' : '/desktop-preview.html',
+    pagePath: '/desktop-preview.html',
     selector: '.desktop-wrapper',
     viewportWidth: 1920,
     viewportHeight: 1079,
   };
+}
+
+function resolvePreviewLayout(task: PreviewCaptureTask): string {
+  switch (task.id) {
+    case 'layoutBanner':
+      return 'layout-banner';
+    case 'fullscreenSideheader':
+      return 'fullscreen-sideheader';
+    case 'fullscreenSidenav':
+      return 'fullscreen-sidenav';
+    case 'centerSidenav':
+      return 'center-sidenav';
+    case 'bannerPersonal':
+      return 'banner-personal';
+    case 'studyBanner':
+      return 'study-banner';
+    case 'themeThumb':
+      return 'theme-thumb';
+    default:
+      return 'desktop';
+  }
 }
 
 async function waitForServerReady(baseUrl: string, timeoutMs = 30000): Promise<void> {
@@ -164,13 +185,13 @@ async function startPreviewServer(baseUrl?: string): Promise<DevServerHandle> {
     };
   }
 
+  const viteBin = path.join(WEB_ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
   const child = spawn(
-    'npm',
-    ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(DEFAULT_SERVER_PORT), '--strictPort'],
+    process.execPath,
+    [viteBin, '--host', '127.0.0.1', '--port', String(DEFAULT_SERVER_PORT), '--strictPort'],
     {
       cwd: WEB_ROOT,
       stdio: 'ignore',
-      shell: process.platform === 'win32',
     },
   );
 
@@ -246,7 +267,13 @@ async function captureTask(
 
   await page.setViewportSize({ width: spec.viewportWidth, height: spec.viewportHeight });
   await page.goto(targetUrl, { waitUntil: 'networkidle' });
+  await page.locator(spec.selector).waitFor({ state: 'visible' });
   await applyPreviewState(page, snapshot, manifest);
+  const previewLayout = resolvePreviewLayout(task);
+  await page.evaluate(({ layout }) => {
+    document.body.setAttribute('data-preview-layout', layout);
+    document.documentElement.setAttribute('data-preview-layout', layout);
+  }, { layout: previewLayout });
   await page.waitForTimeout(200);
 
   const clip = await page.locator(spec.selector).boundingBox();
@@ -255,8 +282,7 @@ async function captureTask(
   }
 
   const type = task.format === 'JPEG' ? 'jpeg' : 'png';
-  await page.screenshot({
-    path: outputPath,
+  const screenshot = await page.screenshot({
     type,
     quality: type === 'jpeg' ? 95 : undefined,
     clip: {
@@ -266,6 +292,19 @@ async function captureTask(
       height: clip.height,
     },
   });
+
+  let image = sharp(screenshot).resize(task.width, task.height, {
+    fit: 'cover',
+    position: 'centre',
+  });
+
+  if (type === 'jpeg') {
+    image = image.jpeg({ quality: 95 });
+  } else {
+    image = image.png();
+  }
+
+  await image.toFile(outputPath);
 
   return outputPath;
 }

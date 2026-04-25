@@ -1,22 +1,29 @@
 {
   "light-ui": {
     "sidebar": {
-      "baseColorVar": "portal-header-bg-extend-color",
-      "gradientColorVar": "portal-header-bg-extend-color",
+      "baseColorVar": "tlayout-header-bg-extend-color",
+      "gradientColorVar": "tlayout-header-bg-extend-color",
+      "fallbackColorVar": "portal-header-bg-extend-color",
       "fallbackColor": "#F1F1F1",
       "gradientDirection": "vertical",
       "gradientOpacityStart": 1,
-      "gradientOpacityEnd": 0.7,
-      "imageOpacity": 1
+      "gradientOpacityEnd": 0.2,
+      "imageOpacity": 0.3
     },
     "header": {
-      "baseColorVar": "portal-header-bg-extend-color",
-      "gradientColorVar": "portal-header-bg-extend-color",
+      "baseColorVar": "tlayout-header-bg-extend-color",
+      "gradientColorVar": "tlayout-header-bg-extend-color",
+      "gradientMode": "mirrored-horizontal",
+      "gradientStartVar": "gradient-start",
+      "gradientMidVar": "gradient-mid",
+      "leftCoverage": 0.4473958333,
+      "rightCoverage": 0.4791666667,
+      "fallbackColorVar": "portal-header-bg-extend-color",
       "fallbackColor": "#F1F1F1",
       "gradientDirection": "horizontal",
       "gradientOpacityStart": 0.6,
       "gradientOpacityEnd": 1,
-      "imageOpacity": 1
+      "imageOpacity": 0.3
     }
   },
   "dark-ui": {

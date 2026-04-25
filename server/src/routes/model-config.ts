@@ -3,9 +3,83 @@ import { db, saveDb } from '../db.js';
 
 const router = Router();
 
+const DEFAULT_CHAT_ENDPOINT = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+const DEFAULT_CHAT_MODEL = 'qwen3.6-plus';
+const DEFAULT_IMAGE_ENDPOINT = 'https://api.minimaxi.com/v1/image_generation';
+const DEFAULT_IMAGE_MODEL = 'image-01';
+const DEFAULT_VOLCENGINE_IMAGE_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/images/generations';
+const DEFAULT_VOLCENGINE_IMAGE_MODEL = 'doubao-seedream-3-0-t2i-250415';
+
+function firstNonEmpty(...values: Array<string | undefined>): string {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
+function getEnvModelConfig() {
+  const chatApiKey = firstNonEmpty(
+    process.env.CHAT_API_KEY,
+    process.env.DASHSCOPE_API_KEY,
+    process.env.VITE_DASHSCOPE_API_KEY,
+  );
+  const imageApiKey = firstNonEmpty(
+    process.env.IMAGE_API_KEY,
+    process.env.VITE_MINIMAX_API_KEY,
+    process.env.MINIMAX_API_KEY,
+  );
+  const volcengineImageAk = firstNonEmpty(
+    process.env.VOLCENGINE_IMAGE_AK,
+    process.env.VOLCENGINE_ACCESS_KEY_ID,
+    process.env.VOLC_ACCESSKEY,
+  );
+  const volcengineImageSk = firstNonEmpty(
+    process.env.VOLCENGINE_IMAGE_SK,
+    process.env.VOLCENGINE_SECRET_ACCESS_KEY,
+    process.env.VOLC_SECRETKEY,
+  );
+  const hasVolcengineImageCredentials = Boolean(volcengineImageAk && volcengineImageSk);
+
+  return {
+    chatEndpoint: chatApiKey
+      ? firstNonEmpty(process.env.CHAT_API_ENDPOINT, process.env.DASHSCOPE_CHAT_ENDPOINT, DEFAULT_CHAT_ENDPOINT)
+      : '',
+    chatApiKey,
+    chatModel: chatApiKey
+      ? firstNonEmpty(process.env.CHAT_MODEL, process.env.DASHSCOPE_CHAT_MODEL, DEFAULT_CHAT_MODEL)
+      : '',
+    imageEndpoint: imageApiKey
+      ? firstNonEmpty(process.env.IMAGE_API_ENDPOINT, process.env.MINIMAX_IMAGE_ENDPOINT, DEFAULT_IMAGE_ENDPOINT)
+      : hasVolcengineImageCredentials
+        ? firstNonEmpty(process.env.VOLCENGINE_IMAGE_API_ENDPOINT, process.env.VOLCENGINE_ARK_IMAGE_ENDPOINT, DEFAULT_VOLCENGINE_IMAGE_ENDPOINT)
+        : '',
+    imageApiKey,
+    imageModel: imageApiKey
+      ? firstNonEmpty(process.env.IMAGE_MODEL, process.env.MINIMAX_IMAGE_MODEL, DEFAULT_IMAGE_MODEL)
+      : hasVolcengineImageCredentials
+        ? firstNonEmpty(process.env.VOLCENGINE_IMAGE_MODEL, process.env.VOLCENGINE_ARK_IMAGE_MODEL, process.env.VOLCENGINE_ARK_IMAGE_RESOURCE_ID, DEFAULT_VOLCENGINE_IMAGE_MODEL)
+        : '',
+  };
+}
+
 function maskApiKey(key: string): string {
   if (!key || key.length < 8) return key ? '****' : '';
   return '****' + key.slice(-4);
+}
+
+function normalizeModelConfig(row?: Record<string, unknown> | null) {
+  const envConfig = getEnvModelConfig();
+
+  return {
+    chatEndpoint: firstNonEmpty(String(row?.chat_endpoint ?? ''), envConfig.chatEndpoint),
+    chatApiKey: firstNonEmpty(String(row?.chat_api_key ?? ''), envConfig.chatApiKey),
+    chatModel: firstNonEmpty(String(row?.chat_model ?? ''), envConfig.chatModel),
+    imageEndpoint: firstNonEmpty(String(row?.image_endpoint ?? ''), envConfig.imageEndpoint),
+    imageApiKey: firstNonEmpty(String(row?.image_api_key ?? ''), envConfig.imageApiKey),
+    imageModel: firstNonEmpty(String(row?.image_model ?? ''), envConfig.imageModel),
+  };
 }
 
 router.get('/', async (_req, res) => {
@@ -17,20 +91,14 @@ router.get('/', async (_req, res) => {
     }
     stmt.free();
 
-    if (!row) {
-      return res.json({
-        chatEndpoint: '', chatApiKey: '', chatModel: '',
-        imageEndpoint: '', imageApiKey: '', imageModel: '',
-      });
-    }
-
+    const config = normalizeModelConfig(row);
     res.json({
-      chatEndpoint: String(row.chat_endpoint ?? ''),
-      chatApiKey: maskApiKey(String(row.chat_api_key ?? '')),
-      chatModel: String(row.chat_model ?? ''),
-      imageEndpoint: String(row.image_endpoint ?? ''),
-      imageApiKey: maskApiKey(String(row.image_api_key ?? '')),
-      imageModel: String(row.image_model ?? ''),
+      chatEndpoint: config.chatEndpoint,
+      chatApiKey: maskApiKey(config.chatApiKey),
+      chatModel: config.chatModel,
+      imageEndpoint: config.imageEndpoint,
+      imageApiKey: maskApiKey(config.imageApiKey),
+      imageModel: config.imageModel,
     });
   } catch (error) {
     console.error('Get model config error:', error);
@@ -91,17 +159,7 @@ export function getModelConfig(): {
     row = stmt.getAsObject() as Record<string, unknown>;
   }
   stmt.free();
-  if (!row) {
-    return { chatEndpoint: '', chatApiKey: '', chatModel: '', imageEndpoint: '', imageApiKey: '', imageModel: '' };
-  }
-  return {
-    chatEndpoint: String(row.chat_endpoint ?? ''),
-    chatApiKey: String(row.chat_api_key ?? ''),
-    chatModel: String(row.chat_model ?? ''),
-    imageEndpoint: String(row.image_endpoint ?? ''),
-    imageApiKey: String(row.image_api_key ?? ''),
-    imageModel: String(row.image_model ?? ''),
-  };
+  return normalizeModelConfig(row);
 }
 
 export { router as modelConfigRouter };

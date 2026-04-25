@@ -31,9 +31,26 @@ describe('export asset rules', () => {
     expect(sideHeader?.heightByTheme?.['dark-ui']).toBe(488);
   });
 
+  test('preview-derived cover assets stay aligned with sample package dimensions', () => {
+    const desktop = outputMapping.thumbnails.find((item) => item.output === 'desktop.png');
+    const layoutBanner = outputMapping.thumbnails.find((item) => item.output === 'layout-banner.jpg');
+    const themeThumb = outputMapping.thumbnails.find((item) => item.output === 'thumb.jpg');
+    const bannerPersonal = outputMapping.headerSidebar.find((item) => item.output === 'banner_personal.png');
+    const studyBanner = outputMapping.thumbnails.find((item) => item.output === 'study_banner.png');
+
+    expect(desktop).toMatchObject({ width: 1440, height: 800 });
+    expect(layoutBanner).toMatchObject({ width: 1600, height: 572 });
+    expect(themeThumb).toMatchObject({ width: 720, height: 510 });
+    expect(bannerPersonal).toMatchObject({ width: 2562, height: 204, recipe: 'header' });
+    expect(studyBanner).toMatchObject({ width: 2560, height: 100 });
+  });
+
   test('light-ui sandwich rules use the PDF variable name first and keep compatibility fallback', () => {
     expect(sandwichRules['light-ui'].header.baseColorVar).toBe('tlayout-header-bg-extend-color');
     expect(sandwichRules['light-ui'].header.gradientColorVar).toBe('tlayout-header-bg-extend-color');
+    expect(sandwichRules['light-ui'].header.gradientMode).toBe('mirrored-horizontal');
+    expect(sandwichRules['light-ui'].header.gradientStartVar).toBe('gradient-start');
+    expect(sandwichRules['light-ui'].header.gradientMidVar).toBe('gradient-mid');
     expect(sandwichRules['light-ui'].header.fallbackColorVar).toBe('portal-header-bg-extend-color');
     expect(sandwichRules['light-ui'].sidebar.baseColorVar).toBe('tlayout-header-bg-extend-color');
   });

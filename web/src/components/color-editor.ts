@@ -26,6 +26,7 @@ const colorSettings: ColorSetting[] = [
   { name: 'auxiliary-gray-dark', property: '--auxiliary-gray-dark', label: '深辅助灰色', group: 'text', defaultValue: defaultLightUiTheme['--auxiliary-gray-dark'] },
 
   { name: 'body-bg', property: '--body-bg-color', label: '主体背景色', group: 'bg', defaultValue: defaultLightUiTheme['--body-bg-color'] },
+  { name: 'tlayout-header-extend', property: '--tlayout-header-bg-extend-color', label: '页眉底色', group: 'bg', defaultValue: defaultLightUiTheme['--tlayout-header-bg-extend-color'] },
   { name: 'header-extend', property: '--portal-header-bg-extend-color', label: '页眉扩展背景色', group: 'bg', defaultValue: defaultLightUiTheme['--portal-header-bg-extend-color'] },
   { name: 'header-complex-extend', property: '--portal-header-complex-bg-extend-color', label: '页眉复合背景色', group: 'bg', defaultValue: defaultLightUiTheme['--portal-header-complex-bg-extend-color'] },
   { name: 'login-bg', property: '--login-bg-color', label: '登录背景色', group: 'bg', defaultValue: defaultLightUiTheme['--login-bg-color'] },
@@ -53,12 +54,15 @@ const groupLabels: Record<string, string> = {
 };
 
 const LINKED_LIGHT_BG_VARS = [
+  '--tlayout-header-bg-extend-color',
   '--portal-header-bg-extend-color',
   '--sidebar-panel-bg',
   '--gradient-start',
 ] as const;
 
 function applyLinkedLightBgVars(target: HTMLElement, varName: string, value: string): boolean {
+  const templateType = target.getAttribute('data-template-type');
+  if (templateType === 'dark-ui') return false;
   if (!LINKED_LIGHT_BG_VARS.includes(varName as typeof LINKED_LIGHT_BG_VARS[number])) return false;
   for (const linkedVar of LINKED_LIGHT_BG_VARS) {
     target.style.setProperty(linkedVar, value);

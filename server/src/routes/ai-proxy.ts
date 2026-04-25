@@ -1,10 +1,16 @@
 import { Router } from 'express';
 import http from 'http';
 import https from 'https';
+import { createHash, createHmac } from 'crypto';
 import { getModelConfig } from './model-config.js';
 import { getSecurityConfig } from '../db.js';
 
 const router = Router();
+const VOLCENGINE_ARK_IMAGE_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/images/generations';
+const VOLCENGINE_ARK_GET_API_KEY_ENDPOINT = 'https://ark.cn-beijing.volcengineapi.com/?Action=GetApiKey&Version=2024-01-01';
+const VOLCENGINE_ARK_IMAGE_MODEL = 'doubao-seedream-3-0-t2i-250415';
+const VOLCENGINE_SERVICE = 'ark';
+const tempApiKeyCache = new Map<string, { apiKey: string; expiresAt: number }>();
 
 type ImageProvider = 'minimax' | 'ark';
 
@@ -59,6 +65,315 @@ function resolveTarget(endpoint: string): { client: typeof http | typeof https; 
   return { client, options };
 }
 
+function firstNonEmpty(...values: Array<string | undefined>): string {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function hmacSha256(key: Buffer | string, value: string): Buffer {
+  return createHmac('sha256', key).update(value).digest();
+}
+
+function formatVolcengineDate(date: Date): { xDate: string; shortDate: string } {
+  const iso = date.toISOString().replace(/[:-]|\.\d{3}/g, '');
+  return {
+    xDate: iso,
+    shortDate: iso.slice(0, 8),
+  };
+}
+
+function parseVolcengineRegion(endpoint: string): string {
+  try {
+    const hostname = new URL(endpoint).hostname;
+    const match = hostname.match(/^ark\.([^.]+)\./);
+    return match?.[1] || 'cn-beijing';
+  } catch {
+    return 'cn-beijing';
+  }
+}
+
+function requestBuffer(client: typeof http | typeof https, options: http.RequestOptions, body?: string): Promise<{ statusCode: number; headers: http.IncomingHttpHeaders; body: Buffer }> {
+  return new Promise((resolve, reject) => {
+    const req = client.request(options, (res) => {
+      const chunks: Buffer[] = [];
+      res.on('data', chunk => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+      res.on('end', () => {
+        resolve({
+          statusCode: res.statusCode || 500,
+          headers: res.headers,
+          body: Buffer.concat(chunks),
+        });
+      });
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy(new Error('Request timeout'));
+    });
+
+    if (body) {
+      req.write(body);
+    }
+    req.end();
+  });
+}
+
+type VolcengineArkImageConfig = {
+  accessKeyId: string;
+  secretAccessKey: string;
+  apiKeyEndpoint: string;
+  imageEndpoint: string;
+  resourceId: string;
+  model: string;
+  region: string;
+  durationSeconds: number;
+};
+
+function extractVolcengineApiKey(response: Record<string, unknown>): string {
+  if (typeof response.ApiKey === 'string') {
+    return response.ApiKey;
+  }
+  const apiKeyObject = response.ApiKey as Record<string, unknown> | undefined;
+  if (typeof apiKeyObject?.Key === 'string') {
+    return apiKeyObject.Key;
+  }
+  return '';
+}
+
+function getVolcengineArkImageConfig(imageEndpoint: string, imageModel: string): VolcengineArkImageConfig | null {
+  const accessKeyId = firstNonEmpty(
+    process.env.VOLCENGINE_IMAGE_AK,
+    process.env.VOLCENGINE_ACCESS_KEY_ID,
+    process.env.VOLC_ACCESSKEY,
+  );
+  const secretAccessKey = firstNonEmpty(
+    process.env.VOLCENGINE_IMAGE_SK,
+    process.env.VOLCENGINE_SECRET_ACCESS_KEY,
+    process.env.VOLC_SECRETKEY,
+  );
+
+  if (!accessKeyId || !secretAccessKey) {
+    return null;
+  }
+
+  const resolvedImageEndpoint = firstNonEmpty(
+    process.env.VOLCENGINE_IMAGE_API_ENDPOINT,
+    process.env.VOLCENGINE_ARK_IMAGE_ENDPOINT,
+    imageEndpoint,
+    VOLCENGINE_ARK_IMAGE_ENDPOINT,
+  );
+  const resolvedModel = firstNonEmpty(
+    process.env.VOLCENGINE_IMAGE_MODEL,
+    process.env.VOLCENGINE_ARK_IMAGE_MODEL,
+    imageModel,
+    VOLCENGINE_ARK_IMAGE_MODEL,
+  );
+  const explicitResourceId = firstNonEmpty(
+    process.env.VOLCENGINE_ARK_IMAGE_RESOURCE_ID,
+    process.env.VOLCENGINE_IMAGE_RESOURCE_ID,
+  );
+  const resourceId = explicitResourceId || (/^ep-/.test(resolvedModel) ? resolvedModel : '');
+
+  return {
+    accessKeyId,
+    secretAccessKey,
+    apiKeyEndpoint: firstNonEmpty(
+      process.env.VOLCENGINE_ARK_GET_API_KEY_ENDPOINT,
+      VOLCENGINE_ARK_GET_API_KEY_ENDPOINT,
+    ),
+    imageEndpoint: resolvedImageEndpoint,
+    resourceId,
+    model: resolvedModel,
+    region: firstNonEmpty(process.env.VOLCENGINE_ARK_REGION, parseVolcengineRegion(resolvedImageEndpoint)),
+    durationSeconds: Number.parseInt(process.env.VOLCENGINE_ARK_TEMP_API_KEY_SECONDS || '3600', 10) || 3600,
+  };
+}
+
+async function getVolcengineTemporaryApiKey(config: VolcengineArkImageConfig): Promise<string> {
+  const resourceId = await resolveVolcengineResourceId(config);
+  const cacheKey = `${config.accessKeyId}:${resourceId}:${config.imageEndpoint}`;
+  const cached = tempApiKeyCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now() + 60_000) {
+    return cached.apiKey;
+  }
+
+  const endpoint = new URL(config.apiKeyEndpoint);
+  const payload = JSON.stringify({
+    DurationSeconds: config.durationSeconds,
+    ResourceType: 'endpoint',
+    ResourceIds: [resourceId],
+  });
+  const result = await callVolcengineManagementApi(config, endpoint, payload);
+
+  const raw = result.body.toString('utf8');
+  const parsed = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+  if (result.statusCode < 200 || result.statusCode >= 300) {
+    throw new Error(`Volcengine GetApiKey failed (${result.statusCode}): ${raw}`);
+  }
+
+  const apiKey = extractVolcengineApiKey(parsed);
+  if (!apiKey) {
+    throw new Error(`Volcengine GetApiKey returned no ApiKey: ${raw}`);
+  }
+
+  const expiresAt = typeof parsed.ExpiredTime === 'string'
+    ? Date.parse(parsed.ExpiredTime)
+    : typeof parsed.ExpiredTime === 'number'
+      ? Number(parsed.ExpiredTime)
+      : Date.now() + config.durationSeconds * 1000;
+  tempApiKeyCache.set(cacheKey, {
+    apiKey,
+    expiresAt: Number.isFinite(expiresAt) ? expiresAt : Date.now() + config.durationSeconds * 1000,
+  });
+
+  return apiKey;
+}
+
+async function callVolcengineManagementApi(
+  config: VolcengineArkImageConfig,
+  endpoint: URL,
+  payload: string,
+): Promise<{ statusCode: number; headers: http.IncomingHttpHeaders; body: Buffer }> {
+  const payloadHash = sha256Hex(payload);
+  const { xDate, shortDate } = formatVolcengineDate(new Date());
+  const canonicalHeaders = [
+    `host:${endpoint.host}`,
+    `x-content-sha256:${payloadHash}`,
+    `x-date:${xDate}`,
+  ].join('\n');
+  const signedHeaders = 'host;x-content-sha256;x-date';
+  const canonicalRequest = [
+    'POST',
+    endpoint.pathname || '/',
+    endpoint.searchParams.toString(),
+    `${canonicalHeaders}\n`,
+    signedHeaders,
+    payloadHash,
+  ].join('\n');
+  const credentialScope = `${shortDate}/${config.region}/${VOLCENGINE_SERVICE}/request`;
+  const stringToSign = [
+    'HMAC-SHA256',
+    xDate,
+    credentialScope,
+    sha256Hex(canonicalRequest),
+  ].join('\n');
+  const kDate = hmacSha256(config.secretAccessKey, shortDate);
+  const kRegion = hmacSha256(kDate, config.region);
+  const kService = hmacSha256(kRegion, VOLCENGINE_SERVICE);
+  const signingKey = hmacSha256(kService, 'request');
+  const signature = createHmac('sha256', signingKey).update(stringToSign).digest('hex');
+  const authorization = `HMAC-SHA256 Credential=${config.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  return requestBuffer(https, {
+    hostname: endpoint.hostname,
+    port: endpoint.port || 443,
+    path: `${endpoint.pathname}${endpoint.search}`,
+    method: 'POST',
+    timeout: 30_000,
+    headers: {
+      'Authorization': authorization,
+      'Content-Type': 'application/json',
+      'Host': endpoint.host,
+      'X-Content-Sha256': payloadHash,
+      'X-Date': xDate,
+    },
+  }, payload);
+}
+
+function extractEndpointItems(payload: Record<string, unknown>): Array<Record<string, unknown>> {
+  const result = payload.Result as Record<string, unknown> | undefined;
+  const items = result?.Items;
+  return Array.isArray(items) ? items.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object')) : [];
+}
+
+function chooseVolcengineEndpointId(items: Array<Record<string, unknown>>, desiredModel: string): string {
+  const desired = desiredModel.toLowerCase();
+  const ranked = items
+    .map((item) => {
+      const id = String(item.Id ?? '');
+      const name = String(item.Name ?? '');
+      const foundationModel = item.ModelReference as Record<string, unknown> | undefined;
+      const foundationInfo = foundationModel?.FoundationModel as Record<string, unknown> | undefined;
+      const foundationName = String(foundationInfo?.Name ?? '');
+      const haystack = [id, name, foundationName].join(' ').toLowerCase();
+      let score = 0;
+      if (id === desiredModel) score += 100;
+      if (name === desiredModel) score += 80;
+      if (foundationName === desiredModel) score += 60;
+      if (desired && haystack.includes(desired)) score += 20;
+      return { id, score };
+    })
+    .filter(item => item.id)
+    .sort((a, b) => b.score - a.score);
+
+  if (ranked[0]?.score) {
+    return ranked[0].id;
+  }
+  if (ranked.length === 1) {
+    return ranked[0].id;
+  }
+  return '';
+}
+
+async function resolveVolcengineResourceId(config: VolcengineArkImageConfig): Promise<string> {
+  if (config.resourceId && /^ep-/.test(config.resourceId)) {
+    return config.resourceId;
+  }
+
+  const endpoint = new URL(config.apiKeyEndpoint.replace('Action=GetApiKey', 'Action=ListEndpoints'));
+  const body = JSON.stringify({
+    PageNumber: 1,
+    PageSize: 100,
+    Filter: {
+      ModelOrServiceName: config.model,
+      FoundationModelName: config.model,
+    },
+  });
+  const result = await callVolcengineManagementApi(config, endpoint, body);
+  const raw = result.body.toString('utf8');
+  const parsed = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+  if (result.statusCode < 200 || result.statusCode >= 300) {
+    throw new Error(`Volcengine ListEndpoints failed (${result.statusCode}): ${raw}`);
+  }
+
+  const items = extractEndpointItems(parsed);
+  const discovered = chooseVolcengineEndpointId(items, config.model);
+  if (discovered) {
+    return discovered;
+  }
+
+  throw new Error('No usable Volcengine Endpoint ID found. Please set VOLCENGINE_ARK_IMAGE_RESOURCE_ID to your image Endpoint ID.');
+}
+
+function normalizeArkImageSize(width: unknown, height: unknown): string {
+  const parsedWidth = Number(width);
+  const parsedHeight = Number(height);
+  if (Number.isFinite(parsedWidth) && Number.isFinite(parsedHeight) && parsedWidth > 0 && parsedHeight > 0) {
+    return `${Math.round(parsedWidth)}x${Math.round(parsedHeight)}`;
+  }
+  return '1024x1024';
+}
+
+function buildVolcengineArkImageBody(body: any, fallbackModel: string) {
+  return {
+    model: body?.model || fallbackModel,
+    prompt: String(body?.prompt || ''),
+    response_format: body?.response_format || 'url',
+    size: body?.size || normalizeArkImageSize(body?.width, body?.height),
+    n: Number.isFinite(Number(body?.n)) ? Number(body.n) : 1,
+    seed: Number.isFinite(Number(body?.seed)) ? Number(body.seed) : undefined,
+    watermark: typeof body?.watermark === 'boolean' ? body.watermark : false,
+  };
+}
+
 function validateProxyImageHost(url: string): boolean {
   try {
     const securityConfig = getSecurityConfig();
@@ -100,7 +415,7 @@ router.post('/chat', async (req, res) => {
       return res.status(403).json({ error: '对话功能已关闭' });
     }
     if (!config.chatEndpoint || !config.chatApiKey) {
-      return res.status(500).json({ error: 'Chat model not configured. Please configure in /admin' });
+      return res.status(500).json({ error: 'Chat model not configured. Please configure it in /admin or provide VITE_DASHSCOPE_API_KEY / CHAT_API_KEY in your env files.' });
     }
 
     const { client, options } = resolveTarget(config.chatEndpoint);
@@ -217,11 +532,53 @@ router.post('/image', async (req, res) => {
   try {
     const config = getModelConfig();
     const securityConfig = getSecurityConfig();
+    const volcengineArkConfig = getVolcengineArkImageConfig(config.imageEndpoint, config.imageModel);
     if (securityConfig?.enabled_features?.image === false) {
       return res.status(403).json({ error: '生图功能已关闭' });
     }
+    if (volcengineArkConfig) {
+      const tempApiKey = await getVolcengineTemporaryApiKey(volcengineArkConfig);
+      const requestBody = JSON.stringify(buildVolcengineArkImageBody(req.body, config.imageModel || volcengineArkConfig.model));
+      const { client, options } = resolveTarget(volcengineArkConfig.imageEndpoint);
+      options.headers = {
+        'Authorization': `Bearer ${tempApiKey}`,
+        'Content-Type': 'application/json',
+      };
+      options.timeout = 180000;
+
+      const proxyReq = client.request(options);
+
+      proxyReq.on('response', (proxyRes) => {
+        res.writeHead(proxyRes.statusCode!, {
+          'Content-Type': proxyRes.headers['content-type'] || 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': '*',
+        });
+
+        proxyRes.pipe(res);
+      });
+
+      proxyReq.on('error', (error) => {
+        console.error('Volcengine image proxy error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Failed to proxy Volcengine image request' });
+        }
+      });
+
+      proxyReq.on('timeout', () => {
+        console.error('Volcengine image proxy timeout');
+        proxyReq.destroy();
+        if (!res.headersSent) {
+          res.status(504).json({ error: 'Request timeout' });
+        }
+      });
+
+      proxyReq.write(requestBody);
+      proxyReq.end();
+      return;
+    }
     if (!config.imageEndpoint || !config.imageApiKey) {
-      return res.status(500).json({ error: 'Image model not configured. Please configure in /admin' });
+      return res.status(500).json({ error: 'Image model not configured. Please configure it in /admin or provide VITE_MINIMAX_API_KEY / MINIMAX_API_KEY in your env files.' });
     }
 
     const { client, options } = resolveTarget(config.imageEndpoint);
@@ -269,7 +626,7 @@ router.post('/image', async (req, res) => {
   } catch (error) {
     console.error('Image proxy setup error:', error);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal server error' });
     }
   }
 });

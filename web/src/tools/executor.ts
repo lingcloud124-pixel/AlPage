@@ -21,7 +21,7 @@ const COLOR_VARS = [
   'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
   'primary-color-opacity-10', 'primary-color-opacity-20', 'primary-color-opacity-30',
   'header-font-color', 'auxiliary-gray', 'auxiliary-gray-dark',
-  'body-bg-color', 'portal-header-bg-extend-color', 'portal-header-complex-bg-extend-color',
+  'body-bg-color', 'tlayout-header-bg-extend-color', 'portal-header-bg-extend-color', 'portal-header-complex-bg-extend-color',
   'login-bg-color', 'panel-bg-color', 'sidebar-panel-bg', 'sidebar-color', 'sidebar-icon-color',
   'border-color', 'border-icon-color', 'gradient-start', 'gradient-mid',
 ];

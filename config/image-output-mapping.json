@@ -161,6 +161,14 @@
       },
       "format": "PNG",
       "recipe": "sidebar"
+    },
+    {
+      "id": "bannerPersonal",
+      "output": "banner_personal.png",
+      "width": 2562,
+      "height": 204,
+      "format": "PNG",
+      "recipe": "header"
     }
   ],
   "thumbnails": [
@@ -207,24 +215,16 @@
     {
       "id": "themeThumb",
       "output": "thumb.jpg",
-      "width": 1440,
-      "height": 800,
+      "width": 720,
+      "height": 510,
       "format": "JPEG",
       "recipe": "desktop-thumbnail"
     },
     {
-      "id": "bannerPersonal",
-      "output": "banner_personal.png",
-      "width": 1600,
-      "height": 572,
-      "format": "PNG",
-      "recipe": "layout-thumbnail"
-    },
-    {
       "id": "studyBanner",
       "output": "study_banner.png",
-      "width": 1600,
-      "height": 572,
+      "width": 2560,
+      "height": 100,
       "format": "PNG",
       "recipe": "layout-thumbnail"
     }

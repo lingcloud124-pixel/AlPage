@@ -48,7 +48,7 @@ describe('python asset pipeline preview tasks', () => {
         },
         colors: {
           'primary-color': '#2C615C',
-          'tlayout-header-bg-extend-color': '#FBFCF2',
+          'tlayout-header-bg-extend-color': '#EAEFEF',
         },
         paths: {
           exportDir: outputDir,
@@ -85,7 +85,9 @@ print(json.dumps(manifest, ensure_ascii=False))
     expect(manifest.pendingPreviewCaptures.map((item: any) => item.output)).toContain('desktop.png');
     expect(manifest.pendingPreviewCaptures.map((item: any) => item.output)).toContain('layout-banner.jpg');
     expect(manifest.pendingPreviewCaptures.map((item: any) => item.output)).toContain('thumb.jpg');
+    expect(manifest.pendingPreviewCaptures.map((item: any) => item.output)).not.toContain('banner_personal.png');
     expect(manifest.assets.loginBackground).toContain('bg-login.jpg');
+    expect(manifest.assets.bannerPersonal).toContain(path.join(outputDir, 'banner_personal.png'));
     expect(manifest.assets.desktop).toContain(path.join(outputDir, 'desktop.png'));
     expect(fs.existsSync(path.join(outputDir, 'asset-snapshot.json'))).toBe(false);
     expect(fs.existsSync(path.join(metadataDir, 'asset-snapshot.json'))).toBe(true);

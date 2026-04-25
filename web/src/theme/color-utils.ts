@@ -170,6 +170,18 @@ export function blendWhite(hex: string, ratio: number): string {
   return rgbToHex(r, g, b);
 }
 
+export function mixColors(baseHex: string, targetHex: string, targetRatio: number): string {
+  const base = hexToRgb(baseHex);
+  const target = hexToRgb(targetHex);
+  const ratio = Math.max(0, Math.min(1, targetRatio));
+
+  return rgbToHex(
+    Math.round(base.r * (1 - ratio) + target.r * ratio),
+    Math.round(base.g * (1 - ratio) + target.g * ratio),
+    Math.round(base.b * (1 - ratio) + target.b * ratio),
+  );
+}
+
 /**
  * 提亮颜色（向白色混合）
  * @param hex - 原始颜色
@@ -206,6 +218,18 @@ export function desaturate(hex: string, amount: number): string {
   return hslToHex(h, newS, l);
 }
 
+export function adjustHsl(hex: string, deltaL: number, deltaS = 0): string {
+  const { h, s, l } = hexToHsl(hex);
+  const newS = Math.max(0, Math.min(100, s + deltaS));
+  const newL = Math.max(0, Math.min(100, l + deltaL));
+  return hslToHex(h, newS, newL);
+}
+
+export function warmShift(hex: string, red = 0, green = 0, blue = 0): string {
+  const { r, g, b } = hexToRgb(hex);
+  return rgbToHex(r + red, g + green, b + blue);
+}
+
 // ============ 推导规则 ============
 
 /**
@@ -223,6 +247,7 @@ export interface DerivedColors {
   'auxiliary-gray': string;
   'auxiliary-gray-dark': string;
   'body-bg-color': string;
+  'tlayout-header-bg-extend-color': string;
   'portal-header-bg-extend-color': string;
   'portal-header-complex-bg-extend-color': string;
   'login-bg-color': string;
@@ -553,13 +578,22 @@ export function buildThemeGenerationReport(
  * @returns 推导出的颜色变量
  */
 function deriveLightUiColors(primaryHex: string): DerivedColors {
+  // 固化后的默认取值：
+  // alter = darken 11%
+  // hover = L + 8%, S + 4%
+  // alter-hover = mix(white, primary, 62.5%)
+  // header-extend = mix(white, primary, 5%) + 轻微暖化
+  // login-bg = mix(white, primary, 4%) + 轻微暖化
+  // sidebar-panel = mix(white, primary, 5%) + 微暖偏移
+  // sidebar-icon = mix(#8A8A8A, primary, 20%)
+
   // 1. 主色及其变体
   const primaryColor = primaryHex;
-  const primaryColorHover = lighten(primaryHex, 15); // primary-hover = 比主色更亮的浅色变体
+  const primaryColorHover = adjustHsl(primaryHex, 8, 4);
 
   // 2. alter-color 及其变体
-  const alterColor = desaturate(darken(primaryHex, 15), 20); // alter-color = desaturate(darken(primary, 15%), 20%)
-  const alterColorHoverOn = lighten(primaryColorHover, 15); // lighten(primaryHover, 15%)
+  const alterColor = darken(primaryHex, 11);
+  const alterColorHoverOn = mixColors('#FFFFFF', primaryHex, 0.625);
   
   // 3. opacity 变体（与白色混合）
   const primaryColorOpacity10 = blendWhite(primaryHex, 0.1);
@@ -571,29 +605,30 @@ function deriveLightUiColors(primaryHex: string): DerivedColors {
   const auxiliaryGray = '#999999';
   const auxiliaryGrayDark = '#666666';
   
-  // 5. 固定背景色
+  // 5. Light-UI 浅底色
   const bodyBgColor = '#F8F8F8';
-  const portalHeaderBgExtendColor = '#FBFCF2';
-  const portalHeaderComplexBgExtendColor = '#FBFCF2';
+  const tlayoutHeaderBgExtendColor = warmShift(blendWhite(primaryHex, 0.05), 2, -1, -3);
+  const portalHeaderBgExtendColor = tlayoutHeaderBgExtendColor;
+  const portalHeaderComplexBgExtendColor = tlayoutHeaderBgExtendColor;
   const panelBgColor = '#FFFFFF';
   
-  // 6. 登录背景 / 延展背景按规则使用固定浅色系
-  const loginBgColor = '#FDFFF6';
+  // 6. 登录背景
+  const loginBgColor = warmShift(blendWhite(primaryHex, 0.04), 1, 0, -2);
   
-  // 7. 侧边栏背景与页眉延展色保持一致
-  const sidebarPanelBg = portalHeaderBgExtendColor;
+  // 7. 侧边栏
+  const sidebarPanelBg = warmShift(blendWhite(primaryHex, 0.05), 3, 0, -4);
   
   // 8. sidebar 相关
-  const sidebarColor = '#333333';
-  const sidebarIconColor = primaryColor;
+  const sidebarColor = '#000000';
+  const sidebarIconColor = mixColors('#8A8A8A', primaryHex, 0.2);
   
   // 9. 边框色
-  const borderColor = '#E5E7EB';
-  const borderIconColor = '#E5E7EB';
+  const borderColor = '#D8D8D8';
+  const borderIconColor = mixColors('#D8D8D8', primaryHex, 0.05);
   
-  // 10. 渐变色起点与页眉/侧边栏浅背景保持一致
+  // 10. 渐变色
   const gradientStart = portalHeaderBgExtendColor;
-  const gradientMid = blendWhite(primaryHex, 0.15);
+  const gradientMid = primaryColorOpacity10;
   
   return {
     'primary-color': primaryColor,
@@ -607,6 +642,7 @@ function deriveLightUiColors(primaryHex: string): DerivedColors {
     'auxiliary-gray': auxiliaryGray,
     'auxiliary-gray-dark': auxiliaryGrayDark,
     'body-bg-color': bodyBgColor,
+    'tlayout-header-bg-extend-color': tlayoutHeaderBgExtendColor,
     'portal-header-bg-extend-color': portalHeaderBgExtendColor,
     'portal-header-complex-bg-extend-color': portalHeaderComplexBgExtendColor,
     'login-bg-color': loginBgColor,
@@ -666,6 +702,7 @@ function deriveDarkUiColors(primaryHex: string): DerivedColors {
   const bodyBgColor = '#F8F8F8';
   const portalHeaderBgExtendColor = alterColor;
   const portalHeaderComplexBgExtendColor = alterColor;
+  const tlayoutHeaderBgExtendColor = portalHeaderBgExtendColor;
 
   // 登录背景 — 使用 alter 色（最深）
   const loginBgColor = alterColor;
@@ -700,6 +737,7 @@ function deriveDarkUiColors(primaryHex: string): DerivedColors {
     'auxiliary-gray': auxiliaryGray,
     'auxiliary-gray-dark': auxiliaryGrayDark,
     'body-bg-color': bodyBgColor,
+    'tlayout-header-bg-extend-color': tlayoutHeaderBgExtendColor,
     'portal-header-bg-extend-color': portalHeaderBgExtendColor,
     'portal-header-complex-bg-extend-color': portalHeaderComplexBgExtendColor,
     'login-bg-color': loginBgColor,

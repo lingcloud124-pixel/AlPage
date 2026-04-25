@@ -22,14 +22,17 @@ describe('web build export config', () => {
     expect(yaml).not.toContain('  - ekp_v13_5');
     expect(yaml).not.toContain('  - ekp_v14_16');
 
-    expect(yaml).toContain('headerBanner: "header-banner.png"');
-    expect(yaml).toContain('headerClassic: "header-classic.png"');
-    expect(yaml).toContain('headerMenu: "header-menu.png"');
-    expect(yaml).toContain('headerSimple: "header-simple.png"');
-    expect(yaml).toContain('headerTabs: "header-tabs.png"');
-    expect(yaml).toContain('headerIcon: "header-icon.png"');
-    expect(yaml).toContain('headerSideheader: "header-sideheader.png"');
-    expect(yaml).toContain('loginBackground: "bg-login.jpg"');
+    expect(yaml).toContain('headerBanner: "../素材包/header-banner.png"');
+    expect(yaml).toContain('headerClassic: "../素材包/header-classic.png"');
+    expect(yaml).toContain('headerMenu: "../素材包/header-menu.png"');
+    expect(yaml).toContain('headerSimple: "../素材包/header-simple.png"');
+    expect(yaml).toContain('headerTabs: "../素材包/header-tabs.png"');
+    expect(yaml).toContain('headerIcon: "../素材包/header-icon.png"');
+    expect(yaml).toContain('headerSideheader: "../素材包/header-sideheader.png"');
+    expect(yaml).toContain('loginBackground: "../素材包/bg-login.jpg"');
+    expect(yaml).toContain('desktop: "../素材包/desktop.png"');
+    expect(yaml).not.toContain('headerBanner: "header-banner.png"');
+    expect(yaml).not.toContain('desktop: "desktop.png"');
   });
 
   test('truncates packaging title to 10 characters', () => {
