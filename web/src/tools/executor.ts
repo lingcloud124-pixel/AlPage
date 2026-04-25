@@ -1,9 +1,12 @@
 import type { ToolCall, ToolResult } from '../types';
 import { generateImage } from '../agent/chat-client';
-import { validateColorScheme } from './contrast-validator';
+import { resolvePrimaryContrast, validateColorScheme } from './contrast-validator';
 import {
   buildThemeGenerationReport,
+  DEFAULT_FALLBACK_BRAND_COLOR,
   deriveColorsFromPrimary,
+  normalizePrimaryForTemplate,
+  pickFallbackPaletteColorByHue,
   rankPrimaryCandidates,
   resolvePreferredHueHint,
   type DerivedColors,
@@ -76,6 +79,30 @@ function getHueDistanceDegrees(a: number, b: number): number {
   return Math.min(delta, 360 - delta);
 }
 
+export function quantizedBucketToHex(r: number, g: number, b: number): string {
+  return '#' + [r, g, b].map(c => Math.max(0, Math.min(255, c)).toString(16).padStart(2, '0')).join('');
+}
+
+function buildCandidateOutcome(
+  primaryHex: string,
+  templateType: 'light-ui' | 'dark-ui',
+): {
+  primaryHex: string;
+  derivedColors: DerivedColors;
+  report: ReturnType<typeof buildThemeGenerationReport>;
+} {
+  const normalizedPrimary = normalizePrimaryForTemplate(primaryHex, templateType);
+  const contrastResolved = templateType === 'light-ui'
+    ? resolvePrimaryContrast(normalizedPrimary)
+    : { primary: normalizedPrimary, text: '#333333', adjusted: false };
+  const derivedColors = deriveColorsFromPrimary(contrastResolved.primary, templateType);
+  if (templateType === 'light-ui') {
+    derivedColors['primary-text-color'] = contrastResolved.text;
+  }
+  const report = buildThemeGenerationReport(contrastResolved.primary, derivedColors, templateType);
+  return { primaryHex: contrastResolved.primary, derivedColors, report };
+}
+
 function buildPromptWithPreferredHue(
   bgPrompt: string,
   preferredHueHint: string,
@@ -123,14 +150,16 @@ export function pickBestThemeCandidate(
   const ranked = rankPrimaryCandidates(dominantColors, templateType, preferredHueHint);
   const hint = resolvePreferredHueHint(preferredHueHint, templateType);
   let candidatePool = ranked;
+  const fallbackHex = hint?.fallbackHex
+    ?? pickFallbackPaletteColorByHue(candidatePool[0]?.h)
+    ?? DEFAULT_FALLBACK_BRAND_COLOR;
 
   if (ranked.length === 0) {
-    const fallbackHex = hint?.fallbackHex ?? (templateType === 'dark-ui' ? '#1A2845' : '#3B82F6');
-    const derived = deriveColorsFromPrimary(fallbackHex, templateType);
+    const { primaryHex, derivedColors, report } = buildCandidateOutcome(fallbackHex, templateType);
     return {
-      primaryColor: fallbackHex,
-      derivedColors: derived,
-      report: buildThemeGenerationReport(fallbackHex, derived, templateType),
+      primaryColor: primaryHex,
+      derivedColors,
+      report,
       triedCandidates: [],
       enforcedPreferredHue: Boolean(hint),
       enforcementReason: hint ? `未识别到匹配 ${hint.label} 的候选主色，已按确认主色校正。` : undefined,
@@ -140,16 +169,15 @@ export function pickBestThemeCandidate(
   if (hint) {
     const hueMatched = ranked.filter((candidate) => getHueDistanceDegrees(candidate.h, hint.targetHue) <= hint.tolerance);
     if (hueMatched.length === 0) {
-      const fallbackHex = hint.fallbackHex;
-      const derived = deriveColorsFromPrimary(fallbackHex, templateType);
+      const { primaryHex, derivedColors, report } = buildCandidateOutcome(fallbackHex, templateType);
       return {
-        primaryColor: fallbackHex,
-        derivedColors: derived,
-        report: buildThemeGenerationReport(fallbackHex, derived, templateType),
+        primaryColor: primaryHex,
+        derivedColors,
+        report,
         triedCandidates: ranked.map((candidate) => ({
           hex: candidate.hex,
           score: candidate.score,
-          passed: buildThemeGenerationReport(candidate.hex, deriveColorsFromPrimary(candidate.hex, templateType), templateType).passed,
+          passed: buildCandidateOutcome(candidate.hex, templateType).report.passed,
         })),
         enforcedPreferredHue: true,
         enforcementReason: `生成图片主色偏离已确认的 ${hint.label} 方向，已按确认主色强制校正。`,
@@ -159,27 +187,24 @@ export function pickBestThemeCandidate(
   }
 
   let best = candidatePool[0];
-  let bestDerived = deriveColorsFromPrimary(best.hex, templateType);
-  let bestReport = buildThemeGenerationReport(best.hex, bestDerived, templateType);
-  const triedCandidates = [{ hex: best.hex, score: best.score, passed: bestReport.passed }];
+  let bestOutcome = buildCandidateOutcome(best.hex, templateType);
+  const triedCandidates = [{ hex: best.hex, score: best.score, passed: bestOutcome.report.passed }];
 
   for (const candidate of candidatePool.slice(1)) {
-    if (bestReport.passed) break;
-    const derived = deriveColorsFromPrimary(candidate.hex, templateType);
-    const report = buildThemeGenerationReport(candidate.hex, derived, templateType);
-    triedCandidates.push({ hex: candidate.hex, score: candidate.score, passed: report.passed });
-    if (report.passed) {
+    if (bestOutcome.report.passed) break;
+    const outcome = buildCandidateOutcome(candidate.hex, templateType);
+    triedCandidates.push({ hex: candidate.hex, score: candidate.score, passed: outcome.report.passed });
+    if (outcome.report.passed) {
       best = candidate;
-      bestDerived = derived;
-      bestReport = report;
+      bestOutcome = outcome;
       break;
     }
   }
 
   return {
-    primaryColor: best.hex,
-    derivedColors: bestDerived,
-    report: bestReport,
+    primaryColor: bestOutcome.primaryHex,
+    derivedColors: bestOutcome.derivedColors,
+    report: bestOutcome.report,
     triedCandidates,
     enforcedPreferredHue: false,
   };
@@ -255,8 +280,6 @@ export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
           colorBuckets[key] = (colorBuckets[key] ?? 0) + 1;
         }
 
-        const toHex = (r: number, g: number, b: number) =>
-          '#' + [r, g, b].map(c => Math.min(255, c + step / 2).toString(16).padStart(2, '0')).join('');
         const rgbToHsl = (r: number, g: number, b: number) => {
           const rn = r / 255, gn = g / 255, bn = b / 255;
           const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
@@ -278,15 +301,15 @@ export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
         });
 
         const saturated = allBuckets
-          .filter(b => b.hsl.s >= 12 && b.hsl.l > 8 && b.hsl.l < 92)
+          .filter(b => b.hsl.s >= 20 && b.hsl.l >= 20 && b.hsl.l <= 85)
           .sort((a, b) => {
-            const scoreA = a.hsl.s * 0.6 + Math.log(a.count + 1) * 15;
-            const scoreB = b.hsl.s * 0.6 + Math.log(b.count + 1) * 15;
+            const scoreA = a.count * 100 + a.hsl.s * 0.4;
+            const scoreB = b.count * 100 + b.hsl.s * 0.4;
             return scoreB - scoreA;
           });
 
         const neutral = allBuckets
-          .filter(b => b.hsl.s < 12 || b.hsl.l <= 8 || b.hsl.l >= 92)
+          .filter(b => b.hsl.s < 20 || b.hsl.l < 20 || b.hsl.l > 85)
           .sort((a, b) => b.count - a.count);
 
         const sortedHex: string[] = [];
@@ -295,13 +318,13 @@ export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
           const hueKey = Math.round(b.hsl.h / 30);
           if (sortedHex.length >= 3) break;
           if (!seenHues.has(hueKey)) {
-            sortedHex.push(toHex(b.r, b.g, b.b));
+            sortedHex.push(quantizedBucketToHex(b.r, b.g, b.b));
             seenHues.add(hueKey);
           }
         }
         for (const b of neutral) {
           if (sortedHex.length >= 5) break;
-          sortedHex.push(toHex(b.r, b.g, b.b));
+          sortedHex.push(quantizedBucketToHex(b.r, b.g, b.b));
         }
 
         if (analysisUrl !== imageUrl) URL.revokeObjectURL(analysisUrl);

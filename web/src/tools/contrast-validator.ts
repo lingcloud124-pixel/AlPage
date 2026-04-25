@@ -3,6 +3,8 @@
  * 基于 WCAG 2.1 标准，计算和验证颜色对比度
  */
 
+import { adjustHsl, hexToHsl } from '../theme/color-utils';
+
 export interface ContrastCheckResult {
   foreground: string;
   background: string;
@@ -17,6 +19,12 @@ export interface ColorSchemeValidation {
   checks: ContrastCheckResult[];
   passed: boolean;
   failures: string[];
+}
+
+export interface PrimaryContrastResolution {
+  primary: string;
+  text: string;
+  adjusted: boolean;
 }
 
 function hexToLinear(hex: string): number {
@@ -49,6 +57,37 @@ export function checkContrast(fg: string, bg: string): ContrastCheckResult {
     aaLarge: ratio >= 3,
     aaaLarge: ratio >= 4.5,
   };
+}
+
+export function pickReadableTextColor(primaryHex: string): string {
+  return hexToHsl(primaryHex).l > 60 ? '#333333' : '#FFFFFF';
+}
+
+export function resolvePrimaryContrast(primaryHex: string): PrimaryContrastResolution {
+  const preferredText = pickReadableTextColor(primaryHex);
+  if (getContrastRatio(preferredText, primaryHex) >= 4.5) {
+    return { primary: primaryHex, text: preferredText, adjusted: false };
+  }
+
+  const alternateText = preferredText === '#333333' ? '#FFFFFF' : '#333333';
+  if (getContrastRatio(alternateText, primaryHex) >= 4.5) {
+    return { primary: primaryHex, text: alternateText, adjusted: false };
+  }
+
+  const direction = preferredText === '#333333' ? -1 : 1;
+  for (const delta of [5, 10]) {
+    const adjustedPrimary = adjustHsl(primaryHex, direction * delta, 0);
+    const adjustedText = pickReadableTextColor(adjustedPrimary);
+    if (getContrastRatio(adjustedText, adjustedPrimary) >= 4.5) {
+      return { primary: adjustedPrimary, text: adjustedText, adjusted: true };
+    }
+    const adjustedAlternateText = adjustedText === '#333333' ? '#FFFFFF' : '#333333';
+    if (getContrastRatio(adjustedAlternateText, adjustedPrimary) >= 4.5) {
+      return { primary: adjustedPrimary, text: adjustedAlternateText, adjusted: true };
+    }
+  }
+
+  return { primary: primaryHex, text: alternateText, adjusted: false };
 }
 
 export function validateColorScheme(colors: Record<string, string>): ColorSchemeValidation {

@@ -8,9 +8,11 @@ import {
   buildThemeGenerationReport,
   darken,
   deriveColorsFromPrimary,
+  hexToHsl,
   mixColors,
   warmShift,
 } from '../../web/src/theme/color-utils';
+import { getContrastRatio, resolvePrimaryContrast } from '../../web/src/tools/contrast-validator';
 
 describe('web light-ui color rules', () => {
   test('derives light-ui colors from the documented blend and alter formulas', () => {
@@ -39,6 +41,7 @@ describe('web light-ui color rules', () => {
     expect(derived['sidebar-icon-color']).toBe(mixColors('#8A8A8A', primary, 0.2));
     expect(derived['border-color']).toBe('#D8D8D8');
     expect(derived['border-icon-color']).toBe(mixColors('#D8D8D8', primary, 0.05));
+    expect(derived['primary-text-color']).toBe('#333333');
   });
 
   test('keeps default project colors aligned with the shared light-ui derivation', () => {
@@ -61,5 +64,22 @@ describe('web light-ui color rules', () => {
     const derived = deriveColorsFromPrimary(primary, 'light-ui');
 
     expect(buildThemeGenerationReport(primary, derived, 'light-ui').passed).toBe(true);
+  });
+
+  test('automatically chooses a readable primary text color', () => {
+    const resolvedLight = resolvePrimaryContrast('#BFE8FF');
+    const resolvedDark = resolvePrimaryContrast('#0E70EE');
+
+    expect(resolvedLight.text).toBe('#333333');
+    expect(getContrastRatio(resolvedLight.text, resolvedLight.primary)).toBeGreaterThanOrEqual(4.5);
+    expect(getContrastRatio(resolvedDark.text, resolvedDark.primary)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test('adjusts light-ui primary when needed to preserve readability', () => {
+    const resolved = resolvePrimaryContrast('#7FBFFF');
+    const hsl = hexToHsl(resolved.primary);
+
+    expect(hsl.l).toBeGreaterThanOrEqual(0);
+    expect(getContrastRatio(resolved.text, resolved.primary)).toBeGreaterThanOrEqual(4.5);
   });
 });
