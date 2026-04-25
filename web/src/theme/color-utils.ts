@@ -220,7 +220,9 @@ export function desaturate(hex: string, amount: number): string {
 
 export function adjustHsl(hex: string, deltaL: number, deltaS = 0): string {
   const { h, s, l } = hexToHsl(hex);
-  return hslToHex(h, s + deltaS, l + deltaL);
+  const newS = Math.max(0, Math.min(100, s + deltaS));
+  const newL = Math.max(0, Math.min(100, l + deltaL));
+  return hslToHex(h, newS, newL);
 }
 
 export function warmShift(hex: string, red = 0, green = 0, blue = 0): string {
