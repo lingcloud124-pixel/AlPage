@@ -31,7 +31,7 @@ function getDefaultExportRoot(): string {
       ? (globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process
       : undefined;
   const home = runtimeProcess?.env?.HOME ?? runtimeProcess?.env?.USERPROFILE ?? '';
-  return home ? `${home}/Desktop/ThemeStudio-Exports` : '';
+  return home ? `${home}/Desktop/ThemeStudio-Exports` : 'Desktop/ThemeStudio-Exports';
 }
 
 export function getEffectiveExportRoot(settings?: { exportRoot?: string }): string {

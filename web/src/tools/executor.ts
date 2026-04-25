@@ -450,10 +450,11 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           prompt: string;
         }
 
-        const directions = args.directions as DirectionInput[] | undefined;
-        if (!directions || !Array.isArray(directions) || directions.length === 0) {
+        const rawDirections = args.directions as DirectionInput[] | undefined;
+        if (!rawDirections || !Array.isArray(rawDirections) || rawDirections.length === 0) {
           return { success: false, error: 'generate_theme_previews 需要 directions 数组，每个方向包含 label 和 prompt' };
         }
+        const directions = rawDirections.slice(0, 3);
 
         const total = directions.length;
         onProgress?.({ type: 'image_generating', data: { current: 0, total } });

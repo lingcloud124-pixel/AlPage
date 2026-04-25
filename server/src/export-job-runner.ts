@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { getConfirmedVersionSnapshot, listQueuedExportJobs, updateExportJob } from './export-jobs-store.js';
@@ -96,6 +97,7 @@ async function runJob(jobId: string): Promise<void> {
       metadataDir,
     ], {
       cwd: PROJECT_ROOT,
+      env: { ...process.env, SCREENSHOT_BASE_URL: 'http://127.0.0.1:5173' },
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
@@ -185,13 +187,15 @@ async function runJob(jobId: string): Promise<void> {
   const packageCount = fs.existsSync(packagesDir)
     ? fs.readdirSync(packagesDir).filter((entry) => entry.toLowerCase().endsWith('.zip')).length
     : 0;
+
+  const snapshotName = snapshot.nameEn ?? snapshot.projectId ?? preparing.projectId;
   updateExportJob(jobId, {
     status: 'completed',
     error: null,
     result: {
       packageCount,
       downloadUrl: `/api/theme/export-jobs/${jobId}/download`,
-      snapshotName: snapshot.nameEn ?? snapshot.projectId ?? preparing.projectId,
+      snapshotName,
       artifactPath: batchDir,
       assetsDir,
       metadataDir,

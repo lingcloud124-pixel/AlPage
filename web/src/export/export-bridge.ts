@@ -31,7 +31,7 @@ function getFetchBridge(source: unknown): ThemeStudioExportBridge | null {
 
   return {
     async enqueueExportJob(payload: ExportJobRequest) {
-      const response = await fetchImpl('/api/export/jobs', {
+      const response = await fetchImpl('/api/theme/export-jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -44,7 +44,7 @@ function getFetchBridge(source: unknown): ThemeStudioExportBridge | null {
       return await response.json() as { accepted?: boolean; jobId?: string };
     },
     async pickDirectory() {
-      const response = await fetchImpl('/api/export/pick-directory', {
+      const response = await fetchImpl('/api/theme/pick-directory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

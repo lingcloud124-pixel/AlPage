@@ -41,6 +41,13 @@ function getEnvModelConfig() {
     process.env.VOLC_SECRETKEY,
   );
   const hasVolcengineImageCredentials = Boolean(volcengineImageAk && volcengineImageSk);
+  const jimengAccessKey = firstNonEmpty(
+    process.env.JIMENG_ACCESS_KEY,
+  );
+  const jimengSecretKey = firstNonEmpty(
+    process.env.JIMENG_SECRET_KEY,
+  );
+  const hasJimengCredentials = Boolean(jimengAccessKey && jimengSecretKey);
 
   return {
     chatEndpoint: chatApiKey
@@ -60,7 +67,11 @@ function getEnvModelConfig() {
       ? firstNonEmpty(process.env.IMAGE_MODEL, process.env.MINIMAX_IMAGE_MODEL, DEFAULT_IMAGE_MODEL)
       : hasVolcengineImageCredentials
         ? firstNonEmpty(process.env.VOLCENGINE_IMAGE_MODEL, process.env.VOLCENGINE_ARK_IMAGE_MODEL, process.env.VOLCENGINE_ARK_IMAGE_RESOURCE_ID, DEFAULT_VOLCENGINE_IMAGE_MODEL)
-        : '',
+        : hasJimengCredentials
+          ? 'jimeng-4.0'
+          : '',
+    jimengAccessKey,
+    jimengSecretKey,
   };
 }
 
@@ -79,6 +90,8 @@ function normalizeModelConfig(row?: Record<string, unknown> | null) {
     imageEndpoint: firstNonEmpty(String(row?.image_endpoint ?? ''), envConfig.imageEndpoint),
     imageApiKey: firstNonEmpty(String(row?.image_api_key ?? ''), envConfig.imageApiKey),
     imageModel: firstNonEmpty(String(row?.image_model ?? ''), envConfig.imageModel),
+    jimengAccessKey: envConfig.jimengAccessKey,
+    jimengSecretKey: envConfig.jimengSecretKey,
   };
 }
 
@@ -152,6 +165,7 @@ router.put('/', async (req, res) => {
 export function getModelConfig(): {
   chatEndpoint: string; chatApiKey: string; chatModel: string;
   imageEndpoint: string; imageApiKey: string; imageModel: string;
+  jimengAccessKey: string; jimengSecretKey: string;
 } {
   const stmt = db.prepare('SELECT * FROM model_config WHERE id = 1');
   let row: Record<string, unknown> | null = null;

@@ -102,6 +102,9 @@ export function updateExportJob(jobId: string, patch: {
 }
 
 export function getConfirmedVersionSnapshot(confirmedVersionId: string, projectId: string, userId: number): Record<string, unknown> | null {
+  if (confirmedVersionId.startsWith('auto-')) {
+    return getProjectSnapshot(projectId, userId);
+  }
   const stmt = db.prepare(`
     SELECT snapshot_json
     FROM theme_confirmed_versions
@@ -112,6 +115,34 @@ export function getConfirmedVersionSnapshot(confirmedVersionId: string, projectI
   if (stmt.step()) {
     const row = stmt.getAsObject();
     snapshot = typeof row.snapshot_json === 'string' ? JSON.parse(row.snapshot_json) : null;
+  }
+  stmt.free();
+  return snapshot;
+}
+
+function getProjectSnapshot(projectId: string, userId: number): Record<string, unknown> | null {
+  const stmt = db.prepare(`
+    SELECT id, name, name_en, template_type, colors, bg_image_url, header_bg_image_url
+    FROM theme_projects
+    WHERE id = ? AND user_id = ?
+  `);
+  stmt.bind([projectId, userId]);
+  let snapshot: Record<string, unknown> | null = null;
+  if (stmt.step()) {
+    const row = stmt.getAsObject();
+    let colors: Record<string, string> = {};
+    try {
+      colors = typeof row.colors === 'string' ? JSON.parse(row.colors) : {};
+    } catch { /* empty */ }
+    snapshot = {
+      projectId: String(row.id),
+      name: String(row.name ?? ''),
+      nameEn: row.name_en ? String(row.name_en) : undefined,
+      templateType: String(row.template_type ?? 'light-ui'),
+      colors,
+      bgImageUrl: row.bg_image_url ? String(row.bg_image_url) : undefined,
+      headerBgImageUrl: row.header_bg_image_url ? String(row.header_bg_image_url) : undefined,
+    };
   }
   stmt.free();
   return snapshot;

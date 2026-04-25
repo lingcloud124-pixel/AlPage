@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -69,6 +70,9 @@ def main() -> int:
             "--output",
             str(output_dir),
         ]
+        base_url = os.environ.get("SCREENSHOT_BASE_URL")
+        if base_url:
+            command.extend(["--base-url", base_url])
         print("🖼️ Capturing preview-based thumbnail assets...")
         subprocess.run(command, cwd=PROJECT_ROOT / "web", check=True)
         print("✅ Preview-based thumbnail assets captured")

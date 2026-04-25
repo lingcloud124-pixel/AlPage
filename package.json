@@ -5,7 +5,11 @@
   "scripts": {
     "dev:all": "bash scripts/dev-all.sh",
     "test": "vitest",
-    "test:unit": "vitest run",
+    "start": "pm2 start ecosystem.config.cjs",
+    "stop": "pm2 stop theme-studio",
+    "restart": "pm2 restart theme-studio",
+    "logs": "pm2 logs theme-studio",
+    "status": "pm2 status theme-studio",
     "test:coverage": "vitest run --coverage",
     "test:types": "tsc -p server/tsconfig.json --noEmit && tsc -p web/tsconfig.json --noEmit",
     "build": "tsc -p server/tsconfig.json",

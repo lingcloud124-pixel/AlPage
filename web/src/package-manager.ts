@@ -1,8 +1,6 @@
 import { getAllCSSVariables } from './theme-engine';
 import { appendExportBatchToProject, appendExportJobRequest, buildExportJobRequest, updateExportBatchInProject } from './export/export-job';
 import { dispatchExportJobToBridge, pickDirectoryViaBridge } from './export/export-bridge';
-import { renderExportHistoryHtml } from './export/export-history-view';
-import { openExportDirectory } from './export/export-open-client';
 import { fetchExportJobStatus } from './export/export-status-client';
 import { getCurrentProjectId, loadProject, saveProject, safeJsonParse } from './project-manager';
 import type { ExportBatchStatus } from './types';
@@ -41,7 +39,8 @@ function showPackageModal() {
   const modal = document.getElementById('packageModal');
   if (!modal) { console.error('Package modal not found'); return; }
   generateProductList();
-  renderExportHistory();
+  const startBtn = document.getElementById('packageStartBtn') as HTMLButtonElement;
+  if (startBtn) { startBtn.textContent = '开始打包'; startBtn.disabled = false; }
   modal.classList.add('active');
 }
 
@@ -74,15 +73,15 @@ function handleDeselectAll() {
 }
 
 function initializePackageModal() {
-  const modal = document.getElementById('packageModal');
-  if (!modal) return;
   const closeBtn = document.getElementById('packageModalClose');
   const cancelBtn = document.getElementById('packageCancelBtn');
   const startBtn = document.getElementById('packageStartBtn');
-  if (closeBtn) closeBtn.addEventListener('click', () => closePackageModal());
-  if (cancelBtn) cancelBtn.addEventListener('click', () => closePackageModal());
+  if (closeBtn) closeBtn.addEventListener('click', closePackageModal);
+  if (cancelBtn) cancelBtn.addEventListener('click', closePackageModal);
   if (startBtn) startBtn.addEventListener('click', startPackagingProcess);
-  modal.addEventListener('click', (e) => { if (e.target === modal) closePackageModal(); });
+
+  const progressCloseBtn = document.getElementById('packageProgressClose');
+  if (progressCloseBtn) progressCloseBtn.addEventListener('click', closeProgressModal);
 }
 
 function closePackageModal() {
@@ -90,24 +89,120 @@ function closePackageModal() {
   if (modal) modal.classList.remove('active');
 }
 
+function openProgressModal() {
+  closePackageModal();
+  const overlay = document.getElementById('packagingOverlay');
+  if (!overlay) {
+    const el = document.createElement('div');
+    el.id = 'packagingOverlay';
+    el.style.cssText = 'position:fixed;inset:0;z-index:199;cursor:not-allowed;';
+    document.body.appendChild(el);
+  }
+  const modal = document.getElementById('packageProgressModal');
+  if (modal) modal.classList.add('active');
+}
+
+function closeProgressModal() {
+  const modal = document.getElementById('packageProgressModal');
+  if (modal) modal.classList.remove('active');
+  const overlay = document.getElementById('packagingOverlay');
+  if (overlay) overlay.remove();
+}
+
+function triggerBlobDownload(dlUrl: string, filename: string) {
+  fetch(dlUrl)
+    .then(res => {
+      if (!res.ok) throw new Error('download failed');
+      return res.blob();
+    })
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    })
+    .catch(() => {
+      const a = document.createElement('a');
+      a.href = dlUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+}
+
+function renderProgress(step: string, detail?: string) {
+  renderProgressWithDownload(step, detail);
+}
+
+function renderProgressWithDownload(step: string, detail?: string, dlUrl?: string, filename?: string) {
+  const content = document.getElementById('packageProgressContent');
+  if (!content) return;
+
+  const isLoading = step !== 'completed' && step !== 'failed';
+  const iconChar = isLoading ? '⚙️' : step === 'completed' ? '✅' : '❌';
+  const title = isLoading ? step : step === 'completed' ? '打包完成' : '打包失败';
+
+  content.innerHTML = `
+    <div class="package-progress-icon${isLoading ? ' spinning' : ''}">${iconChar}</div>
+    <div class="package-progress-title">${title}</div>
+    ${detail ? `<div class="package-progress-detail">${detail}</div>` : ''}
+    ${step === 'completed' ? `
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:8px;">
+        ${dlUrl ? `<button class="package-progress-btn success" id="progressDownloadBtn" data-dl-url="${dlUrl}" data-filename="${filename ?? ''}">下载文件</button>` : ''}
+        <button class="package-progress-btn error" id="progressDismissBtn" style="background:var(--surface-2,#333);">关闭</button>
+      </div>
+    ` : ''}
+    ${step === 'failed' ? `<button class="package-progress-btn error" id="progressDismissBtn">关闭</button>` : ''}
+  `;
+
+  if (!isLoading && step === 'completed') {
+    const downloadBtn = document.getElementById('progressDownloadBtn');
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', () => {
+        triggerBlobDownload(downloadBtn.dataset.dlUrl ?? '', downloadBtn.dataset.filename ?? '');
+        const el = downloadBtn as HTMLElement;
+        el.textContent = '已下载';
+        (el as HTMLButtonElement).disabled = true;
+      });
+    }
+    const dismissBtn = document.getElementById('progressDismissBtn');
+    if (dismissBtn) dismissBtn.addEventListener('click', closeProgressModal);
+  } else if (!isLoading) {
+    const dismissBtn = document.getElementById('progressDismissBtn');
+    if (dismissBtn) dismissBtn.addEventListener('click', closeProgressModal);
+  }
+}
+
 async function promptExportRootSelection(): Promise<string> {
   const pickedPath = await pickDirectoryViaBridge(window);
   if (!pickedPath) {
-    throw new Error('无法唤起系统目录选择，请先启动本地导出桥接服务');
+    throw new Error('无法唤起系统目录选择');
   }
-
   const exportRoot = normalizeExportRoot(pickedPath);
   const settings = loadSettings();
-  saveSettings({
-    ...settings,
-    exportRoot,
-  });
+  saveSettings({ ...settings, exportRoot });
   return exportRoot;
+}
+
+async function resolveExportRoot(): Promise<string> {
+  try {
+    return await promptExportRootSelection();
+  } catch {
+    const settings = loadSettings();
+    const fallback = settings.exportRoot?.trim() ? getEffectiveExportRoot(settings) : '';
+    if (fallback) return fallback;
+    throw new Error('请选择导出目录后再执行打包');
+  }
 }
 
 async function startPackagingProcess() {
   const startBtn = document.getElementById('packageStartBtn') as HTMLButtonElement;
-  if (startBtn) { startBtn.textContent = '打包中...'; startBtn.disabled = true; }
+  if (startBtn) startBtn.disabled = true;
 
   try {
     const selectedProducts: string[] = [];
@@ -117,37 +212,36 @@ async function startPackagingProcess() {
 
     if (selectedProducts.length === 0) {
       showNotification('请至少选择一个产品进行打包');
-      if (startBtn) { startBtn.textContent = '开始打包'; startBtn.disabled = false; }
+      if (startBtn) startBtn.disabled = false;
       return;
     }
 
     const currentProjectId = getCurrentProjectId();
     if (!currentProjectId) {
       showNotification('请先创建或打开一个项目，再执行打包');
-      if (startBtn) { startBtn.textContent = '开始打包'; startBtn.disabled = false; }
+      if (startBtn) startBtn.disabled = false;
       return;
     }
 
     const project = await loadProject(currentProjectId);
     if (!project) {
       showNotification('当前项目不存在，无法创建导出任务');
-      if (startBtn) { startBtn.textContent = '开始打包'; startBtn.disabled = false; }
+      if (startBtn) startBtn.disabled = false;
       return;
     }
 
-    let exportRoot = '';
+    openProgressModal();
+    renderProgress('正在选择导出目录...');
+
+    let exportRoot: string;
     try {
-      exportRoot = await promptExportRootSelection();
-    } catch (error) {
-      const settings = loadSettings();
-      const fallbackExportRoot = settings.exportRoot?.trim() ? getEffectiveExportRoot(settings) : '';
-      if (!fallbackExportRoot) {
-        showNotification((error as Error).message || '请选择导出目录后再执行打包');
-        if (startBtn) { startBtn.textContent = '开始打包'; startBtn.disabled = false; }
-        return;
-      }
-      exportRoot = fallbackExportRoot;
+      exportRoot = await resolveExportRoot();
+    } catch (e) {
+      renderProgress('failed', (e as Error).message);
+      return;
     }
+
+    renderProgress('正在提交打包任务...');
 
     const vars = getAllCSSVariables();
     const request = buildExportJobRequest({
@@ -166,20 +260,17 @@ async function startPackagingProcess() {
     const dispatchResult = await dispatchExportJobToBridge(window, request).catch(() => ({ accepted: false, mode: 'none' as const }));
     if (!dispatchResult.accepted) {
       markLatestExportBatchStatus(updatedProject.id, request.batch.id, 'bridge_unavailable');
-      renderExportHistory();
-      showNotification('导出桥接不可用，无法执行本地打包。请先启动本地导出桥接后重试。');
-    } else {
-      trackExportJobStatus(updatedProject.id, request.batch.id);
-      showNotification(`已提交导出任务（${selectedProducts.length} 个产品），正在导出到：${exportRoot}`);
+      renderProgress('failed', '导出服务不可用，请检查服务器是否正常运行');
+      return;
     }
 
-    setTimeout(() => {
-      closePackageModal();
-      if (startBtn) { startBtn.textContent = '开始打包'; startBtn.disabled = false; }
-    }, 1500);
+    renderProgress('打包任务已提交...');
+    trackExportJobStatus(updatedProject.id, request.batch.id, selectedProducts.length);
   } catch (e) {
-    showNotification(`打包失败: ${(e as Error).message}`);
-    if (startBtn) { startBtn.textContent = '开始打包'; startBtn.disabled = false; }
+    if (!document.getElementById('packageProgressModal')?.classList.contains('active')) {
+      openProgressModal();
+    }
+    renderProgress('failed', (e as Error).message);
   }
 }
 
@@ -187,32 +278,15 @@ async function markLatestExportBatchStatus(projectId: string, batchId: string, s
   const project = await loadProject(projectId);
   if (!project?.exportBatches) return;
   await saveProject(updateExportBatchInProject(project, batchId, { status }));
-  renderExportHistory();
 }
 
-async function renderExportHistory() {
-  const container = document.getElementById('packageExportHistory');
-  const projectId = getCurrentProjectId();
-  if (!container || !projectId) return;
-
-  const project = await loadProject(projectId);
-  const exportBatches = [...(project?.exportBatches ?? [])]
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .slice(0, 6);
-
-  if (exportBatches.length === 0) {
-    container.innerHTML = renderExportHistoryHtml([]);
-    return;
-  }
-
-  container.innerHTML = renderExportHistoryHtml(exportBatches);
-  bindExportHistoryActions(container);
-}
-
-async function trackExportJobStatus(projectId: string, batchId: string) {
+async function trackExportJobStatus(projectId: string, batchId: string, productCount: number) {
   const poll = async () => {
     const status = await fetchExportJobStatus(fetch, batchId).catch(() => null);
-    if (!status) return;
+    if (!status) {
+      window.setTimeout(poll, 2000);
+      return;
+    }
 
     const project = await loadProject(projectId);
     if (!project) return;
@@ -224,32 +298,40 @@ async function trackExportJobStatus(projectId: string, batchId: string) {
       exportRoot: status.exportRoot,
       error: status.error,
     }));
-    renderExportHistory();
 
-    if (status.status === 'completed') {
-      showNotification('导出完成，结果已写入配置目录');
+    const statusStr = String(status.status ?? '');
+
+    if (statusStr === 'completed') {
+      const snapshotName = (await loadProject(projectId))?.nameEn ?? projectId;
+      const dlUrl = `/api/theme/export-jobs/${batchId}/download?all=true`;
+      const filename = `${snapshotName}-all.zip`;
+
+      renderProgressWithDownload(
+        'completed',
+        '请点击下方按钮下载打包文件。下载后先解压 zip 包，然后前往 MK 系统门户管理板块导入主题包文件，最后在系统中选择新主题即可切换使用。',
+        dlUrl,
+        filename,
+      );
       return;
     }
-    if (status.status === 'failed') {
-      showNotification('导出失败，请检查桥接日志');
+
+    if (statusStr === 'failed') {
+      renderProgress('failed', status.error ?? '请检查服务器日志');
       return;
     }
 
-    window.setTimeout(poll, 1200);
+    const statusLabels: Record<string, string> = {
+      queued: '排队中...',
+      preparing: '正在准备素材...',
+      capturing: '正在截图...',
+      packaging: '正在打包...',
+      verifying: '正在验证...',
+    };
+    renderProgress(statusLabels[statusStr] ?? '处理中...');
+    window.setTimeout(poll, 1500);
   };
 
   void poll();
 }
 
-function bindExportHistoryActions(container: HTMLElement) {
-  container.querySelectorAll<HTMLButtonElement>('.export-open-btn').forEach((button) => {
-    button.addEventListener('click', async () => {
-      const targetPath = button.dataset.exportDir;
-      if (!targetPath) return;
-      const opened = await openExportDirectory(fetch, targetPath).catch(() => false);
-      if (!opened) {
-        showNotification('打开导出目录失败，请确认本地桥接服务已启动');
-      }
-    });
-  });
-}
+export { closeProgressModal, openProgressModal, renderProgress };

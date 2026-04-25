@@ -5202,3 +5202,87 @@ body[data-ui-theme="light"] .ts-confirm-btn-cancel {
 body[data-ui-theme="light"] .ts-confirm-btn-danger {
   background: #C62828;
 }
+
+.package-progress-modal {
+  width: min(440px, 88vw);
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.package-progress-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 6px;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+  z-index: 1;
+}
+
+.package-progress-close:hover {
+  background: var(--surface-2);
+}
+
+.package-progress-content {
+  padding: 48px 32px 36px;
+  text-align: center;
+  width: 100%;
+}
+
+.package-progress-icon {
+  font-size: 52px;
+  margin-bottom: 20px;
+  line-height: 1;
+}
+
+.package-progress-icon.spinning {
+  animation: pkg-spin 1.4s linear infinite;
+}
+
+@keyframes pkg-spin {
+  to { transform: rotate(360deg); }
+}
+
+.package-progress-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.package-progress-detail {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+
+.package-progress-btn {
+  padding: 11px 36px;
+  border-radius: 12px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  transition: opacity 0.15s;
+}
+
+.package-progress-btn:hover {
+  opacity: 0.9;
+}
+
+.package-progress-btn.success {
+  background: #22c55e;
+}
+
+.package-progress-btn.error {
+  background: #ef4444;
+}

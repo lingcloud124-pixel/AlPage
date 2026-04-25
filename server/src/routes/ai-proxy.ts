@@ -4,6 +4,7 @@ import https from 'https';
 import { createHash, createHmac } from 'crypto';
 import { getModelConfig } from './model-config.js';
 import { getSecurityConfig } from '../db.js';
+import { buildSignedRequest, VolcAuth } from '../services/jimeng-client.js';
 
 const router = Router();
 const VOLCENGINE_ARK_IMAGE_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/images/generations';
@@ -374,6 +375,144 @@ function buildVolcengineArkImageBody(body: any, fallbackModel: string) {
   };
 }
 
+async function handleJimengImageRequest(
+  auth: VolcAuth,
+  reqBody: Record<string, unknown>,
+): Promise<{ statusCode: number; body: Record<string, unknown> }> {
+  const prompt = typeof reqBody.prompt === 'string' ? reqBody.prompt : '';
+  const width = typeof reqBody.width === 'number' ? reqBody.width : 1920;
+  const height = typeof reqBody.height === 'number' ? reqBody.height : 1080;
+
+  const submitBody = {
+    req_key: 'jimeng_t2i_v40',
+    prompt,
+    width,
+    height,
+    force_single: true,
+  };
+
+  const submitReq = buildSignedRequest(auth, 'CVSync2AsyncSubmitTask', '2022-08-31', submitBody);
+  const submitResult = await requestBuffer(
+    https,
+    {
+      hostname: 'visual.volcengineapi.com',
+      port: 443,
+      path: new URL(submitReq.url).search ? `/${new URL(submitReq.url).search}` : '/',
+      method: 'POST',
+      timeout: 30_000,
+      headers: submitReq.headers as Record<string, string>,
+    },
+    submitReq.body,
+  );
+
+  const submitRaw = submitResult.body.toString('utf8');
+  let submitParsed: Record<string, unknown>;
+  try {
+    submitParsed = JSON.parse(submitRaw);
+  } catch {
+    return { statusCode: 502, body: { error: `Jimeng submit parse error: ${submitRaw.slice(0, 200)}` } };
+  }
+
+  if (submitResult.statusCode < 200 || submitResult.statusCode >= 300) {
+    return { statusCode: submitResult.statusCode, body: submitParsed };
+  }
+
+  const jimengCode = typeof submitParsed.code === 'number' ? submitParsed.code : 0;
+  if (jimengCode !== 10000) {
+    return {
+      statusCode: typeof submitParsed.status === 'number' ? submitParsed.status as number : 502,
+      body: { ...submitParsed, base_resp: { status_code: jimengCode, status_msg: submitParsed.message } },
+    };
+  }
+
+  const taskId = String((submitParsed.data as Record<string, unknown>)?.task_id ?? '');
+  if (!taskId) {
+    return { statusCode: 502, body: { error: 'Jimeng returned no task_id', raw: submitRaw.slice(0, 300) } };
+  }
+
+  const POLL_INTERVAL_MS = 2000;
+  const MAX_POLL_MS = 180_000;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < MAX_POLL_MS) {
+    await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+
+    const pollBody = {
+      req_key: 'jimeng_t2i_v40',
+      task_id: taskId,
+      req_json: JSON.stringify({ return_url: true }),
+    };
+
+    const pollReq = buildSignedRequest(auth, 'CVSync2AsyncGetResult', '2022-08-31', pollBody);
+    const pollResult = await requestBuffer(
+      https,
+      {
+        hostname: 'visual.volcengineapi.com',
+        port: 443,
+        path: new URL(pollReq.url).search ? `/${new URL(pollReq.url).search}` : '/',
+        method: 'POST',
+        timeout: 30_000,
+        headers: pollReq.headers as Record<string, string>,
+      },
+      pollReq.body,
+    );
+
+    const pollRaw = pollResult.body.toString('utf8');
+    let pollParsed: Record<string, unknown>;
+    try {
+      pollParsed = JSON.parse(pollRaw);
+    } catch {
+      continue;
+    }
+
+    const pollCode = typeof pollParsed.code === 'number' ? pollParsed.code : 0;
+    if (pollCode !== 10000) {
+      return {
+        statusCode: typeof pollParsed.status === 'number' ? pollParsed.status as number : 502,
+        body: { ...pollParsed, base_resp: { status_code: pollCode, status_msg: pollParsed.message } },
+      };
+    }
+
+    const pollData = pollParsed.data as Record<string, unknown> | undefined;
+    const status = String(pollData?.status ?? '');
+
+    if (status === 'done') {
+      const imageUrls = pollData?.image_urls as string[] | undefined;
+      if (imageUrls && imageUrls.length > 0) {
+        return {
+          statusCode: 200,
+          body: {
+            data: { image_urls: imageUrls },
+            code: 10000,
+            message: 'Success',
+          },
+        };
+      }
+      const binaryBase64 = pollData?.binary_data_base64 as string[] | undefined;
+      if (binaryBase64 && binaryBase64.length > 0) {
+        return {
+          statusCode: 200,
+          body: {
+            data: { image_base64: binaryBase64 },
+            code: 10000,
+            message: 'Success',
+          },
+        };
+      }
+      return { statusCode: 502, body: { error: 'Jimeng done but no image data', raw: pollRaw.slice(0, 300) } };
+    }
+
+    if (status === 'not_found' || status === 'expired') {
+      return {
+        statusCode: 502,
+        body: { error: `Jimeng task ${status}`, base_resp: { status_code: 50500, status_msg: `Task ${status}` } },
+      };
+    }
+  }
+
+  return { statusCode: 504, body: { error: 'Jimeng generation timeout (180s)', base_resp: { status_code: 50500, status_msg: 'Generation timeout' } } };
+}
+
 function validateProxyImageHost(url: string): boolean {
   try {
     const securityConfig = getSecurityConfig();
@@ -532,10 +671,24 @@ router.post('/image', async (req, res) => {
   try {
     const config = getModelConfig();
     const securityConfig = getSecurityConfig();
-    const volcengineArkConfig = getVolcengineArkImageConfig(config.imageEndpoint, config.imageModel);
     if (securityConfig?.enabled_features?.image === false) {
       return res.status(403).json({ error: '生图功能已关闭' });
     }
+    if (config.jimengAccessKey && config.jimengSecretKey) {
+      try {
+        const result = await handleJimengImageRequest(
+          { accessKey: config.jimengAccessKey, secretKey: config.jimengSecretKey },
+          (req.body ?? {}) as Record<string, unknown>,
+        );
+        if (result.statusCode >= 200 && result.statusCode < 300) {
+          return res.status(result.statusCode).json(result.body);
+        }
+        console.warn(`[image] Jimeng failed (${result.statusCode}), falling back to next provider`);
+      } catch (error) {
+        console.warn('[image] Jimeng error, falling back to next provider:', error instanceof Error ? error.message : error);
+      }
+    }
+    const volcengineArkConfig = getVolcengineArkImageConfig(config.imageEndpoint, config.imageModel);
     if (volcengineArkConfig) {
       const tempApiKey = await getVolcengineTemporaryApiKey(volcengineArkConfig);
       const requestBody = JSON.stringify(buildVolcengineArkImageBody(req.body, config.imageModel || volcengineArkConfig.model));

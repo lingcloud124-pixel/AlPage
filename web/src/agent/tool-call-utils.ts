@@ -47,7 +47,7 @@ function extractDirectionsFromText(text: string): Array<{ label: string; prompt:
     }
   }
 
-  return directions;
+  return directions.slice(0, 3);
 }
 
 function stripMarkdown(text: string): string {

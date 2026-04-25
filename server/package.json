@@ -7,16 +7,16 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
+    "archiver": "^7.0.1",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.21.0",
-
     "sql.js": "^1.11.0"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
-
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

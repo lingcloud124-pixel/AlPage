@@ -1,9 +1,24 @@
 import { Router } from 'express';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
+import archiver from 'archiver';
 import { db, saveDb } from '../db.js';
 import { updateExportJob } from '../export-jobs-store.js';
 import { getSecurityConfig } from '../db.js';
 
 const router = Router();
+
+router.post('/pick-directory', async (_req, res) => {
+  try {
+    const home = os.homedir();
+    const desktop = path.join(home, 'Desktop', 'ThemeStudio-Exports');
+    res.json({ path: desktop });
+  } catch (error) {
+    console.error('Pick directory error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 function projectExistsForUser(projectId: string, userId: number): boolean {
   const stmt = db.prepare('SELECT 1 FROM theme_projects WHERE id = ? AND user_id = ?');
@@ -83,22 +98,32 @@ router.post('/export-jobs', async (req, res) => {
     }
 
     const userId = (req as any).userId as number;
-    const { projectId, confirmedVersionId, selectedProducts } = req.body ?? {};
+    const body = req.body ?? {};
 
-    if (!projectId || !confirmedVersionId || !Array.isArray(selectedProducts) || selectedProducts.length === 0) {
-      return res.status(400).json({ error: 'projectId, confirmedVersionId and selectedProducts are required' });
+    const projectId = body.projectId ?? body.batch?.projectSnapshot?.projectId;
+    const confirmedVersionId = body.confirmedVersionId ?? '';
+    const selectedProducts = Array.isArray(body.selectedProducts)
+      ? body.selectedProducts
+      : Array.isArray(body.batch?.selectedProducts)
+        ? body.batch.selectedProducts
+        : Array.isArray(body.buildOptions?.selectedProducts)
+          ? body.buildOptions.selectedProducts
+          : [];
+
+    if (!projectId || selectedProducts.length === 0) {
+      return res.status(400).json({ error: 'projectId and selectedProducts are required' });
     }
 
     if (!projectExistsForUser(projectId, userId)) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    if (!confirmedVersionExistsForUser(confirmedVersionId, projectId, userId)) {
+    if (confirmedVersionId && !confirmedVersionExistsForUser(confirmedVersionId, projectId, userId)) {
       return res.status(404).json({ error: 'Confirmed version not found' });
     }
 
     const now = Date.now();
-    const exportJobId = `job-${now}`;
+    const exportJobId = body.batch?.id ?? `job-${now}`;
     const stmt = db.prepare(`
       INSERT INTO theme_export_jobs (
         id, project_id, user_id, confirmed_version_id, status, selected_products, result_json, error, created_at, updated_at
@@ -108,7 +133,7 @@ router.post('/export-jobs', async (req, res) => {
       exportJobId,
       projectId,
       userId,
-      confirmedVersionId,
+      confirmedVersionId || `auto-${now}`,
       'queued',
       JSON.stringify(selectedProducts),
       null,
@@ -122,9 +147,11 @@ router.post('/export-jobs', async (req, res) => {
     saveDb();
 
     res.status(201).json({
+      accepted: true,
+      jobId: exportJobId,
       id: exportJobId,
       projectId,
-      confirmedVersionId,
+      confirmedVersionId: confirmedVersionId || `auto-${now}`,
       status: 'queued',
       selectedProducts,
       createdAt: now,
@@ -194,12 +221,59 @@ router.get('/export-jobs/:id/download', async (req, res) => {
       ? JSON.parse(row.result_json)
       : {};
 
-    res.json({
-      id,
-      status: 'completed',
-      result,
-      message: 'Simulated download endpoint is ready. Real artifact download will be wired in the next stage.',
-    });
+    const packagesDir = result?.packagesDir as string | undefined;
+    if (!packagesDir || !fs.existsSync(packagesDir)) {
+      return res.json({
+        id,
+        status: 'completed',
+        result,
+      });
+    }
+
+    const requestedFile = req.query.file as string | undefined;
+    const downloadAll = req.query.all === 'true';
+
+    if (downloadAll) {
+      const files = fs.readdirSync(packagesDir).filter(f => f.toLowerCase().endsWith('.zip'));
+      if (files.length === 0) {
+        return res.status(404).json({ error: 'No packages found' });
+      }
+
+      if (files.length === 1) {
+        const filePath = path.join(packagesDir, files[0]);
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(files[0])}"`);
+        fs.createReadStream(filePath).pipe(res);
+        return;
+      }
+
+      const snapshotName = (result?.snapshotName as string) ?? id;
+      const archiveName = `${snapshotName}-all.zip`;
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(archiveName)}"`);
+
+      const archive = archiver('zip', { zlib: { level: 6 } });
+      archive.pipe(res);
+      for (const file of files) {
+        archive.file(path.join(packagesDir, file), { name: file });
+      }
+      archive.finalize();
+      return;
+    }
+
+    if (!requestedFile) {
+      const files = fs.readdirSync(packagesDir).filter(f => f.toLowerCase().endsWith('.zip'));
+      return res.json({ id, status: 'completed', files, result });
+    }
+
+    const filePath = path.join(packagesDir, requestedFile);
+    if (!filePath.startsWith(packagesDir) || !fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(requestedFile)}"`);
+    fs.createReadStream(filePath).pipe(res);
   } catch (error) {
     console.error('Download export job error:', error);
     res.status(500).json({ error: 'Internal server error' });

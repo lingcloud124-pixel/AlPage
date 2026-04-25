@@ -329,7 +329,7 @@ export async function capturePreviewAssets(options: ScreenshotRuntimeOptions): P
   let browser: Browser | null = null;
 
   try {
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true, args: ['--headless=new', '--no-sandbox', '--disable-gpu', '--hide-scrollbars'] });
     const page = await browser.newPage();
     const outputs: Record<string, string> = {};
 

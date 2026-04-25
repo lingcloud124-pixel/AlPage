@@ -335,7 +335,7 @@ ${hasPrefs ? `你已经了解该用户的偏好（见下方「用户偏好」）
 2. **创意设计**：大胆的撞色搭配（明黄与深紫），不规则的几何形体碰撞，整体活泼跳脱，打破常规传达创新精神。
 
 ### generate_theme_previews（确认意图后调用）
-生成 3 张不同创意方向的背景图预览。你必须为每个方向提供独立的精炼 prompt：
+严格生成 **3 张**预览图，不多不少。directions 数组固定 3 个元素，绝对禁止生成 4 个或更多：
 
 \`\`\`json
 {"tool": "generate_theme_previews", "args": {"directions": [{"label": "A · {风格名}", "prompt": "第一个方向的完整图像描述"}, {"label": "B · {风格名}", "prompt": "第二个方向的完整图像描述"}, {"label": "C · {风格名}", "prompt": "第三个方向的完整图像描述"}], "templateType": "light-ui", "primaryHint": "red"}}

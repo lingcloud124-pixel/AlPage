@@ -1,3 +1,11 @@
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
+});
+
 import { config as loadEnv } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
@@ -53,7 +61,6 @@ app.use(express.json({ limit: '50mb' }));
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
-app.use('/api/auth', adminAuthMiddleware, authRouter);
 app.use('/api/model-config', adminAuthMiddleware, modelConfigRouter);
 app.use('/api/security-config', adminAuthMiddleware, securityConfigRouter);
 app.use('/api/theme', authMiddleware);
@@ -72,6 +79,25 @@ app.get('/admin/{*splat}', adminAuthMiddleware, (_req, res) => {
 
 async function start() {
   await initDb();
+  const { db, getSecurityConfig } = await import('./db.js');
+
+  app.get('/api/auth/users', async (_req, res) => {
+    try {
+      const stmt = db.prepare('SELECT id, name, display_name FROM users ORDER BY id');
+      const users: Array<{ id: number; name: string; display_name: string }> = [];
+      while (stmt.step()) {
+        users.push(stmt.getAsObject() as any);
+      }
+      stmt.free();
+      res.json(users);
+    } catch (error) {
+      console.error('List users error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.use('/api/auth', adminAuthMiddleware, authRouter);
+
   startExportJobRunner();
   console.log(`Theme Studio API running on port ${PORT}`);
   app.listen(PORT);
