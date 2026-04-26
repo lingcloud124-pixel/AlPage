@@ -1,6 +1,7 @@
 import type { ChatMessage, ConfirmedProjectVersion, ExportBatch, ServerExportJob } from './types';
 import { DEFAULT_LIGHT_UI_PRIMARY, deriveColorsFromPrimary, toCssVarRecord } from './theme/color-utils';
 import { authHeaders } from './auth';
+import type { ProjectVisualContext } from './tools/project-visual-context-store';
 
 // Helper: snake_case → camelCase conversion
 function serverToProject(row: any): Project {
@@ -12,6 +13,7 @@ function serverToProject(row: any): Project {
     colors: typeof row.colors === 'string' ? JSON.parse(row.colors || '{}') : (row.colors || {}),
     bgImageUrl: row.bg_image_url ?? undefined,
     headerBgImageUrl: row.header_bg_image_url ?? undefined,
+    visualContext: row.visual_context ?? undefined,
     pinned: row.pinned === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -25,8 +27,20 @@ function projectToServer(project: Partial<Project>): Record<string, any> {
   if (project.nameEn !== undefined) result.name_en = project.nameEn;
   if (project.templateType !== undefined) result.template_type = project.templateType;
   if (project.colors !== undefined) result.colors = typeof project.colors === 'string' ? project.colors : JSON.stringify(project.colors);
-  if (project.bgImageUrl !== undefined) result.bg_image_url = project.bgImageUrl;
+  if (project.bgImageUrl !== undefined && !project.bgImageUrl.startsWith('data:image/')) result.bg_image_url = project.bgImageUrl;
   if (project.headerBgImageUrl !== undefined) result.header_bg_image_url = project.headerBgImageUrl;
+  if (project.visualContext !== undefined) {
+    const visualContext = project.visualContext?.imageInput?.dataUrl
+      ? {
+          ...project.visualContext,
+          imageInput: {
+            ...project.visualContext.imageInput,
+            dataUrl: '',
+          },
+        }
+      : project.visualContext;
+    result.visualContext = visualContext;
+  }
   if (project.pinned !== undefined) result.pinned = project.pinned ? 1 : 0;
   return result;
 }
@@ -52,6 +66,7 @@ export interface Project {
   colors: Record<string, string>;
   bgImageUrl?: string;
   headerBgImageUrl?: string;
+  visualContext?: ProjectVisualContext;
   confirmedVersions?: ConfirmedProjectVersion[];
   serverExportJobs?: ServerExportJob[];
   exportBatches?: ExportBatch[];

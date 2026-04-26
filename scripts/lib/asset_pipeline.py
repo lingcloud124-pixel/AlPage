@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import base64
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 from urllib.parse import unquote, urlparse
@@ -71,6 +72,34 @@ def _download_remote_image(source: str, output_dir: Path) -> Path:
     return cached_path
 
 
+def _write_data_url_image(source: str, output_dir: Path) -> Path:
+    header, _, payload = source.partition(",")
+    if not header.startswith("data:image/") or not payload:
+        raise ValueError(f"Unsupported data image url: {source[:32]}...")
+
+    mime_section = header[5:]
+    mime_type = mime_section.split(";", 1)[0]
+    suffix = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+        "image/svg+xml": ".svg",
+    }.get(mime_type, ".png")
+
+    cache_dir = output_dir / ".cache"
+    _ensure_dir(cache_dir)
+
+    digest = hashlib.sha1(source.encode("utf-8")).hexdigest()[:16]
+    cached_path = cache_dir / f"background-inline-{digest}{suffix}"
+    if cached_path.exists() and cached_path.stat().st_size > 0:
+        return cached_path
+
+    cached_path.write_bytes(base64.b64decode(payload))
+    return cached_path
+
+
 def _resolve_source_image(snapshot: Dict[str, Any], project_root: Path, output_dir: Path) -> Path:
     source = (
         snapshot.get("sourceImages", {}).get("background")
@@ -84,6 +113,8 @@ def _resolve_source_image(snapshot: Dict[str, Any], project_root: Path, output_d
     parsed = urlparse(source)
     if parsed.scheme in {"http", "https"}:
         return _download_remote_image(source, output_dir)
+    if source.startswith("data:image/"):
+        return _write_data_url_image(source, output_dir)
 
     candidate = Path(source)
     if candidate.is_absolute() and candidate.exists():

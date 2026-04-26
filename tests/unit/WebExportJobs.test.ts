@@ -95,8 +95,9 @@ describe('web export jobs', () => {
     const queue = appendExportJobRequest([], request);
 
     expect(queue).toHaveLength(1);
-    expect(queue[0].batch.id).toBe('export-1712999999000');
-    expect(queue[0].buildOptions.selectedProducts).toEqual(['mk']);
+    expect(queue[0].batchId).toBe('export-1712999999000');
+    expect(queue[0].selectedProducts).toEqual(['mk']);
+    expect(Object.prototype.hasOwnProperty.call(queue[0], 'assetSnapshot')).toBe(false);
   });
 
   test('updates an existing export batch status and result metadata in the project snapshot', () => {

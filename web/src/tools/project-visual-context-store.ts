@@ -6,10 +6,32 @@ export interface ProjectVisualContext {
   avoidElements: string[];
   latestAcceptedScenePlan?: ThemeScenePlan;
   temporaryAdjustments: string[];
+  imageInput?: {
+    dataUrl: string;
+    role: 'primary' | 'reference';
+    sourceText?: string;
+    explicitReason?: string;
+    updatedAt: number;
+  };
   updatedAt: number;
 }
 
 const STORAGE_KEY = 'theme-agent-project-visual-contexts';
+const runtimeImageDataUrls = new Map<string, string>();
+
+function sanitizeForStorage(context: ProjectVisualContext): ProjectVisualContext {
+  const imageInput = context.imageInput
+    ? {
+        ...context.imageInput,
+        dataUrl: '',
+      }
+    : undefined;
+
+  return {
+    ...context,
+    imageInput,
+  };
+}
 
 function readAllContexts(): Record<string, ProjectVisualContext> {
   try {
@@ -23,7 +45,11 @@ function readAllContexts(): Record<string, ProjectVisualContext> {
 }
 
 function writeAllContexts(contexts: Record<string, ProjectVisualContext>): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(contexts));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(contexts));
+  } catch (error) {
+    console.warn('[project-visual-context-store] Failed to persist visual contexts:', error);
+  }
 }
 
 export function createDefaultProjectVisualContext(projectId: string): ProjectVisualContext {
@@ -33,13 +59,23 @@ export function createDefaultProjectVisualContext(projectId: string): ProjectVis
     avoidElements: [],
     latestAcceptedScenePlan: undefined,
     temporaryAdjustments: [],
+    imageInput: undefined,
     updatedAt: Date.now(),
   };
 }
 
 export function loadProjectVisualContext(projectId: string): ProjectVisualContext {
   const contexts = readAllContexts();
-  return contexts[projectId] ?? createDefaultProjectVisualContext(projectId);
+  const persisted = contexts[projectId] ?? createDefaultProjectVisualContext(projectId);
+  const runtimeDataUrl = runtimeImageDataUrls.get(projectId);
+  if (!persisted.imageInput || !runtimeDataUrl) return persisted;
+  return {
+    ...persisted,
+    imageInput: {
+      ...persisted.imageInput,
+      dataUrl: runtimeDataUrl,
+    },
+  };
 }
 
 export function saveProjectVisualContext(context: ProjectVisualContext): ProjectVisualContext {
@@ -48,7 +84,12 @@ export function saveProjectVisualContext(context: ProjectVisualContext): Project
     ...context,
     updatedAt: Date.now(),
   };
-  contexts[next.projectId] = next;
+  if (next.imageInput?.dataUrl) {
+    runtimeImageDataUrls.set(next.projectId, next.imageInput.dataUrl);
+  } else {
+    runtimeImageDataUrls.delete(next.projectId);
+  }
+  contexts[next.projectId] = sanitizeForStorage(next);
   writeAllContexts(contexts);
   return next;
 }
@@ -71,5 +112,6 @@ export function deleteProjectVisualContext(projectId: string): void {
   const contexts = readAllContexts();
   if (!contexts[projectId]) return;
   delete contexts[projectId];
+  runtimeImageDataUrls.delete(projectId);
   writeAllContexts(contexts);
 }

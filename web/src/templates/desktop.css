@@ -982,10 +982,22 @@ body[data-preview-layout="theme-thumb"] .content-container {
   overflow: hidden;
   position: relative;
   background:
-    url('/avatar-placeholder.png'),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--primary-color) 18%, transparent),
+      color-mix(in srgb, var(--primary-color-hover) 10%, transparent)
+    ),
+    var(--theme-desktop-feature-image, var(--theme-header-bg-image, url('/avatar-placeholder.png'))),
     #e7e7e7;
-  background-size: cover;
-  background-position: center;
+  background-size:
+    cover,
+    cover,
+    cover;
+  background-position:
+    center,
+    center,
+    center;
+  background-repeat: no-repeat;
 }
 
 .featured-story-list {

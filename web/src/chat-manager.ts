@@ -21,6 +21,8 @@ import { decidePreferenceUpdate } from './tools/theme-preference-updater';
 import { updateProjectVisualContext, loadProjectVisualContext } from './tools/project-visual-context-store';
 import { updateCustomerVisualProfile, loadCustomerVisualProfile } from './tools/customer-visual-profile-store';
 import type { ThemePreview } from './tools/executor';
+import { classifyImageIntent } from './image-intent';
+import { applyPrimaryImageToProject } from './primary-image-flow';
 
 const conversationHistory: ChatMessage[] = [];
 let activeAbortController: AbortController | null = null;
@@ -460,20 +462,19 @@ export function setupChatInterface(deps: ChatDeps) {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
-      input.multiple = true;
       input.onchange = () => {
         const files = input.files;
         if (!files) return;
-        for (const file of Array.from(files)) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const dataUrl = e.target?.result as string;
-            if (!dataUrl) return;
-            pendingImages.push(dataUrl);
-            renderImagePreviewBar();
-          };
-          reader.readAsDataURL(file);
-        }
+        const file = files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = e.target?.result as string;
+          if (!dataUrl) return;
+          pendingImages.splice(0, pendingImages.length, dataUrl);
+          renderImagePreviewBar();
+        };
+        reader.readAsDataURL(file);
       };
       input.click();
   };
@@ -512,6 +513,30 @@ export function setupChatInterface(deps: ChatDeps) {
     return messageEl;
   }
 
+  function addStatusMessage(content: string): HTMLElement {
+    const msgEl = addMessageToChat('ai', '');
+    const contentEl = msgEl.querySelector('.message-content') as HTMLElement | null;
+    if (contentEl) {
+      contentEl.innerHTML = `<span class="tool-loading-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span> ${content}</span>`;
+    }
+    return msgEl;
+  }
+
+  async function persistProjectVisualContext(projectId: string): Promise<void> {
+    const project = await loadProject(projectId);
+    if (!project) return;
+    project.visualContext = loadProjectVisualContext(projectId);
+    await saveProject(project);
+  }
+
+  function appendImageRoleBadge(contentEl: HTMLElement | null, label: string) {
+    if (!contentEl) return;
+    const badge = document.createElement('div');
+    badge.textContent = label;
+    badge.style.cssText = 'margin-top:6px;font-size:12px;color:var(--auxiliary-gray);';
+    contentEl.appendChild(badge);
+  }
+
   async function sendUserMessage(source: 'default' | 'conversation' = 'conversation') {
     if (activeAbortController) return;
     const activeInput = source === 'default' ? defaultMessageInput : conversationMessageInput;
@@ -526,16 +551,22 @@ export function setupChatInterface(deps: ChatDeps) {
 
     const userMessageTimestamp = Date.now();
     const userMessageId = userMessageTimestamp.toString();
+    const currentProjectId = getCurrentProjectId();
+    const currentProject = currentProjectId ? await loadProject(currentProjectId) : null;
+    const visualContext = currentProject?.visualContext ?? (currentProjectId ? loadProjectVisualContext(currentProjectId) : null);
 
     if (hasImages) {
       const imagesToSend = [...pendingImages];
       pendingImages.length = 0;
       renderImagePreviewBar();
-      const msgEl = addMessageToChat('user', content || '上传了参考图片');
+      const imageIntent = classifyImageIntent(content || '');
+      const finalRole = content ? imageIntent.role : 'reference';
+      const userLabel = finalRole === 'primary' ? '上传了主图' : '上传了参考图片';
+      const msgEl = addMessageToChat('user', content || userLabel);
       conversationHistory.push({
         id: userMessageId,
         role: 'user',
-        content: content || '上传了参考图片',
+        content: content || userLabel,
         timestamp: userMessageTimestamp,
       });
       const contentEl = msgEl.querySelector('.message-content') as HTMLElement;
@@ -546,11 +577,60 @@ export function setupChatInterface(deps: ChatDeps) {
           img.style.cssText = 'max-width:200px;border-radius:8px;margin-top:4px;display:block;';
           contentEl.appendChild(img);
         });
+        appendImageRoleBadge(
+          contentEl,
+          finalRole === 'primary'
+            ? '已识别为主图，将直接用于生成主题预览'
+            : '已识别为参考图，将作为风格参考',
+        );
       }
       await saveChatHistory();
-      imagesToSend.forEach(async (dataUrl) => {
+
+      if (finalRole === 'primary' && currentProjectId) {
+        const statusEl = addStatusMessage('正在根据主图提取主题色并生成预览...');
+        const imageDataUrl = imagesToSend[0];
+        updateProjectVisualContext(currentProjectId, {
+          imageInput: {
+            dataUrl: imageDataUrl,
+            role: finalRole,
+            sourceText: content,
+            explicitReason: imageIntent.reason,
+            updatedAt: Date.now(),
+          },
+        });
+        const primaryResult = await applyPrimaryImageToProject({
+          projectId: currentProjectId,
+          imageDataUrl,
+          message: content || imageIntent.matchedPhrase || '',
+        });
+        statusEl.remove();
+        if (primaryResult.success) {
+          addMessageToChat('ai', [
+            primaryResult.message,
+            primaryResult.primaryColor ? `主色已提取为 ${primaryResult.primaryColor}。` : '',
+            primaryResult.enforcedReason ?? '',
+          ].filter(Boolean).join(' '));
+          deps.expandPreview();
+          deps.collapseProjectSidebar();
+          deps.setChatPanelWidth(372);
+        } else {
+          addMessageToChat('ai', `⚠️ ${primaryResult.message}`);
+        }
+      } else {
+        const imageDataUrl = imagesToSend[0];
+        if (currentProjectId) {
+          updateProjectVisualContext(currentProjectId, {
+            imageInput: {
+              dataUrl: imageDataUrl,
+              role: finalRole,
+              sourceText: content,
+              explicitReason: imageIntent.reason,
+              updatedAt: Date.now(),
+            },
+          });
+        }
         try {
-          const result = await analyzeImageAsync(dataUrl);
+          const result = await analyzeImageAsync(imageDataUrl);
           if (result.success && result.data) {
             const colors = result.data as { dominantColors: string[] };
             conversationHistory.push({
@@ -565,7 +645,7 @@ export function setupChatInterface(deps: ChatDeps) {
             message: (error as Error).message,
           });
         }
-      });
+      }
     } else {
       addMessageToChat('user', content);
       conversationHistory.push({
@@ -585,7 +665,52 @@ export function setupChatInterface(deps: ChatDeps) {
       fallbackInput.value = '';
       resizeMessageInput(fallbackInput, source === 'default' ? conversationComposerInner : defaultComposerInner);
     }
-    if (content) await callAI(content);
+    const latestVisualContext = currentProjectId ? loadProjectVisualContext(currentProjectId) : undefined;
+    const currentImageRole = latestVisualContext?.imageInput?.role;
+    const shouldSkipAiForPrimaryImage = hasImages && currentImageRole === 'primary';
+    const shouldUpgradeExistingReference = !hasImages
+      && Boolean(content)
+      && currentProjectId
+      && latestVisualContext?.imageInput?.dataUrl
+      && currentImageRole === 'reference'
+      && classifyImageIntent(content).role === 'primary';
+
+    if (shouldUpgradeExistingReference && currentProjectId && latestVisualContext?.imageInput?.dataUrl) {
+      const statusEl = addStatusMessage('正在将当前参考图升级为主图并生成预览...');
+      updateProjectVisualContext(currentProjectId, {
+        imageInput: {
+          dataUrl: latestVisualContext.imageInput.dataUrl,
+          role: 'primary',
+          sourceText: content,
+          explicitReason: 'upgrade-from-reference',
+          updatedAt: Date.now(),
+        },
+      });
+      const primaryResult = await applyPrimaryImageToProject({
+        projectId: currentProjectId,
+        imageDataUrl: latestVisualContext.imageInput.dataUrl,
+        message: content,
+      });
+      statusEl.remove();
+      addMessageToChat('ai', primaryResult.success
+        ? [
+            '已将当前参考图升级为主图并生成主题预览。',
+            primaryResult.primaryColor ? `主色已提取为 ${primaryResult.primaryColor}。` : '',
+            primaryResult.enforcedReason ?? '',
+          ].filter(Boolean).join(' ')
+        : `⚠️ ${primaryResult.message}`);
+      if (primaryResult.success) {
+        deps.expandPreview();
+        deps.collapseProjectSidebar();
+        deps.setChatPanelWidth(372);
+      }
+    }
+
+    if (content && !shouldSkipAiForPrimaryImage && !shouldUpgradeExistingReference) await callAI(content);
+    if (!content && hasImages && currentImageRole !== 'primary') {
+      addMessageToChat('ai', '已收到这张参考图。继续输入一句描述，比如“参考这张图做一个春日主题”，我就会开始生成。');
+      await saveChatHistory();
+    }
 
     if (content && getCurrentProjectId()) {
       const projectId = getCurrentProjectId()!;

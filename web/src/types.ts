@@ -1,3 +1,5 @@
+import type { ProjectVisualContext } from './tools/project-visual-context-store';
+
 /**
  * Tool Calling 类型定义
  * AI 输出的结构化指令，前端解析执行
@@ -144,6 +146,7 @@ export interface ConfirmedProjectSnapshot {
   colors: Record<string, string>;
   bgImageUrl?: string;
   headerBgImageUrl?: string;
+  visualContext?: ProjectVisualContext;
   sourceUpdatedAt: number;
   confirmedAt: number;
 }
@@ -200,6 +203,7 @@ export interface ExportProjectSnapshot {
   colors: Record<string, string>;
   bgImageUrl?: string;
   headerBgImageUrl?: string;
+  visualContext?: ProjectVisualContext;
 }
 
 export interface ExportBatch {
@@ -212,4 +216,15 @@ export interface ExportBatch {
   exportDir?: string;
   error?: string;
   projectSnapshot: ExportProjectSnapshot;
+}
+
+export interface ExportJobQueueEntry {
+  batchId: string;
+  projectId: string;
+  name: string;
+  nameEn: string;
+  templateType: 'light-ui' | 'dark-ui';
+  selectedProducts: string[];
+  createdAt: number;
+  status: ExportBatchStatus;
 }

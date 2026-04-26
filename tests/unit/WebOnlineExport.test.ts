@@ -36,4 +36,27 @@ describe('web online export', () => {
     });
     expect(snapshot.colors['primary-color']).toBe('#2C615C');
   });
+
+  test('replaces blob image urls with the original primary image in confirmed snapshots', () => {
+    const snapshot = buildConfirmedProjectSnapshot({
+      ...createProject(),
+      bgImageUrl: 'blob:http://127.0.0.1:5173/runtime-login',
+      headerBgImageUrl: 'blob:http://127.0.0.1:5173/runtime-header',
+      visualContext: {
+        projectId: 'project-1',
+        mustHaveElements: [],
+        avoidElements: [],
+        temporaryAdjustments: [],
+        imageInput: {
+          dataUrl: 'data:image/png;base64,AAAA',
+          role: 'primary',
+          updatedAt: 2000,
+        },
+        updatedAt: 2000,
+      },
+    }, 3000);
+
+    expect(snapshot.bgImageUrl).toBe('data:image/png;base64,AAAA');
+    expect(snapshot.headerBgImageUrl).toBe('data:image/png;base64,AAAA');
+  });
 });

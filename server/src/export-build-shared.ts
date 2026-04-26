@@ -51,6 +51,11 @@ export interface ServerBuildSnapshotProject {
   colors: Record<string, string>;
   bgImageUrl?: string;
   headerBgImageUrl?: string;
+  visualContext?: {
+    imageInput?: {
+      dataUrl?: string;
+    };
+  };
   createdAt: number;
   updatedAt: number;
 }
@@ -64,8 +69,20 @@ export interface ServerBuildExportAssetSnapshotArgs {
   now?: number;
 }
 
+function resolveSnapshotImageUrl(args: ServerBuildExportAssetSnapshotArgs, imageUrl: string | undefined): string | undefined {
+  if (imageUrl && !imageUrl.startsWith('blob:')) {
+    return imageUrl;
+  }
+  const visualContextImage = args.project.visualContext?.imageInput?.dataUrl?.trim();
+  if (visualContextImage) {
+    return visualContextImage;
+  }
+  return undefined;
+}
+
 export function buildServerExportAssetSnapshot(args: ServerBuildExportAssetSnapshotArgs) {
-  const sourceBackground = args.project.bgImageUrl?.trim();
+  const sourceBackground = resolveSnapshotImageUrl(args, args.project.bgImageUrl?.trim());
+  const sourceHeaderBackground = resolveSnapshotImageUrl(args, args.project.headerBgImageUrl?.trim());
 
   return {
     version: 1 as const,
@@ -79,7 +96,7 @@ export function buildServerExportAssetSnapshot(args: ServerBuildExportAssetSnaps
     },
     sourceImages: {
       background: sourceBackground || undefined,
-      headerBackground: args.project.headerBgImageUrl?.trim() || undefined,
+      headerBackground: sourceHeaderBackground || undefined,
     },
     assetSources: {
       login: 'background-image',
