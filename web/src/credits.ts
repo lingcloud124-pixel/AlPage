@@ -4,6 +4,7 @@ export interface CreditsInfo {
   credits: number;
   maxCredits: number;
   nextResetAt: string;
+  costPerChat?: number;
 }
 
 let cachedCredits: CreditsInfo | null = null;
@@ -14,6 +15,7 @@ export async function fetchCredits(): Promise<CreditsInfo> {
     return { credits: 0, maxCredits: 100, nextResetAt: '' };
   }
   cachedCredits = await res.json();
+  updateCostHints(cachedCredits!.costPerChat);
   return cachedCredits!;
 }
 
@@ -50,4 +52,11 @@ export function formatNextReset(nextResetAt: string): string {
   if (!nextResetAt) return '明日 06:00';
   const d = new Date(nextResetAt);
   return `${d.getMonth() + 1}月${d.getDate()}日 06:00`;
+}
+
+export function updateCostHints(costPerChat?: number): void {
+  const cost = costPerChat ?? cachedCredits?.costPerChat ?? 25;
+  document.querySelectorAll('.chat-cost-hint').forEach(el => {
+    el.textContent = `⚡${cost}`;
+  });
 }

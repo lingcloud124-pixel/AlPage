@@ -13,5 +13,6 @@ creditsRouter.get('/', (req, res) => {
     credits,
     maxCredits,
     nextResetAt: getNextResetTime(),
+    costPerChat: config?.credits_per_conversation ?? 25,
   });
 });

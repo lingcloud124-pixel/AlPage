@@ -1816,6 +1816,22 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
   border-radius: 999px;
 }
 
+.chat-cost-hint {
+  position: absolute;
+  right: 64px;
+  bottom: 27px;
+  font-size: 12px;
+  line-height: 1;
+  color: rgba(255,255,255,0.35);
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+body[data-ui-theme="light"] .chat-cost-hint {
+  color: rgba(0,0,0,0.3);
+}
+
 
 .chat-shell-send:hover {
   background-color: #1a4a46;

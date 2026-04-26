@@ -1,5 +1,5 @@
 import initSqlJs, { Database } from 'sql.js';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync, statSync, rmSync } from 'fs';
 import { join } from 'path';
 import { logger } from './logger.js';
 
@@ -235,7 +235,70 @@ function rotateBackups(): void {
 function startBackupScheduler(): void {
   backupDb();
   backupTimer = setInterval(backupDb, BACKUP_INTERVAL_MS);
+  setInterval(() => {
+    cleanupOldExportFiles();
+    vacuumDb();
+  }, 24 * 60 * 60 * 1000);
+  setTimeout(() => {
+    cleanupOldExportFiles();
+  }, 10000);
 }
+
+const EXPORT_OUTPUT_DIR = join(process.cwd(), '..', 'output', 'service-jobs');
+const EXPORT_RETENTION_DAYS = 30;
+const MAX_PROJECTS_PER_USER = 50;
+const MAX_MESSAGES_PER_PROJECT = 100;
+
+function cleanupOldExportFiles(): void {
+  try {
+    if (!existsSync(EXPORT_OUTPUT_DIR)) return;
+    const cutoff = Date.now() - EXPORT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    const jobDirs = readdirSync(EXPORT_OUTPUT_DIR);
+    let cleaned = 0;
+    for (const dir of jobDirs) {
+      const dirPath = join(EXPORT_OUTPUT_DIR, dir);
+      try {
+        const st = statSync(dirPath);
+        if (st.isDirectory() && st.mtimeMs < cutoff) {
+          rmSync(dirPath, { recursive: true, force: true });
+          cleaned++;
+        }
+      } catch {}
+    }
+    if (cleaned > 0) logger.info('Cleaned old export files', { count: cleaned });
+  } catch (err) {
+    logger.error('Export cleanup failed', err);
+  }
+}
+
+function vacuumDb(): void {
+  try {
+    db.run('VACUUM');
+    logger.info('Database VACUUM completed');
+  } catch (err) {
+    logger.error('VACUUM failed', err);
+  }
+}
+
+export function getProjectCount(userId: number): number {
+  const stmt = db.prepare('SELECT COUNT(*) as cnt FROM theme_projects WHERE user_id = ?');
+  stmt.bind([userId]);
+  let count = 0;
+  if (stmt.step()) count = (stmt.getAsObject() as any).cnt;
+  stmt.free();
+  return count;
+}
+
+export function getMessageCount(projectId: string): number {
+  const stmt = db.prepare('SELECT COUNT(*) as cnt FROM theme_chat_messages WHERE project_id = ?');
+  stmt.bind([projectId]);
+  let count = 0;
+  if (stmt.step()) count = (stmt.getAsObject() as any).cnt;
+  stmt.free();
+  return count;
+}
+
+export { MAX_PROJECTS_PER_USER, MAX_MESSAGES_PER_PROJECT };
 
 export { db };
 

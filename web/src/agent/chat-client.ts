@@ -1,6 +1,7 @@
 import type { ChatRequest, ChatResponse, AISettings } from '../types';
 import { authHeaders } from '../auth';
 import { fetchCredits, updateCreditsDisplay, formatNextReset } from '../credits';
+import { getCurrentProjectId } from '../project-manager';
 
 export const SETTINGS_KEY = 'themeStudioSettings';
 // Backend API endpoints
@@ -247,6 +248,7 @@ export async function chatCompletion(
           tools: request.tools,
           temperature: request.temperature ?? 0.7,
           stream: true,
+          project_id: getCurrentProjectId() || undefined,
         }),
         signal: controller.signal,
       });
@@ -264,8 +266,11 @@ export async function chatCompletion(
             updateCreditsDisplay({ credits: errData.remainingCredits ?? 0, maxCredits: 100, nextResetAt: errData.nextResetAt ?? '' });
             throw new Error(`积分不足，今日使用次数已用完。${formatNextReset(errData.nextResetAt)}自动恢复`);
           }
+          if (errData.code === 'MESSAGE_LIMIT_EXCEEDED') {
+            throw new Error(errData.error || '对话轮数已达上限');
+          }
         } catch (e) {
-          if ((e as Error).message.includes('积分不足')) throw e;
+          if ((e as Error).message.includes('积分不足') || (e as Error).message.includes('已达上限')) throw e;
         }
       }
 

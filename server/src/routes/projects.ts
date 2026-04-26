@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, saveDb } from '../db.js';
+import { db, saveDb, getProjectCount, MAX_PROJECTS_PER_USER } from '../db.js';
 
 const router = Router();
 
@@ -37,6 +37,11 @@ router.post('/', async (req, res) => {
     
     if (!id || !name) {
       return res.status(400).json({ error: 'id and name are required' });
+    }
+
+    const projectCount = getProjectCount(userId);
+    if (projectCount >= MAX_PROJECTS_PER_USER) {
+      return res.status(403).json({ error: `项目数量已达上限 (${MAX_PROJECTS_PER_USER} 个)`, code: 'PROJECT_LIMIT_EXCEEDED' });
     }
     
     const now = Date.now();
