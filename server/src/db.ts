@@ -1,10 +1,15 @@
 import initSqlJs, { Database } from 'sql.js';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
+import { logger } from './logger.js';
 
 const DB_PATH = join(process.cwd(), 'data', 'theme-studio.db');
+const BACKUP_DIR = join(process.cwd(), 'data', 'backups');
+const BACKUP_INTERVAL_MS = 60 * 60 * 1000;
+const MAX_BACKUPS = 24;
 
 let db: Database;
+let backupTimer: ReturnType<typeof setInterval> | null = null;
 
 export async function initDb(): Promise<void> {
   const SQL = await initSqlJs();
@@ -16,6 +21,10 @@ export async function initDb(): Promise<void> {
     mkdirSync(join(process.cwd(), 'data'), { recursive: true });
     db = new SQL.Database();
   }
+  
+  db.run('PRAGMA journal_mode=WAL');
+  db.run('PRAGMA synchronous=NORMAL');
+  db.run('PRAGMA busy_timeout=5000');
   
   // Create users table
   db.run(`
@@ -134,37 +143,98 @@ export async function initDb(): Promise<void> {
       enabled_features TEXT NOT NULL DEFAULT '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}',
       daily_image_gen_limit INTEGER NOT NULL DEFAULT 100,
       daily_chat_adjust_limit INTEGER NOT NULL DEFAULT 50,
+      credits_per_conversation INTEGER NOT NULL DEFAULT 25,
+      daily_credits_limit INTEGER NOT NULL DEFAULT 100,
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `);
 
   db.run(`
-    INSERT OR IGNORE INTO security_config (id, cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit)
-    VALUES (1, '["http://localhost:5173"]', '[]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50)
+    INSERT OR IGNORE INTO security_config (id, cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, daily_credits_limit)
+    VALUES (1, '["http://localhost:5173"]', '[]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 100)
   `);
 
+  // Create user_credits table
   db.run(`
-    CREATE TABLE IF NOT EXISTS daily_usage_quotas (
+    CREATE TABLE IF NOT EXISTS user_credits (
       user_id INTEGER NOT NULL,
-      date TEXT NOT NULL,
-      image_gen_count INTEGER NOT NULL DEFAULT 0,
-      chat_adjust_count INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (user_id, date),
+      credits INTEGER NOT NULL DEFAULT 100,
+      last_reset_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
 
+  // Seed credits for all users
+  const creditNow = Math.floor(Date.now() / 1000);
+  [1, 2, 3].forEach(uid => {
+    const cs = db.prepare('INSERT OR IGNORE INTO user_credits (user_id, credits, last_reset_at) VALUES (?, 100, ?)');
+    cs.bind([uid, creditNow]);
+    cs.step();
+    cs.free();
+  });
+
   // Save to disk
   saveDb();
-  console.log('Database initialized successfully');
+  startBackupScheduler();
+  logger.info('Database initialized successfully');
 }
 
-// Helper to persist to disk
 export function saveDb() {
-  const data = db.export();
-  const buffer = Buffer.from(data);
-  mkdirSync(join(DB_PATH, '..'), { recursive: true });
-  writeFileSync(DB_PATH, buffer);
+  try {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    mkdirSync(join(DB_PATH, '..'), { recursive: true });
+    writeFileSync(DB_PATH, buffer);
+  } catch (err) {
+    logger.error('Failed to save database', err);
+  }
+}
+
+export function closeDb(): void {
+  if (backupTimer) {
+    clearInterval(backupTimer);
+    backupTimer = null;
+  }
+  try {
+    saveDb();
+    (db as any).close();
+    logger.info('Database closed');
+  } catch (err) {
+    logger.error('Error closing database', err);
+  }
+}
+
+function backupDb(): void {
+  try {
+    if (!existsSync(BACKUP_DIR)) mkdirSync(BACKUP_DIR, { recursive: true });
+    const d = new Date();
+    const ts = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(d.getHours()).padStart(2,'0')}`;
+    const backupPath = join(BACKUP_DIR, `theme-studio-${ts}.db`);
+    const data = db.export();
+    writeFileSync(backupPath, Buffer.from(data));
+    logger.info('Database backup created', { path: backupPath });
+    rotateBackups();
+  } catch (err) {
+    logger.error('Database backup failed', err);
+  }
+}
+
+function rotateBackups(): void {
+  try {
+    if (!existsSync(BACKUP_DIR)) return;
+    const files = readdirSync(BACKUP_DIR)
+      .filter(f => f.startsWith('theme-studio-') && f.endsWith('.db'))
+      .sort();
+    while (files.length > MAX_BACKUPS) {
+      unlinkSync(join(BACKUP_DIR, files.shift()!));
+    }
+  } catch {}
+}
+
+function startBackupScheduler(): void {
+  backupDb();
+  backupTimer = setInterval(backupDb, BACKUP_INTERVAL_MS);
 }
 
 export { db };
@@ -201,7 +271,9 @@ export async function updateSecurityConfig(
   rate_limits?: Record<string, any>,
   enabled_features?: Record<string, boolean>,
   daily_image_gen_limit?: number,
-  daily_chat_adjust_limit?: number
+  daily_chat_adjust_limit?: number,
+  credits_per_conversation?: number,
+  daily_credits_limit?: number
 ): Promise<void> {
   const current = getSecurityConfig();
   
@@ -212,6 +284,8 @@ export async function updateSecurityConfig(
   if (enabled_features !== undefined) updateFields.enabled_features = JSON.stringify(enabled_features);
   if (daily_image_gen_limit !== undefined) updateFields.daily_image_gen_limit = daily_image_gen_limit;
   if (daily_chat_adjust_limit !== undefined) updateFields.daily_chat_adjust_limit = daily_chat_adjust_limit;
+  if (credits_per_conversation !== undefined) updateFields.credits_per_conversation = credits_per_conversation;
+  if (daily_credits_limit !== undefined) updateFields.daily_credits_limit = daily_credits_limit;
   
   if (Object.keys(updateFields).length === 0) {
     return;
@@ -231,63 +305,71 @@ export async function updateSecurityConfig(
   saveDb();
 }
 
-export function getOrCreateDailyQuota(userId: number, date: string): any {
-  const selectStmt = db.prepare('SELECT * FROM daily_usage_quotas WHERE user_id = ? AND date = ?');
-  selectStmt.bind([userId, date]);
-  let row: Record<string, unknown> | null = null;
-  if (selectStmt.step()) {
-    row = selectStmt.getAsObject() as Record<string, unknown>;
-  }
-  selectStmt.free();
-  
-  if (row) {
-    return row;
-  }
-  
-  const insertStmt = db.prepare('INSERT INTO daily_usage_quotas (user_id, date, image_gen_count, chat_adjust_count) VALUES (?, ?, 0, 0)');
-  insertStmt.bind([userId, date]);
-  insertStmt.step();
-  insertStmt.free();
-  
-  saveDb();
-  
-  return { user_id: userId, date, image_gen_count: 0, chat_adjust_count: 0 };
-}
-
-export function getDailyUsageCounts(userId: number, date: string): { imageGenCount: number; chatAdjustCount: number } {
-  const quota = getOrCreateDailyQuota(userId, date);
-  return {
-    imageGenCount: Number(quota.image_gen_count ?? 0),
-    chatAdjustCount: Number(quota.chat_adjust_count ?? 0),
-  };
-}
-
-export function incrementUsageCount(userId: number, date: string, usageType: 'image_gen' | 'chat_adjust'): number {
-  const quota = getOrCreateDailyQuota(userId, date);
-  
-  let newCount = 0;
-  if (usageType === 'image_gen') {
-    newCount = quota.image_gen_count + 1;
-    const updateStmt = db.prepare('UPDATE daily_usage_quotas SET image_gen_count = ? WHERE user_id = ? AND date = ?');
-    updateStmt.bind([newCount, userId, date]);
-    updateStmt.step();
-    updateStmt.free();
-  } else if (usageType === 'chat_adjust') {
-    newCount = quota.chat_adjust_count + 1;
-    const updateStmt = db.prepare('UPDATE daily_usage_quotas SET chat_adjust_count = ? WHERE user_id = ? AND date = ?');
-    updateStmt.bind([newCount, userId, date]);
-    updateStmt.step();
-    updateStmt.free();
-  }
-  
-  saveDb();
-  return newCount;
-}
-
-export function getCurrentDate(): string {
+function getLastResetPoint(): number {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const today6am = new Date(now);
+  today6am.setHours(6, 0, 0, 0);
+  if (now < today6am) {
+    today6am.setDate(today6am.getDate() - 1);
+  }
+  return Math.floor(today6am.getTime() / 1000);
+}
+
+export function checkAndResetCredits(userId: number): void {
+  const stmt = db.prepare('SELECT last_reset_at FROM user_credits WHERE user_id = ?');
+  stmt.bind([userId]);
+  let lastResetAt = 0;
+  if (stmt.step()) {
+    lastResetAt = (stmt.getAsObject() as any).last_reset_at as number;
+  }
+  stmt.free();
+
+  const resetPoint = getLastResetPoint();
+  if (lastResetAt < resetPoint) {
+    const config = getSecurityConfig();
+    const limit = config?.daily_credits_limit ?? 100;
+    const updateStmt = db.prepare('UPDATE user_credits SET credits = ?, last_reset_at = ? WHERE user_id = ?');
+    updateStmt.bind([limit, Math.floor(Date.now() / 1000), userId]);
+    updateStmt.step();
+    updateStmt.free();
+    saveDb();
+  }
+}
+
+export function getCredits(userId: number): { credits: number; lastResetAt: number } {
+  checkAndResetCredits(userId);
+  const stmt = db.prepare('SELECT credits, last_reset_at FROM user_credits WHERE user_id = ?');
+  stmt.bind([userId]);
+  let result = { credits: 100, lastResetAt: 0 };
+  if (stmt.step()) {
+    const row = stmt.getAsObject() as any;
+    result = { credits: row.credits as number, lastResetAt: row.last_reset_at as number };
+  }
+  stmt.free();
+  return result;
+}
+
+export function deductCredits(userId: number, amount: number): { success: boolean; remaining: number } {
+  checkAndResetCredits(userId);
+  const current = getCredits(userId);
+  if (current.credits < amount) {
+    return { success: false, remaining: current.credits };
+  }
+  const newCredits = current.credits - amount;
+  const updateStmt = db.prepare('UPDATE user_credits SET credits = ? WHERE user_id = ?');
+  updateStmt.bind([newCredits, userId]);
+  updateStmt.step();
+  updateStmt.free();
+  saveDb();
+  return { success: true, remaining: newCredits };
+}
+
+export function getNextResetTime(): string {
+  const now = new Date();
+  const next6am = new Date(now);
+  next6am.setHours(6, 0, 0, 0);
+  if (now >= next6am) {
+    next6am.setDate(next6am.getDate() + 1);
+  }
+  return next6am.toISOString();
 }

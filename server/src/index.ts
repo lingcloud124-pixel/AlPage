@@ -1,11 +1,3 @@
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception:', err);
-});
-
-process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled rejection:', reason);
-});
-
 import { config as loadEnv } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
@@ -18,9 +10,20 @@ import { dirname, join, resolve } from 'path';
   loadEnv({ path: envPath, override: false });
 });
 
+const { logger } = await import('./logger.js');
+
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', { message: err.message, stack: err.stack });
+});
+
+process.on('unhandledRejection', (reason) => {
+  const detail = reason instanceof Error ? { message: reason.message, stack: reason.stack } : String(reason);
+  logger.error('Unhandled rejection', detail);
+});
+
 const [
   { default: express },
-  { initDb },
+  { initDb, closeDb },
   { authRouter },
   { modelConfigRouter },
   { projectsRouter },
@@ -33,7 +36,9 @@ const [
   { default: securityConfigRouter },
   { dynamicCors },
   { rateLimitMiddleware },
-  { quotaMiddleware },
+  { creditsMiddleware },
+  { creditsRouter },
+  { requestLogger },
 ] = await Promise.all([
   import('express'),
   import('./db.js'),
@@ -49,33 +54,83 @@ const [
   import('./routes/security-config.js'),
   import('./middleware/cors.js'),
   import('./middleware/rate-limit.js'),
-  import('./middleware/quota.js'),
+  import('./middleware/credits.js'),
+  import('./routes/credits.js'),
+  import('./middleware/request-logger.js'),
 ]);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
-app.use(dynamicCors);
-app.use(express.json({ limit: '50mb' }));
+const START_TIME = Date.now();
 
-app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.use(dynamicCors);
+app.use(express.json({ limit: '10mb' }));
+app.use(requestLogger);
+
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.removeHeader('X-Powered-By');
+  next();
+});
+
+app.get('/api/health', async (_req, res) => {
+  try {
+    const { db } = await import('./db.js');
+    const ok = db != null;
+    res.json({
+      status: ok ? 'ok' : 'degraded',
+      uptime: Math.floor((Date.now() - START_TIME) / 1000),
+      db: ok ? 'connected' : 'disconnected',
+      version: '1.0.0',
+    });
+  } catch {
+    res.status(503).json({ status: 'error', db: 'disconnected' });
+  }
+});
 
 app.use('/api/model-config', adminAuthMiddleware, modelConfigRouter);
 app.use('/api/security-config', adminAuthMiddleware, securityConfigRouter);
 app.use('/api/theme', authMiddleware);
 app.use('/api/theme', rateLimitMiddleware);
-app.use('/api/theme', quotaMiddleware);
+app.use('/api/theme', creditsMiddleware);
 app.use('/api/theme/projects', projectsRouter);
 app.use('/api/theme/projects', messagesRouter);
 app.use('/api/theme/projects', confirmedVersionsRouter);
 app.use('/api/theme', exportJobsRouter);
 app.use('/api/theme', aiProxyRouter);
+app.use('/api/theme/credits', creditsRouter);
 
-app.use('/admin', adminAuthMiddleware, express.static(join(__dirname, '..', 'admin')));
-app.get('/admin/{*splat}', adminAuthMiddleware, (_req, res) => {
+app.use('/admin', express.static(join(__dirname, '..', 'admin')));
+app.get('/admin/{*splat}', (_req, res) => {
   res.sendFile(join(__dirname, '..', 'admin', 'index.html'));
 });
+
+let server: ReturnType<typeof app.listen> | null = null;
+
+async function gracefulShutdown(signal: string) {
+  logger.info(`Received ${signal}, shutting down gracefully...`);
+  if (server) {
+    server.close(() => {
+      closeDb();
+      logger.info('Server closed');
+      process.exit(0);
+    });
+    setTimeout(() => {
+      logger.warn('Forced shutdown after timeout');
+      process.exit(1);
+    }, 10000);
+  } else {
+    closeDb();
+    process.exit(0);
+  }
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 async function start() {
   await initDb();
@@ -91,7 +146,7 @@ async function start() {
       stmt.free();
       res.json(users);
     } catch (error) {
-      console.error('List users error:', error);
+      logger.error('List users error', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -99,11 +154,13 @@ async function start() {
   app.use('/api/auth', adminAuthMiddleware, authRouter);
 
   startExportJobRunner();
-  console.log(`Theme Studio API running on port ${PORT}`);
-  app.listen(PORT);
+
+  server = app.listen(PORT, () => {
+    logger.info(`Theme Studio API running on port ${PORT}`);
+  });
 }
 
 start().catch(err => {
-  console.error('Failed to start server:', err);
+  logger.error('Failed to start server', { message: err.message, stack: err.stack });
   process.exit(1);
 });

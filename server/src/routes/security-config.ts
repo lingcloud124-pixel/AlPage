@@ -24,7 +24,7 @@ router.get('/', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Security config not found' });
     }
     
-    const { cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, updated_at } = config;
+    const { cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, daily_credits_limit, updated_at } = config;
     res.json({
       corsOrigins: cors_origins,
       proxyImageHosts: proxy_image_hosts,
@@ -32,6 +32,8 @@ router.get('/', async (req: Request, res: Response) => {
       enabledFeatures: enabled_features,
       dailyImageGenLimit: daily_image_gen_limit,
       dailyChatAdjustLimit: daily_chat_adjust_limit,
+      creditsPerConversation: credits_per_conversation ?? 50,
+      dailyCreditsLimit: daily_credits_limit ?? 100,
       updated_at
     });
   } catch (error) {
@@ -52,11 +54,13 @@ router.put('/', async (req: Request, res: Response) => {
       : undefined;
     const dailyImageGenLimit = normalizePositiveInteger(req.body?.dailyImageGenLimit);
     const dailyChatAdjustLimit = normalizePositiveInteger(req.body?.dailyChatAdjustLimit);
+    const creditsPerConversation = normalizePositiveInteger(req.body?.creditsPerConversation);
+    const dailyCreditsLimit = normalizePositiveInteger(req.body?.dailyCreditsLimit);
     
-    await updateSecurityConfig(corsOrigins, proxyImageHosts, rateLimits, enabledFeatures, dailyImageGenLimit, dailyChatAdjustLimit);
+    await updateSecurityConfig(corsOrigins, proxyImageHosts, rateLimits, enabledFeatures, dailyImageGenLimit, dailyChatAdjustLimit, creditsPerConversation, dailyCreditsLimit);
     
     const updatedConfig = getSecurityConfig();
-    const { cors_origins: updatedCors, proxy_image_hosts: updatedProxy, rate_limits: updatedLimits, enabled_features: updatedFeatures, daily_image_gen_limit: updatedImageLimit, daily_chat_adjust_limit: updatedChatLimit, updated_at } = updatedConfig;
+    const { cors_origins: updatedCors, proxy_image_hosts: updatedProxy, rate_limits: updatedLimits, enabled_features: updatedFeatures, daily_image_gen_limit: updatedImageLimit, daily_chat_adjust_limit: updatedChatLimit, credits_per_conversation: updatedCreditsPerConv, daily_credits_limit: updatedDailyCredits, updated_at } = updatedConfig;
     
     res.json({
       success: true,
@@ -66,6 +70,8 @@ router.put('/', async (req: Request, res: Response) => {
       enabledFeatures: updatedFeatures,
       dailyImageGenLimit: updatedImageLimit,
       dailyChatAdjustLimit: updatedChatLimit,
+      creditsPerConversation: updatedCreditsPerConv ?? 50,
+      dailyCreditsLimit: updatedDailyCredits ?? 100,
       updated_at
     });
   } catch (error) {

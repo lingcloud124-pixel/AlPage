@@ -107,49 +107,39 @@
       </div>
 
       <div class="card">
-        <h2>安全设置 <span class="badge">Security</span></h2>
+        <h2>用户使用限制的设置 <span class="badge">限制</span></h2>
         
-        <label>跨域资源共享 (CORS) 允许域名列表</label>
-        <textarea id="corsAllowlist" placeholder="每行一个域名，例如&#10;http://localhost:3000&#10;https://your-domain.com&#10;*.mycompany.com" rows="4"></textarea>
-        <p class="subtitle" style="margin-top: 6px; font-size: 12px;">支持通配符 (*), 用换行分割多个域名</p>
-        
-        <label style="margin-top: 16px;">代理图片允许的域名列表</label>
-        <textarea id="proxyImageAllowlist" placeholder="每行一个域名，例如&#10;images.unsplash.com&#10;cdn.example.com" rows="3"></textarea>
-        <p class="subtitle" style="margin-top: 6px; font-size: 12px;">仅允许这些来源通过服务端代理图片，一行一个域名</p>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+          <label style="margin: 0; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="enableCreditsLimit" style="width: auto;" onchange="toggleCreditsSettings()">
+            <span>启用使用限制（积分制）</span>
+          </label>
+        </div>
 
-        <div class="row" style="margin-top: 16px;">
-          <div>
-            <label>每日图片生成额度（每用户）</label>
-            <input type="number" id="dailyImageGenLimit" placeholder="例如: 100">
+        <div id="creditsSettingsSection">
+          <div class="row">
+            <div>
+              <label>每日积分上限（每用户）</label>
+              <input type="number" id="dailyCreditsLimit" placeholder="例如: 100">
+            </div>
+            <div>
+              <label>每次对话消耗积分</label>
+              <input type="number" id="creditsPerConversation" placeholder="例如: 25">
+            </div>
           </div>
-          <div>
-            <label>每日主题调整对话额度（每用户）</label>
-            <input type="number" id="dailyChatAdjustLimit" placeholder="例如: 50">
-          </div>
+          <p class="subtitle" style="margin-top: 6px; font-size: 12px;">积分每日 06:00 自动重置为上限值，每次对话（含生图）扣除对应积分</p>
         </div>
-        <p class="subtitle" style="margin-top: 6px; font-size: 12px;">按用户、按自然日统计，全局统一生效</p>
-        
-        <label style="margin-top: 16px;">功能启用开关</label>
-        <div class="row" style="margin-top: 8px;">
-          <div>
-            <input type="checkbox" id="enableThemeExport" style="width: auto; margin-right: 8px;">
-            <label style="display: inline; margin-top: 0;" for="enableThemeExport">开启主题导出功能</label>
+
+        <details style="margin-top: 16px;">
+          <summary style="cursor: pointer; color: var(--muted); font-size: 13px; user-select: none;">高级设置（跨域、代理等，通常无需修改）</summary>
+          <div style="margin-top: 12px;">
+            <label>跨域资源共享 (CORS) 允许域名列表</label>
+            <textarea id="corsAllowlist" placeholder="每行一个域名&#10;http://localhost:5173（已默认配置）" rows="3"></textarea>
+            
+            <label style="margin-top: 12px;">代理图片允许的域名列表</label>
+            <textarea id="proxyImageAllowlist" placeholder="每行一个域名，留空则不限制" rows="2"></textarea>
           </div>
-          <div>
-            <input type="checkbox" id="enableProxyImage" style="width: auto; margin-right: 8px;">
-            <label style="display: inline; margin-top: 0;" for="enableProxyImage">开启代理图片功能</label>
-          </div>
-        </div>
-        <div class="row" style="margin-top: 8px;">
-          <div>
-            <input type="checkbox" id="enableImageGeneration" style="width: auto; margin-right: 8px;">
-            <label style="display: inline; margin-top: 0;" for="enableImageGeneration">开启图像生成</label>
-          </div>
-          <div>
-            <input type="checkbox" id="enableChat" style="width: auto; margin-right: 8px;">
-            <label style="display: inline; margin-top: 0;" for="enableChat">开启对话功能</label>
-          </div>
-        </div>
+        </details>
       </div>
 
       <div class="actions">
@@ -188,6 +178,11 @@
       el.textContent = msg;
       el.className = `toast ${type} show`;
       setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    function toggleCreditsSettings() {
+      const enabled = document.getElementById('enableCreditsLimit').checked;
+      document.getElementById('creditsSettingsSection').style.display = enabled ? 'block' : 'none';
     }
 
     function isAuthenticated() {
@@ -292,14 +287,13 @@
         const securityData = await securityRes.json();
         document.getElementById('corsAllowlist').value = securityData.corsOrigins?.join('\n') || '';
         document.getElementById('proxyImageAllowlist').value = securityData.proxyImageHosts?.join('\n') || '';
-        document.getElementById('dailyImageGenLimit').value = securityData.dailyImageGenLimit ?? '100';
-        document.getElementById('dailyChatAdjustLimit').value = securityData.dailyChatAdjustLimit ?? '50';
+        document.getElementById('dailyCreditsLimit').value = securityData.dailyCreditsLimit ?? '100';
+        document.getElementById('creditsPerConversation').value = securityData.creditsPerConversation ?? '25';
         
-        // Handle boolean flags
-        document.getElementById('enableThemeExport').checked = securityData.enabledFeatures?.export !== false;
-        document.getElementById('enableProxyImage').checked = securityData.enabledFeatures?.proxyImage !== false;
-        document.getElementById('enableImageGeneration').checked = securityData.enabledFeatures?.image !== false;
-        document.getElementById('enableChat').checked = securityData.enabledFeatures?.chat !== false;
+        // Credits limit toggle - enabled by default
+        const creditsEnabled = securityData.enabledFeatures?.quota !== false;
+        document.getElementById('enableCreditsLimit').checked = creditsEnabled;
+        document.getElementById('creditsSettingsSection').style.display = creditsEnabled ? 'block' : 'none';
         
       } catch (e) {
         console.error("Error loading configuration:", e);
@@ -333,17 +327,17 @@
             .filter(item => item.length > 0),
           rateLimits: undefined,
           enabledFeatures: {
-            export: document.getElementById('enableThemeExport').checked,
-            proxyImage: document.getElementById('enableProxyImage').checked,
-            image: document.getElementById('enableImageGeneration').checked,
-            chat: document.getElementById('enableChat').checked,
+            export: true,
+            proxyImage: true,
+            image: true,
+            chat: true,
             cors: true,
-            quota: true,
+            quota: document.getElementById('enableCreditsLimit').checked,
             adminAuth: true,
             rateLimiting: true
           },
-          dailyImageGenLimit: parseInt(document.getElementById('dailyImageGenLimit').value) || 100,
-          dailyChatAdjustLimit: parseInt(document.getElementById('dailyChatAdjustLimit').value) || 50
+          dailyCreditsLimit: parseInt(document.getElementById('dailyCreditsLimit').value) || 100,
+          creditsPerConversation: parseInt(document.getElementById('creditsPerConversation').value) || 50
         };
         
         const [modelRes, securityRes] = await Promise.allSettled([
@@ -367,8 +361,8 @@
               proxyImageHosts: body.proxyImageHosts,
               ...(body.rateLimits ? { rateLimits: body.rateLimits } : {}),
               enabledFeatures: body.enabledFeatures,
-              dailyImageGenLimit: body.dailyImageGenLimit,
-              dailyChatAdjustLimit: body.dailyChatAdjustLimit,
+              dailyCreditsLimit: body.dailyCreditsLimit,
+              creditsPerConversation: body.creditsPerConversation,
             })
           })
         ]);

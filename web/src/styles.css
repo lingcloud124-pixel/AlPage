@@ -828,9 +828,54 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
   display: none;
 }
 
+.sidebar-bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding: 10px 0 2px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.credits-bar {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  width: 72px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.credits-icon {
+  display: none;
+}
+
+.credits-progress {
+  display: none;
+}
+
+.credits-fill {
+  display: none;
+}
+
+.credits-ok { background: #4ade80; }
+.credits-medium { background: #fbbf24; }
+.credits-low { background: #ef4444; }
+
+.credits-text {
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 500;
+}
+
 .chat-default-view {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
   background: var(--surface-0);
 }
@@ -844,6 +889,7 @@ body[data-ui-theme="light"] .sidebar-project-list::-webkit-scrollbar-thumb:hover
 .chat-conversation-view {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
   background: var(--surface-0);
 }
@@ -4191,10 +4237,11 @@ body[data-ui-theme="light"] .topbar-action-btn {
   display: none !important;
 }
 
-#homePage {
-  display: block;
+#workspaceView {
+  display: flex;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
 }
 
 .preset-filter {

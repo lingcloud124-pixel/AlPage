@@ -1,5 +1,6 @@
 import type { ChatRequest, ChatResponse, AISettings } from '../types';
 import { authHeaders } from '../auth';
+import { fetchCredits, updateCreditsDisplay, formatNextReset } from '../credits';
 
 export const SETTINGS_KEY = 'themeStudioSettings';
 // Backend API endpoints
@@ -144,12 +145,22 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
     }
 
     if (!response || !response.ok) {
+      if (response?.status === 403) {
+        try {
+          const errData = await response.json();
+          if (errData.code === 'CREDITS_EXHAUSTED') {
+            updateCreditsDisplay({ credits: errData.remainingCredits ?? 0, maxCredits: 100, nextResetAt: errData.nextResetAt ?? '' });
+            return { success: false, error: `积分不足，今日使用次数已用完。${formatNextReset(errData.nextResetAt)}自动恢复` };
+          }
+        } catch { /* fall through */ }
+      }
       const errorBody = response ? await response.text() : 'no response';
       const statusCode = response?.status ?? 0;
       return { success: false, error: `图像生成失败 (${statusCode}): ${errorBody}` };
     }
 
     const data = await response.json();
+    fetchCredits().then(updateCreditsDisplay).catch(() => {});
 
     const baseStatusCode = data.base_resp?.status_code;
     const baseStatusMsg = data.base_resp?.status_msg;
@@ -244,6 +255,18 @@ export async function chatCompletion(
       if (response.status === 401) {
         window.location.href = '/login.html';
         throw new Error('未授权，请重新登录');
+      }
+
+      if (response.status === 403) {
+        try {
+          const errData = await response.json();
+          if (errData.code === 'CREDITS_EXHAUSTED') {
+            updateCreditsDisplay({ credits: errData.remainingCredits ?? 0, maxCredits: 100, nextResetAt: errData.nextResetAt ?? '' });
+            throw new Error(`积分不足，今日使用次数已用完。${formatNextReset(errData.nextResetAt)}自动恢复`);
+          }
+        } catch (e) {
+          if ((e as Error).message.includes('积分不足')) throw e;
+        }
       }
 
       if (response.status === 529 && attempt < MAX_RETRIES) {

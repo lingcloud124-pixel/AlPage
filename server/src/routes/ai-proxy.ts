@@ -3,7 +3,7 @@ import http from 'http';
 import https from 'https';
 import { createHash, createHmac } from 'crypto';
 import { getModelConfig } from './model-config.js';
-import { getSecurityConfig } from '../db.js';
+import { getSecurityConfig, deductCredits } from '../db.js';
 import { buildSignedRequest, VolcAuth } from '../services/jimeng-client.js';
 
 const router = Router();
@@ -547,6 +547,14 @@ function validateProxyImageHost(url: string): boolean {
 }
 
 router.post('/chat', async (req, res) => {
+  const chatUserId = (req as any).userId || 1;
+  const chatSecurityConfig = getSecurityConfig();
+  const chatCreditsPerConv = chatSecurityConfig?.credits_per_conversation ?? 50;
+  res.on('finish', () => {
+    if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+      deductCredits(chatUserId, chatCreditsPerConv);
+    }
+  });
   try {
     const config = getModelConfig();
     const securityConfig = getSecurityConfig();

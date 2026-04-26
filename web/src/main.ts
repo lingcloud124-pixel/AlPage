@@ -31,6 +31,7 @@ import {
 import { loadDefaultTemplates } from './theme-engine';
 import { loadSettings } from './agent/chat-client';
 import { checkAuth } from './auth';
+import { fetchCredits, updateCreditsDisplay } from './credits';
 import { pickFallbackWorkspaceProject } from './workspace-recovery';
 
 declare global {
@@ -206,6 +207,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeColorEditor();
     await initializeFeatureModules();
     await initializeRoutingModule();
+    const creditsInfo = await fetchCredits();
+    updateCreditsDisplay(creditsInfo);
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       if (!target.closest('.sidebar-project-menu') && !target.closest('.sidebar-project-menu-btn')) {
