@@ -3,6 +3,17 @@ import type { Project } from '../project-manager';
 import { authHeaders } from '../auth';
 import { buildProjectExportNameEn } from '../project-naming';
 
+function resolveConfirmedSnapshotImageUrl(project: Project, imageUrl: string | undefined): string | undefined {
+  if (imageUrl && !imageUrl.startsWith('blob:')) {
+    return imageUrl;
+  }
+  const visualContextImage = project.visualContext?.imageInput?.dataUrl?.trim();
+  if (visualContextImage) {
+    return visualContextImage;
+  }
+  return undefined;
+}
+
 export interface CreateServerExportJobInput {
   projectId: string;
   confirmedVersionId: string;
@@ -16,8 +27,9 @@ export function buildConfirmedProjectSnapshot(project: Project, now: number = Da
     nameEn: buildProjectExportNameEn(project),
     templateType: project.templateType,
     colors: { ...project.colors },
-    bgImageUrl: project.bgImageUrl,
-    headerBgImageUrl: project.headerBgImageUrl,
+    bgImageUrl: resolveConfirmedSnapshotImageUrl(project, project.bgImageUrl),
+    headerBgImageUrl: resolveConfirmedSnapshotImageUrl(project, project.headerBgImageUrl),
+    visualContext: project.visualContext,
     sourceUpdatedAt: project.updatedAt,
     confirmedAt: now,
   };

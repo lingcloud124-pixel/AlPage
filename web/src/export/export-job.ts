@@ -1,4 +1,4 @@
-import type { ExportBatch } from '../types';
+import type { ExportBatch, ExportJobQueueEntry } from '../types';
 import type { Project } from '../project-manager';
 import { buildProjectExportNameEn } from '../project-naming';
 import { buildExportRequestYaml } from './build-config';
@@ -26,6 +26,19 @@ export interface ExportJobRequest {
     cssVariables: Record<string, string>;
     themeImageUrl?: string;
     selectedProducts: string[];
+  };
+}
+
+function toExportJobQueueEntry(request: ExportJobRequest): ExportJobQueueEntry {
+  return {
+    batchId: request.batch.id,
+    projectId: request.batch.projectSnapshot.projectId,
+    name: request.batch.projectSnapshot.name,
+    nameEn: request.batch.projectSnapshot.nameEn,
+    templateType: request.batch.projectSnapshot.templateType,
+    selectedProducts: [...request.batch.selectedProducts],
+    createdAt: request.batch.createdAt,
+    status: request.batch.status,
   };
 }
 
@@ -69,6 +82,7 @@ export function buildExportJobRequest(args: BuildExportJobRequestArgs): ExportJo
       colors: cssVariables,
       bgImageUrl: liveProjectSnapshot.bgImageUrl,
       headerBgImageUrl: liveProjectSnapshot.headerBgImageUrl,
+      visualContext: liveProjectSnapshot.visualContext,
     },
   };
 
@@ -111,8 +125,8 @@ export function appendExportBatchToProject(project: Project, batch: ExportBatch)
   };
 }
 
-export function appendExportJobRequest(queue: ExportJobRequest[], request: ExportJobRequest): ExportJobRequest[] {
-  return [...queue, request];
+export function appendExportJobRequest(queue: ExportJobQueueEntry[], request: ExportJobRequest): ExportJobQueueEntry[] {
+  return [...queue, toExportJobQueueEntry(request)];
 }
 
 export function updateExportBatchInProject(

@@ -115,6 +115,15 @@ function toFileUrl(filePath: string): string {
   return `file://${normalized.startsWith('/') ? normalized : `/${normalized}`}`;
 }
 
+function normalizeImageSourceUrl(source?: string): string | undefined {
+  if (!source) return undefined;
+  if (source.startsWith('data:image/')) return source;
+  if (source.startsWith('http://') || source.startsWith('https://') || source.startsWith('file://')) {
+    return source;
+  }
+  return toFileUrl(source);
+}
+
 function readJsonFile<T>(filePath: string): T {
   return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as T;
 }
@@ -211,12 +220,8 @@ async function startPreviewServer(baseUrl?: string): Promise<DevServerHandle> {
 
 async function applyPreviewState(page: Page, snapshot: AssetSnapshot, manifest: PreparedAssetsManifest): Promise<void> {
   const cssVariables = normalizeCssVariables(snapshot.colors ?? {});
-  const themeBackground = snapshot.sourceImages?.background
-    ? toFileUrl(snapshot.sourceImages.background)
-    : undefined;
-  const headerBackground = snapshot.sourceImages?.headerBackground
-    ? toFileUrl(snapshot.sourceImages.headerBackground)
-    : themeBackground;
+  const themeBackground = normalizeImageSourceUrl(snapshot.sourceImages?.background);
+  const headerBackground = normalizeImageSourceUrl(snapshot.sourceImages?.headerBackground) ?? themeBackground;
 
   await page.addStyleTag({
     content: `

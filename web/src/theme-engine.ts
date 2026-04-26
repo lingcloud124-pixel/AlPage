@@ -4,6 +4,7 @@ import { getTemplateSpecificThemeVars } from './theme/template-specific-vars';
 import { getHeaderSelectOptions } from './theme/template-registry';
 import { getCurrentProjectId, loadProject, saveProject } from './project-manager';
 import type { Project } from './project-manager';
+import { loadProjectVisualContext } from './tools/project-visual-context-store';
 
 const LINKED_LIGHT_BG_VARS = [
   '--tlayout-header-bg-extend-color',
@@ -100,11 +101,26 @@ export async function saveCurrentColorsToProject(): Promise<void> {
 
   const loginBgRaw = target.style.getPropertyValue('--theme-login-bg-image').trim();
   const loginBgMatch = loginBgRaw.match(/url\(['"]?([^'")\s]+)['"]?\)/);
-  if (loginBgMatch) project.bgImageUrl = loginBgMatch[1];
+  if (loginBgMatch) {
+    const loginBgUrl = loginBgMatch[1];
+    if (loginBgUrl.startsWith('blob:')) {
+      const visualContextBg = loadProjectVisualContext(pid).imageInput?.dataUrl;
+      if (visualContextBg) {
+        project.bgImageUrl = visualContextBg;
+      }
+    } else {
+      project.bgImageUrl = loginBgUrl;
+    }
+  }
 
   const headerBgRaw = target.style.getPropertyValue('--theme-header-bg-image').trim();
   const headerBgMatch = headerBgRaw.match(/url\(['"]?([^'")\s]+)['"]?\)/);
-  if (headerBgMatch) project.headerBgImageUrl = headerBgMatch[1];
+  if (headerBgMatch) {
+    const headerBgUrl = headerBgMatch[1];
+    if (!headerBgUrl.startsWith('blob:')) {
+      project.headerBgImageUrl = headerBgUrl;
+    }
+  }
 
   await saveProject(project);
 }

@@ -3,7 +3,7 @@ import { appendExportBatchToProject, appendExportJobRequest, buildExportJobReque
 import { dispatchExportJobToBridge, pickDirectoryViaBridge } from './export/export-bridge';
 import { fetchExportJobStatus } from './export/export-status-client';
 import { getCurrentProjectId, loadProject, saveProject, safeJsonParse } from './project-manager';
-import type { ExportBatchStatus } from './types';
+import type { ExportBatchStatus, ExportJobQueueEntry } from './types';
 import { loadSettings, saveSettings, getEffectiveExportRoot } from './agent/chat-client';
 import { normalizeExportRoot } from './export/export-paths';
 
@@ -14,6 +14,15 @@ const PACKAGE_PRODUCTS = [
   { id: 'ekp_v14_16', label: 'EKP V14~V16（主题+登录）' },
   { id: 'ekp_v17', label: 'EKP V17（主题+登录）' },
 ];
+
+function persistExportJobQueue(request: ReturnType<typeof buildExportJobRequest>): void {
+  try {
+    const queue = safeJsonParse<ExportJobQueueEntry[]>(localStorage.getItem(EXPORT_JOB_QUEUE_KEY), []);
+    localStorage.setItem(EXPORT_JOB_QUEUE_KEY, JSON.stringify(appendExportJobRequest(queue, request)));
+  } catch (error) {
+    console.warn('[package-manager] Failed to persist export queue entry:', error);
+  }
+}
 
 export function showNotification(message: string) {
   const toast = document.createElement('div');
@@ -254,8 +263,7 @@ async function startPackagingProcess() {
     const updatedProject = appendExportBatchToProject(project, request.batch);
     await saveProject(updatedProject);
 
-    const queue = safeJsonParse<any[]>(localStorage.getItem(EXPORT_JOB_QUEUE_KEY), []);
-    localStorage.setItem(EXPORT_JOB_QUEUE_KEY, JSON.stringify(appendExportJobRequest(queue, request)));
+    persistExportJobQueue(request);
 
     const dispatchResult = await dispatchExportJobToBridge(window, request).catch(() => ({ accepted: false, mode: 'none' as const }));
     if (!dispatchResult.accepted) {
