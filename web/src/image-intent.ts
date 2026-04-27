@@ -105,7 +105,7 @@ function includesAny(input: string, phrases: readonly string[]): string | undefi
 export function classifyImageIntent(message: string): ImageIntentResult {
   const normalized = message.trim().toLowerCase();
   if (!normalized) {
-    return { role: 'reference', reason: '未提供文字描述，默认按参考图处理。' };
+    return { role: 'primary', reason: '未提供文字描述，上传图片默认按主图处理。' };
   }
 
   const primaryStrong = includesAny(normalized, PRIMARY_STRONG_PHRASES);
@@ -145,5 +145,5 @@ export function classifyImageIntent(message: string): ImageIntentResult {
     return { role: 'reference', reason: '命中风格类关键词，按参考图处理。' };
   }
 
-  return { role: 'reference', reason: '未命中主图规则，默认按参考图处理。' };
+  return { role: 'primary', reason: '未命中明确参考图规则，上传图片默认按主图处理。' };
 }

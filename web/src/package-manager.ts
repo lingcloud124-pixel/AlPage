@@ -2,10 +2,11 @@ import { getAllCSSVariables } from './theme-engine';
 import { appendExportBatchToProject, appendExportJobRequest, buildExportJobRequest, updateExportBatchInProject } from './export/export-job';
 import { dispatchExportJobToBridge, pickDirectoryViaBridge } from './export/export-bridge';
 import { fetchExportJobStatus } from './export/export-status-client';
-import { getCurrentProjectId, loadProject, saveProject, safeJsonParse } from './project-manager';
+import { getCurrentProjectId, loadProject, saveProject, safeJsonParse, getLastProjectMutationError } from './project-manager';
 import type { ExportBatchStatus, ExportJobQueueEntry } from './types';
 import { loadSettings, saveSettings, getEffectiveExportRoot } from './agent/chat-client';
 import { normalizeExportRoot } from './export/export-paths';
+import { authHeaders } from './auth';
 
 const EXPORT_JOB_QUEUE_KEY = 'theme-studio-export-jobs';
 
@@ -25,8 +26,21 @@ function persistExportJobQueue(request: ReturnType<typeof buildExportJobRequest>
 }
 
 export function showNotification(message: string) {
+  showNotificationWithOptions(message);
+}
+
+export function showNotificationWithOptions(
+  message: string,
+  options: {
+    variant?: 'default' | 'critical';
+    position?: 'bottom-right' | 'top-center';
+    durationMs?: number;
+  } = {},
+) {
   const toast = document.createElement('div');
   toast.className = 'theme-studio-toast';
+  toast.dataset.variant = options.variant ?? 'default';
+  toast.dataset.position = options.position ?? 'bottom-right';
   toast.textContent = message;
   toast.style.opacity = '0';
   toast.style.transition = 'opacity 0.3s';
@@ -35,7 +49,7 @@ export function showNotification(message: string) {
   setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => { if (document.body.contains(toast)) document.body.removeChild(toast); }, 300);
-  }, 3000);
+  }, options.durationMs ?? 3000);
 }
 
 export function setupMainActions() {
@@ -119,7 +133,11 @@ function closeProgressModal() {
 }
 
 function triggerBlobDownload(dlUrl: string, filename: string) {
-  fetch(dlUrl)
+  fetch(dlUrl, {
+    headers: {
+      ...authHeaders(),
+    },
+  })
     .then(res => {
       if (!res.ok) throw new Error('download failed');
       return res.blob();
@@ -261,14 +279,29 @@ async function startPackagingProcess() {
     });
 
     const updatedProject = appendExportBatchToProject(project, request.batch);
-    await saveProject(updatedProject);
+    const savedProject = await saveProject(updatedProject);
+    if (!savedProject) {
+      const saveError = getLastProjectMutationError();
+      renderProgress(
+        'failed',
+        saveError?.code === 'PROJECT_LIMIT_EXCEEDED'
+          ? `当前项目数已达上限，无法记录新的打包任务。${saveError.message}`
+          : `保存打包任务失败：${saveError?.message ?? '请稍后重试'}`,
+      );
+      return;
+    }
 
     persistExportJobQueue(request);
 
-    const dispatchResult = await dispatchExportJobToBridge(window, request).catch(() => ({ accepted: false, mode: 'none' as const }));
+    const dispatchResult = await dispatchExportJobToBridge(window, request);
     if (!dispatchResult.accepted) {
       markLatestExportBatchStatus(updatedProject.id, request.batch.id, 'bridge_unavailable');
-      renderProgress('failed', '导出服务不可用，请检查服务器是否正常运行');
+      renderProgress(
+        'failed',
+        dispatchResult.error
+          ? `导出任务提交失败：${dispatchResult.error}`
+          : '导出服务不可用，请检查服务器是否正常运行',
+      );
       return;
     }
 
@@ -289,9 +322,16 @@ async function markLatestExportBatchStatus(projectId: string, batchId: string, s
 }
 
 async function trackExportJobStatus(projectId: string, batchId: string, productCount: number) {
+  let attempts = 0;
+  const MAX_STATUS_POLL_ATTEMPTS = 120;
   const poll = async () => {
+    attempts += 1;
     const status = await fetchExportJobStatus(fetch, batchId).catch(() => null);
     if (!status) {
+      if (attempts >= MAX_STATUS_POLL_ATTEMPTS) {
+        renderProgress('failed', '导出任务状态查询超时，请稍后刷新项目列表或重试打包');
+        return;
+      }
       window.setTimeout(poll, 2000);
       return;
     }

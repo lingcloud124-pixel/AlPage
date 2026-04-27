@@ -15,12 +15,23 @@
         <div class="app-container">
             <!-- Column 1: Project Sidebar (collapsible) -->
             <aside class="project-sidebar" id="projectSidebar">
+                <button class="landing-sidebar-toggle ui-icon-button" id="landingSidebarToggleBtn" title="展开项目列表">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="7 9 3 12 7 15"/>
+                        <line x1="9" y1="7" x2="21" y2="7"/>
+                        <line x1="9" y1="12" x2="21" y2="12"/>
+                        <line x1="9" y1="17" x2="21" y2="17"/>
+                    </svg>
+                </button>
                 <div class="sidebar-brand-header">
-                    <div class="sidebar-brand-icon"></div>
                     <div class="sidebar-brand-info">
-                        <div class="sidebar-brand-title">Theme Studio</div>
-                        <div class="sidebar-brand-subtitle">AI 主题设计助手</div>
+                        <div class="sidebar-brand-title">主题AI助手</div>
                     </div>
+                    <button class="sidebar-brand-collapse-btn ui-icon-button" id="sidebarBrandCollapseBtn" title="收起侧栏">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
                 </div>
                 <div class="sidebar-new-btn" id="newProjectBtn">
                     <svg class="sidebar-new-btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -40,7 +51,7 @@
                         </svg>
                         <span>设置</span>
                     </button>
-                    <div id="creditsBar" class="credits-bar">
+                    <div id="creditsBar" class="credits-bar" style="display: none;">
                         <span id="creditsText" class="credits-text">⚡ --</span>
                     </div>
                 </div>
@@ -59,7 +70,7 @@
                                 <line x1="9" y1="17" x2="21" y2="17"/>
                             </svg>
                         </button>
-                        <span class="chat-project-name" id="chatProjectName">未命名项目</span>
+                        <span class="chat-project-name" id="chatProjectName">开始新创作</span>
                     </div>
                     <button id="projectActionBtn" class="settings-btn" title="项目操作">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -71,113 +82,135 @@
                         <button id="actionPin" class="plus-menu-item">置顶</button>
                         <button id="actionDelete" class="plus-menu-item">删除</button>
                     </div>
+                    <div class="landing-topbar">
+                        <div class="landing-brand">
+                            <div class="landing-brand-lockup">
+                                <img class="landing-brand-logo-image" src="/branding/landray-logo.png" alt="Landray 蓝凌" loading="eager">
+                                <span class="landing-brand-divider"></span>
+                                <span class="landing-brand-copy">标准产品主题包 AI 生成工具</span>
+                            </div>
+                        </div>
+                        <button id="landingCreditsChip" class="landing-credits-chip" type="button" title="当前积分" style="display: none;">
+                            <span>积分</span>
+                            <span id="landingCreditsText">120</span>
+                            <span class="landing-credits-spark" aria-hidden="true">✦</span>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="chat-default-view" id="chatDefaultView">
                     <div class="chat-default-scroll">
-                        <div class="landing-hero landing-hero--compact" id="chatLandingHero">
-                            <div class="landing-hero-copy landing-hero-copy--centered">
-                                <h1 class="landing-hero-title">我是 Theme Studio 你的 AI 主题创作伙伴</h1>
-                                <h2 class="landing-hero-subtitle">生成主题图 . 实时预览 . 细节修改 . 生成打包</h2>
-                            </div>
-                        </div>
-
-                        <div class="input-area input-area--landing">
-                            <div class="image-preview-bar" id="imagePreviewBar"></div>
-                            <div class="input-row chat-shell-composer">
-                                <div class="chat-input-wrapper chat-shell-composer-inner">
-                                    <textarea id="messageInput" rows="1" placeholder="描述您需要的活动/节日主题..."></textarea>
-                                    <button id="plusBtn" class="plus-btn ui-icon-button chat-shell-plus" title="添加图片">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                                        </svg>
-                                    </button>
-                                    <span class="chat-cost-hint">⚡25</span>
-                                    <button id="sendBtn" class="ui-icon-button chat-shell-send" title="发送">
-                                        <svg class="icon-send" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M12 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                            <path d="M5 12L12 5L19 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                        <svg class="icon-stop" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                            <rect x="4" y="4" width="16" height="16" rx="2"/>
-                                        </svg>
-                                    </button>
+                        <section class="landing-shell" id="chatLandingHero">
+                            <div class="landing-hero landing-hero--compact">
+                                <div class="landing-hero-copy landing-hero-copy--centered">
+                                    <h1 class="landing-hero-title">一句话，生成<span class="landing-hero-highlight">可上线</span>主题包</h1>
+                                    <p class="landing-hero-subtitle">告别繁琐代码配置，通过自然语言即刻定制 OA 专属皮肤</p>
                                 </div>
                             </div>
-                        </div>
+
+                            <div class="input-area input-area--landing">
+                                <div class="image-preview-bar" id="imagePreviewBar"></div>
+                                <div class="input-row chat-shell-composer">
+                                    <div class="chat-input-wrapper chat-shell-composer-inner chat-shell-composer-inner--landing">
+                                        <textarea id="messageInput" rows="1" placeholder="描述你要生成的主题包（场景 + 风格 + 色调）例如： 企业年会｜科技蓝｜门户主题包"></textarea>
+                                        <div class="chat-shell-toolbar">
+                                            <button id="plusBtn" class="plus-btn ui-icon-button chat-shell-plus" title="添加图片">
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                                </svg>
+                                            </button>
+                                            <span class="chat-cost-hint" style="display: none;">⚡25</span>
+                                            <button id="sendBtn" class="ui-icon-button chat-shell-send" title="发送">
+                                                <svg class="icon-send" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                    <path d="M5 12L12 5L19 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                                <svg class="icon-stop" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                                    <rect x="4" y="4" width="16" height="16" rx="2"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <section class="landing-section landing-section--after-composer" aria-labelledby="landingStartTitle">
+                                <div class="landing-starter-pills theme-suggestions">
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="想做一套有新年氛围的主题皮肤，整体轻盈喜庆，适合门户首页和工作台展示。">
+                                        想做一套有新年氛围的主题皮肤
+                                    </button>
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="做一套春节主题皮肤，要有节日感和热闹气氛，适合标准产品首页展示。">
+                                        做一套春节主题皮肤，要有节日感和热闹气氛
+                                    </button>
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="来一套清新一点的春日主题皮肤，偏浅色，带一点科技感。">
+                                        来一套清新一点的春日主题皮肤
+                                    </button>
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="想做一套中秋主题皮肤，氛围温暖、东方、适合门户首页。">
+                                        想做一套中秋主题皮肤
+                                    </button>
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="做一套科技蓝主题皮肤，适合标准产品门户首页，整体简洁、明亮、有数字化氛围。">
+                                        做一套科技蓝主题皮肤
+                                    </button>
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="想做一套企业年会主题皮肤，主视觉热烈大气，适合活动门户和工作台。">
+                                        想做一套企业年会主题皮肤
+                                    </button>
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="来一套绿色低碳主题皮肤，偏环保科技风，适合展示平台首页。">
+                                        来一套绿色低碳主题皮肤
+                                    </button>
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="做一套实验室主题皮肤，整体要干净、专业、带一点未来感。">
+                                        做一套实验室主题皮肤
+                                    </button>
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="想做一套国庆主题皮肤，氛围庄重大气，适合门户首页展示。">
+                                        想做一套国庆主题皮肤
+                                    </button>
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="来一套协同办公主题皮肤，空间感强，适合企业办公平台。">
+                                        来一套协同办公主题皮肤
+                                    </button>
+                                </div>
+                            </section>
+                        </section>
 
                         <div class="messages-container messages-container--landing">
-                            <section class="landing-section landing-section--after-composer" aria-labelledby="landingStartTitle">
-                                <div class="landing-section-header">
-                                    <h3 class="landing-section-title" id="landingStartTitle">你可以尝试这些主题</h3>
-                                    <span class="landing-section-meta">一键填入并立即开始生成</span>
+                            <section class="landing-section landing-section--gallery" aria-labelledby="landingInspirationTitle">
+                                <div class="landing-section-header landing-section-header--stacked">
+                                    <h3 class="landing-section-title" id="landingInspirationTitle">主图推荐</h3>
                                 </div>
-                                <div class="landing-starter-pills theme-suggestions">
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="繁华的大街，时尚现代的都市，热闹喜庆的元旦场景，街中央有一个巨大的台历，台历上写着&quot;2027元旦快乐&quot;，字为书法字体。C4D渲染，2K超高清，极简风格，天空是绽放的礼花，飘浮着散落的飘带。红色橙色粉色为主。16:9，1080P。">
-                                        <span class="landing-starter-pill-icon">🎆</span>元旦
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="画面主体是一个巨大的2027构成的四个现代新年庆祝场景。分别有年夜饭，发红包，放烟花，贴对联。红色调,3D渲染，电影级光影。请为以上主题制作一张的3D轴侧微缩海报。在画面中央，建立一个精致的3D微缩场景模型。风格上，保持梦工厂动画的高精度的材质感和柔和的光影渲染。 氛围与背景： 背景请摒弃纯白，使用带有极淡水墨纹理和流动光雾的虚空环境，色调根据主题自动调整，营造出一种历史切片或珍贵藏品的高级感。排版与文字： 在底部偏上居中位置生成中文排版。 &quot;新春快乐&quot;手写毛笔风字体或行书结合现代设计感字体标题，字体设计契合主题风格。 标题下方，&quot;岁岁常欢愉 万事皆胜意&quot;。16:9，1080P。">
-                                        <span class="landing-starter-pill-icon">🧨</span>春节
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="中国风清明节海报，烟雨蒙蒙，细雨如丝，垂柳枝条垂落，身着短打布衣的小牧童，头戴斗笠，侧身骑在一头青牛背上，牧童手持一根细竹笛，牛儿在细雨中缓步前行。远处是连绵山峦，山间云雾缭绕，远处的村落，两只春燕在雨幕中翩然飞过。构图合理，大面积留白。文案为：清明时节 ，下面放着辅助文案为：细雨纷纷，春满人间。16:9，1080P。">
-                                        <span class="landing-starter-pill-icon">🌿</span>清明节
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="五一劳动节海报，以活力感为主，传递出热烈的节日情感与敬意。画面顶部用白色的艺术手写字体标注&quot;五一劳动节&quot;，下方附有温情文案&quot;五一快乐！致敬每一个为生活努力的人&quot;，突出工作者在生活中的重要意义。画面中下方是消防员、工人、农民、职员、外卖员、快递员、老师、医生等，人物呈侧身群排而站。笑容温暖，洋溢着喜悦。背景是蓝天白云，春日活力氛围，仰视镜头，夸张的视角，整体画风细腻温馨，情感真挚。图片风格3D渲染。16:9，1080P。">
-                                        <span class="landing-starter-pill-icon">🛠️</span>五一劳动节
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="文字创意，端午时节海报，极简主义，优雅、清新、祝福、愉快风格、大片层层交叠粽叶构图，形似山峦起伏、绿白色渐变色调、极致细腻纹理、自然柔和光影、禅意氛围、静谧诗意、竖排飞白毛笔中文字瘦金体&quot;端午安康&quot;居中排布，拼音极小小字&quot;DUANWU&quot;与红色小印章点缀、背景绿白渐变色、低饱和度，不固定构图，符合东方美学。大师作品。16:9，1080P。">
-                                        <span class="landing-starter-pill-icon">🐲</span>端午节
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="八一建军节创意海报，国风极简设计，高级留白构图，低奢橙和中国红渐变色调，国潮肌理纹理，画面中心艺术化数字81，融合长城、山河、敬礼的军人、荣誉、守护、力量、红色、旗帜、钢铁意志 元素，军人剪影穿插融合，顶部书法字体：八一建军节，小字&quot;向最可爱的人致敬&quot;副标题点缀，意境深远，端庄大气，高清细节，HDR质感，视觉高级简约。整体颜色纯正，红色色调为主。16:9，1080P。">
-                                        <span class="landing-starter-pill-icon">⭐</span>建军节
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="一幅周年纪念的3D渲染插画。上方区域&quot;不忘初心 牢记使命&quot;艺术字，在前景添加大的金色3D数字&quot;71&quot;，整体布局占比不超过1/3，金色的五角星，上方红色背景和若隐若现金色丝带，远景是淡淡的长城，前景是金色的长河和飘动的红色丝绸。高细节，庄重且具纪念意义的设计。 3D渲染风格，非常富有张力且庄重，不要出现任何水印。16:9，1080P。">
-                                        <span class="landing-starter-pill-icon">🚩</span>建党节
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="温馨的中秋节微缩景观场景，微缩中式庭院里，一张小木桌上摆放着精致的月饼、桂花茶和迷你月亮灯，桌面散落着桂花枝与桂花，旁边有一只迷你小兔子摆件。背景是微缩的中式亭台楼阁和发光的大月亮，柔和的夕阳光线从左侧洒入，温暖的琥珀色光晕笼罩整个微型世界，暖黄色调营造团圆氛围。前景清晰细腻，远景建筑轮廓虚化，浅景深效果突出前景，中等俯视角度呈现精致的小世界感，8K超清细节，微缩摄影风格，写实微缩模型质感，温馨治愈的节日氛围，轻度暗角散景。主文案为&quot;桂香满庭，月满中秋&quot;。16:9，1080P。">
-                                        <span class="landing-starter-pill-icon">🌕</span>中秋节
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="一幅周年纪念的3D渲染插画。整体布局占比不超过1/3，上方红色背景，远景是淡淡的长城，天坛，华表，山脉，前景是故宫，金色的长河和飘动的红色丝绸。高细节，3D渲染风格，非常富有张力且庄重，不要出现任何水印。赋予画面动感与生机。整体融合传统元素与现代设计，东方美学，极简主义，极致构图，电影光线，极致像素。整体色彩以红色与金色为主，暖色渐变背景，光影柔和辉映。海报标题&quot;盛世华诞&quot;（狂野豪迈的连体书法字，笔画流畅飘逸，国潮风笔触，极具视觉冲击力，笔画拉长变形出流畅的笔触，手写烫金效果），图片底部搭配英文 &quot;山河锦绣，国泰民安&quot; ，下方标注 &quot;1949 - 2026&quot;。层次分明，画面洋溢节日感与庄严感。融合书法艺术与山水写实渲染，营造出庄重喜庆且饱含山河盛景的国庆氛围。16:9，1080P。">
-                                        <span class="landing-starter-pill-icon">🇨🇳</span>国庆节
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="圣诞节，主体为融合圣诞元素的卡通雪屋建筑，雪屋带有圣诞花环、姜饼人窗户与驯鹿装饰，开着装满圣诞礼物的小火车的圣诞老人，圣诞老人在向镜头招手，小火车围绕房子环绕着。场景设定在圆形雪地平台上，周围环绕着圣诞树、雪人、礼物堆，还有圣诞灯串与雪橇；风格参考圣诞童话风插画与 C4D 萌系建模；色调以圣诞红、雪白、松绿为主，整体温馨欢快；构图平视视角，突出雪屋与小车的层次，补充圣诞小细节如姜饼人、圣诞袜；细节体现积雪的柔软、建筑的圣诞感，比如雪屋的糖果烟囱、小车里的圣诞礼物，营造圣诞童话小镇场景。文字：&quot;MERRY Christmas&quot;艺术字体，带轻微发光描边与雪花装饰。16:9，1080P。">
-                                        <span class="landing-starter-pill-icon">🎄</span>圣诞节
-                                    </button>
-                                </div>
-                            </section>
-
-                            <section class="landing-section" aria-labelledby="landingInspirationTitle">
-                                <div class="landing-section-header">
-                                    <h3 class="landing-section-title" id="landingInspirationTitle">主题灵感方向</h3>
-                                    <span class="landing-section-meta">延续产品定位，不直接套模板</span>
-                                </div>
-                                <div class="landing-inspiration-row">
-                                    <div class="landing-inspiration-card landing-template-card" aria-disabled="true">
-                                        <img class="landing-template-image" src="/backgrounds/winter-solstice-bg.jpg" alt="冬至主题效果图" loading="lazy">
-                                        <span class="landing-inspiration-tag">节日活动</span>
-                                        <strong>冬至主题</strong>
-                                        <small>适合冬日节气氛围、柔和暖意与节庆视觉表达</small>
-                                    </div>
-                                    <div class="landing-inspiration-card landing-template-card" aria-disabled="true">
-                                        <img class="landing-template-image" src="/backgrounds/overtime-worker-bg.png" alt="企业品牌主题效果图" loading="lazy">
-                                        <span class="landing-inspiration-tag">企业品牌</span>
-                                        <strong>品牌宣传 / 周年庆 / 战役活动</strong>
-                                        <small>突出品牌主色、秩序感与传播表达</small>
-                                    </div>
-                                    <div class="landing-inspiration-card landing-template-card" aria-disabled="true">
-                                        <img class="landing-template-image" src="/backgrounds/mount-tai-summit-bg.png" alt="勇攀高峰主题效果图" loading="lazy">
-                                        <span class="landing-inspiration-tag">励志愿景</span>
-                                        <strong>勇攀高峰主题</strong>
-                                        <small>强调目标感、突破感与高峰愿景的视觉表达</small>
-                                    </div>
-                                    <div class="landing-inspiration-card landing-template-card" aria-disabled="true">
-                                        <img class="landing-template-image" src="/backgrounds/maldives-vacation-bg.png" alt="自然清新主题效果图" loading="lazy">
-                                        <span class="landing-inspiration-tag">自然清新</span>
-                                        <strong>清明 / 春日 / 海边 / 森林</strong>
-                                        <small>强调自然色、空气感与柔和留白</small>
-                                    </div>
+                                <div class="landing-gallery-grid">
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Mid-AutumnFestival-01.png" data-theme-name="中秋" aria-label="用中秋主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/Mid-AutumnFestival-01.png" alt="中秋主题效果图" loading="lazy">
+                                    </article>
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Cooperation-02.png" data-theme-name="协作办公" aria-label="用协作办公主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/Cooperation-02.png" alt="企业主题效果图" loading="lazy">
+                                    </article>
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Technology-03.png" data-theme-name="科技蓝" aria-label="用科技蓝主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/Technology-03.png" alt="科技蓝主题效果图" loading="lazy">
+                                    </article>
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Industry-04.png" data-theme-name="智能工厂" aria-label="用智能工厂主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/Industry-04.png" alt="科技工厂主题效果图" loading="lazy">
+                                    </article>
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/WorkCabin-05.png" data-theme-name="工作舱" aria-label="用工作舱主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/WorkCabin-05.png" alt="办公工作台主题效果图" loading="lazy">
+                                    </article>
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/EnvironmentalProtection-06.png" data-theme-name="环保科技" aria-label="用环保科技主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/EnvironmentalProtection-06.png" alt="环保科技主题效果图" loading="lazy">
+                                    </article>
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/GreenChemistry-07.png" data-theme-name="绿色化学" aria-label="用绿色化学主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/GreenChemistry-07.png" alt="绿色化学主题效果图" loading="lazy">
+                                    </article>
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/GreenIndustry-08.png" data-theme-name="绿色工业" aria-label="用绿色工业主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/GreenIndustry-08.png" alt="绿色工业主题效果图" loading="lazy">
+                                    </article>
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/AdvancedTechnology-09.png" data-theme-name="先进科技" aria-label="用先进科技主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/AdvancedTechnology-09.png" alt="先进科技主题效果图" loading="lazy">
+                                    </article>
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/NationalDay-10.png" data-theme-name="国庆" aria-label="用国庆主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/NationalDay-10.png" alt="国庆主题效果图" loading="lazy">
+                                    </article>
                                 </div>
                             </section>
+                            <div class="landing-page-footer" aria-label="功能说明">
+                                AI 智能生成 ｜ 遵循蓝凌设计规范 ｜ 蓝凌标准主题包结构 ｜ 一键打包上线
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -195,7 +228,7 @@
                                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                                     </svg>
                                 </button>
-                                <span class="chat-cost-hint">⚡25</span>
+                                <span class="chat-cost-hint" style="display: none;">⚡25</span>
                                 <button id="conversationSendBtn" class="ui-icon-button chat-shell-send" title="发送">
                                     <svg class="icon-send" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M12 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -358,8 +391,7 @@
                                     <span class="form-label-desc">选择您偏好的视觉主题</span>
                                 </div>
                                 <div class="form-input-wrap">
-                                    <select id="uiThemeMode">
-                                        <option value="dark">Dark</option>
+                                    <select id="uiThemeMode" disabled>
                                         <option value="light">Light</option>
                                     </select>
                                 </div>

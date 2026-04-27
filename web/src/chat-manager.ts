@@ -11,7 +11,7 @@ import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences
 import { analyzeImageAsync, executeTool } from './tools/executor';
 import type { ChatMessage } from './types';
 import { deriveNameEnFromText, normalizeNameEn } from './project-naming';
-import { getCurrentProjectId, loadProject, saveProject, updateProjectNameDisplay, PRESET_DISPLAY, getAvailablePresets, activateProject } from './project-manager';
+import { getCurrentProjectId, loadProject, saveProject, updateProjectNameDisplay, PRESET_DISPLAY, getAvailablePresets, activateProject, createProject, listProjects, setCurrentProjectId } from './project-manager';
 import type { Project } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, saveCurrentColorsToProject, getCurrentColors, applyPresetBackground, getThemeTarget } from './theme-engine';
 import { PRESET_BACKGROUNDS } from './project-manager';
@@ -23,9 +23,11 @@ import { updateCustomerVisualProfile, loadCustomerVisualProfile } from './tools/
 import type { ThemePreview } from './tools/executor';
 import { classifyImageIntent } from './image-intent';
 import { applyPrimaryImageToProject } from './primary-image-flow';
+import { showNotificationWithOptions } from './package-manager';
 
 const conversationHistory: ChatMessage[] = [];
 let activeAbortController: AbortController | null = null;
+const MAX_UPLOAD_IMAGE_BYTES = 2 * 1024 * 1024;
 
 export interface ThemeAgentDebugState {
   toolCallPrompt?: string;
@@ -397,10 +399,12 @@ function buildThinkingToggle(text: string): HTMLElement {
 
 export interface ChatDeps {
   expandPreview: () => void;
+  collapsePreview?: () => void;
   populateSidebarProjects: () => void;
   syncLayout: (hasPreview: boolean, activeTabId: 'loginTab' | 'mainPageTab') => void;
   collapseProjectSidebar: () => void;
   setChatPanelWidth: (width: number | null) => void;
+  showWorkspace?: (projectId: string) => Promise<void>;
 }
 
 export function setupChatInterface(deps: ChatDeps) {
@@ -467,6 +471,19 @@ export function setupChatInterface(deps: ChatDeps) {
         if (!files) return;
         const file = files[0];
         if (!file) return;
+        if (file.size > MAX_UPLOAD_IMAGE_BYTES) {
+          const fileSizeMb = (file.size / (1024 * 1024)).toFixed(2);
+          showNotificationWithOptions(
+            `上传图片不能超过 2MB，当前图片约 ${fileSizeMb}MB，请重新上传`,
+            {
+              variant: 'critical',
+              position: 'top-center',
+              durationMs: 3600,
+            },
+          );
+          input.value = '';
+          return;
+        }
         const reader = new FileReader();
         reader.onload = (e) => {
           const dataUrl = e.target?.result as string;
@@ -508,6 +525,42 @@ export function setupChatInterface(deps: ChatDeps) {
     });
   }
 
+  async function setLandingGalleryImage(imageSrc: string, themeName: string) {
+    if (!defaultMessageInput) return;
+    try {
+      const response = await fetch(imageSrc);
+      if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+      const blob = await response.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string | null;
+          if (!result) {
+            reject(new Error('Failed to read image as data URL'));
+            return;
+          }
+          resolve(result);
+        };
+        reader.onerror = () => reject(reader.error ?? new Error('Failed to read image file'));
+        reader.readAsDataURL(blob);
+      });
+
+      pendingImages.splice(0, pendingImages.length, dataUrl);
+      renderImagePreviewBar();
+      defaultMessageInput.value = `用这张图，生成一个${themeName}主题包`;
+      resizeMessageInput(defaultMessageInput, defaultComposerInner);
+      showConversationChatView();
+      await sendUserMessage('default');
+    } catch (error) {
+      console.warn('[chat-manager] 推荐图加载失败:', error);
+      showNotificationWithOptions('推荐图加载失败，请稍后重试', {
+        variant: 'critical',
+        position: 'top-center',
+        durationMs: 2400,
+      });
+    }
+  }
+
   function addMessageToChat(role: 'user' | 'ai', content: string): HTMLElement {
     const messageEl = renderMessage(role, content);
     return messageEl;
@@ -529,6 +582,27 @@ export function setupChatInterface(deps: ChatDeps) {
     await saveProject(project);
   }
 
+  async function ensureActiveProjectForImageUpload(): Promise<string | null> {
+    const existingProjectId = getCurrentProjectId();
+    if (existingProjectId) {
+      return existingProjectId;
+    }
+
+    const newProject = await createProject('未命名项目', 'light-ui');
+    if (!newProject) {
+      return null;
+    }
+
+    setCurrentProjectId(newProject.id);
+
+    if (deps.showWorkspace) {
+      await deps.showWorkspace(newProject.id);
+    }
+
+    await deps.populateSidebarProjects();
+    return newProject.id;
+  }
+
   function appendImageRoleBadge(contentEl: HTMLElement | null, label: string) {
     if (!contentEl) return;
     const badge = document.createElement('div');
@@ -545,13 +619,19 @@ export function setupChatInterface(deps: ChatDeps) {
     const hasImages = pendingImages.length > 0;
     if (!hasText && !hasImages) return;
     const content = activeInput ? activeInput.value.trim() : '';
+    let uploadedImageRole: 'primary' | 'reference' | null = null;
 
     showConversationChatView();
+    if (hasImages) deps.collapsePreview?.();
     (globalThis as any).__themeStudioCurrentProjectId = getCurrentProjectId() ?? undefined;
 
     const userMessageTimestamp = Date.now();
     const userMessageId = userMessageTimestamp.toString();
-    const currentProjectId = getCurrentProjectId();
+    const currentProjectId = hasImages
+      ? await ensureActiveProjectForImageUpload()
+      : getCurrentProjectId();
+    showConversationChatView();
+    if (hasImages) deps.collapsePreview?.();
     const currentProject = currentProjectId ? await loadProject(currentProjectId) : null;
     const visualContext = currentProject?.visualContext ?? (currentProjectId ? loadProjectVisualContext(currentProjectId) : null);
 
@@ -560,7 +640,8 @@ export function setupChatInterface(deps: ChatDeps) {
       pendingImages.length = 0;
       renderImagePreviewBar();
       const imageIntent = classifyImageIntent(content || '');
-      const finalRole = content ? imageIntent.role : 'reference';
+      const finalRole = imageIntent.role;
+      uploadedImageRole = finalRole;
       const userLabel = finalRole === 'primary' ? '上传了主图' : '上传了参考图片';
       const msgEl = addMessageToChat('user', content || userLabel);
       conversationHistory.push({
@@ -616,6 +697,8 @@ export function setupChatInterface(deps: ChatDeps) {
         } else {
           addMessageToChat('ai', `⚠️ ${primaryResult.message}`);
         }
+      } else if (finalRole === 'primary') {
+        addMessageToChat('ai', '⚠️ 当前未能创建可用项目，主图暂时无法直接生成预览。');
       } else {
         const imageDataUrl = imagesToSend[0];
         if (currentProjectId) {
@@ -667,7 +750,7 @@ export function setupChatInterface(deps: ChatDeps) {
     }
     const latestVisualContext = currentProjectId ? loadProjectVisualContext(currentProjectId) : undefined;
     const currentImageRole = latestVisualContext?.imageInput?.role;
-    const shouldSkipAiForPrimaryImage = hasImages && currentImageRole === 'primary';
+    const shouldSkipAiForPrimaryImage = hasImages && uploadedImageRole === 'primary';
     const shouldUpgradeExistingReference = !hasImages
       && Boolean(content)
       && currentProjectId
@@ -747,6 +830,23 @@ export function setupChatInterface(deps: ChatDeps) {
       defaultMessageInput.value = prompt;
       resizeMessageInput(defaultMessageInput, defaultComposerInner);
       sendUserMessage('default');
+    });
+  });
+
+  const landingGalleryCards = document.querySelectorAll<HTMLElement>('.landing-gallery-trigger[data-image-src][data-theme-name]');
+  landingGalleryCards.forEach((card) => {
+    const triggerSelection = () => {
+      const imageSrc = card.dataset.imageSrc?.trim();
+      const themeName = card.dataset.themeName?.trim();
+      if (!imageSrc || !themeName) return;
+      setLandingGalleryImage(imageSrc, themeName);
+    };
+
+    card.addEventListener('click', triggerSelection);
+    card.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      triggerSelection();
     });
   });
 

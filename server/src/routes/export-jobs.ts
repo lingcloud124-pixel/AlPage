@@ -100,7 +100,8 @@ router.post('/export-jobs', async (req, res) => {
     const userId = (req as any).userId as number;
     const body = req.body ?? {};
 
-    const projectId = body.projectId ?? body.batch?.projectSnapshot?.projectId;
+    const projectSnapshot = body.projectSnapshot ?? body.batch?.projectSnapshot;
+    const projectId = body.projectId ?? projectSnapshot?.projectId;
     let confirmedVersionId = body.confirmedVersionId ?? '';
     const selectedProducts = Array.isArray(body.selectedProducts)
       ? body.selectedProducts
@@ -109,7 +110,6 @@ router.post('/export-jobs', async (req, res) => {
         : Array.isArray(body.buildOptions?.selectedProducts)
           ? body.buildOptions.selectedProducts
           : [];
-    const projectSnapshot = body.batch?.projectSnapshot;
 
     if (!projectId || selectedProducts.length === 0) {
       return res.status(400).json({ error: 'projectId and selectedProducts are required' });
