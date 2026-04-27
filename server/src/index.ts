@@ -26,9 +26,6 @@ const [
   { initDb, closeDb },
   { authRouter },
   { modelConfigRouter },
-  { projectsRouter },
-  { messagesRouter },
-  { confirmedVersionsRouter },
   { exportJobsRouter },
   { startExportJobRunner },
   { aiProxyRouter },
@@ -44,9 +41,6 @@ const [
   import('./db.js'),
   import('./routes/auth.js'),
   import('./routes/model-config.js'),
-  import('./routes/projects.js'),
-  import('./routes/messages.js'),
-  import('./routes/confirmed-versions.js'),
   import('./routes/export-jobs.js'),
   import('./export-job-runner.js'),
   import('./routes/ai-proxy.js'),
@@ -97,9 +91,6 @@ app.use('/api/security-config', adminAuthMiddleware, securityConfigRouter);
 app.use('/api/theme', authMiddleware);
 app.use('/api/theme', rateLimitMiddleware);
 app.use('/api/theme', creditsMiddleware);
-app.use('/api/theme/projects', projectsRouter);
-app.use('/api/theme/projects', messagesRouter);
-app.use('/api/theme/projects', confirmedVersionsRouter);
 app.use('/api/theme', exportJobsRouter);
 app.use('/api/theme', aiProxyRouter);
 app.use('/api/theme/credits', creditsRouter);
