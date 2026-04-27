@@ -1,4 +1,5 @@
 import type { ExportJobRequest } from './export-job';
+import { authHeaders } from '../auth';
 
 export interface ThemeStudioExportBridge {
   enqueueExportJob?: (payload: ExportJobRequest) => Promise<{ accepted?: boolean; jobId?: string } | void> | { accepted?: boolean; jobId?: string } | void;
@@ -11,6 +12,8 @@ export interface ExportDispatchResult {
   accepted: boolean;
   jobId?: string;
   mode: 'bridge' | 'api' | 'none';
+  status?: number;
+  error?: string;
 }
 
 export function getExportBridge(source: unknown): ThemeStudioExportBridge | null {
@@ -31,14 +34,30 @@ function getFetchBridge(source: unknown): ThemeStudioExportBridge | null {
 
   return {
     async enqueueExportJob(payload: ExportJobRequest) {
+      const apiPayload = {
+        projectId: payload.batch.projectSnapshot.projectId,
+        selectedProducts: payload.batch.selectedProducts,
+        projectSnapshot: payload.batch.projectSnapshot,
+      };
       const response = await fetchImpl('/api/theme/export-jobs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(apiPayload),
       });
 
       if (!response.ok) {
-        throw new Error(`导出桥接请求失败 (${response.status})`);
+        let message = `导出桥接请求失败 (${response.status})`;
+        try {
+          const errorData = await response.json() as { error?: string };
+          if (errorData?.error) {
+            message = errorData.error;
+          }
+        } catch {
+          // ignore non-JSON error responses
+        }
+        const error = new Error(message) as Error & { status?: number };
+        error.status = response.status;
+        throw error;
       }
 
       return await response.json() as { accepted?: boolean; jobId?: string };
@@ -46,11 +65,22 @@ function getFetchBridge(source: unknown): ThemeStudioExportBridge | null {
     async pickDirectory() {
       const response = await fetchImpl('/api/theme/pick-directory', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
       });
 
       if (!response.ok) {
-        throw new Error(`目录选择请求失败 (${response.status})`);
+        let message = `目录选择请求失败 (${response.status})`;
+        try {
+          const errorData = await response.json() as { error?: string };
+          if (errorData?.error) {
+            message = errorData.error;
+          }
+        } catch {
+          // ignore non-JSON error responses
+        }
+        const error = new Error(message) as Error & { status?: number };
+        error.status = response.status;
+        throw error;
       }
 
       return await response.json() as { path?: string };
@@ -62,15 +92,24 @@ export async function dispatchExportJobToBridge(source: unknown, request: Export
   const bridge = getExportBridge(source) ?? getFetchBridge(source);
   if (!bridge?.enqueueExportJob) return { accepted: false, mode: 'none' };
 
-  const result = await bridge.enqueueExportJob(request);
-  const mode = getExportBridge(source) ? 'bridge' : 'api';
-  return {
-    accepted: true,
-    jobId: result && typeof result === 'object' && 'jobId' in result && typeof result.jobId === 'string'
-      ? result.jobId
-      : request.batch.id,
-    mode,
-  };
+  try {
+    const result = await bridge.enqueueExportJob(request);
+    const mode = getExportBridge(source) ? 'bridge' : 'api';
+    return {
+      accepted: true,
+      jobId: result && typeof result === 'object' && 'jobId' in result && typeof result.jobId === 'string'
+        ? result.jobId
+        : request.batch.id,
+      mode,
+    };
+  } catch (error) {
+    return {
+      accepted: false,
+      mode: getExportBridge(source) ? 'bridge' : 'api',
+      status: (error as Error & { status?: number }).status,
+      error: (error as Error).message,
+    };
+  }
 }
 
 export async function pickDirectoryViaBridge(source: unknown): Promise<string | null> {

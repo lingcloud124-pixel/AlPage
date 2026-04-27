@@ -80,15 +80,25 @@ function maskApiKey(key: string): string {
   return '****' + key.slice(-4);
 }
 
+function isMaskedApiKeyCandidate(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  return /^\*{4,}/.test(trimmed);
+}
+
 function normalizeModelConfig(row?: Record<string, unknown> | null) {
   const envConfig = getEnvModelConfig();
+  const storedChatApiKey = String(row?.chat_api_key ?? '');
+  const storedImageApiKey = String(row?.image_api_key ?? '');
+  const normalizedStoredChatApiKey = isMaskedApiKeyCandidate(storedChatApiKey) ? '' : storedChatApiKey;
+  const normalizedStoredImageApiKey = isMaskedApiKeyCandidate(storedImageApiKey) ? '' : storedImageApiKey;
 
   return {
     chatEndpoint: firstNonEmpty(String(row?.chat_endpoint ?? ''), envConfig.chatEndpoint),
-    chatApiKey: firstNonEmpty(String(row?.chat_api_key ?? ''), envConfig.chatApiKey),
+    chatApiKey: firstNonEmpty(normalizedStoredChatApiKey, envConfig.chatApiKey),
     chatModel: firstNonEmpty(String(row?.chat_model ?? ''), envConfig.chatModel),
     imageEndpoint: firstNonEmpty(String(row?.image_endpoint ?? ''), envConfig.imageEndpoint),
-    imageApiKey: firstNonEmpty(String(row?.image_api_key ?? ''), envConfig.imageApiKey),
+    imageApiKey: firstNonEmpty(normalizedStoredImageApiKey, envConfig.imageApiKey),
     imageModel: firstNonEmpty(String(row?.image_model ?? ''), envConfig.imageModel),
     jimengAccessKey: envConfig.jimengAccessKey,
     jimengSecretKey: envConfig.jimengSecretKey,
@@ -132,12 +142,13 @@ router.put('/', async (req, res) => {
       existing = existingStmt.getAsObject() as Record<string, unknown>;
     }
     existingStmt.free();
+    const normalizedExistingConfig = normalizeModelConfig(existing);
 
-    const resolvedChatApiKey = (!chatApiKey || chatApiKey === '****')
-      ? String(existing?.chat_api_key ?? '')
+    const resolvedChatApiKey = (!chatApiKey || isMaskedApiKeyCandidate(chatApiKey))
+      ? normalizedExistingConfig.chatApiKey
       : chatApiKey;
-    const resolvedImageApiKey = (!imageApiKey || imageApiKey === '****')
-      ? String(existing?.image_api_key ?? '')
+    const resolvedImageApiKey = (!imageApiKey || isMaskedApiKeyCandidate(imageApiKey))
+      ? normalizedExistingConfig.imageApiKey
       : imageApiKey;
 
     const stmt = db.prepare(`

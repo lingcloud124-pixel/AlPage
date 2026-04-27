@@ -19,13 +19,14 @@ import { fetchUsers, getUser, switchUser } from './auth';
 
 let previewTemplatesLoaded = false;
 
-export function applyUiTheme(mode: 'dark' | 'light' = 'dark') {
-  document.body.dataset.uiTheme = mode;
+export function applyUiTheme(_mode: 'dark' | 'light' = 'light') {
+  document.body.dataset.uiTheme = 'light';
 }
 
 export function collapseProjectSidebar() {
   const projectSidebar = document.getElementById('projectSidebar');
   if (projectSidebar) {
+    projectSidebar.classList.remove('landing-compact');
     projectSidebar.classList.add('collapsed');
     projectSidebar.style.removeProperty('width');
     projectSidebar.style.removeProperty('min-width');
@@ -37,12 +38,25 @@ export function collapseProjectSidebar() {
 export function expandProjectSidebar() {
   const projectSidebar = document.getElementById('projectSidebar');
   if (projectSidebar) {
+    projectSidebar.classList.remove('landing-compact');
     projectSidebar.classList.remove('collapsed');
     projectSidebar.style.removeProperty('width');
     projectSidebar.style.removeProperty('min-width');
   }
   const toggleBtn = document.getElementById('sidebarToggleBtn');
   toggleBtn?.querySelector('svg')?.classList.remove('flipped');
+}
+
+export function compactLandingSidebar() {
+  const projectSidebar = document.getElementById('projectSidebar');
+  if (projectSidebar) {
+    projectSidebar.classList.remove('collapsed');
+    projectSidebar.classList.add('landing-compact');
+    projectSidebar.style.removeProperty('width');
+    projectSidebar.style.removeProperty('min-width');
+  }
+  const toggleBtn = document.getElementById('sidebarToggleBtn');
+  toggleBtn?.querySelector('svg')?.classList.add('flipped');
 }
 
 export function setChatPanelWidth(width: number | null) {
@@ -354,7 +368,7 @@ export function setupSettingsDialog() {
       exportRootInput.value = settings.exportRoot || '';
       exportRootInput.placeholder = getEffectiveExportRoot();
     }
-    if (uiThemeSelect) uiThemeSelect.value = settings.uiTheme || 'dark';
+    if (uiThemeSelect) uiThemeSelect.value = 'light';
     updateChatEndpointHelp(apiEndpointInput?.value || DEFAULT_CHAT_ENDPOINT);
     
     // Hide API key rows — server holds the keys now
@@ -408,13 +422,13 @@ export function setupSettingsDialog() {
       imageModel: 'image-01',
       imageModelName: 'image-01',
       exportRoot: exportRootInput?.value ? normalizeExportRoot(exportRootInput.value) : '',
-      uiTheme: (uiThemeSelect?.value as 'dark' | 'light') || 'dark',
+      uiTheme: 'light',
     };
 
     const currentUser = getUser();
     const selectedAccount = accountSelector?.value;
     persistSettings(settings as any);
-    applyUiTheme(settings.uiTheme as 'dark' | 'light');
+    applyUiTheme('light');
 
     if (selectedAccount && selectedAccount !== currentUser?.name) {
       const users = await fetchUsers();

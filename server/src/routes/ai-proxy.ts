@@ -551,7 +551,12 @@ router.post('/chat', async (req, res) => {
   const chatSecurityConfig = getSecurityConfig();
   const chatCreditsPerConv = chatSecurityConfig?.credits_per_conversation ?? 50;
   res.on('finish', () => {
-    if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+    if (
+      chatSecurityConfig?.enabled_features?.quota !== false &&
+      res.statusCode &&
+      res.statusCode >= 200 &&
+      res.statusCode < 300
+    ) {
       deductCredits(chatUserId, chatCreditsPerConv);
     }
   });

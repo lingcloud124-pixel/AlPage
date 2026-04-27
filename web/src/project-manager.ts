@@ -75,6 +75,12 @@ export interface Project {
   updatedAt: number;
 }
 
+export interface ProjectMutationError {
+  status?: number;
+  code?: string;
+  message: string;
+}
+
 export function safeJsonParse<T>(json: string | null, fallback: T): T {
   if (!json) return fallback;
   try {
@@ -85,6 +91,7 @@ export function safeJsonParse<T>(json: string | null, fallback: T): T {
 }
 
 let _currentProjectId: string | null = null;
+let _lastProjectMutationError: ProjectMutationError | null = null;
 export function getCurrentProjectId() {
   return _currentProjectId ?? localStorage.getItem('theme-studio-current-project');
 }
@@ -92,6 +99,10 @@ export function setCurrentProjectId(id: string | null) {
   _currentProjectId = id;
   if (id) localStorage.setItem('theme-studio-current-project', id);
   else localStorage.removeItem('theme-studio-current-project');
+}
+
+export function getLastProjectMutationError(): ProjectMutationError | null {
+  return _lastProjectMutationError;
 }
 
 export function getProjectThemeLabel(project: Pick<Project, 'themeName' | 'name'>): string {
@@ -162,6 +173,7 @@ export async function loadProject(id: string): Promise<Project | null> {
 
 export async function saveProject(project: Project): Promise<Project | null> {
   try {
+    _lastProjectMutationError = null;
     if (!project.lifecycle) {
       project.lifecycle = 'draft';
     }
@@ -192,11 +204,26 @@ export async function saveProject(project: Project): Promise<Project | null> {
     }
     
     if (!res.ok) {
-      console.error('Failed to save project:', res.status, res.statusText);
+      let errorMessage = `保存项目失败 (${res.status})`;
+      let errorCode: string | undefined;
+      try {
+        const errorData = await res.json();
+        errorMessage = errorData?.error || errorMessage;
+        errorCode = errorData?.code;
+      } catch {
+        // ignore non-JSON error responses
+      }
+      _lastProjectMutationError = {
+        status: res.status,
+        code: errorCode,
+        message: errorMessage,
+      };
+      console.error('Failed to save project:', res.status, res.statusText, errorMessage);
       return null;
     }
     
     const data = await res.json();
+    _lastProjectMutationError = null;
     if (data.success && !projectExists) {
       const savedProject = { ...project, id: data.id || project.id || Date.now().toString() };
       return savedProject;
@@ -204,6 +231,9 @@ export async function saveProject(project: Project): Promise<Project | null> {
     
     return project;
   } catch (error) {
+    _lastProjectMutationError = {
+      message: (error as Error).message || '保存项目失败，请稍后重试',
+    };
     console.error('Failed to save project:', error);
     return null;
   }

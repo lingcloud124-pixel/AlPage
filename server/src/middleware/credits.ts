@@ -9,6 +9,10 @@ export function creditsMiddleware(req: Request, res: Response, next: NextFunctio
   }
 
   const securityConfig = getSecurityConfig();
+  if (securityConfig?.enabled_features?.quota === false) {
+    return next();
+  }
+
   const creditsPerConv = securityConfig?.credits_per_conversation ?? 50;
   const { credits } = getCredits(userId);
 

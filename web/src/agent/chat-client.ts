@@ -24,7 +24,7 @@ const ZHIPU_DEFAULTS: AISettings = {
   imageApiKey: '',  // Not needed anymore - server holds the key
   imageModel: 'image-01',
   exportRoot: '',
-  uiTheme: 'dark',
+  uiTheme: 'light',
 };
 
 function getDefaultExportRoot(): string {
@@ -80,6 +80,9 @@ export function loadSettings(): AISettings {
       settings.imageApiEndpoint = BACKEND_IMAGE_ENDPOINT;
     }
 
+    // Frontend workbench is now light-only; migrate any stored dark mode.
+    settings.uiTheme = 'light';
+
     return settings;
   } catch (error) {
     console.warn('[chat-client] 设置读取失败，已回退默认配置:', {
@@ -90,7 +93,10 @@ export function loadSettings(): AISettings {
 }
 
 export function saveSettings(settings: AISettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+    ...settings,
+    uiTheme: 'light',
+  }));
 }
 
 export function getImageSettings(): { endpoint: string; apiKey: string; model: string } {
