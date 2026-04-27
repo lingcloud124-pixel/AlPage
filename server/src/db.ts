@@ -25,77 +25,18 @@ export async function initDb(): Promise<void> {
   db.run('PRAGMA journal_mode=WAL');
   db.run('PRAGMA synchronous=NORMAL');
   db.run('PRAGMA busy_timeout=5000');
-  
+
+  db.run('DROP TABLE IF EXISTS theme_export_jobs');
+  db.run('DROP TABLE IF EXISTS theme_confirmed_versions');
+  db.run('DROP TABLE IF EXISTS theme_chat_messages');
+  db.run('DROP TABLE IF EXISTS theme_projects');
+
   // Create users table
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT UNIQUE NOT NULL,
       display_name TEXT NOT NULL
-    );
-  `);
-
-  // Create theme_projects table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS theme_projects (
-      id TEXT PRIMARY KEY,
-      user_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      name_en TEXT,
-      template_type TEXT DEFAULT 'light-ui',
-      colors TEXT DEFAULT '{}',
-      bg_image_url TEXT,
-      header_bg_image_url TEXT,
-      visual_context TEXT,
-      pinned INTEGER DEFAULT 0,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-  `);
-
-  // Create theme_chat_messages table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS theme_chat_messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      project_id TEXT NOT NULL,
-      role TEXT NOT NULL,
-      content TEXT NOT NULL,
-      timestamp INTEGER NOT NULL,
-      FOREIGN KEY (project_id) REFERENCES theme_projects(id) ON DELETE CASCADE
-    );
-  `);
-
-  // Create theme_confirmed_versions table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS theme_confirmed_versions (
-      id TEXT PRIMARY KEY,
-      project_id TEXT NOT NULL,
-      user_id INTEGER NOT NULL,
-      snapshot_json TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      FOREIGN KEY (project_id) REFERENCES theme_projects(id) ON DELETE CASCADE,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-  `);
-
-  // Create theme_export_jobs table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS theme_export_jobs (
-      id TEXT PRIMARY KEY,
-      project_id TEXT NOT NULL,
-      user_id INTEGER NOT NULL,
-      confirmed_version_id TEXT NOT NULL,
-      status TEXT NOT NULL,
-      selected_products TEXT NOT NULL,
-      result_json TEXT,
-      error TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      FOREIGN KEY (project_id) REFERENCES theme_projects(id) ON DELETE CASCADE,
-      FOREIGN KEY (user_id) REFERENCES users(id),
-      FOREIGN KEY (confirmed_version_id) REFERENCES theme_confirmed_versions(id) ON DELETE CASCADE
     );
   `);
 
@@ -246,8 +187,6 @@ function startBackupScheduler(): void {
 
 const EXPORT_OUTPUT_DIR = join(process.cwd(), '..', 'output', 'service-jobs');
 const EXPORT_RETENTION_DAYS = 30;
-const MAX_PROJECTS_PER_USER = 50;
-const MAX_MESSAGES_PER_PROJECT = 100;
 
 function cleanupOldExportFiles(): void {
   try {
@@ -279,26 +218,6 @@ function vacuumDb(): void {
     logger.error('VACUUM failed', err);
   }
 }
-
-export function getProjectCount(userId: number): number {
-  const stmt = db.prepare('SELECT COUNT(*) as cnt FROM theme_projects WHERE user_id = ?');
-  stmt.bind([userId]);
-  let count = 0;
-  if (stmt.step()) count = (stmt.getAsObject() as any).cnt;
-  stmt.free();
-  return count;
-}
-
-export function getMessageCount(projectId: string): number {
-  const stmt = db.prepare('SELECT COUNT(*) as cnt FROM theme_chat_messages WHERE project_id = ?');
-  stmt.bind([projectId]);
-  let count = 0;
-  if (stmt.step()) count = (stmt.getAsObject() as any).cnt;
-  stmt.free();
-  return count;
-}
-
-export { MAX_PROJECTS_PER_USER, MAX_MESSAGES_PER_PROJECT };
 
 export { db };
 
