@@ -11,7 +11,7 @@ import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences
 import { analyzeImageAsync, executeTool } from './tools/executor';
 import type { ChatMessage } from './types';
 import { deriveNameEnFromText, normalizeNameEn } from './project-naming';
-import { getCurrentProjectId, loadProject, saveProject, updateProjectNameDisplay, PRESET_DISPLAY, getAvailablePresets, activateProject, createProject, listProjects, setCurrentProjectId } from './project-manager';
+import { getCurrentProjectId, loadProject, saveProject, updateProjectNameDisplay, PRESET_DISPLAY, getAvailablePresets, createProject, setCurrentProjectId } from './project-manager';
 import type { Project } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, saveCurrentColorsToProject, getCurrentColors, applyPresetBackground, getThemeTarget } from './theme-engine';
 import { PRESET_BACKGROUNDS } from './project-manager';
@@ -111,7 +111,47 @@ export async function loadAndRenderChatHistory(messagesContainer: HTMLElement | 
   messagesContainer.innerHTML = '';
 }
 
-function ensureProjectNameEn(project: Project, sourceText: string): boolean {
+  function extractThemeTitle(text: string): string {
+    let name = '';
+    let m: RegExpMatchArray | null;
+
+    m = text.match(/生成(?:一个|一款)?[「"「]?(\S{1,12}?)[」"」]?(?:主题|风格|界面)/);
+    if (m) name = m[1].replace(/[的啊吧呢呀哦嘛]+$/, '');
+
+    if (!name) {
+      m = text.match(/(?:做一个|做个|设计一个|创建一个|弄一个|来一个|来个)[「"「]?(\S{1,12}?)[」"」]?(?:主题|风格|界面)/);
+      if (m) name = m[1].replace(/[的啊吧呢呀哦嘛]+$/, '');
+    }
+
+    if (!name && /主题包/.test(text)) {
+      const sub = text.match(/(?:一个|一款)\s*(\S{1,8}?)主题包/);
+      if (sub) name = sub[1].replace(/[的啊吧呢呀哦嘛]+$/, '');
+    }
+
+    if (!name) {
+      m = text.match(/以[「"「]?(\S{1,12}?)[」"」]?为(?:主题|基调|风格|背景|核心)/);
+      if (m) name = m[1].replace(/[的啊吧呢呀哦嘛]+$/, '');
+    }
+
+    if (!name) {
+      m = text.match(/(\S{1,8})(?:风格|色系)/);
+      if (m && !/^(做|想|要|帮|给|用|我|请|能|可|把|让)/.test(m[1])) name = m[1];
+    }
+
+    if (!name) {
+      m = text.match(/主题[是叫为：:]\s*[「"「]?(\S{1,12}?)[」"」]?\s*$/);
+      if (m) name = m[1];
+    }
+
+    if (!name) {
+      const cleaned = text.replace(/^(帮我|请|麻烦|我想|能不能|可以|用这|这个|那张|这张)[^\u4e00\u5e00-\u9fff]*/u, '').trim();
+      name = cleaned.length > 10 ? cleaned.substring(0, 10) + '...' : cleaned;
+    }
+
+    return /主题$/.test(name) ? name : `${name}主题`;
+  }
+
+  function ensureProjectNameEn(project: Project, sourceText: string): boolean {
   const derived = deriveNameEnFromText(sourceText);
   if (!derived || derived === 'project') return false;
 
@@ -493,6 +533,7 @@ export function setupChatInterface(deps: ChatDeps) {
       renderImagePreviewBar();
       defaultMessageInput.value = `用这张图，生成一个${themeName}主题包`;
       resizeMessageInput(defaultMessageInput, defaultComposerInner);
+      await ensureActiveProjectForImageUpload();
       showConversationChatView();
       await sendUserMessage('default');
     } catch (error) {
@@ -739,26 +780,28 @@ export function setupChatInterface(deps: ChatDeps) {
 
     if (content && getCurrentProjectId()) {
       const projectId = getCurrentProjectId()!;
-      const activatedProject = await activateProject(projectId);
-      const project = activatedProject ?? await loadProject(projectId);
+      const project = await loadProject(projectId);
       if (project) {
-        let changed = activatedProject !== null;
-
-        if (project.name === '未命名项目') {
-          const autoName = content.length > 20 ? content.substring(0, 20) + '...' : content;
-          project.name = autoName;
-          const chatProjectName = document.getElementById('chatProjectName');
-          if (chatProjectName) chatProjectName.textContent = autoName;
-          const projectNameEl = document.getElementById('projectName');
-          if (projectNameEl) projectNameEl.textContent = autoName;
-          changed = true;
+        if (project.lifecycle !== 'active') {
+          project.lifecycle = 'active';
+          await saveProject(project);
         }
 
-        changed = ensureProjectNameEn(project, `${project.themeName || ''} ${content}`) || changed;
-
-        if (changed) {
+        if (project.name === '未命名项目') {
+          const themeTitle = extractThemeTitle(content);
+          project.name = themeTitle;
+          project.themeName = themeTitle;
+          const chatProjectName = document.getElementById('chatProjectName');
+          if (chatProjectName) chatProjectName.textContent = themeTitle;
+          const projectNameEl = document.getElementById('projectName');
+          if (projectNameEl) projectNameEl.textContent = themeTitle;
           await saveProject(project);
-    await Promise.resolve();
+        }
+
+        const nameEnChanged = ensureProjectNameEn(project, `${project.themeName || ''} ${content}`);
+
+        if (nameEnChanged) {
+          await saveProject(project);
         }
       }
     }

@@ -14,6 +14,7 @@ import {
   applyUiTheme,
   setupTabSwitching,
   setupPreviewPanel,
+  setupBackToHome,
   setupCollapsibleColorPanel,
   setupSettingsDialog,
 } from './ui-setup';
@@ -27,7 +28,7 @@ declare global {
   }
 }
 
-function showWorkspaceLandingState(): void {
+export function showWorkspaceLandingState(): void {
   const workspaceView = document.getElementById('workspaceView');
   const chatPanel = document.getElementById('chatPanel');
   if (workspaceView) workspaceView.classList.remove('view-hidden');
@@ -70,6 +71,7 @@ async function initializeFeatureModules() {
   setupMainActions();
   setupQualityCheck();
   setupPreviewPanel();
+  setupBackToHome();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

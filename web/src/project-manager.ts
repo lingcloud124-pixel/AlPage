@@ -1,60 +1,8 @@
 import type { ChatMessage, ConfirmedProjectVersion, ExportBatch, ServerExportJob } from './types';
 import { DEFAULT_LIGHT_UI_PRIMARY, deriveColorsFromPrimary, toCssVarRecord } from './theme/color-utils';
-import { authHeaders } from './auth';
 import type { ProjectVisualContext } from './tools/project-visual-context-store';
 
-// Helper: snake_case → camelCase conversion
-function serverToProject(row: any): Project {
-  return {
-    id: row.id,
-    name: row.name,
-    nameEn: row.name_en ?? undefined,
-    templateType: row.template_type ?? 'light-ui',
-    colors: typeof row.colors === 'string' ? JSON.parse(row.colors || '{}') : (row.colors || {}),
-    bgImageUrl: row.bg_image_url ?? undefined,
-    headerBgImageUrl: row.header_bg_image_url ?? undefined,
-    visualContext: row.visual_context ?? undefined,
-    pinned: row.pinned === 1,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-// Helper: camelCase → server payload
-function projectToServer(project: Partial<Project>): Record<string, any> {
-  const result: Record<string, any> = {};
-  if (project.name !== undefined) result.name = project.name;
-  if (project.nameEn !== undefined) result.name_en = project.nameEn;
-  if (project.templateType !== undefined) result.template_type = project.templateType;
-  if (project.colors !== undefined) result.colors = typeof project.colors === 'string' ? project.colors : JSON.stringify(project.colors);
-  if (project.bgImageUrl !== undefined) result.bg_image_url = project.bgImageUrl;
-  if (project.headerBgImageUrl !== undefined) result.header_bg_image_url = project.headerBgImageUrl;
-  if (project.visualContext !== undefined) {
-    const visualContext = project.visualContext?.imageInput?.dataUrl
-      ? {
-          ...project.visualContext,
-          imageInput: {
-            ...project.visualContext.imageInput,
-            dataUrl: '',
-          },
-        }
-      : project.visualContext;
-    result.visualContext = visualContext;
-  }
-  if (project.pinned !== undefined) result.pinned = project.pinned ? 1 : 0;
-  return result;
-}
-
-// API helper
-async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  const headers = { 'Content-Type': 'application/json', ...authHeaders(), ...(options.headers || {}) };
-  const res = await fetch(`/api/theme${path}`, { ...options, headers });
-  if (res.status === 401) {
-    window.location.href = '/login.html';
-    throw new Error('Unauthorized');
-  }
-  return res;
-}
+const _projects = new Map<string, Project>();
 
 export interface Project {
   id: string;
@@ -132,14 +80,14 @@ export async function createProject(name: string, templateType: 'light-ui' | 'da
     updatedAt: Date.now(),
   };
   trackProjectCreated?.();
-  return await saveProject(newProject);
+  _projects.set(id, newProject);
+  return newProject;
 }
 
 export async function createProjectWithPreset(name: string, templateType: 'light-ui' | 'dark-ui', presetColors: Record<string, string>, presetId: string): Promise<Project | null> {
   const id = Date.now().toString();
   const defaultColors = getDefaultColors();
   const colors = { ...defaultColors, ...presetColors };
-  const primaryColor = colors['--primary-color'] || '#2C615C';
 
   const newProject: Project = {
     id,
@@ -152,116 +100,20 @@ export async function createProjectWithPreset(name: string, templateType: 'light
   };
 
   localStorage.setItem(`theme-studio-colors-${presetId}`, JSON.stringify(presetColors));
-  return await saveProject(newProject);
+  _projects.set(id, newProject);
+  return newProject;
 }
 
 export async function loadProject(id: string): Promise<Project | null> {
-  try {
-    const res = await apiFetch(`/projects/${id}`);
-    if (!res.ok) {
-      if (res.status === 404) return null;
-      console.error('Failed to load project:', res.status, res.statusText);
-      return null;
-    }
-    const data = await res.json();
-    return serverToProject(data);
-  } catch (error) {
-    console.error('Failed to load project:', error);
-    return null;
-  }
+  return _projects.get(id) ?? null;
 }
 
 export async function saveProject(project: Project): Promise<Project | null> {
-  try {
-    _lastProjectMutationError = null;
-    if (!project.lifecycle) {
-      project.lifecycle = 'draft';
-    }
-    project.updatedAt = Date.now();
-    
-    const payload = projectToServer(project);
-    
-    let res: Response;
-    let projectExists = false;
-    if (project.id && project.id !== '0') {
-      const existingRes = await apiFetch(`/projects/${project.id}`);
-      projectExists = existingRes.ok;
-    }
-
-    if (projectExists && project.id && project.id !== '0') {
-      res = await apiFetch(`/projects/${project.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload)
-      });
-    } else {
-      res = await apiFetch('/projects', {
-        method: 'POST',
-        body: JSON.stringify({
-          id: project.id,
-          ...payload,
-        })
-      });
-    }
-    
-    if (!res.ok) {
-      let errorMessage = `保存项目失败 (${res.status})`;
-      let errorCode: string | undefined;
-      try {
-        const errorData = await res.json();
-        errorMessage = errorData?.error || errorMessage;
-        errorCode = errorData?.code;
-      } catch {
-        // ignore non-JSON error responses
-      }
-      _lastProjectMutationError = {
-        status: res.status,
-        code: errorCode,
-        message: errorMessage,
-      };
-      console.error('Failed to save project:', res.status, res.statusText, errorMessage);
-      return null;
-    }
-    
-    const data = await res.json();
-    _lastProjectMutationError = null;
-    if (data.success && !projectExists) {
-      const savedProject = { ...project, id: data.id || project.id || Date.now().toString() };
-      return savedProject;
-    }
-    
-    return project;
-  } catch (error) {
-    _lastProjectMutationError = {
-      message: (error as Error).message || '保存项目失败，请稍后重试',
-    };
-    console.error('Failed to save project:', error);
-    return null;
+  if (!project.lifecycle) {
+    project.lifecycle = 'draft';
   }
-}
-
-export async function listProjects(): Promise<Project[]> {
-  try {
-    const res = await apiFetch('/projects');
-    if (!res.ok) {
-      console.error('Failed to list projects:', res.status, res.statusText);
-      return [];
-    }
-    const data = await res.json();
-    const projects = Array.isArray(data) ? data.map(serverToProject) : [];
-    return projects.sort((a, b) => b.updatedAt - a.updatedAt);
-  } catch (error) {
-    console.error('Failed to list projects:', error);
-    return [];
-  }
-}
-
-export async function activateProject(projectId: string): Promise<Project | null> {
-  const project = await loadProject(projectId);
-  if (!project) return null;
-  if (project.lifecycle !== 'active') {
-    project.lifecycle = 'active';
-    return await saveProject(project);
-  }
+  project.updatedAt = Date.now();
+  _projects.set(project.id, project);
   return project;
 }
 

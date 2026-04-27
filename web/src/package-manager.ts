@@ -181,10 +181,10 @@ function renderProgressWithDownload(step: string, detail?: string, dlUrl?: strin
     ${step === 'completed' ? `
       <div style="display:flex;gap:12px;justify-content:center;margin-top:8px;">
         ${dlUrl ? `<button class="package-progress-btn success" id="progressDownloadBtn" data-dl-url="${dlUrl}" data-filename="${filename ?? ''}">下载文件</button>` : ''}
-        <button class="package-progress-btn error" id="progressDismissBtn" style="background:var(--surface-2,#333);">关闭</button>
+        <button class="package-progress-btn error" id="progressDismissBtn" style="background:var(--surface-2,#e5e5e5);color:#000;">关闭</button>
       </div>
     ` : ''}
-    ${step === 'failed' ? `<button class="package-progress-btn error" id="progressDismissBtn">关闭</button>` : ''}
+    ${step === 'failed' ? `<button class="package-progress-btn error" id="progressDismissBtn" style="color:#000;">关闭</button>` : ''}
   `;
 
   if (!isLoading && step === 'completed') {
@@ -306,7 +306,8 @@ async function startPackagingProcess() {
     }
 
     renderProgress('打包任务已提交...');
-    trackExportJobStatus(updatedProject.id, request.batch.id, selectedProducts.length);
+    const backendJobId = dispatchResult.jobId ?? request.batch.id;
+    trackExportJobStatus(updatedProject.id, backendJobId, selectedProducts.length);
   } catch (e) {
     if (!document.getElementById('packageProgressModal')?.classList.contains('active')) {
       openProgressModal();
@@ -356,7 +357,12 @@ async function trackExportJobStatus(projectId: string, batchId: string, productC
 
       renderProgressWithDownload(
         'completed',
-        '请点击下方按钮下载打包文件。下载后先解压 zip 包，然后前往 MK 系统门户管理板块导入主题包文件，最后在系统中选择新主题即可切换使用。',
+        `<div class="export-steps">
+          <div class="export-step"><span class="export-step-num">1</span><span class="export-step-text">点击 <b>下载文件</b> 按钮，保存 zip 包到本地</span></div>
+          <div class="export-step"><span class="export-step-num">2</span><span class="export-step-text">解压 zip 包，获得各产品的主题包文件</span></div>
+          <div class="export-step"><span class="export-step-num">3</span><span class="export-step-text">前往 MK 系统门户管理板块导入主题包</span></div>
+          <div class="export-step"><span class="export-step-num">4</span><span class="export-step-text">在系统中选择新主题，即可切换使用</span></div>
+        </div>`,
         dlUrl,
         filename,
       );

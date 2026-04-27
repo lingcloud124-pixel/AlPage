@@ -16,6 +16,7 @@ import { normalizeExportRoot } from './export/export-paths';
 import { pickDirectoryViaBridge } from './export/export-bridge';
 import { getEffectiveExportRoot } from './agent/chat-client';
 import { fetchUsers, getUser, switchUser } from './auth';
+import { showWorkspaceLandingState } from './main';
 
 let previewTemplatesLoaded = false;
 
@@ -119,6 +120,12 @@ export function setupPreviewPanel() {
   if (!previewPanel) return;
   const closeBtn = previewPanel.querySelector('.preview-close-btn');
   if (closeBtn) closeBtn.addEventListener('click', collapsePreview);
+}
+
+export function setupBackToHome() {
+  const btn = document.getElementById('backToHomeBtn');
+  if (!btn) return;
+  btn.addEventListener('click', () => showWorkspaceLandingState());
 }
 
 async function loadHeaderIntoMainPage(headerId: string) {

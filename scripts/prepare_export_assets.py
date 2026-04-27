@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -57,6 +58,7 @@ def main() -> int:
     if not args.skip_preview_capture and manifest.get("pendingPreviewCaptures"):
         screenshot_script = PROJECT_ROOT / "web" / "scripts" / "screenshot.ts"
         tsx_loader = PROJECT_ROOT / "web" / "node_modules" / "tsx" / "dist" / "loader.mjs"
+        base_url = os.environ.get("SCREENSHOT_BASE_URL")
         command = [
             "node",
             "--import",
@@ -69,6 +71,8 @@ def main() -> int:
             "--output",
             str(output_dir),
         ]
+        if base_url:
+            command += ["--base-url", base_url]
         print("🖼️ Capturing preview-based thumbnail assets...")
         subprocess.run(command, cwd=PROJECT_ROOT / "web", check=True)
         print("✅ Preview-based thumbnail assets captured")
