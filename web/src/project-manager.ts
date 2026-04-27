@@ -27,7 +27,7 @@ function projectToServer(project: Partial<Project>): Record<string, any> {
   if (project.nameEn !== undefined) result.name_en = project.nameEn;
   if (project.templateType !== undefined) result.template_type = project.templateType;
   if (project.colors !== undefined) result.colors = typeof project.colors === 'string' ? project.colors : JSON.stringify(project.colors);
-  if (project.bgImageUrl !== undefined && !project.bgImageUrl.startsWith('data:image/')) result.bg_image_url = project.bgImageUrl;
+  if (project.bgImageUrl !== undefined) result.bg_image_url = project.bgImageUrl;
   if (project.headerBgImageUrl !== undefined) result.header_bg_image_url = project.headerBgImageUrl;
   if (project.visualContext !== undefined) {
     const visualContext = project.visualContext?.imageInput?.dataUrl

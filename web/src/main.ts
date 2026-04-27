@@ -72,11 +72,19 @@ async function showWorkspace(projectId: string): Promise<void> {
   const chatProjectName = document.getElementById('chatProjectName');
   if (chatProjectName) chatProjectName.textContent = project.name;
 
-  if (project.colors && Object.keys(project.colors).length > 0) {
+  const hasSavedColors = Boolean(project.colors && Object.keys(project.colors).length > 0);
+  const hasSavedPreviewAssets = Boolean(project.bgImageUrl || project.headerBgImageUrl);
+  const hasPrimaryVisualContext = project.visualContext?.imageInput?.role === 'primary';
+  const shouldOpenPreview = hasSavedColors || hasSavedPreviewAssets || hasPrimaryVisualContext;
+
+  if (hasSavedColors) {
     for (const [key, value] of Object.entries(project.colors)) {
       const cssVar = key.startsWith('--') ? key : `--${key}`;
       if (/^#[0-9a-fA-F]{6}$/.test(value)) setThemeVar(cssVar, value);
     }
+  }
+
+  if (shouldOpenPreview) {
     if (project.bgImageUrl) {
       applyThemeImageAssignments('login', project.bgImageUrl);
       applyThemeImageAssignments('desktop', project.bgImageUrl);
@@ -195,11 +203,8 @@ async function initializeRoutingModule() {
           : `新建项目失败：${error?.message ?? '请稍后重试'}`);
         return;
       }
-      await showWorkspace(project.id);
-      collapsePreview();
-      syncWorkbenchLayoutForActiveTab(false, 'loginTab');
-      const projectNameElement = document.getElementById('projectName');
-      if (projectNameElement) projectNameElement.textContent = getProjectThemeLabel(project);
+      setCurrentProjectId(project.id);
+      showWorkspaceLandingState();
       showNotification('已创建新项目');
     });
   }

@@ -531,17 +531,26 @@ export function setupChatInterface(deps: ChatDeps) {
       const response = await fetch(imageSrc);
       if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
       const blob = await response.blob();
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string | null;
-        if (!dataUrl) return;
-        pendingImages.splice(0, pendingImages.length, dataUrl);
-        renderImagePreviewBar();
-        defaultMessageInput.value = `用这张图，生成一个${themeName}主题包`;
-        resizeMessageInput(defaultMessageInput, defaultComposerInner);
-        defaultMessageInput.focus();
-      };
-      reader.readAsDataURL(blob);
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string | null;
+          if (!result) {
+            reject(new Error('Failed to read image as data URL'));
+            return;
+          }
+          resolve(result);
+        };
+        reader.onerror = () => reject(reader.error ?? new Error('Failed to read image file'));
+        reader.readAsDataURL(blob);
+      });
+
+      pendingImages.splice(0, pendingImages.length, dataUrl);
+      renderImagePreviewBar();
+      defaultMessageInput.value = `用这张图，生成一个${themeName}主题包`;
+      resizeMessageInput(defaultMessageInput, defaultComposerInner);
+      showConversationChatView();
+      await sendUserMessage('default');
     } catch (error) {
       console.warn('[chat-manager] 推荐图加载失败:', error);
       showNotificationWithOptions('推荐图加载失败，请稍后重试', {
