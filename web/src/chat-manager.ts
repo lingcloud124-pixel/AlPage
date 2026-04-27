@@ -793,10 +793,11 @@ export function setupChatInterface(deps: ChatDeps) {
           project.themeName = themeTitle;
           const chatProjectName = document.getElementById('chatProjectName');
           if (chatProjectName) chatProjectName.textContent = themeTitle;
-          const projectNameEl = document.getElementById('projectName');
-          if (projectNameEl) projectNameEl.textContent = themeTitle;
           await saveProject(project);
         }
+
+        const projectNameEl = document.getElementById('projectName');
+        if (projectNameEl) projectNameEl.textContent = project.themeName || project.name;
 
         const nameEnChanged = ensureProjectNameEn(project, `${project.themeName || ''} ${content}`);
 
