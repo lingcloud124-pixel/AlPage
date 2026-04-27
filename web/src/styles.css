@@ -1989,7 +1989,7 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
 {
   position: absolute;
   right: 64px;
-  bottom: 27px;
+  bottom: 19px;
   font-size: 12px;
   line-height: 1;
   color: rgba(255,255,255,0.35);
@@ -2000,7 +2000,7 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
 
 body[data-ui-theme="light"] .chat-cost-hint
 {
-  color: rgba(0,0,0,0.3);
+  color: #90b4ff;
 }
 
 

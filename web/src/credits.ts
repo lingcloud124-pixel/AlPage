@@ -50,7 +50,7 @@ export function updateCreditsDisplay(info?: CreditsInfo): void {
   }
 
   if (creditsText) {
-    creditsText.textContent = `⚡ ${info.credits}`;
+    creditsText.textContent = `✦ ${info.credits}`;
   }
 
   if (landingCreditsText) {
@@ -81,6 +81,6 @@ export function updateCostHints(costPerChat?: number, enabled = true): void {
   const cost = costPerChat ?? cachedCredits?.costPerChat ?? 25;
   document.querySelectorAll('.chat-cost-hint').forEach(el => {
     (el as HTMLElement).style.display = enabled ? '' : 'none';
-    el.textContent = `⚡${cost}`;
+    el.textContent = `✦${cost}`;
   });
 }
