@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { getConfirmedVersionSnapshot, listQueuedExportJobs, updateExportJob } from './export-jobs-store.js';
+import { listQueuedExportJobs, updateExportJob } from './export-jobs-memory-store.js';
 import { buildServerExportAssetSnapshot, buildServerExportYaml } from './export-build-shared.js';
 
 const STEP_DELAY_MS = 50;
@@ -21,16 +21,12 @@ async function runJob(jobId: string): Promise<void> {
   const preparing = updateExportJob(jobId, { status: 'preparing', error: null });
   if (!preparing) return;
 
-  const snapshot = getConfirmedVersionSnapshot(
-    preparing.confirmedVersionId,
-    preparing.projectId,
-    preparing.userId,
-  );
+  const snapshot = preparing.snapshot;
 
   if (!snapshot) {
     updateExportJob(jobId, {
       status: 'failed',
-      error: 'Confirmed version snapshot is missing',
+      error: 'Snapshot data is missing',
       result: null,
     });
     return;
@@ -48,11 +44,12 @@ async function runJob(jobId: string): Promise<void> {
   const templateType = (snapshot.templateType === 'dark-ui' ? 'dark-ui' : 'light-ui');
   const colors = typeof snapshot.colors === 'object' && snapshot.colors ? snapshot.colors as Record<string, string> : {};
 
+  const projectId = String(snapshot.projectId ?? snapshot.nameEn ?? jobId);
   const assetSnapshot = buildServerExportAssetSnapshot({
     project: {
-      id: String(snapshot.projectId ?? preparing.projectId),
-      name: String(snapshot.name ?? preparing.projectId),
-      themeName: String(snapshot.name ?? preparing.projectId),
+      id: projectId,
+      name: String(snapshot.name ?? projectId),
+      themeName: String(snapshot.name ?? projectId),
       nameEn: typeof snapshot.nameEn === 'string' ? snapshot.nameEn : undefined,
       templateType,
       colors,
@@ -63,7 +60,7 @@ async function runJob(jobId: string): Promise<void> {
     },
     cssVariables: colors,
     selectedProducts: preparing.selectedProducts,
-    nameEn: typeof snapshot.nameEn === 'string' ? snapshot.nameEn : String(snapshot.projectId ?? preparing.projectId),
+    nameEn: typeof snapshot.nameEn === 'string' ? snapshot.nameEn : projectId,
     exportDir: batchDir,
   });
   fs.writeFileSync(assetSnapshotPath, `${JSON.stringify(assetSnapshot, null, 2)}\n`, 'utf8');
@@ -109,9 +106,9 @@ async function runJob(jobId: string): Promise<void> {
     || colors['--header-font-color']
     || '';
   const yaml = buildServerExportYaml({
-    name: String(snapshot.name ?? preparing.projectId),
+    name: String(snapshot.name ?? projectId),
     nameEn: typeof snapshot.nameEn === 'string' ? snapshot.nameEn : undefined,
-    subtitle: String(snapshot.name ?? preparing.projectId),
+    subtitle: String(snapshot.name ?? projectId),
     buttonText: '立即进入',
     themeColor: primaryColor,
     templateType,
@@ -184,7 +181,7 @@ async function runJob(jobId: string): Promise<void> {
     ? fs.readdirSync(packagesDir).filter((entry) => entry.toLowerCase().endsWith('.zip')).length
     : 0;
 
-  const snapshotName = snapshot.nameEn ?? snapshot.projectId ?? preparing.projectId;
+  const snapshotName = snapshot.nameEn ?? snapshot.name ?? projectId;
   updateExportJob(jobId, {
     status: 'completed',
     error: null,

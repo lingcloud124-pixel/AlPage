@@ -3,7 +3,7 @@ import http from 'http';
 import https from 'https';
 import { createHash, createHmac } from 'crypto';
 import { getModelConfig } from './model-config.js';
-import { getSecurityConfig, deductCredits, getMessageCount, MAX_MESSAGES_PER_PROJECT } from '../db.js';
+import { getSecurityConfig, deductCredits } from '../db.js';
 import { buildSignedRequest, VolcAuth } from '../services/jimeng-client.js';
 
 const router = Router();
@@ -565,14 +565,6 @@ router.post('/chat', async (req, res) => {
     const securityConfig = getSecurityConfig();
     if (securityConfig?.enabled_features?.chat === false) {
       return res.status(403).json({ error: '对话功能已关闭' });
-    }
-
-    const projectId = req.body?.project_id || req.body?.projectId;
-    if (projectId) {
-      const msgCount = getMessageCount(projectId);
-      if (msgCount >= MAX_MESSAGES_PER_PROJECT) {
-        return res.status(403).json({ error: `对话轮数已达上限 (${MAX_MESSAGES_PER_PROJECT} 轮)`, code: 'MESSAGE_LIMIT_EXCEEDED' });
-      }
     }
 
     if (!config.chatEndpoint || !config.chatApiKey) {
