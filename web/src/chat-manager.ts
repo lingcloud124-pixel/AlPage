@@ -98,71 +98,17 @@ export function renderMessage(role: 'user' | 'ai', content: string): HTMLElement
 }
 
 export async function saveChatHistory(): Promise<void> {
-  const pid = getCurrentProjectId();
-  if (!pid) return;
-  const messages = conversationHistory.map(m => ({
-    role: m.role,
-    content: m.content,
-    timestamp: m.timestamp,
-  }));
-  try {
-    await fetch(`/api/theme/projects/${pid}/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ messages }),
-    });
-  } catch (e) {
-    console.error('Failed to save chat history:', e);
-  }
 }
 
 export async function loadChatHistory(): Promise<Array<{ role: string; content: string; timestamp: number }>> {
-  const pid = getCurrentProjectId();
-  if (!pid) return [];
-  try {
-    const res = await fetch(`/api/theme/projects/${pid}/messages`, {
-      headers: authHeaders(),
-    });
-    if (!res.ok) {
-      // Handle 401 Unauthorized
-      if (res.status === 401) {
-        window.location.href = '/login.html';
-      }
-      return [];
-    }
-    const messages = await res.json();
-    return messages.map((m: any) => ({
-      role: m.role,
-      content: m.content,
-      timestamp: m.timestamp,
-    }));
-  } catch (error) {
-    console.warn('[chat-manager] 聊天历史读取失败:', error);
-    return [];
-  }
+  return [];
 }
 
 export async function loadAndRenderChatHistory(messagesContainer: HTMLElement | null): Promise<void> {
   if (!messagesContainer) return;
   conversationHistory.length = 0;
-  const history = await loadChatHistory();
-  if (history.length === 0) {
-    showDefaultChatView();
-    messagesContainer.innerHTML = '';
-    return;
-  }
-  showConversationChatView();
+  showDefaultChatView();
   messagesContainer.innerHTML = '';
-  history.forEach(msg => {
-    const savedMsg: ChatMessage = {
-      id: Date.now().toString(),
-      role: msg.role as 'user' | 'assistant',
-      content: msg.content,
-      timestamp: msg.timestamp,
-    };
-    conversationHistory.push(savedMsg);
-    renderMessage(msg.role as 'user' | 'ai', msg.content);
-  });
 }
 
 function ensureProjectNameEn(project: Project, sourceText: string): boolean {
@@ -400,9 +346,7 @@ function buildThinkingToggle(text: string): HTMLElement {
 export interface ChatDeps {
   expandPreview: () => void;
   collapsePreview?: () => void;
-  populateSidebarProjects: () => void;
   syncLayout: (hasPreview: boolean, activeTabId: 'loginTab' | 'mainPageTab') => void;
-  collapseProjectSidebar: () => void;
   setChatPanelWidth: (width: number | null) => void;
   showWorkspace?: (projectId: string) => Promise<void>;
 }
@@ -599,7 +543,7 @@ export function setupChatInterface(deps: ChatDeps) {
       await deps.showWorkspace(newProject.id);
     }
 
-    await deps.populateSidebarProjects();
+    await Promise.resolve();
     return newProject.id;
   }
 
@@ -692,8 +636,7 @@ export function setupChatInterface(deps: ChatDeps) {
             primaryResult.enforcedReason ?? '',
           ].filter(Boolean).join(' '));
           deps.expandPreview();
-          deps.collapseProjectSidebar();
-          deps.setChatPanelWidth(372);
+                  deps.setChatPanelWidth(372);
         } else {
           addMessageToChat('ai', `⚠️ ${primaryResult.message}`);
         }
@@ -784,8 +727,7 @@ export function setupChatInterface(deps: ChatDeps) {
         : `⚠️ ${primaryResult.message}`);
       if (primaryResult.success) {
         deps.expandPreview();
-        deps.collapseProjectSidebar();
-        deps.setChatPanelWidth(372);
+              deps.setChatPanelWidth(372);
       }
     }
 
@@ -816,7 +758,7 @@ export function setupChatInterface(deps: ChatDeps) {
 
         if (changed) {
           await saveProject(project);
-          await deps.populateSidebarProjects();
+    await Promise.resolve();
         }
       }
     }
@@ -1141,8 +1083,7 @@ export function setupChatInterface(deps: ChatDeps) {
             syncColorEditorFromTheme();
             latestThemePreviews = null;
             deps.expandPreview();
-            deps.collapseProjectSidebar();
-            deps.setChatPanelWidth(372);
+                      deps.setChatPanelWidth(372);
             await saveChatHistory();
           } else if (tc.tool === 'save_colors') {
             const saveData = tc.args as { name?: string; nameEn?: string };

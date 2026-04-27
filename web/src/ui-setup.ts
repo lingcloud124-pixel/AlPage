@@ -1,4 +1,5 @@
 import { renderTemplate } from './templates/loader';
+import { getCurrentProjectId } from './project-manager';
 import {
   loadSettings,
   saveSettings as persistSettings,
@@ -6,9 +7,8 @@ import {
   DEFAULT_IMAGE_ENDPOINT,
   describeChatEndpointUsage,
 } from './agent/chat-client';
-import { getCurrentProjectId, loadProject, saveProject, deleteProject, listProjects, populateSidebarProjects, closeAllProjectMenus, updateProjectNameDisplay, createProject } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, loadDefaultTemplates } from './theme-engine';
-import { loadAndRenderChatHistory, setupChatInterface } from './chat-manager';
+import { setupChatInterface } from './chat-manager';
 import { showNotification, setupMainActions } from './package-manager';
 import { initializeColorEditor } from './components/color-editor';
 import type { AISettings } from './types';
@@ -21,42 +21,6 @@ let previewTemplatesLoaded = false;
 
 export function applyUiTheme(_mode: 'dark' | 'light' = 'light') {
   document.body.dataset.uiTheme = 'light';
-}
-
-export function collapseProjectSidebar() {
-  const projectSidebar = document.getElementById('projectSidebar');
-  if (projectSidebar) {
-    projectSidebar.classList.remove('landing-compact');
-    projectSidebar.classList.add('collapsed');
-    projectSidebar.style.removeProperty('width');
-    projectSidebar.style.removeProperty('min-width');
-  }
-  const toggleBtn = document.getElementById('sidebarToggleBtn');
-  toggleBtn?.querySelector('svg')?.classList.add('flipped');
-}
-
-export function expandProjectSidebar() {
-  const projectSidebar = document.getElementById('projectSidebar');
-  if (projectSidebar) {
-    projectSidebar.classList.remove('landing-compact');
-    projectSidebar.classList.remove('collapsed');
-    projectSidebar.style.removeProperty('width');
-    projectSidebar.style.removeProperty('min-width');
-  }
-  const toggleBtn = document.getElementById('sidebarToggleBtn');
-  toggleBtn?.querySelector('svg')?.classList.remove('flipped');
-}
-
-export function compactLandingSidebar() {
-  const projectSidebar = document.getElementById('projectSidebar');
-  if (projectSidebar) {
-    projectSidebar.classList.remove('collapsed');
-    projectSidebar.classList.add('landing-compact');
-    projectSidebar.style.removeProperty('width');
-    projectSidebar.style.removeProperty('min-width');
-  }
-  const toggleBtn = document.getElementById('sidebarToggleBtn');
-  toggleBtn?.querySelector('svg')?.classList.add('flipped');
 }
 
 export function setChatPanelWidth(width: number | null) {
@@ -75,18 +39,15 @@ export function setChatPanelWidth(width: number | null) {
 
 export function syncWorkbenchLayoutForActiveTab(hasPreview: boolean, activeTabId: 'loginTab' | 'mainPageTab') {
   if (!hasPreview) {
-    expandProjectSidebar();
     setChatPanelWidth(null);
     return;
   }
 
   if (activeTabId === 'mainPageTab') {
-    collapseProjectSidebar();
     setChatPanelWidth(372);
     return;
   }
 
-  expandProjectSidebar();
   setChatPanelWidth(null);
 }
 
@@ -113,30 +74,17 @@ export function collapsePreview() {
 }
 
 export function setupResizableDivider() {
-  const sidebarDivider = document.getElementById('sidebarDivider') as HTMLElement;
   const previewDivider = document.getElementById('previewDivider') as HTMLElement;
-  const projectSidebar = document.getElementById('projectSidebar') as HTMLElement;
   const previewPanel = document.getElementById('previewPanel') as HTMLElement;
   const chatPanel = document.getElementById('chatPanel') as HTMLElement;
 
-  if (!sidebarDivider || !previewDivider || !projectSidebar || !previewPanel || !chatPanel) return;
+  if (!previewDivider || !previewPanel || !chatPanel) return;
   let isResizing = false;
-  let activeDivider: 'sidebar' | 'preview' | null = null;
   let startX: number;
   let startWidth: number;
 
-  sidebarDivider.addEventListener('mousedown', (e) => {
-    isResizing = true;
-    activeDivider = 'sidebar';
-    startX = e.clientX;
-    startWidth = projectSidebar.offsetWidth;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-  });
-
   previewDivider.addEventListener('mousedown', (e) => {
     isResizing = true;
-    activeDivider = 'preview';
     startX = e.clientX;
     startWidth = chatPanel.offsetWidth;
     document.body.style.cursor = 'col-resize';
@@ -146,29 +94,16 @@ export function setupResizableDivider() {
   document.addEventListener('mousemove', (e) => {
     if (!isResizing) return;
     const delta = e.clientX - startX;
-    if (activeDivider === 'sidebar') {
-      const newWidth = startWidth + delta;
-      if (newWidth >= 180 && newWidth <= 360) {
-        projectSidebar.classList.remove('collapsed');
-        projectSidebar.style.width = `${newWidth}px`;
-        projectSidebar.style.minWidth = `${newWidth}px`;
-      }
-      return;
-    }
-
-    if (activeDivider === 'preview') {
-      const newWidth = startWidth + delta;
-      if (newWidth >= 280 && newWidth <= 520) {
-        setChatPanelWidth(newWidth);
-        previewPanel.style.flex = '1 1 auto';
-      }
+    const newWidth = startWidth + delta;
+    if (newWidth >= 280 && newWidth <= 520) {
+      setChatPanelWidth(newWidth);
+      previewPanel.style.flex = '1 1 auto';
     }
   });
 
   document.addEventListener('mouseup', () => {
     if (isResizing) {
       isResizing = false;
-      activeDivider = null;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     }
@@ -257,25 +192,22 @@ export function setupCollapsibleColorPanel() {
   const sidePanel = document.getElementById('sidePanel') as HTMLElement;
   const panelToggleBtn = document.getElementById('panelToggleBtn') as HTMLButtonElement;
   const sidePanelClose = document.getElementById('sidePanelClose') as HTMLButtonElement;
-  const projectSidebar = document.getElementById('projectSidebar');
 
   if (!appContainer || !sidePanel || !panelToggleBtn) {
     console.error('Panel toggle elements not found');
     return;
   }
 
-  let prePanelState: { sidebarCollapsed: boolean; chatWidth: string; chatFlex: string; chatMinWidth: string } | null = null;
+  let prePanelState: { chatWidth: string; chatFlex: string; chatMinWidth: string } | null = null;
 
   function openPanel() {
     if (appContainer.classList.contains('panel-open')) return;
     const chatPanel = document.getElementById('chatPanel') as HTMLElement;
     prePanelState = {
-      sidebarCollapsed: projectSidebar?.classList.contains('collapsed') ?? false,
       chatWidth: chatPanel?.style.width ?? '',
       chatFlex: chatPanel?.style.flex ?? '',
       chatMinWidth: chatPanel?.style.minWidth ?? '',
     };
-    collapseProjectSidebar();
     appContainer.classList.add('panel-open');
     sidePanel.classList.add('open');
     panelToggleBtn.textContent = '收起面板';
@@ -288,7 +220,6 @@ export function setupCollapsibleColorPanel() {
     panelToggleBtn.textContent = '面板';
     if (prePanelState) {
       const chatPanel = document.getElementById('chatPanel') as HTMLElement;
-      if (!prePanelState.sidebarCollapsed) expandProjectSidebar();
       if (chatPanel) {
         if (prePanelState.chatWidth) chatPanel.style.width = prePanelState.chatWidth;
         else chatPanel.style.removeProperty('width');
@@ -447,74 +378,4 @@ export function setupSettingsDialog() {
   apiEndpointInput?.addEventListener('input', () => {
     updateChatEndpointHelp(apiEndpointInput.value || DEFAULT_CHAT_ENDPOINT);
   });
-}
-
-export function setupProjectActionMenu(deps: { populateSidebarProjects: () => void; showWorkspace: (id: string) => void }) {
-  const actionBtn = document.getElementById('projectActionBtn');
-  const actionMenu = document.getElementById('projectActionMenu');
-  const actionRename = document.getElementById('actionRename');
-  const actionPin = document.getElementById('actionPin');
-  const actionDelete = document.getElementById('actionDelete');
-
-  if (!actionBtn || !actionMenu) return;
-
-  actionBtn.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    const project = getCurrentProjectId() ? await loadProject(getCurrentProjectId()!) : null;
-    if (actionPin && project) actionPin.textContent = project.pinned ? '取消置顶' : '置顶';
-    actionMenu.classList.toggle('active');
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!actionMenu.contains(e.target as Node) && e.target !== actionBtn) {
-      actionMenu.classList.remove('active');
-    }
-  });
-
-  if (actionRename) {
-    actionRename.addEventListener('click', async () => {
-      actionMenu.classList.remove('active');
-      if (!getCurrentProjectId()) return;
-      const project = await loadProject(getCurrentProjectId()!);
-      if (!project) return;
-      const newName = prompt('重命名项目', project.name);
-      if (newName && newName.trim()) {
-        project.name = newName.trim();
-        await saveProject(project);
-        updateProjectNameDisplay(project);
-        await deps.populateSidebarProjects();
-      }
-    });
-  }
-
-  if (actionPin) {
-    actionPin.addEventListener('click', async () => {
-      actionMenu.classList.remove('active');
-      if (!getCurrentProjectId()) return;
-      const project = await loadProject(getCurrentProjectId()!);
-      if (!project) return;
-      project.pinned = !project.pinned;
-      await saveProject(project);
-      await deps.populateSidebarProjects();
-    });
-  }
-
-  if (actionDelete) {
-    actionDelete.addEventListener('click', async () => {
-      actionMenu.classList.remove('active');
-      if (!getCurrentProjectId()) return;
-      const project = await loadProject(getCurrentProjectId()!);
-      if (!project) return;
-      if (!confirm(`确定删除项目「${project.name}」？`)) return;
-      await deleteProject(getCurrentProjectId()!);
-      const projects = await listProjects();
-      if (projects.length > 0) {
-        deps.showWorkspace(projects[0].id);
-      } else {
-        const newProj = await createProject('未命名项目', 'light-ui');
-        if (newProj) deps.showWorkspace(newProj.id);
-      }
-      deps.populateSidebarProjects();
-    });
-  }
 }
