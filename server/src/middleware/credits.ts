@@ -4,7 +4,7 @@ import { getCredits, getNextResetTime, getSecurityConfig } from '../db.js';
 export function creditsMiddleware(req: Request, res: Response, next: NextFunction) {
   const userId = (req as any).userId || 1;
 
-  if (req.path !== '/chat') {
+  if (req.path !== '/image') {
     return next();
   }
 
@@ -13,12 +13,12 @@ export function creditsMiddleware(req: Request, res: Response, next: NextFunctio
     return next();
   }
 
-  const creditsPerConv = securityConfig?.credits_per_conversation ?? 50;
+  const creditsPerImage = securityConfig?.credits_per_image ?? 50;
   const { credits } = getCredits(userId);
 
-  if (credits < creditsPerConv) {
+  if (credits < creditsPerImage) {
     return res.status(403).json({
-      error: '积分不足，今日使用次数已用完',
+      error: '积分不足，无法生成图片',
       code: 'CREDITS_EXHAUSTED',
       remainingCredits: credits,
       nextResetAt: getNextResetTime(),

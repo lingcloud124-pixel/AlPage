@@ -80,7 +80,7 @@ async function runJob(jobId: string): Promise<void> {
       metadataDir,
     ], {
       cwd: PROJECT_ROOT,
-      env: { ...process.env, SCREENSHOT_BASE_URL: 'http://127.0.0.1:5173' },
+      env: { ...process.env, SCREENSHOT_BASE_URL: 'http://localhost:5173' },
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);

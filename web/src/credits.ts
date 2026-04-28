@@ -4,7 +4,7 @@ export interface CreditsInfo {
   credits: number;
   maxCredits: number;
   nextResetAt: string;
-  costPerChat?: number;
+  costPerImage?: number;
   quotaEnabled?: boolean;
 }
 
@@ -16,7 +16,7 @@ export async function fetchCredits(): Promise<CreditsInfo> {
     return { credits: 0, maxCredits: 100, nextResetAt: '', quotaEnabled: false };
   }
   cachedCredits = await res.json();
-  updateCostHints(cachedCredits!.costPerChat, cachedCredits!.quotaEnabled !== false);
+  updateCostHints(cachedCredits!.costPerImage, cachedCredits!.quotaEnabled !== false);
   return cachedCredits!;
 }
 
@@ -43,7 +43,7 @@ export function updateCreditsDisplay(info?: CreditsInfo): void {
     landingCreditsChip.style.display = quotaEnabled ? '' : 'none';
   }
 
-  updateCostHints(info.costPerChat, quotaEnabled);
+  updateCostHints(info.costPerImage, quotaEnabled);
 
   if (!quotaEnabled) {
     return;
@@ -77,8 +77,8 @@ export function formatNextReset(nextResetAt: string): string {
   return `${d.getMonth() + 1}月${d.getDate()}日 06:00`;
 }
 
-export function updateCostHints(costPerChat?: number, enabled = true): void {
-  const cost = costPerChat ?? cachedCredits?.costPerChat ?? 25;
+export function updateCostHints(costPerImage?: number, enabled = true): void {
+  const cost = costPerImage ?? cachedCredits?.costPerImage ?? 50;
   document.querySelectorAll('.chat-cost-hint').forEach(el => {
     (el as HTMLElement).style.display = enabled ? '' : 'none';
     el.textContent = `✦${cost}`;

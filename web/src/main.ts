@@ -2,6 +2,7 @@ import { initializeColorEditor, syncColorEditorFromTheme } from './components/co
 import {
   setCurrentProjectId,
   getProjectThemeLabel,
+  restoreFromSnapshot,
 } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, hydrateHeaderSelectOptions, setupQualityCheck, resetThemeTargetStyles } from './theme-engine';
 import { setupChatInterface, showDefaultChatView } from './chat-manager';
@@ -21,6 +22,7 @@ import {
 import { loadDefaultTemplates } from './theme-engine';
 import { checkAuth, getUser, fetchUsers, switchUser } from './auth';
 import { fetchCredits, updateCreditsDisplay } from './credits';
+import { initSidebar } from './components/sidebar';
 
 declare global {
   interface Window {
@@ -72,6 +74,30 @@ async function initializeFeatureModules() {
   setupQualityCheck();
   setupPreviewPanel();
   setupBackToHome();
+  initSidebar();
+
+  window.addEventListener('sidebar:restore-project', ((e: CustomEvent) => {
+    const snapshot = e.detail as Record<string, unknown>;
+    if (!snapshot || !snapshot.id) return;
+    restoreFromSnapshot(snapshot);
+    const project = snapshot as any;
+    if (project.colors) {
+      for (const [k, v] of Object.entries(project.colors)) {
+        setThemeVar(`--${k}`, v as string);
+      }
+    }
+    if (project.bgImageUrl) {
+      applyThemeImageAssignments('login', project.bgImageUrl);
+      applyThemeImageAssignments('desktop', project.bgImageUrl);
+    }
+    if (project.headerBgImageUrl) {
+      applyThemeImageAssignments('desktop', project.headerBgImageUrl);
+    }
+    applyTemplateSpecificThemeVars(project);
+    syncColorEditorFromTheme();
+    expandPreview();
+    setChatPanelWidth(378);
+  }) as EventListener);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

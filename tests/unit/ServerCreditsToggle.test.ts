@@ -12,11 +12,11 @@ describe('server credits toggle', () => {
     expect(source).toContain('return next();');
   });
 
-  test('chat route skips credit deduction when quota is disabled', () => {
+  test('image route deducts credits after successful generation when quota is enabled', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'server/src/routes/ai-proxy.ts'), 'utf8');
 
-    expect(source).toContain('chatSecurityConfig?.enabled_features?.quota !== false');
-    expect(source).toContain('deductCredits(chatUserId, chatCreditsPerConv);');
+    expect(source).toContain('imageSecurityConfig?.enabled_features?.quota !== false');
+    expect(source).toContain('deductCredits(imageUserId, imageCreditsPerGen);');
   });
 
   test('credits route exposes whether quota is enabled', () => {

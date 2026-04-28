@@ -13,12 +13,14 @@ import { dirname, join, resolve } from 'path';
 const { logger } = await import('./logger.js');
 
 process.on('uncaughtException', (err) => {
-  logger.error('Uncaught exception', { message: err.message, stack: err.stack });
+  logger.error('Uncaught exception — exiting for safety', { message: err.message, stack: err.stack });
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
   const detail = reason instanceof Error ? { message: reason.message, stack: reason.stack } : String(reason);
-  logger.error('Unhandled rejection', detail);
+  logger.error('Unhandled rejection — exiting for safety', detail);
+  process.exit(1);
 });
 
 const [
@@ -36,6 +38,7 @@ const [
   { creditsMiddleware },
   { creditsRouter },
   { requestLogger },
+  { conversationsRouter },
 ] = await Promise.all([
   import('express'),
   import('./db.js'),
@@ -51,6 +54,7 @@ const [
   import('./middleware/credits.js'),
   import('./routes/credits.js'),
   import('./middleware/request-logger.js'),
+  import('./routes/conversations.js'),
 ]);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -94,6 +98,7 @@ app.use('/api/theme', creditsMiddleware);
 app.use('/api/theme', exportJobsRouter);
 app.use('/api/theme', aiProxyRouter);
 app.use('/api/theme/credits', creditsRouter);
+app.use('/api/theme/conversations', conversationsRouter);
 
 app.use('/admin', express.static(join(__dirname, '..', 'admin')));
 app.get('/admin/{*splat}', (_req, res) => {
@@ -149,6 +154,9 @@ async function start() {
   server = app.listen(PORT, () => {
     logger.info(`Theme Studio API running on port ${PORT}`);
   });
+  server.timeout = 5 * 60 * 1000;
+  server.headersTimeout = 5 * 60 * 1000 + 1000;
+  server.keepAliveTimeout = 65000;
 }
 
 start().catch(err => {

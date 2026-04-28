@@ -10,6 +10,31 @@ const MAX_BACKUPS = 24;
 
 let db: Database;
 let backupTimer: ReturnType<typeof setInterval> | null = null;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Schedule a debounced write to disk (500ms). Multiple rapid saves coalesce into one. */
+export function saveDb(): void {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(doSaveDb, 500);
+}
+
+/** Force-immediate write (used by graceful shutdown and backups). */
+export function flushDb(): void {
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  doSaveDb();
+}
+
+function doSaveDb(): void {
+  saveTimer = null;
+  try {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    mkdirSync(join(DB_PATH, '..'), { recursive: true });
+    writeFileSync(DB_PATH, buffer);
+  } catch (err) {
+    logger.error('Failed to save database', err);
+  }
+}
 
 function hasColumn(tableName: string, columnName: string): boolean {
   const stmt = db.prepare(`PRAGMA table_info(${tableName})`);
@@ -115,14 +140,31 @@ export async function initDb(): Promise<void> {
       daily_image_gen_limit INTEGER NOT NULL DEFAULT 100,
       daily_chat_adjust_limit INTEGER NOT NULL DEFAULT 50,
       credits_per_conversation INTEGER NOT NULL DEFAULT 25,
+      credits_per_image INTEGER NOT NULL DEFAULT 50,
       daily_credits_limit INTEGER NOT NULL DEFAULT 100,
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `);
 
+  // Migrate: add credits_per_image column if it doesn't exist (existing DBs)
+  try {
+    const cols = db.prepare("PRAGMA table_info(security_config)");
+    const colNames: string[] = [];
+    while (cols.step()) {
+      const row = cols.getAsObject() as Record<string, unknown>;
+      colNames.push(row.name as string);
+    }
+    cols.free();
+    if (!colNames.includes('credits_per_image')) {
+      db.run('ALTER TABLE security_config ADD COLUMN credits_per_image INTEGER NOT NULL DEFAULT 50');
+    }
+  } catch {
+    // Column may already exist, ignore
+  }
+
   db.run(`
-    INSERT OR IGNORE INTO security_config (id, cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, daily_credits_limit)
-    VALUES (1, '["http://localhost:5173"]', '[]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 100)
+    INSERT OR IGNORE INTO security_config (id, cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, credits_per_image, daily_credits_limit)
+    VALUES (1, '["http://localhost:5173"]', '[]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 50, 100)
   `);
 
   // Create user_credits table
@@ -145,21 +187,26 @@ export async function initDb(): Promise<void> {
     cs.free();
   });
 
+  // Create conversations table for sidebar history
+  db.run(`
+    CREATE TABLE IF NOT EXISTS conversations (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      title TEXT NOT NULL DEFAULT '未命名项目',
+      messages TEXT NOT NULL DEFAULT '[]',
+      project_snapshot TEXT NOT NULL DEFAULT '{}',
+      image_data TEXT,
+      has_generated_theme INTEGER DEFAULT 0,
+      is_starred INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+
   // Save to disk
-  saveDb();
+  flushDb();
   startBackupScheduler();
   logger.info('Database initialized successfully');
-}
-
-export function saveDb() {
-  try {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    mkdirSync(join(DB_PATH, '..'), { recursive: true });
-    writeFileSync(DB_PATH, buffer);
-  } catch (err) {
-    logger.error('Failed to save database', err);
-  }
 }
 
 export function closeDb(): void {
@@ -168,7 +215,7 @@ export function closeDb(): void {
     backupTimer = null;
   }
   try {
-    saveDb();
+    flushDb();
     (db as any).close();
     logger.info('Database closed');
   } catch (err) {
@@ -179,6 +226,7 @@ export function closeDb(): void {
 function backupDb(): void {
   try {
     if (!existsSync(BACKUP_DIR)) mkdirSync(BACKUP_DIR, { recursive: true });
+    flushDb();
     const d = new Date();
     const ts = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(d.getHours()).padStart(2,'0')}`;
     const backupPath = join(BACKUP_DIR, `theme-studio-${ts}.db`);
@@ -278,14 +326,15 @@ export function getSecurityConfig(): any {
 }
 
 export async function updateSecurityConfig(
-  cors_origins?: string[],
-  proxy_image_hosts?: string[],
-  rate_limits?: Record<string, any>,
-  enabled_features?: Record<string, boolean>,
-  daily_image_gen_limit?: number,
-  daily_chat_adjust_limit?: number,
-  credits_per_conversation?: number,
-  daily_credits_limit?: number
+cors_origins?: string[],
+proxy_image_hosts?: string[],
+rate_limits?: Record<string, any>,
+enabled_features?: Record<string, boolean>,
+daily_image_gen_limit?: number,
+daily_chat_adjust_limit?: number,
+credits_per_conversation?: number,
+credits_per_image?: number,
+daily_credits_limit?: number
 ): Promise<void> {
   const current = getSecurityConfig();
   
@@ -296,8 +345,9 @@ export async function updateSecurityConfig(
   if (enabled_features !== undefined) updateFields.enabled_features = JSON.stringify(enabled_features);
   if (daily_image_gen_limit !== undefined) updateFields.daily_image_gen_limit = daily_image_gen_limit;
   if (daily_chat_adjust_limit !== undefined) updateFields.daily_chat_adjust_limit = daily_chat_adjust_limit;
-  if (credits_per_conversation !== undefined) updateFields.credits_per_conversation = credits_per_conversation;
-  if (daily_credits_limit !== undefined) updateFields.daily_credits_limit = daily_credits_limit;
+if (credits_per_conversation !== undefined) updateFields.credits_per_conversation = credits_per_conversation;
+if (credits_per_image !== undefined) updateFields.credits_per_image = credits_per_image;
+if (daily_credits_limit !== undefined) updateFields.daily_credits_limit = daily_credits_limit;
   
   if (Object.keys(updateFields).length === 0) {
     return;

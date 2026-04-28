@@ -19,7 +19,7 @@ describe('web credits visibility contract', () => {
     expect(source).toContain("const quotaEnabled = info.quotaEnabled !== false;");
     expect(source).toContain("creditsBar.style.display = quotaEnabled ? '' : 'none';");
     expect(source).toContain("landingCreditsChip.style.display = quotaEnabled ? '' : 'none';");
-    expect(source).toContain("updateCostHints(info.costPerChat, quotaEnabled);");
+    expect(source).toContain("updateCostHints(info.costPerImage, quotaEnabled);");
     expect(source).toContain("(el as HTMLElement).style.display = enabled ? '' : 'none';");
   });
 });

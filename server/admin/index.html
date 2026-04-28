@@ -153,11 +153,11 @@
               <input type="number" id="dailyCreditsLimit" placeholder="例如: 100">
             </div>
             <div>
-              <label>每次对话消耗积分</label>
-              <input type="number" id="creditsPerConversation" placeholder="例如: 25">
+              <label>每次生图消耗积分</label>
+              <input type="number" id="creditsPerImage" placeholder="例如: 50">
             </div>
           </div>
-          <p class="subtitle" style="margin-top: 6px; font-size: 12px;">积分每日 06:00 自动重置为上限值，每次对话（含生图）扣除对应积分</p>
+          <p class="subtitle" style="margin-top: 6px; font-size: 12px;">积分每日 06:00 自动重置为上限值，每次生成图片扣除对应积分；对话不消耗积分</p>
         </div>
 
         <details style="margin-top: 16px;">
@@ -336,7 +336,7 @@
         document.getElementById('corsAllowlist').value = securityData.corsOrigins?.join('\n') || '';
         document.getElementById('proxyImageAllowlist').value = securityData.proxyImageHosts?.join('\n') || '';
         document.getElementById('dailyCreditsLimit').value = securityData.dailyCreditsLimit ?? '100';
-        document.getElementById('creditsPerConversation').value = securityData.creditsPerConversation ?? '25';
+        document.getElementById('creditsPerImage').value = securityData.creditsPerImage ?? '50';
         
         // Credits limit toggle - enabled by default
         const creditsEnabled = securityData.enabledFeatures?.quota !== false;
@@ -388,7 +388,7 @@
             rateLimiting: true
           },
           dailyCreditsLimit: parseInt(document.getElementById('dailyCreditsLimit').value) || 100,
-          creditsPerConversation: parseInt(document.getElementById('creditsPerConversation').value) || 50
+          creditsPerImage: parseInt(document.getElementById('creditsPerImage').value) || 50
         };
         
         const [modelRes, securityRes] = await Promise.allSettled([
@@ -416,7 +416,7 @@
               ...(body.rateLimits ? { rateLimits: body.rateLimits } : {}),
               enabledFeatures: body.enabledFeatures,
               dailyCreditsLimit: body.dailyCreditsLimit,
-              creditsPerConversation: body.creditsPerConversation,
+              creditsPerImage: body.creditsPerImage,
             })
           })
         ]);

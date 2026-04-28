@@ -211,3 +211,12 @@ export function getAvailablePresets(): string[] {
   const allPresets = [...KNOWN_PRESETS, ...saved];
   return Array.from(new Set(allPresets));
 }
+
+export function restoreFromSnapshot(snapshot: Record<string, unknown>): void {
+  if (!snapshot || !snapshot.id) return;
+  const project = snapshot as unknown as Project;
+  project.updatedAt = Date.now();
+  _projects.set(project.id, project);
+  setCurrentProjectId(project.id);
+  updateProjectNameDisplay(project);
+}

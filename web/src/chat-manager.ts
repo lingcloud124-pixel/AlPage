@@ -25,10 +25,17 @@ import { classifyImageIntent } from './image-intent';
 import { applyPrimaryImageToProject } from './primary-image-flow';
 import { showNotificationWithOptions } from './package-manager';
 import { resolveLegacyLandingPrompt } from './landing-prompts';
+import { createConversation, updateConversation } from './api/conversations';
+import type { ConversationCreatePayload, ConversationUpdatePayload } from './types';
+import { setActiveConversation, getActiveConversationId, refreshSidebar } from './components/sidebar';
 
 const conversationHistory: ChatMessage[] = [];
 let activeAbortController: AbortController | null = null;
 const MAX_UPLOAD_IMAGE_BYTES = 2 * 1024 * 1024;
+
+let _activeConversationId: string | null = null;
+let _saveQueue: Promise<void> = Promise.resolve();
+let _chatDeps: ChatDeps | null = null;
 
 export interface ThemeAgentDebugState {
   toolCallPrompt?: string;
@@ -110,6 +117,56 @@ export function renderMessage(role: 'user' | 'ai', content: string): HTMLElement
 }
 
 export async function saveChatHistory(): Promise<void> {
+  const prev = _saveQueue;
+  let resolve: () => void = () => {};
+  _saveQueue = new Promise(r => { resolve = r; });
+  await prev;
+  try {
+    await doSaveConversation();
+  } finally {
+    resolve();
+  }
+}
+
+async function doSaveConversation(): Promise<void> {
+  const histLen = conversationHistory.length;
+  if (histLen === 0) return;
+  const projectId = getCurrentProjectId();
+  let projectSnapshot: Record<string, unknown> = {};
+  if (projectId) {
+    const project = await loadProject(projectId);
+    if (project) projectSnapshot = JSON.parse(JSON.stringify(project));
+  }
+  const messages = conversationHistory.map(m => ({
+    id: m.id, role: m.role, content: m.content, timestamp: m.timestamp,
+    toolCalls: m.toolCalls, toolResults: m.toolResults, attachments: m.attachments,
+  }));
+
+  try {
+    if (!_activeConversationId) {
+      const id = crypto.randomUUID();
+      const title = deriveConversationTitle();
+      const payload: ConversationCreatePayload = { id, title, messages, projectSnapshot, hasGeneratedTheme: !!projectId };
+      const result = await createConversation(payload);
+      if (result) {
+        _activeConversationId = result.id;
+        setActiveConversation(_activeConversationId);
+      }
+    } else {
+      const payload: ConversationUpdatePayload = { messages, projectSnapshot, hasGeneratedTheme: !!projectId };
+      await updateConversation(_activeConversationId, payload);
+    }
+    refreshSidebar();
+  } catch (err) {
+    console.error('[conversation] Save error:', err);
+  }
+}
+
+function deriveConversationTitle(): string {
+  const first = conversationHistory.find(m => m.role === 'user');
+  if (!first) return '未命名项目';
+  const text = first.content.slice(0, 40).replace(/\n/g, ' ').trim();
+  return text || '未命名项目';
 }
 
 export async function loadChatHistory(): Promise<Array<{ role: string; content: string; timestamp: number }>> {
@@ -121,6 +178,29 @@ export async function loadAndRenderChatHistory(messagesContainer: HTMLElement | 
   conversationHistory.length = 0;
   showDefaultChatView();
   messagesContainer.innerHTML = '';
+}
+
+export function setActiveConversationId(id: string | null): void {
+  _activeConversationId = id;
+  setActiveConversation(id);
+}
+
+export function getConversationId(): string | null {
+  return _activeConversationId;
+}
+
+export function startNewConversation(): void {
+  conversationHistory.length = 0;
+  _activeConversationId = null;
+  const messagesContainer = document.getElementById('messagesContainer');
+  if (messagesContainer) messagesContainer.innerHTML = '';
+  showDefaultChatView();
+  setCurrentProjectId(null);
+  _chatDeps?.collapsePreview?.();
+  _chatDeps?.setChatPanelWidth(null);
+  const chatProjectName = document.getElementById('chatProjectName');
+  if (chatProjectName) chatProjectName.textContent = '开始新创作';
+  setActiveConversationId(null);
 }
 
   function extractThemeTitle(text: string): string {
@@ -173,6 +253,15 @@ export async function loadAndRenderChatHistory(messagesContainer: HTMLElement | 
 
   project.nameEn = derived;
   return true;
+}
+
+function pushToolResultToHistory(content: string): void {
+  conversationHistory.push({
+    id: crypto.randomUUID(),
+    role: 'assistant',
+    content,
+    timestamp: Date.now(),
+  });
 }
 
 function stripToolCallsFromDisplay(content: string): string {
@@ -404,6 +493,7 @@ export interface ChatDeps {
 }
 
 export function setupChatInterface(deps: ChatDeps) {
+  _chatDeps = deps;
   (globalThis as any).__selectThemePreview = (index: number) => {
     if (!latestThemePreviews || index < 0 || index >= latestThemePreviews.length) return;
     const selected = latestThemePreviews[index];
@@ -453,6 +543,36 @@ export function setupChatInterface(deps: ChatDeps) {
   conversationMessageInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendUserMessage('conversation'); }
   });
+
+  window.addEventListener('sidebar:new-conversation', () => {
+    startNewConversation();
+  });
+
+  window.addEventListener('sidebar:restore-conversation', ((e: CustomEvent) => {
+    const detail = e.detail;
+    if (detail && detail.messages) {
+      conversationHistory.length = 0;
+      conversationHistory.push(...detail.messages);
+      _activeConversationId = detail.id;
+      const messagesContainer = document.getElementById('messagesContainer');
+      if (messagesContainer) messagesContainer.innerHTML = '';
+      for (const msg of conversationHistory) {
+        const displayContent = msg.role === 'assistant'
+          ? stripToolCallsFromDisplay(msg.content)
+          : msg.content;
+        renderMessage(msg.role === 'assistant' ? 'ai' : msg.role, displayContent);
+      }
+      showConversationChatView();
+      setActiveConversationId(detail.id);
+      if (detail.hasGeneratedTheme && detail.projectSnapshot && Object.keys(detail.projectSnapshot).length > 0) {
+        window.dispatchEvent(new CustomEvent('sidebar:restore-project', { detail: detail.projectSnapshot }));
+        const proj = detail.projectSnapshot as any;
+        const chatProjectName = document.getElementById('chatProjectName');
+        if (chatProjectName && proj.themeName) chatProjectName.textContent = proj.themeName;
+        else if (chatProjectName && proj.name && proj.name !== '未命名项目') chatProjectName.textContent = proj.name;
+      }
+    }
+  }) as EventListener);
 
   const pendingImages: string[] = [];
   const defaultImagePreviewBar = document.getElementById('imagePreviewBar') as HTMLElement | null;
@@ -809,22 +929,33 @@ export function setupChatInterface(deps: ChatDeps) {
         const colorTag = data?.primaryColor
           ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${data.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
           : '';
-        await addMessageToChat('ai', [
+        const toolResultMsg = [
           `🎨 主题已应用！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
           data?.dominantColors?.length ? `识别到的候选主色 ${data.dominantColors.slice(0, 3).join(' / ')}。` : '',
           data?.enforcementReason ?? '',
           `对比度校验：${data?.contrastValidation?.passed ? '通过' : '存在风险'}。`,
-        ].filter(Boolean).join(' '));
+        ].filter(Boolean).join(' ');
+        await addMessageToChat('ai', toolResultMsg);
+        pushToolResultToHistory(toolResultMsg);
         await saveCurrentColorsToProject();
         syncColorEditorFromTheme();
         deps.expandPreview();
         deps.setChatPanelWidth(372);
         await saveChatHistory();
       } else {
-        await addMessageToChat('ai', `⚠️ ${toolResult.error ?? '预览图生成失败，请重试。'}`);
+        const errMsg = `⚠️ ${toolResult.error ?? '预览图生成失败，请重试。'}`;
+        await addMessageToChat('ai', errMsg);
+        pushToolResultToHistory(errMsg);
         await saveChatHistory();
       }
     } else if (content && !shouldSkipAiForPrimaryImage && !shouldUpgradeExistingReference) {
+      if (!getCurrentProjectId()) {
+        const newProject = await createProject('未命名项目', 'light-ui');
+        if (newProject) {
+          setCurrentProjectId(newProject.id);
+          (globalThis as any).__themeStudioCurrentProjectId = newProject.id;
+        }
+      }
       await callAI(content);
     }
     if (!content && hasImages && currentImageRole !== 'primary') {
@@ -858,6 +989,8 @@ export function setupChatInterface(deps: ChatDeps) {
         if (nameEnChanged) {
           await saveProject(project);
         }
+
+        await saveChatHistory();
       }
     }
   }
@@ -1044,16 +1177,6 @@ export function setupChatInterface(deps: ChatDeps) {
 
     conversationSendBtn?.removeEventListener('click', stopHandler);
 
-    if (contentEl) {
-      contentEl.classList.remove('streaming');
-      const cleaned = stripToolCallsFromDisplay(fullResponse);
-      contentEl.innerHTML = '';
-      if (thinkingText) contentEl.appendChild(buildThinkingToggle(thinkingText));
-      const mdSpan = document.createElement('span');
-      mdSpan.innerHTML = marked.parse(cleaned || '') as string;
-      contentEl.appendChild(mdSpan);
-    }
-
     conversationHistory.push({
       id: (Date.now() + 1).toString(),
       role: 'assistant',
@@ -1062,9 +1185,24 @@ export function setupChatInterface(deps: ChatDeps) {
     });
     await saveChatHistory();
 
+    if (contentEl) {
+      try {
+        contentEl.classList.remove('streaming');
+        const cleaned = stripToolCallsFromDisplay(fullResponse);
+        contentEl.innerHTML = '';
+        if (thinkingText) contentEl.appendChild(buildThinkingToggle(thinkingText));
+        const mdSpan = document.createElement('span');
+        mdSpan.innerHTML = marked.parse(cleaned || '') as string;
+        contentEl.appendChild(mdSpan);
+      } catch (renderErr) {
+        console.error('[callAI] Render error (saved already):', renderErr);
+        try {
+          contentEl.textContent = fullResponse.slice(0, 500);
+        } catch { /* ignore */ }
+      }
+    }
+
     const cleanedResponse = fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '');
-    console.log('[DEBUG] cleanedResponse 长度:', cleanedResponse.length);
-    console.log('[DEBUG] cleanedResponse 最后200字:', cleanedResponse.slice(-200));
 
     const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(cleanedResponse), {
       userMessage,
@@ -1074,10 +1212,6 @@ export function setupChatInterface(deps: ChatDeps) {
       templateType,
       latestThemeAgentDebugState,
       latestThemePreviews,
-    });
-    console.log('[DEBUG] 解析到 toolCalls 数量:', toolCalls.length);
-    toolCalls.forEach((tc, i) => {
-      console.log(`[DEBUG] toolCall[${i}]:`, tc.tool, JSON.stringify(tc.args).slice(0, 200));
     });
     const TOOL_GLOBAL_TIMEOUT = 120_000;
     const toolStartTime = Date.now();
@@ -1101,7 +1235,9 @@ export function setupChatInterface(deps: ChatDeps) {
     for (const tc of toolCalls) {
       if (Date.now() - toolStartTime > TOOL_GLOBAL_TIMEOUT) {
         removeToolLoading();
-        await addMessageToChat('ai', '⚠️ 工具执行总时长超限，剩余工具已跳过');
+        const timeoutMsg = '⚠️ 工具执行总时长超限，剩余工具已跳过';
+        await addMessageToChat('ai', timeoutMsg);
+        pushToolResultToHistory(timeoutMsg);
         await saveChatHistory();
         break;
       }
@@ -1154,10 +1290,14 @@ export function setupChatInterface(deps: ChatDeps) {
                 `</div>`
               ).join('');
               const previewHtml = `<div style="display:flex;gap:8px;margin:8px 0;">${imageCards}</div>`;
-              await addMessageToChat('ai', `🎨 已生成 ${previews.length} 张预览图，请点击选择或描述您的偏好：${previewHtml}`);
+              const prevMsg = `🎨 已生成 ${previews.length} 张预览图，请点击选择或描述您的偏好：${previewHtml}`;
+              await addMessageToChat('ai', prevMsg);
+              pushToolResultToHistory(prevMsg);
               await saveChatHistory();
             } else {
-              await addMessageToChat('ai', '⚠️ 预览图生成失败，请重试。');
+              const failMsg = '⚠️ 预览图生成失败，请重试。';
+              await addMessageToChat('ai', failMsg);
+              pushToolResultToHistory(failMsg);
             }
           } else if (tc.tool === 'apply_selected_theme') {
             const appliedData = result.data as {
@@ -1174,13 +1314,15 @@ export function setupChatInterface(deps: ChatDeps) {
               ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${appliedData.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
               : '';
             const contrastPassed = appliedData?.contrastValidation?.passed ?? false;
-            await addMessageToChat('ai', [
+            const appliedMsg = [
               `🎨 主题已应用！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
               appliedData?.dominantColors?.length ? `识别到的候选主色 ${appliedData.dominantColors.slice(0, 3).join(' / ')}。` : '',
               appliedData?.fallbackUsed ? '本次提色未稳定完成，已回退应用默认主色。' : '',
               appliedData?.enforcementReason ?? '',
               `对比度校验：${contrastPassed ? '通过' : '存在风险'}。`,
-            ].filter(Boolean).join(' '));
+            ].filter(Boolean).join(' ');
+            await addMessageToChat('ai', appliedMsg);
+            pushToolResultToHistory(appliedMsg);
             await saveCurrentColorsToProject();
             syncColorEditorFromTheme();
             latestThemePreviews = null;
@@ -1201,17 +1343,23 @@ export function setupChatInterface(deps: ChatDeps) {
               directionLabel: '当前方案',
               directionDescription: '',
             }] : null;
+            await saveCurrentColorsToProject();
+            syncColorEditorFromTheme();
             if (pipelineData?.imageUrl) {
               const previewHtml =
                 `<div style="display:flex;gap:8px;margin:8px 0;">` +
                 `<div style="flex:1;min-width:0;text-align:center;">` +
                 `<img src="${pipelineData.imageUrl}" style="width:100%;border-radius:8px;border:1px solid #ccc;" />` +
-                `<div class="theme-preview-confirm-hint">如果满意，请回复“确认”或“就这样”；如果不满意，直接告诉我想怎么改。</div>` +
+                `<div class="theme-preview-confirm-hint">如果满意，请回复"确认"或"就这样"；如果不满意，直接告诉我想怎么改。</div>` +
                 `</div></div>`;
-              await addMessageToChat('ai', `🎨 我先给您生成了 1 个方案，请先看这张图：${previewHtml}`);
+              const pipelineMsg = `🎨 我先给您生成了 1 个方案，请先看这张图：${previewHtml}`;
+              await addMessageToChat('ai', pipelineMsg);
+              pushToolResultToHistory(pipelineMsg);
               await saveChatHistory();
             } else {
-              await addMessageToChat('ai', '⚠️ 预览图生成失败，请重试。');
+              const failMsg = '⚠️ 预览图生成失败，请重试。';
+              await addMessageToChat('ai', failMsg);
+              pushToolResultToHistory(failMsg);
               await saveChatHistory();
             }
           } else if (tc.tool === 'save_colors') {
@@ -1239,15 +1387,21 @@ export function setupChatInterface(deps: ChatDeps) {
           }
         } else {
           if (tc.tool === 'generate_theme_previews') {
-            await addMessageToChat('ai', `⚠️ ${result.error ?? '预览图生成失败，请重试。'}`);
+            const errMsg = `⚠️ ${result.error ?? '预览图生成失败，请重试。'}`;
+            await addMessageToChat('ai', errMsg);
+            pushToolResultToHistory(errMsg);
           } else {
-            await addMessageToChat('ai', `⚠️ ${tc.tool}: ${result.error ?? '未知错误'}`);
+            const errMsg = `⚠️ ${tc.tool}: ${result.error ?? '未知错误'}`;
+            await addMessageToChat('ai', errMsg);
+            pushToolResultToHistory(errMsg);
           }
           await saveChatHistory();
         }
       } catch (e) {
         removeToolLoading();
-        await addMessageToChat('ai', `❌ ${tc.tool} 执行失败：${(e as Error).message}`);
+        const errMsg = `❌ ${tc.tool} 执行失败：${(e as Error).message}`;
+        await addMessageToChat('ai', errMsg);
+        pushToolResultToHistory(errMsg);
         await saveChatHistory();
       }
     }

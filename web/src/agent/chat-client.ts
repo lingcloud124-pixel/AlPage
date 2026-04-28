@@ -268,15 +268,11 @@ export async function chatCompletion(
       if (response.status === 403) {
         try {
           const errData = await response.json();
-          if (errData.code === 'CREDITS_EXHAUSTED') {
-            updateCreditsDisplay({ credits: errData.remainingCredits ?? 0, maxCredits: 100, nextResetAt: errData.nextResetAt ?? '' });
-            throw new Error(`积分不足，今日使用次数已用完。${formatNextReset(errData.nextResetAt)}自动恢复`);
-          }
           if (errData.code === 'MESSAGE_LIMIT_EXCEEDED') {
             throw new Error(errData.error || '对话轮数已达上限');
           }
         } catch (e) {
-          if ((e as Error).message.includes('积分不足') || (e as Error).message.includes('已达上限')) throw e;
+          if ((e as Error).message.includes('已达上限')) throw e;
         }
       }
 

@@ -547,19 +547,6 @@ function validateProxyImageHost(url: string): boolean {
 }
 
 router.post('/chat', async (req, res) => {
-  const chatUserId = (req as any).userId || 1;
-  const chatSecurityConfig = getSecurityConfig();
-  const chatCreditsPerConv = chatSecurityConfig?.credits_per_conversation ?? 50;
-  res.on('finish', () => {
-    if (
-      chatSecurityConfig?.enabled_features?.quota !== false &&
-      res.statusCode &&
-      res.statusCode >= 200 &&
-      res.statusCode < 300
-    ) {
-      deductCredits(chatUserId, chatCreditsPerConv);
-    }
-  });
   try {
     const config = getModelConfig();
     const securityConfig = getSecurityConfig();
@@ -682,6 +669,19 @@ router.post('/chat', async (req, res) => {
 });
 
 router.post('/image', async (req, res) => {
+  const imageUserId = (req as any).userId || 1;
+  const imageSecurityConfig = getSecurityConfig();
+  const imageCreditsPerGen = imageSecurityConfig?.credits_per_image ?? 50;
+  res.on('finish', () => {
+    if (
+      imageSecurityConfig?.enabled_features?.quota !== false &&
+      res.statusCode &&
+      res.statusCode >= 200 &&
+      res.statusCode < 300
+    ) {
+      deductCredits(imageUserId, imageCreditsPerGen);
+    }
+  });
   try {
     const config = getModelConfig();
     const securityConfig = getSecurityConfig();

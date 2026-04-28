@@ -228,3 +228,41 @@ export interface ExportJobQueueEntry {
   createdAt: number;
   status: ExportBatchStatus;
 }
+
+export interface ConversationListItem {
+  id: string;
+  title: string;
+  hasGeneratedTheme: boolean;
+  isStarred: boolean;
+  updatedAt: number;
+}
+
+export interface ConversationDetail extends ConversationListItem {
+  messages: ChatMessage[];
+  projectSnapshot: Record<string, unknown>;
+  imageData: ConversationImageData | null;
+  createdAt: number;
+}
+
+export interface ConversationImageData {
+  primaryImage?: string;
+  headerImage?: string;
+  userUploads?: string[];
+}
+
+export interface ConversationCreatePayload {
+  id: string;
+  title?: string;
+  messages?: ChatMessage[];
+  projectSnapshot?: Record<string, unknown>;
+  imageData?: ConversationImageData;
+  hasGeneratedTheme?: boolean;
+}
+
+export interface ConversationUpdatePayload {
+  messages?: ChatMessage[];
+  projectSnapshot?: Record<string, unknown>;
+  title?: string;
+  imageData?: ConversationImageData;
+  hasGeneratedTheme?: boolean;
+}
