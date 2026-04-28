@@ -135,6 +135,11 @@ export interface ThemePreview {
   directionDescription: string;
 }
 
+interface ThemePreviewFailure {
+  directionLabel: string;
+  error: string;
+}
+
 export function pickBestThemeCandidate(
   dominantColors: string[],
   templateType: 'light-ui' | 'dark-ui',
@@ -486,6 +491,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           url: string; style: string; prompt: string;
           directionLabel: string; directionDescription: string;
         }> = [];
+        const failures: ThemePreviewFailure[] = [];
 
         for (let i = 0; i < directions.length; i++) {
           const dir = directions[i];
@@ -502,6 +508,13 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           onProgress?.({ type: 'image_generating', data: { current: i + 1, total, label: dir.label } });
 
           const result = await generateImage(finalPrompt);
+
+          if (!result.success) {
+            failures.push({
+              directionLabel: dir.label ?? `${String.fromCharCode(65 + i)}`,
+              error: result.error ?? '未知错误',
+            });
+          }
 
           results.push({
             url: result.success && result.url ? result.url : '',
@@ -527,7 +540,14 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         }));
 
         if (previews.length === 0) {
-          return { success: false, error: '所有预览图生成失败，请重试' } as ToolResult;
+          const failureSummary = failures.length > 0
+            ? failures.map(({ directionLabel, error }) => `${directionLabel}: ${error}`).join('；')
+            : '未返回具体错误';
+          return {
+            success: false,
+            error: `所有预览图生成失败。${failureSummary}`,
+            data: { failures },
+          } as ToolResult;
         }
 
         return {

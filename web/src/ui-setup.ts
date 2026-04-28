@@ -123,9 +123,14 @@ export function setupPreviewPanel() {
 }
 
 export function setupBackToHome() {
-  const btn = document.getElementById('backToHomeBtn');
-  if (!btn) return;
-  btn.addEventListener('click', () => showWorkspaceLandingState());
+  const homeTriggers = [
+    document.getElementById('backToHomeBtn'),
+    document.getElementById('landingHomeBtn'),
+  ].filter((el): el is HTMLElement => Boolean(el));
+
+  homeTriggers.forEach((trigger) => {
+    trigger.addEventListener('click', () => showWorkspaceLandingState());
+  });
 }
 
 async function loadHeaderIntoMainPage(headerId: string) {

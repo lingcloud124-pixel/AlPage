@@ -2,7 +2,7 @@ import { getAllCSSVariables } from './theme-engine';
 import { appendExportBatchToProject, appendExportJobRequest, buildExportJobRequest, updateExportBatchInProject } from './export/export-job';
 import { dispatchExportJobToBridge, pickDirectoryViaBridge } from './export/export-bridge';
 import { fetchExportJobStatus } from './export/export-status-client';
-import { getCurrentProjectId, loadProject, saveProject, safeJsonParse, getLastProjectMutationError } from './project-manager';
+import { createProject, getCurrentProjectId, loadProject, saveProject, safeJsonParse, getLastProjectMutationError, setCurrentProjectId } from './project-manager';
 import type { ExportBatchStatus, ExportJobQueueEntry } from './types';
 import { loadSettings, saveSettings, getEffectiveExportRoot } from './agent/chat-client';
 import { normalizeExportRoot } from './export/export-paths';
@@ -27,6 +27,28 @@ function persistExportJobQueue(request: ReturnType<typeof buildExportJobRequest>
 
 export function showNotification(message: string) {
   showNotificationWithOptions(message);
+}
+
+async function ensureProjectForPackaging(): Promise<Awaited<ReturnType<typeof loadProject>> | null> {
+  const currentProjectId = getCurrentProjectId();
+  if (currentProjectId) {
+    const existingProject = await loadProject(currentProjectId);
+    if (existingProject) {
+      return existingProject;
+    }
+  }
+
+  const projectTitle = document.getElementById('chatProjectName')?.textContent?.trim() || '未命名项目';
+  const createdProject = await createProject(projectTitle, 'light-ui');
+  if (!createdProject) {
+    return null;
+  }
+
+  createdProject.themeName = projectTitle === '开始新创作' ? 'AI主题' : projectTitle;
+  createdProject.lifecycle = 'active';
+  setCurrentProjectId(createdProject.id);
+  await saveProject(createdProject);
+  return createdProject;
 }
 
 export function showNotificationWithOptions(
@@ -54,7 +76,9 @@ export function showNotificationWithOptions(
 
 export function setupMainActions() {
   const packageBtn = document.getElementById('packageBtn');
-  if (packageBtn) packageBtn.addEventListener('click', showPackageModal);
+  if (packageBtn instanceof HTMLButtonElement) {
+    packageBtn.onclick = showPackageModal;
+  }
   initializePackageModal();
 }
 
@@ -99,12 +123,9 @@ function initializePackageModal() {
   const closeBtn = document.getElementById('packageModalClose');
   const cancelBtn = document.getElementById('packageCancelBtn');
   const startBtn = document.getElementById('packageStartBtn');
-  if (closeBtn) closeBtn.addEventListener('click', closePackageModal);
-  if (cancelBtn) cancelBtn.addEventListener('click', closePackageModal);
-  if (startBtn) startBtn.addEventListener('click', startPackagingProcess);
-
-  const progressCloseBtn = document.getElementById('packageProgressClose');
-  if (progressCloseBtn) progressCloseBtn.addEventListener('click', closeProgressModal);
+  if (closeBtn instanceof HTMLButtonElement) closeBtn.onclick = closePackageModal;
+  if (cancelBtn instanceof HTMLButtonElement) cancelBtn.onclick = closePackageModal;
+  if (startBtn instanceof HTMLButtonElement) startBtn.onclick = startPackagingProcess;
 }
 
 function closePackageModal() {
@@ -168,11 +189,13 @@ function renderProgress(step: string, detail?: string) {
 
 function renderProgressWithDownload(step: string, detail?: string, dlUrl?: string, filename?: string) {
   const content = document.getElementById('packageProgressContent');
+  const notice = document.getElementById('packageProgressNotice');
   if (!content) return;
 
   const isLoading = step !== 'completed' && step !== 'failed';
   const iconChar = isLoading ? '⚙️' : step === 'completed' ? '✅' : '❌';
   const title = isLoading ? step : step === 'completed' ? '打包完成' : '打包失败';
+  notice?.classList.toggle('is-visible', isLoading);
 
   content.innerHTML = `
     <div class="package-progress-icon${isLoading ? ' spinning' : ''}">${iconChar}</div>
@@ -243,16 +266,9 @@ async function startPackagingProcess() {
       return;
     }
 
-    const currentProjectId = getCurrentProjectId();
-    if (!currentProjectId) {
-      showNotification('请先创建或打开一个项目，再执行打包');
-      if (startBtn) startBtn.disabled = false;
-      return;
-    }
-
-    const project = await loadProject(currentProjectId);
+    const project = await ensureProjectForPackaging();
     if (!project) {
-      showNotification('当前项目不存在，无法创建导出任务');
+      showNotification('请先创建或打开一个项目，再执行打包');
       if (startBtn) startBtn.disabled = false;
       return;
     }

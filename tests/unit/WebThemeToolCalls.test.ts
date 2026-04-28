@@ -56,11 +56,33 @@ describe('web theme tool call color hints', () => {
       assistantMessage: '好的，我开始为您生成。',
     });
 
-    expect(enriched[0].tool).toBe('generate_theme_previews');
+    expect(enriched[0].tool).toBe('generate_theme_pipeline');
     expect(enriched[0].args.primaryHint).toBe('red');
     expect(String(enriched[0].args.prompt)).toContain('2026');
     expect(String(enriched[0].args.prompt)).toContain('fireworks');
     expect(String(enriched[0].args.prompt)).toContain('dominant festive red palette');
+  });
+
+  test('single preview confirmation applies the generated theme directly', () => {
+    const enriched = enrichToolCallsWithColorHints([], {
+      userMessage: '确认',
+      assistantMessage: '好的，正在应用当前方案。',
+      templateType: 'light-ui',
+      latestThemeAgentDebugState: {
+        toolCallPrompt: 'single prompt',
+        preferredHueHint: 'blue',
+      },
+      latestThemePreviews: [{
+        url: 'https://example.com/preview.png',
+        style: 'single-direction',
+        prompt: 'single prompt',
+        directionLabel: '当前方案',
+      }],
+    });
+
+    expect(enriched[0].tool).toBe('apply_selected_theme');
+    expect(enriched[0].args.imageUrl).toBe('https://example.com/preview.png');
+    expect(enriched[0].args.primaryHint).toBe('blue');
   });
 
   test('builds a prompt from the approved plan summary', () => {

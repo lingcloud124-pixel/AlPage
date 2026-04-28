@@ -9,6 +9,10 @@ const DEFAULT_IMAGE_ENDPOINT = 'https://api.minimaxi.com/v1/image_generation';
 const DEFAULT_IMAGE_MODEL = 'image-01';
 const DEFAULT_VOLCENGINE_IMAGE_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/images/generations';
 const DEFAULT_VOLCENGINE_IMAGE_MODEL = 'doubao-seedream-3-0-t2i-250415';
+const DEFAULT_JIMENG_IMAGE_ENDPOINT = 'https://visual.volcengineapi.com';
+const DEFAULT_JIMENG_IMAGE_MODEL = 'jimeng_t2i_v40';
+
+type ImageProvider = 'minimax' | 'jimeng' | 'ark';
 
 function firstNonEmpty(...values: Array<string | undefined>): string {
   for (const value of values) {
@@ -19,7 +23,19 @@ function firstNonEmpty(...values: Array<string | undefined>): string {
   return '';
 }
 
-function getEnvModelConfig() {
+function getEnvModelConfig(): {
+  chatEndpoint: string;
+  chatApiKey: string;
+  chatModel: string;
+  imageProvider: ImageProvider;
+  imageEndpoint: string;
+  imageApiKey: string;
+  imageAccessKeyId: string;
+  imageSecretAccessKey: string;
+  imageModel: string;
+  jimengAccessKey: string;
+  jimengSecretKey: string;
+} {
   const chatApiKey = firstNonEmpty(
     process.env.CHAT_API_KEY,
     process.env.DASHSCOPE_API_KEY,
@@ -48,6 +64,13 @@ function getEnvModelConfig() {
     process.env.JIMENG_SECRET_KEY,
   );
   const hasJimengCredentials = Boolean(jimengAccessKey && jimengSecretKey);
+  const imageProvider = imageApiKey
+    ? 'minimax'
+    : hasJimengCredentials
+      ? 'jimeng'
+      : hasVolcengineImageCredentials
+        ? 'ark'
+        : 'minimax';
 
   return {
     chatEndpoint: chatApiKey
@@ -57,23 +80,30 @@ function getEnvModelConfig() {
     chatModel: chatApiKey
       ? firstNonEmpty(process.env.CHAT_MODEL, process.env.DASHSCOPE_CHAT_MODEL, DEFAULT_CHAT_MODEL)
       : '',
+    imageProvider,
     imageEndpoint: imageApiKey
       ? firstNonEmpty(process.env.IMAGE_API_ENDPOINT, process.env.MINIMAX_IMAGE_ENDPOINT, DEFAULT_IMAGE_ENDPOINT)
-      : hasVolcengineImageCredentials
-        ? firstNonEmpty(process.env.VOLCENGINE_IMAGE_API_ENDPOINT, process.env.VOLCENGINE_ARK_IMAGE_ENDPOINT, DEFAULT_VOLCENGINE_IMAGE_ENDPOINT)
-        : '',
+      : hasJimengCredentials
+        ? firstNonEmpty(process.env.JIMENG_IMAGE_API_ENDPOINT, DEFAULT_JIMENG_IMAGE_ENDPOINT)
+        : hasVolcengineImageCredentials
+          ? firstNonEmpty(process.env.VOLCENGINE_IMAGE_API_ENDPOINT, process.env.VOLCENGINE_ARK_IMAGE_ENDPOINT, DEFAULT_VOLCENGINE_IMAGE_ENDPOINT)
+          : '',
     imageApiKey,
+    imageAccessKeyId: jimengAccessKey || volcengineImageAk,
+    imageSecretAccessKey: jimengSecretKey || volcengineImageSk,
     imageModel: imageApiKey
       ? firstNonEmpty(process.env.IMAGE_MODEL, process.env.MINIMAX_IMAGE_MODEL, DEFAULT_IMAGE_MODEL)
-      : hasVolcengineImageCredentials
-        ? firstNonEmpty(process.env.VOLCENGINE_IMAGE_MODEL, process.env.VOLCENGINE_ARK_IMAGE_MODEL, process.env.VOLCENGINE_ARK_IMAGE_RESOURCE_ID, DEFAULT_VOLCENGINE_IMAGE_MODEL)
-        : hasJimengCredentials
-          ? 'jimeng-4.0'
+      : hasJimengCredentials
+        ? firstNonEmpty(process.env.JIMENG_IMAGE_MODEL, DEFAULT_JIMENG_IMAGE_MODEL)
+        : hasVolcengineImageCredentials
+          ? firstNonEmpty(process.env.VOLCENGINE_IMAGE_MODEL, process.env.VOLCENGINE_ARK_IMAGE_MODEL, process.env.VOLCENGINE_ARK_IMAGE_RESOURCE_ID, DEFAULT_VOLCENGINE_IMAGE_MODEL)
           : '',
     jimengAccessKey,
     jimengSecretKey,
   };
 }
+
+type EnvModelConfig = ReturnType<typeof getEnvModelConfig>;
 
 function maskApiKey(key: string): string {
   if (!key || key.length < 8) return key ? '****' : '';
@@ -86,20 +116,60 @@ function isMaskedApiKeyCandidate(value: unknown): boolean {
   return /^\*{4,}/.test(trimmed);
 }
 
+function inferImageProvider(
+  provider: string,
+  imageEndpoint: string,
+  imageModel: string,
+  envProvider: ImageProvider,
+): ImageProvider {
+  if (provider === 'minimax' || provider === 'jimeng' || provider === 'ark') {
+    return provider;
+  }
+
+  const endpoint = imageEndpoint.toLowerCase();
+  const model = imageModel.toLowerCase();
+
+  if (endpoint.includes('visual.volcengineapi.com') || model.includes('jimeng')) {
+    return 'jimeng';
+  }
+  if (endpoint.includes('volces.com') || endpoint.includes('/api/v3/images/generations') || model.startsWith('ep-') || model.includes('doubao')) {
+    return 'ark';
+  }
+  if (imageEndpoint || imageModel) {
+    return 'minimax';
+  }
+  return envProvider;
+}
+
 function normalizeModelConfig(row?: Record<string, unknown> | null) {
-  const envConfig = getEnvModelConfig();
+  const envConfig: EnvModelConfig = getEnvModelConfig();
+  const rawImageEndpoint = String(row?.image_endpoint ?? '');
+  const rawImageModel = String(row?.image_model ?? '');
+  const storedImageProvider = inferImageProvider(
+    String(row?.image_provider ?? '').trim(),
+    rawImageEndpoint,
+    rawImageModel,
+    envConfig.imageProvider,
+  );
   const storedChatApiKey = String(row?.chat_api_key ?? '');
   const storedImageApiKey = String(row?.image_api_key ?? '');
+  const storedImageAccessKeyId = String(row?.image_access_key_id ?? '');
+  const storedImageSecretAccessKey = String(row?.image_secret_access_key ?? '');
   const normalizedStoredChatApiKey = isMaskedApiKeyCandidate(storedChatApiKey) ? '' : storedChatApiKey;
   const normalizedStoredImageApiKey = isMaskedApiKeyCandidate(storedImageApiKey) ? '' : storedImageApiKey;
+  const normalizedStoredImageAccessKeyId = isMaskedApiKeyCandidate(storedImageAccessKeyId) ? '' : storedImageAccessKeyId;
+  const normalizedStoredImageSecretAccessKey = isMaskedApiKeyCandidate(storedImageSecretAccessKey) ? '' : storedImageSecretAccessKey;
 
   return {
     chatEndpoint: firstNonEmpty(String(row?.chat_endpoint ?? ''), envConfig.chatEndpoint),
     chatApiKey: firstNonEmpty(normalizedStoredChatApiKey, envConfig.chatApiKey),
     chatModel: firstNonEmpty(String(row?.chat_model ?? ''), envConfig.chatModel),
-    imageEndpoint: firstNonEmpty(String(row?.image_endpoint ?? ''), envConfig.imageEndpoint),
+    imageProvider: storedImageProvider,
+    imageEndpoint: firstNonEmpty(rawImageEndpoint, envConfig.imageEndpoint),
     imageApiKey: firstNonEmpty(normalizedStoredImageApiKey, envConfig.imageApiKey),
-    imageModel: firstNonEmpty(String(row?.image_model ?? ''), envConfig.imageModel),
+    imageAccessKeyId: firstNonEmpty(normalizedStoredImageAccessKeyId, envConfig.imageAccessKeyId),
+    imageSecretAccessKey: firstNonEmpty(normalizedStoredImageSecretAccessKey, envConfig.imageSecretAccessKey),
+    imageModel: firstNonEmpty(rawImageModel, envConfig.imageModel),
     jimengAccessKey: envConfig.jimengAccessKey,
     jimengSecretKey: envConfig.jimengSecretKey,
   };
@@ -119,8 +189,11 @@ router.get('/', async (_req, res) => {
       chatEndpoint: config.chatEndpoint,
       chatApiKey: maskApiKey(config.chatApiKey),
       chatModel: config.chatModel,
+      imageProvider: config.imageProvider,
       imageEndpoint: config.imageEndpoint,
       imageApiKey: maskApiKey(config.imageApiKey),
+      imageAccessKeyId: maskApiKey(config.imageAccessKeyId),
+      imageSecretAccessKey: maskApiKey(config.imageSecretAccessKey),
       imageModel: config.imageModel,
     });
   } catch (error) {
@@ -133,10 +206,10 @@ router.put('/', async (req, res) => {
   try {
     const {
       chatEndpoint, chatApiKey, chatModel,
-      imageEndpoint, imageApiKey, imageModel,
+      imageProvider, imageEndpoint, imageApiKey, imageAccessKeyId, imageSecretAccessKey, imageModel,
     } = req.body;
 
-    const existingStmt = db.prepare('SELECT chat_api_key, image_api_key FROM model_config WHERE id = 1');
+    const existingStmt = db.prepare('SELECT chat_api_key, image_api_key, image_access_key_id, image_secret_access_key FROM model_config WHERE id = 1');
     let existing: Record<string, unknown> | null = null;
     if (existingStmt.step()) {
       existing = existingStmt.getAsObject() as Record<string, unknown>;
@@ -150,17 +223,23 @@ router.put('/', async (req, res) => {
     const resolvedImageApiKey = (!imageApiKey || isMaskedApiKeyCandidate(imageApiKey))
       ? normalizedExistingConfig.imageApiKey
       : imageApiKey;
+    const resolvedImageAccessKeyId = (!imageAccessKeyId || isMaskedApiKeyCandidate(imageAccessKeyId))
+      ? normalizedExistingConfig.imageAccessKeyId
+      : imageAccessKeyId;
+    const resolvedImageSecretAccessKey = (!imageSecretAccessKey || isMaskedApiKeyCandidate(imageSecretAccessKey))
+      ? normalizedExistingConfig.imageSecretAccessKey
+      : imageSecretAccessKey;
 
     const stmt = db.prepare(`
       UPDATE model_config SET
         chat_endpoint = ?, chat_api_key = ?, chat_model = ?,
-        image_endpoint = ?, image_api_key = ?, image_model = ?,
+        image_provider = ?, image_endpoint = ?, image_api_key = ?, image_access_key_id = ?, image_secret_access_key = ?, image_model = ?,
         updated_at = unixepoch()
       WHERE id = 1
     `);
     stmt.bind([
       chatEndpoint ?? '', resolvedChatApiKey, chatModel ?? '',
-      imageEndpoint ?? '', resolvedImageApiKey, imageModel ?? '',
+      imageProvider ?? 'minimax', imageEndpoint ?? '', resolvedImageApiKey, resolvedImageAccessKeyId, resolvedImageSecretAccessKey, imageModel ?? '',
     ]);
     stmt.step();
     stmt.free();
@@ -175,7 +254,8 @@ router.put('/', async (req, res) => {
 
 export function getModelConfig(): {
   chatEndpoint: string; chatApiKey: string; chatModel: string;
-  imageEndpoint: string; imageApiKey: string; imageModel: string;
+  imageProvider: ImageProvider;
+  imageEndpoint: string; imageApiKey: string; imageAccessKeyId: string; imageSecretAccessKey: string; imageModel: string;
   jimengAccessKey: string; jimengSecretKey: string;
 } {
   const stmt = db.prepare('SELECT * FROM model_config WHERE id = 1');

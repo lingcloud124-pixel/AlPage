@@ -67,6 +67,8 @@
     .switch-slider::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #ffffff; transition: transform .2s ease; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28); }
     .switch input:checked + .switch-slider { background: var(--accent); border-color: var(--accent); }
     .switch input:checked + .switch-slider::after { transform: translateX(18px); }
+    select { width: 100%; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; }
+    select:focus { border-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -102,12 +104,26 @@
 
       <div class="card">
         <h2>生图模型 <span class="badge">Image</span></h2>
+        <label>Provider</label>
+        <select id="imageProvider" onchange="toggleImageProviderFields()">
+          <option value="minimax">MiniMax</option>
+          <option value="jimeng">Jimeng</option>
+          <option value="ark">Volcengine Ark</option>
+        </select>
         <label>API Endpoint</label>
         <input type="text" id="imageEndpoint" placeholder="https://api.example.com/v1/image_generation">
         <div class="row">
-          <div>
+          <div id="imageApiKeyBlock">
             <label>API Key</label>
             <input type="password" id="imageApiKey" placeholder="sk-...">
+          </div>
+          <div id="imageAccessKeyIdBlock" style="display: none;">
+            <label>Access Key ID</label>
+            <input type="password" id="imageAccessKeyId" placeholder="AK...">
+          </div>
+          <div id="imageSecretAccessKeyBlock" style="display: none;">
+            <label>Secret Access Key</label>
+            <input type="password" id="imageSecretAccessKey" placeholder="SK...">
           </div>
           <div>
             <label>模型名称</label>
@@ -199,6 +215,18 @@
       document.getElementById('creditsSettingsSection').style.display = enabled ? 'block' : 'none';
     }
 
+    function toggleImageProviderFields() {
+      const provider = document.getElementById('imageProvider').value;
+      const imageApiKeyBlock = document.getElementById('imageApiKeyBlock');
+      const imageAccessKeyIdBlock = document.getElementById('imageAccessKeyIdBlock');
+      const imageSecretAccessKeyBlock = document.getElementById('imageSecretAccessKeyBlock');
+
+      const useApiKey = provider === 'minimax';
+      imageApiKeyBlock.style.display = useApiKey ? 'block' : 'none';
+      imageAccessKeyIdBlock.style.display = useApiKey ? 'none' : 'block';
+      imageSecretAccessKeyBlock.style.display = useApiKey ? 'none' : 'block';
+    }
+
     function isAuthenticated() {
       return Object.keys(authHeaders).length > 0;
     }
@@ -218,6 +246,8 @@
       loadUsers();
       return true;
     }
+
+    toggleImageProviderFields();
     
     async function authenticateAdmin() {
       const password = document.getElementById('adminPassword').value;
@@ -292,9 +322,13 @@
         document.getElementById('chatEndpoint').value = data.chatEndpoint || '';
         document.getElementById('chatApiKey').value = data.chatApiKey || '';
         document.getElementById('chatModel').value = data.chatModel || '';
+        document.getElementById('imageProvider').value = data.imageProvider || 'minimax';
         document.getElementById('imageEndpoint').value = data.imageEndpoint || '';
         document.getElementById('imageApiKey').value = data.imageApiKey || '';
+        document.getElementById('imageAccessKeyId').value = data.imageAccessKeyId || '';
+        document.getElementById('imageSecretAccessKey').value = data.imageSecretAccessKey || '';
         document.getElementById('imageModel').value = data.imageModel || '';
+        toggleImageProviderFields();
         
         // Now get the security config
         const securityRes = await fetch('/api/security-config', { headers: authHeaders });
@@ -326,8 +360,11 @@
           chatEndpoint: document.getElementById('chatEndpoint').value,
           chatApiKey: document.getElementById('chatApiKey').value,
           chatModel: document.getElementById('chatModel').value,
+          imageProvider: document.getElementById('imageProvider').value,
           imageEndpoint: document.getElementById('imageEndpoint').value,
           imageApiKey: document.getElementById('imageApiKey').value,
+          imageAccessKeyId: document.getElementById('imageAccessKeyId').value,
+          imageSecretAccessKey: document.getElementById('imageSecretAccessKey').value,
           imageModel: document.getElementById('imageModel').value,
           
           // Additional security configuration
@@ -362,8 +399,11 @@
               chatEndpoint: body.chatEndpoint,
               chatApiKey: body.chatApiKey,
               chatModel: body.chatModel,
+              imageProvider: body.imageProvider,
               imageEndpoint: body.imageEndpoint,
               imageApiKey: body.imageApiKey,
+              imageAccessKeyId: body.imageAccessKeyId,
+              imageSecretAccessKey: body.imageSecretAccessKey,
               imageModel: body.imageModel,
             }),
           }),

@@ -19,13 +19,13 @@
                         <span class="chat-project-name" id="chatProjectName">开始新创作</span>
                     </div>
                     <div class="landing-topbar">
-                        <div class="landing-brand">
+                        <button id="landingHomeBtn" class="landing-brand" type="button" title="返回首页" aria-label="返回首页">
                             <div class="landing-brand-lockup">
                                 <img class="landing-brand-logo-image" src="/branding/landray-logo.png" alt="Landray 蓝凌" loading="eager">
                                 <span class="landing-brand-divider"></span>
                                 <span class="landing-brand-copy">标准产品主题包 AI 生成工具</span>
                             </div>
-                        </div>
+                        </button>
                         <div class="landing-topbar-actions">
                             <button id="landingCreditsChip" class="landing-credits-chip" type="button" title="当前积分" style="display: none;">
                                 <span>积分</span>
@@ -53,7 +53,7 @@
                                 <div class="image-preview-bar" id="imagePreviewBar"></div>
                                 <div class="input-row chat-shell-composer">
                                     <div class="chat-input-wrapper chat-shell-composer-inner chat-shell-composer-inner--landing">
-                                        <textarea id="messageInput" rows="1" placeholder="描述你要生成的主题包（场景 + 风格 + 色调）例如： 企业年会｜科技蓝｜门户主题包"></textarea>
+                                        <textarea id="messageInput" rows="1" placeholder="描述你要生成的主题包（节日+画面+场景＋风格 +色调）例如：做一个国庆节主题，一幅融合长城与故宫元素的庄重山河场景，以3D史诗风格呈现，整体采用红金渐变色调。"></textarea>
                                         <div class="chat-shell-toolbar">
                                             <button id="plusBtn" class="plus-btn ui-icon-button chat-shell-plus" title="添加图片">
                                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -76,36 +76,27 @@
                             </div>
 
                             <section class="landing-section landing-section--after-composer" aria-labelledby="landingStartTitle">
-                                <div class="landing-starter-pills theme-suggestions">
+                                <div class="landing-starter-pills theme-suggestions" data-tooltip="点击快捷指令，生图效果更佳" title="点击快捷指令，生图效果更佳">
                                     <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="想做一套有新年氛围的主题皮肤，整体轻盈喜庆，适合门户首页和工作台展示。">
                                         想做一套有新年氛围的主题皮肤
                                     </button>
                                     <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="做一套春节主题皮肤，要有节日感和热闹气氛，适合标准产品首页展示。">
                                         做一套春节主题皮肤，要有节日感和热闹气氛
                                     </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="来一套清新一点的春日主题皮肤，偏浅色，带一点科技感。">
-                                        来一套清新一点的春日主题皮肤
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="来一套春日气息的清明节主题皮肤">
+                                        来一套春日气息的清明节主题皮肤
                                     </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="想做一套中秋主题皮肤，氛围温暖、东方、适合门户首页。">
-                                        想做一套中秋主题皮肤
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="需要一套国风端午节主题包">
+                                        需要一套国风端午节主题包
                                     </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="做一套科技蓝主题皮肤，适合标准产品门户首页，整体简洁、明亮、有数字化氛围。">
-                                        做一套科技蓝主题皮肤
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="推行科技创新，做一套科技主题包">
+                                        推行科技创新，做一套科技主题包
                                     </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="想做一套企业年会主题皮肤，主视觉热烈大气，适合活动门户和工作台。">
-                                        想做一套企业年会主题皮肤
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="做一套温馨的中秋节主题">
+                                        做一套温馨的中秋节主题
                                     </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="来一套绿色低碳主题皮肤，偏环保科技风，适合展示平台首页。">
-                                        来一套绿色低碳主题皮肤
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="做一套实验室主题皮肤，整体要干净、专业、带一点未来感。">
-                                        做一套实验室主题皮肤
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="想做一套国庆主题皮肤，氛围庄重大气，适合门户首页展示。">
-                                        想做一套国庆主题皮肤
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="来一套协同办公主题皮肤，空间感强，适合企业办公平台。">
-                                        来一套协同办公主题皮肤
+                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="为祖国庆生，做一个国庆节主题包">
+                                        为祖国庆生，做一个国庆节主题包
                                     </button>
                                 </div>
                             </section>
@@ -274,10 +265,8 @@
         <!-- 打包进度弹窗（独立） -->
         <div class="modal-overlay" id="packageProgressModal">
             <div class="modal-content package-progress-modal">
-                <button class="package-progress-close" id="packageProgressClose" aria-label="关闭">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
                 <div id="packageProgressContent" class="package-progress-content"></div>
+                <div id="packageProgressNotice" class="package-progress-notice">主题包生成中（约需1分钟），过程中不支持中断，请耐心等待</div>
             </div>
         </div>
 
