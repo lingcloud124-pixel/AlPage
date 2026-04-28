@@ -685,13 +685,14 @@ router.post('/image', async (req, res) => {
   try {
     const config = getModelConfig();
     const securityConfig = getSecurityConfig();
+    const selectedProvider = config.imageProvider || 'minimax';
     if (securityConfig?.enabled_features?.image === false) {
       return res.status(403).json({ error: '生图功能已关闭' });
     }
-    if (config.jimengAccessKey && config.jimengSecretKey) {
+    if (selectedProvider === 'jimeng' && config.imageAccessKeyId && config.imageSecretAccessKey) {
       try {
         const result = await handleJimengImageRequest(
-          { accessKey: config.jimengAccessKey, secretKey: config.jimengSecretKey },
+          { accessKey: config.imageAccessKeyId, secretKey: config.imageSecretAccessKey },
           (req.body ?? {}) as Record<string, unknown>,
         );
         if (result.statusCode >= 200 && result.statusCode < 300) {
@@ -702,8 +703,10 @@ router.post('/image', async (req, res) => {
         console.warn('[image] Jimeng error, falling back to next provider:', error instanceof Error ? error.message : error);
       }
     }
-    const volcengineArkConfig = getVolcengineArkImageConfig(config.imageEndpoint, config.imageModel);
-    if (volcengineArkConfig) {
+    const volcengineArkConfig = selectedProvider === 'ark'
+      ? getVolcengineArkImageConfig(config.imageEndpoint, config.imageModel)
+      : null;
+    if (selectedProvider === 'ark' && volcengineArkConfig) {
       const tempApiKey = await getVolcengineTemporaryApiKey(volcengineArkConfig);
       const requestBody = JSON.stringify(buildVolcengineArkImageBody(req.body, config.imageModel || volcengineArkConfig.model));
       const { client, options } = resolveTarget(volcengineArkConfig.imageEndpoint);
@@ -743,6 +746,12 @@ router.post('/image', async (req, res) => {
       proxyReq.write(requestBody);
       proxyReq.end();
       return;
+    }
+    if (selectedProvider === 'jimeng' && (!config.imageAccessKeyId || !config.imageSecretAccessKey)) {
+      return res.status(500).json({ error: 'Jimeng model not configured. Please provide imageAccessKeyId and imageSecretAccessKey in /admin or JIMENG_ACCESS_KEY / JIMENG_SECRET_KEY in your env files.' });
+    }
+    if (selectedProvider === 'ark' && !volcengineArkConfig) {
+      return res.status(500).json({ error: 'Volcengine Ark image model not configured. Please provide Ark credentials in env files.' });
     }
     if (!config.imageEndpoint || !config.imageApiKey) {
       return res.status(500).json({ error: 'Image model not configured. Please configure it in /admin or provide VITE_MINIMAX_API_KEY / MINIMAX_API_KEY in your env files.' });

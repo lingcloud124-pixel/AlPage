@@ -168,6 +168,24 @@ export function enrichToolCallsWithColorHints(
     return [{ tool: 'apply_selected_theme', args: selectionResult }, ...toolCalls];
   }
 
+  if (
+    isSimpleConfirmationMessage(context.userMessage)
+    && context.latestThemePreviews
+    && context.latestThemePreviews.length === 1
+  ) {
+    const singlePreview = context.latestThemePreviews[0];
+    return [{
+      tool: 'apply_selected_theme',
+      args: {
+        imageUrl: singlePreview.url,
+        templateType: context.templateType ?? 'light-ui',
+        ...(context.latestThemeAgentDebugState?.preferredHueHint
+          ? { primaryHint: context.latestThemeAgentDebugState.preferredHueHint }
+          : {}),
+      },
+    }, ...toolCalls];
+  }
+
   const enriched = toolCalls.map((toolCall) => {
     if (toolCall.tool !== 'generate_theme_pipeline' && toolCall.tool !== 'generate_theme_previews') return toolCall;
 
@@ -220,6 +238,19 @@ export function enrichToolCallsWithColorHints(
         : ''
     );
 
+    if (toolCall.tool === 'generate_theme_pipeline') {
+      return {
+        ...toolCall,
+        tool: 'generate_theme_pipeline',
+        args: {
+          ...toolCall.args,
+          templateType,
+          ...(finalPrompt ? { prompt: finalPrompt } : {}),
+          ...(inferredHint ? { primaryHint: inferredHint } : {}),
+        },
+      };
+    }
+
     return {
       ...toolCall,
       tool: 'generate_theme_previews',
@@ -244,21 +275,6 @@ export function enrichToolCallsWithColorHints(
       ?? inferPrimaryHintFromText(sourceText, templateType)
       ?? inferPrimaryHintFromText(context.priorUserMessage, templateType);
 
-    if (extractedDirections.length > 0) {
-      console.log('[enrichToolCalls] 未解析到工具调用，从回复文本提取到', extractedDirections.length, '个方向，自动构建 generate_theme_previews');
-      return [
-        {
-          tool: 'generate_theme_previews',
-          args: {
-            directions: extractedDirections,
-            templateType,
-            ...(primaryHint ? { primaryHint } : {}),
-          },
-        },
-        ...enriched,
-      ];
-    }
-
     if (isSimpleConfirmationMessage(context.userMessage) && context.priorAssistantMessage) {
       const templateType = inferTemplateTypeFromText(context.priorAssistantMessage);
       const primaryHint = inferPrimaryHintFromText(context.userMessage, templateType)
@@ -273,10 +289,10 @@ export function enrichToolCallsWithColorHints(
         primaryHint: typeof primaryHint === 'string' ? primaryHint : undefined,
       });
       if (finalPrompt) {
-        console.log('[enrichToolCalls] 简单确认消息，自动生成 generate_theme_previews');
+        console.log('[enrichToolCalls] 简单确认消息，自动生成 generate_theme_pipeline');
         return [
           {
-            tool: 'generate_theme_previews',
+            tool: 'generate_theme_pipeline',
             args: {
               prompt: finalPrompt,
               templateType,

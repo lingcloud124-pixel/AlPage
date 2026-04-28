@@ -11,6 +11,20 @@ const MAX_BACKUPS = 24;
 let db: Database;
 let backupTimer: ReturnType<typeof setInterval> | null = null;
 
+function hasColumn(tableName: string, columnName: string): boolean {
+  const stmt = db.prepare(`PRAGMA table_info(${tableName})`);
+  let found = false;
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as { name?: string };
+    if (row.name === columnName) {
+      found = true;
+      break;
+    }
+  }
+  stmt.free();
+  return found;
+}
+
 export async function initDb(): Promise<void> {
   const SQL = await initSqlJs();
   
@@ -63,16 +77,32 @@ export async function initDb(): Promise<void> {
       chat_endpoint TEXT NOT NULL DEFAULT '',
       chat_api_key TEXT NOT NULL DEFAULT '',
       chat_model TEXT NOT NULL DEFAULT '',
+      image_provider TEXT NOT NULL DEFAULT 'minimax',
       image_endpoint TEXT NOT NULL DEFAULT '',
       image_api_key TEXT NOT NULL DEFAULT '',
+      image_access_key_id TEXT NOT NULL DEFAULT '',
+      image_secret_access_key TEXT NOT NULL DEFAULT '',
       image_model TEXT NOT NULL DEFAULT '',
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `);
 
+  if (!hasColumn('model_config', 'image_provider')) {
+    db.run(`ALTER TABLE model_config ADD COLUMN image_provider TEXT NOT NULL DEFAULT 'minimax'`);
+  }
+  if (!hasColumn('model_config', 'image_access_key_id')) {
+    db.run(`ALTER TABLE model_config ADD COLUMN image_access_key_id TEXT NOT NULL DEFAULT ''`);
+  }
+  if (!hasColumn('model_config', 'image_secret_access_key')) {
+    db.run(`ALTER TABLE model_config ADD COLUMN image_secret_access_key TEXT NOT NULL DEFAULT ''`);
+  }
+
   db.run(`
-    INSERT OR IGNORE INTO model_config (id, chat_endpoint, chat_api_key, chat_model, image_endpoint, image_api_key, image_model)
-    VALUES (1, '', '', '', '', '', '')
+    INSERT OR IGNORE INTO model_config (
+      id, chat_endpoint, chat_api_key, chat_model,
+      image_provider, image_endpoint, image_api_key, image_access_key_id, image_secret_access_key, image_model
+    )
+    VALUES (1, '', '', '', 'minimax', '', '', '', '', '')
   `);
 
   db.run(`
