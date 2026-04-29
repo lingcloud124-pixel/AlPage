@@ -39,6 +39,8 @@ const [
   { creditsRouter },
   { requestLogger },
   { conversationsRouter },
+  { default: adminPasswordRouter },
+  { default: adminAuthRouter },
 ] = await Promise.all([
   import('express'),
   import('./db.js'),
@@ -55,6 +57,8 @@ const [
   import('./routes/credits.js'),
   import('./middleware/request-logger.js'),
   import('./routes/conversations.js'),
+  import('./routes/admin-password.js'),
+  import('./routes/admin-auth.js'),
   import('cookie-parser'),
 ]);
 
@@ -96,6 +100,8 @@ app.get('/api/health', async (_req, res) => {
 
 app.use('/api/model-config', adminAuthMiddleware, modelConfigRouter);
 app.use('/api/security-config', adminAuthMiddleware, securityConfigRouter);
+app.use('/api/admin-password', adminAuthMiddleware, adminPasswordRouter);
+app.use('/api/admin-auth', adminAuthRouter);
 app.use('/api/theme', authMiddleware);
 app.use('/api/theme', (req: any, _res: any, next: any) => {
   const loginName = req.loginName as string | undefined;

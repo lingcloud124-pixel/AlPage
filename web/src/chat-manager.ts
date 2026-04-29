@@ -26,7 +26,7 @@ import { applyPrimaryImageToProject } from './primary-image-flow';
 import { showNotificationWithOptions } from './package-manager';
 import { resolveLegacyLandingPrompt } from './landing-prompts';
 import { createConversation, updateConversation } from './api/conversations';
-import type { ConversationCreatePayload, ConversationUpdatePayload } from './types';
+import type { ConversationCreatePayload, ConversationUpdatePayload, ConversationImageData } from './types';
 import { setActiveConversation, getActiveConversationId, refreshSidebar } from './components/sidebar';
 
 const conversationHistory: ChatMessage[] = [];
@@ -133,27 +133,43 @@ async function doSaveConversation(): Promise<void> {
   if (histLen === 0) return;
   const projectId = getCurrentProjectId();
   let projectSnapshot: Record<string, unknown> = {};
+  let imageData: ConversationImageData | undefined;
   if (projectId) {
     const project = await loadProject(projectId);
-    if (project) projectSnapshot = JSON.parse(JSON.stringify(project));
+    if (project) {
+      projectSnapshot = JSON.parse(JSON.stringify(project));
+      const images: ConversationImageData = {};
+      if (project.bgImageUrl) images.primaryImage = project.bgImageUrl;
+      if (project.headerBgImageUrl) images.headerImage = project.headerBgImageUrl;
+      if (Object.keys(images).length > 0) imageData = images;
+    }
   }
-  const messages = conversationHistory.map(m => ({
-    id: m.id, role: m.role, content: m.content, timestamp: m.timestamp,
-    toolCalls: m.toolCalls, toolResults: m.toolResults, attachments: m.attachments,
-  }));
+  const messages = conversationHistory.map(m => {
+    let content = m.content;
+    if (content && imageData?.primaryImage) {
+      content = content.replace(
+        /(<img[^>]+src=")(https?:\/\/[^"]+)("[^>]*>)/g,
+        (match, prefix, url, suffix) => url.startsWith('data:') ? match : `${prefix}${imageData!.primaryImage}${suffix}`,
+      );
+    }
+    return {
+      id: m.id, role: m.role, content, timestamp: m.timestamp,
+      toolCalls: m.toolCalls, toolResults: m.toolResults, attachments: m.attachments,
+    };
+  });
 
   try {
     if (!_activeConversationId) {
       const id = crypto.randomUUID();
       const title = deriveConversationTitle();
-      const payload: ConversationCreatePayload = { id, title, messages, projectSnapshot, hasGeneratedTheme: !!projectId };
+      const payload: ConversationCreatePayload = { id, title, messages, projectSnapshot, imageData, hasGeneratedTheme: !!projectId };
       const result = await createConversation(payload);
       if (result) {
         _activeConversationId = result.id;
         setActiveConversation(_activeConversationId);
       }
     } else {
-      const payload: ConversationUpdatePayload = { messages, projectSnapshot, hasGeneratedTheme: !!projectId };
+      const payload: ConversationUpdatePayload = { messages, projectSnapshot, imageData, hasGeneratedTheme: !!projectId };
       await updateConversation(_activeConversationId, payload);
     }
     refreshSidebar();
@@ -551,19 +567,34 @@ export function setupChatInterface(deps: ChatDeps) {
   window.addEventListener('sidebar:restore-conversation', ((e: CustomEvent) => {
     const detail = e.detail;
     if (detail && detail.messages) {
+      const restoredImageUrl = detail.imageData?.primaryImage || '';
       conversationHistory.length = 0;
       conversationHistory.push(...detail.messages);
       _activeConversationId = detail.id;
       const messagesContainer = document.getElementById('messagesContainer');
       if (messagesContainer) messagesContainer.innerHTML = '';
       for (const msg of conversationHistory) {
-        const displayContent = msg.role === 'assistant'
+        let displayContent = msg.role === 'assistant'
           ? stripToolCallsFromDisplay(msg.content)
           : msg.content;
+        if (restoredImageUrl && displayContent) {
+          displayContent = displayContent.replace(
+            /(<img[^>]+src=")(https?:\/\/[^"]+)("[^>]*>)/g,
+            (_match: string, prefix: string, url: string, suffix: string) => url.startsWith('data:') ? _match : `${prefix}${restoredImageUrl}${suffix}`,
+          );
+        }
         renderMessage(msg.role === 'assistant' ? 'ai' : msg.role, displayContent);
       }
       showConversationChatView();
       setActiveConversationId(detail.id);
+      pendingImages.length = 0;
+      renderImagePreviewBar();
+      if (restoredImageUrl) {
+        const restoredProjectId = (detail.projectSnapshot as any)?.id as string | undefined;
+        if (restoredProjectId) {
+          try { updateProjectVisualContext(restoredProjectId, { imageInput: { dataUrl: restoredImageUrl, role: 'primary', updatedAt: Date.now() } }); } catch { /* non-critical */ }
+        }
+      }
       if (detail.hasGeneratedTheme && detail.projectSnapshot && Object.keys(detail.projectSnapshot).length > 0) {
         window.dispatchEvent(new CustomEvent('sidebar:restore-project', { detail: detail.projectSnapshot }));
         const proj = detail.projectSnapshot as any;

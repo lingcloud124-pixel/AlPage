@@ -83,6 +83,11 @@
     .menu-dropdown.open { display: block; }
     .menu-dropdown button { width: 100%; padding: 10px 16px; background: none; border: none; color: var(--text); font-size: 13px; cursor: pointer; text-align: left; }
     .menu-dropdown button:hover { background: rgba(255,255,255,.06); }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 360px; max-width: 90vw; }
+    .modal-box h2 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+    .modal-box .actions { margin-top: 20px; justify-content: flex-end; }
   </style>
 </head>
 <body>
@@ -102,6 +107,7 @@
         <div style="position: relative;">
           <button class="menu-btn" onclick="toggleMenu()">⋯</button>
           <div class="menu-dropdown" id="menuDropdown">
+            <button onclick="showChangePassword()">修改密码</button>
             <button onclick="logoutAdmin()">退出管理账户</button>
           </div>
         </div>
@@ -224,9 +230,25 @@
 
   <div class="toast" id="toast"></div>
 
+  <div class="modal-overlay" id="changePasswordModal">
+    <div class="modal-box">
+      <h2>修改管理密码</h2>
+      <label>当前密码</label>
+      <input type="password" id="cpOldPassword" placeholder="输入当前密码">
+      <label>新密码</label>
+      <input type="password" id="cpNewPassword" placeholder="输入新密码（至少4位）">
+      <label>确认新密码</label>
+      <input type="password" id="cpConfirmPassword" placeholder="再次输入新密码">
+      <div class="actions">
+        <button class="btn-secondary" onclick="hideChangePassword()">取消</button>
+        <button class="btn-primary" onclick="submitChangePassword()">确认修改</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    let authHeaders = {};
-    
+    let _authenticated = false;
+
     function switchTab(name) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -243,6 +265,49 @@
       if (dd && !e.target.closest('.menu-btn') && !e.target.closest('.menu-dropdown')) dd.classList.remove('open');
     });
 
+    function showChangePassword() {
+      document.getElementById('menuDropdown').classList.remove('open');
+      document.getElementById('cpOldPassword').value = '';
+      document.getElementById('cpNewPassword').value = '';
+      document.getElementById('cpConfirmPassword').value = '';
+      document.getElementById('changePasswordModal').classList.add('open');
+    }
+
+    function hideChangePassword() {
+      document.getElementById('changePasswordModal').classList.remove('open');
+    }
+
+    document.getElementById('changePasswordModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) hideChangePassword();
+    });
+
+    async function submitChangePassword() {
+      const oldPassword = document.getElementById('cpOldPassword').value;
+      const newPassword = document.getElementById('cpNewPassword').value;
+      const confirmPassword = document.getElementById('cpConfirmPassword').value;
+
+      if (!newPassword) { toast('请输入新密码', 'error'); return; }
+      if (newPassword.length < 4) { toast('新密码长度至少为4位', 'error'); return; }
+      if (newPassword !== confirmPassword) { toast('两次输入的新密码不一致', 'error'); return; }
+
+      try {
+        const res = await fetch('/api/admin-password', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oldPassword, newPassword }),
+        });
+        const data = await res.json();
+        if (!res.ok) { toast(data.error || '修改失败', 'error'); return; }
+
+        toast('密码修改成功，请重新登录');
+        hideChangePassword();
+        logoutAdmin();
+      } catch (e) {
+        toast('修改失败: ' + e.message, 'error');
+      }
+    }
+
     function toast(msg, type = 'success') {
       const el = document.getElementById('toast');
       el.textContent = msg;
@@ -255,109 +320,106 @@
       document.getElementById('creditsSettingsSection').style.display = enabled ? 'block' : 'none';
     }
 
+    const IMAGE_PROVIDER_DEFAULTS = {
+      minimax: {
+        endpoint: 'https://api.minimax.chat/v1/image_generation',
+        model: 'image-01',
+      },
+      jimeng: {
+        endpoint: 'https://visual.volcengineapi.com',
+        model: 'jimeng_t2i_v40',
+      },
+      ark: {
+        endpoint: 'https://ark.cn-beijing.volces.com/api/v3/images/generations',
+        model: 'doubao-seedream-3-0-t2i-250415',
+      },
+    };
+
     function toggleImageProviderFields() {
       const provider = document.getElementById('imageProvider').value;
-      const imageApiKeyBlock = document.getElementById('imageApiKeyBlock');
-      const imageAccessKeyIdBlock = document.getElementById('imageAccessKeyIdBlock');
-      const imageSecretAccessKeyBlock = document.getElementById('imageSecretAccessKeyBlock');
-
       const useApiKey = provider === 'minimax';
-      imageApiKeyBlock.style.display = useApiKey ? 'block' : 'none';
-      imageAccessKeyIdBlock.style.display = useApiKey ? 'none' : 'block';
-      imageSecretAccessKeyBlock.style.display = useApiKey ? 'none' : 'block';
-    }
 
-    function isAuthenticated() {
-      return Object.keys(authHeaders).length > 0;
+      document.getElementById('imageApiKeyBlock').style.display = useApiKey ? 'block' : 'none';
+      document.getElementById('imageAccessKeyIdBlock').style.display = useApiKey ? 'none' : 'block';
+      document.getElementById('imageSecretAccessKeyBlock').style.display = useApiKey ? 'none' : 'block';
+
+      const defaults = IMAGE_PROVIDER_DEFAULTS[provider];
+      if (defaults) {
+        document.getElementById('imageEndpoint').value = defaults.endpoint;
+        document.getElementById('imageModel').value = defaults.model;
+      }
     }
 
     function showAdminPanel() {
+      _authenticated = true;
       document.getElementById('loginSection').style.display = 'none';
       document.getElementById('adminPanel').style.display = 'block';
     }
 
-    async function tryEnterAdminWithoutPassword() {
-      const headers = { 'Content-Type': 'application/json' };
-      const res = await fetch('/api/model-config', { headers });
-      if (!res.ok) return false;
-      authHeaders = headers;
-      showAdminPanel();
-      loadConfig();
-      loadUsers();
-      return true;
+    function showLoginSection() {
+      _authenticated = false;
+      document.getElementById('adminPanel').style.display = 'none';
+      document.getElementById('loginSection').style.display = 'block';
+      document.getElementById('adminPassword').value = '';
     }
 
     toggleImageProviderFields();
-    
+
     async function authenticateAdmin() {
       const password = document.getElementById('adminPassword').value;
       if (!password) {
-        try {
-          const entered = await tryEnterAdminWithoutPassword();
-          if (entered) {
-            toast('当前环境未启用管理员密码，已直接进入管理面板');
-            return;
-          }
-        } catch (_e) {
-          // Fall through to the existing password prompt below.
-        }
-
         toast('请输入管理员密码', 'error');
         return;
       }
-      
+
       try {
-        // Set the authorization header for API requests
-        authHeaders = {
-          'Authorization': `Bearer ${password}`,
-          'X-Admin-Password': password,
-          'Content-Type': 'application/json'
-        };
-        
-        // Save the token in session storage to persist after page refresh
-        sessionStorage.setItem('adminAuth', password);
-        
-        // Test authentication by trying to fetch model config
-        const res = await fetch('/api/model-config', { 
-          headers: authHeaders 
+        const res = await fetch('/api/admin-auth/login', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
         });
-        if (res.status === 401 || res.status === 403) {
-          throw new Error('认证失败，请检查密码');
+        const data = await res.json();
+
+        if (res.status === 429) {
+          toast(data.error || '登录失败次数过多，请稍后再试', 'error');
+          return;
         }
-        
+
+        if (!res.ok) {
+          toast(data.error || '密码不正确', 'error');
+          return;
+        }
+
         showAdminPanel();
         toast('认证成功，欢迎使用管理面板');
-        
-        // Load configurations now that we're authenticated
         loadConfig();
         loadUsers();
-        
       } catch (e) {
-        toast(e.message || '认证失败，请检查密码', 'error');
-        authHeaders = {}; // Clear invalid auth
-        sessionStorage.removeItem('adminAuth'); // Clear invalid auth from storage
+        toast(e.message || '认证失败，请检查网络', 'error');
       }
     }
-    
-    function logoutAdmin() {
-      if (confirm('确认退出登录？')) {
-        authHeaders = {};
-        sessionStorage.removeItem('adminAuth');
-        document.getElementById('adminPanel').style.display = 'none';
-        document.getElementById('loginSection').style.display = 'block';
-        document.getElementById('adminPassword').value = '';
-      }
+
+    async function logoutAdmin() {
+      if (!confirm('确认退出登录？')) return;
+      try {
+        await fetch('/api/admin-auth/logout', {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+      } catch (_e) { /* ignore */ }
+      showLoginSection();
     }
-    
+
     async function loadConfig() {
-      if (!isAuthenticated()) {
+      if (!_authenticated) {
         toast('请先进行管理员身份验证', 'error');
         return;
       }
-      
+
       try {
-        // Get existing model config
-        const res = await fetch('/api/model-config', { headers: authHeaders });
+        const res = await fetch('/api/model-config', { credentials: 'same-origin' });
+        if (res.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
         const data = await res.json();
         document.getElementById('chatEndpoint').value = data.chatEndpoint || '';
         document.getElementById('chatApiKey').value = data.chatApiKey || '';
@@ -369,20 +431,18 @@
         document.getElementById('imageSecretAccessKey').value = data.imageSecretAccessKey || '';
         document.getElementById('imageModel').value = data.imageModel || '';
         toggleImageProviderFields();
-        
-        // Now get the security config
-        const securityRes = await fetch('/api/security-config', { headers: authHeaders });
+
+        const securityRes = await fetch('/api/security-config', { credentials: 'same-origin' });
+        if (securityRes.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
         const securityData = await securityRes.json();
         document.getElementById('corsAllowlist').value = securityData.corsOrigins?.join('\n') || '';
         document.getElementById('proxyImageAllowlist').value = securityData.proxyImageHosts?.join('\n') || '';
         document.getElementById('dailyCreditsLimit').value = securityData.dailyCreditsLimit ?? '100';
         document.getElementById('creditsPerImage').value = securityData.creditsPerImage ?? '50';
-        
-        // Credits limit toggle - enabled by default
+
         const creditsEnabled = securityData.enabledFeatures?.quota !== false;
         document.getElementById('enableCreditsLimit').checked = creditsEnabled;
         document.getElementById('creditsSettingsSection').style.display = creditsEnabled ? 'block' : 'none';
-        
       } catch (e) {
         console.error("Error loading configuration:", e);
         toast('加载配置失败: ' + e.message, 'error');
@@ -390,11 +450,11 @@
     }
 
     async function saveConfig() {
-      if (!isAuthenticated()) {
+      if (!_authenticated) {
         toast('请先进行管理员身份验证', 'error');
         return;
       }
-      
+
       try {
         const body = {
           chatEndpoint: document.getElementById('chatEndpoint').value,
@@ -406,8 +466,6 @@
           imageAccessKeyId: document.getElementById('imageAccessKeyId').value,
           imageSecretAccessKey: document.getElementById('imageSecretAccessKey').value,
           imageModel: document.getElementById('imageModel').value,
-          
-          // Additional security configuration
           corsAllowlist: document.getElementById('corsAllowlist').value
             .split('\n')
             .map(item => item.trim())
@@ -430,11 +488,16 @@
           dailyCreditsLimit: parseInt(document.getElementById('dailyCreditsLimit').value) || 100,
           creditsPerImage: parseInt(document.getElementById('creditsPerImage').value) || 50
         };
-        
+
+        const fetchOpts = {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+        };
+
         const [modelRes, securityRes] = await Promise.allSettled([
           fetch('/api/model-config', {
-            method: 'PUT',
-            headers: authHeaders,
+            ...fetchOpts,
             body: JSON.stringify({
               chatEndpoint: body.chatEndpoint,
               chatApiKey: body.chatApiKey,
@@ -448,8 +511,7 @@
             }),
           }),
           fetch('/api/security-config', {
-            method: 'PUT',
-            headers: authHeaders,
+            ...fetchOpts,
             body: JSON.stringify({
               corsOrigins: body.corsAllowlist,
               proxyImageHosts: body.proxyImageHosts,
@@ -460,8 +522,7 @@
             })
           })
         ]);
-        
-        // Check individual responses
+
         let successCount = 0;
         if (modelRes.status === 'fulfilled' && modelRes.value.ok) {
           const modelData = await modelRes.value.json();
@@ -473,7 +534,7 @@
         } else if (modelRes.reason) {
           toast('模型配置保存失败: ' + modelRes.reason.message, 'error');
         }
-        
+
         if (securityRes.status === 'fulfilled' && securityRes.value.ok) {
           const securityData = await securityRes.value.json();
           if (securityData.success) {
@@ -484,29 +545,25 @@
         } else if (securityRes.reason) {
           toast('安全配置保存失败: ' + securityRes.reason.message, 'error');
         }
-        
+
         if (successCount > 0) {
           toast(`配置已保存 (${successCount}/2 成功)`);
         }
-        
       } catch (e) {
         toast('保存失败: ' + e.message, 'error');
       }
     }
 
     async function testConnection() {
-      if (!isAuthenticated()) {
+      if (!_authenticated) {
         toast('请先进行管理员身份验证', 'error');
         return;
       }
-      
+
       const statusEl = document.getElementById('connectionStatus');
       statusEl.innerHTML = '测试中...';
       try {
-        const [chatRes, imageRes] = await Promise.allSettled([
-          fetch('/api/health', { headers: authHeaders }).then(r => r.json()),
-          fetch('/api/health', { headers: authHeaders }).then(r => r.json()),
-        ]);
+        await fetch('/api/health', { credentials: 'same-origin' }).then(r => r.json());
         statusEl.innerHTML = '<span class="status-dot ok"></span>服务正常运行';
       } catch (e) {
         statusEl.innerHTML = '<span class="status-dot err"></span>连接失败: ' + e.message;
@@ -514,13 +571,14 @@
     }
 
     async function loadUsers() {
-      if (!isAuthenticated()) {
+      if (!_authenticated) {
         toast('请先进行管理员身份验证', 'error');
         return;
       }
-      
+
       try {
-        const res = await fetch('/api/auth/users', { headers: authHeaders });
+        const res = await fetch('/api/auth/users', { credentials: 'same-origin' });
+        if (res.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
         const users = await res.json();
         const tbody = document.getElementById('userTableBody');
         tbody.innerHTML = users.map(u => `
@@ -536,46 +594,16 @@
       }
     }
 
-    // Check if we already have a stored session on page load
-    document.addEventListener('DOMContentLoaded', function() {
-      const storedAuth = sessionStorage.getItem('adminAuth');
-      if (!storedAuth) {
-        tryEnterAdminWithoutPassword().catch(() => {});
-        return;
-      }
-
-      if (storedAuth) {
-        // Simulate authentication with stored token
-        authHeaders = {
-          'Authorization': `Bearer ${storedAuth}`,
-          'X-Admin-Password': storedAuth,
-          'Content-Type': 'application/json'
-        };
-        
-        // Try to load data to verify if token is still valid
-        fetch('/api/model-config', { headers: authHeaders })
-          .then(res => {
-            if (res.status === 401 || res.status === 403) {
-              // Token expired
-              sessionStorage.removeItem('adminAuth');
-              toast('登录状态已过期，请重新登录', 'error');
-              return false;
-            } else {
-              // Valid, show admin panel
-              showAdminPanel();
-              
-              // Load configurations now that we're authenticated
-              loadConfig();
-              loadUsers();
-              return true;
-            }
-          })
-          .catch(() => {
-            // Network error or other issues - clear token
-            sessionStorage.removeItem('adminAuth');
-            toast('网络错误，请重新登录', 'error');
-          });
-      }
+    document.addEventListener('DOMContentLoaded', async function() {
+      try {
+        const res = await fetch('/api/admin-auth/check', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.authenticated) {
+          showAdminPanel();
+          loadConfig();
+          loadUsers();
+        }
+      } catch (_e) { /* show login */ }
     });
   </script>
 </body>

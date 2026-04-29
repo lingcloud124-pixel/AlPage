@@ -555,12 +555,14 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  height: 70px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border-color);
   background-color: var(--panel-bg-color);
   position: sticky;
   top: 0;
   z-index: 10;
+  box-sizing: border-box;
 }
 
 .chat-header::after
@@ -5045,13 +5047,14 @@ body,
 
 .chat-panel.landing-mode .chat-header
 {
-  height: auto;
+  height: 70px;
   min-height: 0;
-  padding: 0;
+  padding: 14px 20px;
   background: transparent;
   border: none;
   overflow: hidden;
   backdrop-filter: none;
+  box-sizing: border-box;
   transition: background-color 0.2s ease, backdrop-filter 0.2s ease;
 }
 
@@ -5667,7 +5670,7 @@ body[data-ui-theme="light"] .chat-conversation-view .chat-shell-composer-inner,
 .preview-panel.expanded
 {
   background: #f7f7fa;
-  border-top-left-radius: 16px;
+  border-top-left-radius: 0;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
   border-bottom-left-radius: 0;
@@ -6532,19 +6535,7 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
 }
 
 .sidebar-settings-full {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px 0 5px;
-  border: none;
-  background: transparent;
-  border-radius: 10px;
-  color: #4a4f5c;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  width: 100%;
-  transition: background-color 0.15s;
+  display: none;
 }
 
 .sidebar-settings-full:hover {
@@ -6558,7 +6549,7 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
 }
 
 .sidebar-settings-btn {
-  margin-top: auto;
+  display: none;
 }
 
 .sidebar-item-menu-dropdown {

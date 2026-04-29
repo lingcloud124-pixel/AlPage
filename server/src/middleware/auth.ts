@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../logger.js';
+import { ADMIN_SESSION_COOKIE, validateSession } from '../admin-session.js';
 
 const EKP_BASE_URL = process.env.EKP_BASE_URL || '';
 const EKP_SSO_USER = process.env.EKP_SSO_USER || '';
@@ -79,6 +80,12 @@ export function adminAuthMiddleware(req: Request, res: Response, next: NextFunct
   if (!adminPassword) {
     return next();
   }
+
+  const sessionToken = req.cookies?.[ADMIN_SESSION_COOKIE] as string | undefined;
+  if (validateSession(sessionToken)) {
+    return next();
+  }
+
 
   const authorization = req.headers.authorization;
   if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
