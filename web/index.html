@@ -403,14 +403,18 @@
               var rh = rendered.offsetHeight || parseInt(rendered.style.height) || 0;
               if (rw === 0 || rh === 0) return;
 
-              var scaleX = cw / rw;
-              var scaleY = ch / rh;
-              var scale = Math.max(scaleX, scaleY);
+              var horizontalInset = 24;
+              var innerWidth = Math.max(cw - horizontalInset * 2, 0);
+              if (innerWidth === 0) return;
 
-              var offsetX = (cw - rw * scale) / 2;
+              var scaleX = innerWidth / rw;
+              var scaleY = ch / rh;
+              var scale = Math.min(scaleX, scaleY);
+
+              var offsetX = horizontalInset + (innerWidth - rw * scale) / 2;
               var offsetY = (ch - rh * scale) / 2;
 
-              rendered.style.transform = 'scale(' + scale + ') translate(' + (offsetX / scale) + 'px, ' + (offsetY / scale) + 'px)';
+              rendered.style.transform = 'scale(' + scale + ') translate3d(' + (offsetX / scale) + 'px, ' + (offsetY / scale) + 'px, 0)';
               rendered.style.transformOrigin = 'top left';
             });
           }

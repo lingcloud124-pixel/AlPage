@@ -6,6 +6,7 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function initSidebar(): void {
   const container = document.getElementById('sidebarContainer');
+  const headerRow = container?.querySelector('.sidebar-header');
   const toggleBtn = document.getElementById('sidebarToggleBtn');
   const collapseBtn = document.getElementById('sidebarCollapseBtn');
   const newChatBtn = document.getElementById('sidebarNewChatBtn');
@@ -15,6 +16,7 @@ export function initSidebar(): void {
 
   toggleBtn?.addEventListener('click', () => toggleSidebar(true));
   collapseBtn?.addEventListener('click', () => toggleSidebar(false));
+  headerRow?.addEventListener('click', () => toggleSidebar(false));
   newChatBtn?.addEventListener('click', () => dispatchNewConversation());
   newChatFullBtn?.addEventListener('click', () => dispatchNewConversation());
   settingsBtn?.addEventListener('click', () => openSettings());
@@ -96,7 +98,8 @@ function renderSidebarList(items: ConversationListItem[]): void {
 
 function createSidebarItem(item: ConversationListItem): HTMLElement {
   const el = document.createElement('div');
-  el.className = 'sidebar-item' + (item.id === activeConversationId ? ' active' : '');
+  const isHomepageActive = !activeConversationId && item.title === '新对话';
+  el.className = 'sidebar-item' + (item.id === activeConversationId || isHomepageActive ? ' active' : '');
   el.setAttribute('data-id', item.id);
 
   const title = document.createElement('span');

@@ -1,11 +1,12 @@
 .template-desktop {
   width: 100%;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   font-family: var(--font-family);
   background-color: var(--body-bg-color, #F8F8F8);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
 }
 
 .desktop-wrapper {

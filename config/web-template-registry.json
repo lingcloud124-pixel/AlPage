@@ -4,7 +4,7 @@
     "name": "登录页",
     "htmlPath": "/src/templates/login.html",
     "cssPath": "/src/templates/login.css",
-    "width": 2215,
+    "width": 1920,
     "height": 1080
   },
   "desktop": {
@@ -13,7 +13,7 @@
     "htmlPath": "/src/templates/desktop.html",
     "cssPath": "/src/templates/desktop.css",
     "width": 1920,
-    "height": 1079
+    "height": 1080
   },
   "header-default": {
     "id": "header-default",

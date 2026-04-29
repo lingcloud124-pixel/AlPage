@@ -60,7 +60,7 @@ Topic Automation/
 ├── README.md             # 项目说明文档
 ├── scripts/
 │   ├── install-skill.sh  # Skill 安装脚本
-│   ├── theme_builder.py  # 统一打包工具（生成9个zip包）
+│   ├── theme_builder.py  # 统一打包工具（按产品生成主题+登录zip包）
 │   ├── update-pen-theme.py # 历史 pen 文件更新器（非当前主链路）
 │   ├── verify-build.py   # 打包后验证工具
 │   └── ...               # 其他历史脚本/辅助脚本
@@ -88,7 +88,7 @@ Topic Automation/
 | 主体 | MK, V14, V15, V16, V17 | 完整主体样式包 |
 | 登录 | MK, V14, V15, V16, V17 | 登录页样式包 |
 
-**注意**: 当前系统生成9个zip包：MK(主题+登录), V14〜V16(主题+V14登录+V15登录+V16登录), V17(主题+登录)。EKP V12、V13、V13.5 已不再支持打包。
+**注意**: 当前系统支持生成 MK、EKP V14、V15、V16、V17 各自独立的主题包和登录包。默认全选时共生成 10 个 zip 包。EKP V12、V13、V13.5 已不再支持打包。
 
 ---
 
@@ -110,8 +110,8 @@ A: Web 应用里点击“打包”，先勾选产品，再由统一导出链在�
 
 **Q: 能不能跳过前台按钮，直接检查打包内容是否正确**
 A: 可以，根目录直接运行下面两条命令即可：
-1. 直接打包并校验：`npm run export:check -- "清明主题" qingming '#2C615C' light-ui /绝对路径/bg.jpg mk,ekp_v17`
-2. 只校验已有输出包：`npm run export:verify -- output/20260423-qingming/输出包 --products mk,ekp_v17`
+1. 直接打包并校验：`npm run export:check -- "清明主题" qingming '#2C615C' light-ui /绝对路径/bg.jpg mk,ekp_v14,ekp_v15,ekp_v16,ekp_v17`
+2. 只校验已有输出包：`npm run export:verify -- output/20260423-qingming/输出包 --products mk,ekp_v14,ekp_v15,ekp_v16,ekp_v17`
 
 `export:check` 会依次执行项目快照固定、素材准备、截图、`theme_builder.py` 打包、`verify-build.py` 校验。
 如果主色以 `#` 开头，命令里要像示例那样加引号，避免被 shell 当成注释。

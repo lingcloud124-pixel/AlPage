@@ -10,4 +10,10 @@ describe('web preview panel border', () => {
     const match = styles.match(/\.preview-panel\.expanded\s*\{([^}]*)\}/);
     expect(match?.[1] || '').not.toContain('border-left');
   });
+
+  test('does not paint an outer preview halo that leaks the panel background', () => {
+    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const matches = [...styles.matchAll(/\.preview-panel\.expanded\s*\{([^}]*)\}/g)];
+    expect(matches.every((match) => !match[1].includes('box-shadow'))).toBe(true);
+  });
 });

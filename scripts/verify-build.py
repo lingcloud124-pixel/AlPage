@@ -8,7 +8,7 @@ Usage:
   python3 scripts/verify-build.py <output_dir> --products mk,ekp_v17
 
 Checks:
-   1. Exactly expected zip files generated (all 9 by default, or selected subset)
+   1. Exactly expected zip files generated (all supported products by default, or selected subset)
    2. Each zip's file structure matches its reference sample
    3. Color injection: new theme color appears in theme CSS files
    4. No old template colors (#2C615C, #144E48) remain in theme CSS
@@ -27,20 +27,9 @@ from typing import Dict, List, Optional, Tuple
 ROOT = Path(__file__).parent.parent
 LOCAL_SAMPLES_DIR = ROOT / "assets" / "references" / "samples"
 VERIFY_RULES = json.loads((ROOT / "config" / "build-verification-rules.json").read_text(encoding="utf-8"))
-LIGHT_EXPECTED_ZIPS = [(item["prefix"], item["reference"]) for item in VERIFY_RULES["expectedZips"]]
 EXPECTED_ZIPS_BY_TEMPLATE_TYPE = {
-    "light-ui": LIGHT_EXPECTED_ZIPS,
-    "dark-ui": [
-        ("主题-MK-", "mk-festival-26-spring主题包.zip"),
-        ("登录-MK-", "mk-festival-spring-登录包.zip"),
-        ("主题-V14〜V16-", "主题-V14〜V16-2026春节主题.zip"),
-        ("登录-V14〜V16-", "登录-V16〜V17-2026春节.zip"),
-        ("登录-V14-", "登录-V14-2026春节.zip"),
-        ("登录-V15-", "登录-V15-2026春节.zip"),
-        ("登录-V16-", "登录-V16〜V17-2026春节.zip"),
-        ("主题-V17-", "主题-V17-2026春节主题.zip"),
-        ("登录-V17-", "登录-V16〜V17-2026春节.zip"),
-    ],
+    template_type: [(item["prefix"], item["reference"]) for item in entries]
+    for template_type, entries in VERIFY_RULES["expectedZips"].items()
 }
 DEFAULT_SAMPLE_ROOTS = {
     "light-ui": LOCAL_SAMPLES_DIR / "light",
@@ -48,7 +37,9 @@ DEFAULT_SAMPLE_ROOTS = {
 }
 PRODUCT_TO_PREFIXES = {
     "mk": ["主题-MK-", "登录-MK-"],
-    "ekp_v14_16": ["主题-V14〜V16-", "登录-V14〜V16-", "登录-V14-", "登录-V15-", "登录-V16-"],
+    "ekp_v14": ["主题-V14-", "登录-V14-"],
+    "ekp_v15": ["主题-V15-", "登录-V15-"],
+    "ekp_v16": ["主题-V16-", "登录-V16-"],
     "ekp_v17": ["主题-V17-", "登录-V17-"],
 }
 
@@ -108,7 +99,7 @@ def parse_cli_args(argv: List[str]) -> Tuple[Path, Optional[List[str]], Optional
     if len(argv) < 2:
         print("Usage: python3 scripts/verify-build.py <output_dir>")
         print("Example: python3 scripts/verify-build.py output/20260409-超级英雄超人/输出包")
-        print("Optional: --products mk,ekp_v17 --template-type dark-ui --sample-root /path/to/samples")
+        print("Optional: --products mk,ekp_v14,ekp_v15,ekp_v16,ekp_v17 --template-type dark-ui --sample-root /path/to/samples")
         sys.exit(1)
 
     output_dir = Path(argv[1])

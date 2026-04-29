@@ -39,14 +39,8 @@ export async function renderTemplate(
   const html = await loadHTMLTemplate(config.htmlPath);
 
   targetElement.innerHTML = '';
-  const isAdaptive = config.id === 'login' || config.id === 'desktop';
-  if (isAdaptive) {
-    targetElement.style.width = '100%';
-    targetElement.style.height = '100%';
-  } else {
-    targetElement.style.width = config.width + 'px';
-    targetElement.style.height = config.height + 'px';
-  }
+  targetElement.style.width = config.width + 'px';
+  targetElement.style.height = config.height + 'px';
   targetElement.style.position = 'relative';
   targetElement.style.overflow = 'hidden';
   targetElement.style.flexShrink = '0';
@@ -54,13 +48,8 @@ export async function renderTemplate(
 
   const wrapper = document.createElement('div');
   wrapper.className = `template-${templateId}`;
-  if (isAdaptive) {
-    wrapper.style.width = '100%';
-    wrapper.style.height = '100%';
-  } else {
-    wrapper.style.width = config.width + 'px';
-    wrapper.style.height = config.height + 'px';
-  }
+  wrapper.style.width = config.width + 'px';
+  wrapper.style.height = config.height + 'px';
   wrapper.style.position = 'relative';
   wrapper.style.overflow = 'hidden';
   wrapper.innerHTML = html;

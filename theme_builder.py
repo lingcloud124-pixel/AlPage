@@ -2,7 +2,7 @@
 """
 Unified Theme Package Builder
 
-Supports: MK (modern), EKP v14~v16/v17
+Supports: MK (modern), EKP v14/v15/v16/v17
 Usage:
   python3 theme_builder.py --config theme-build-request.yaml
   python3 theme_builder.py --config theme-build-request.yaml --output ./output
@@ -44,12 +44,20 @@ TEMPLATE_ZIPS_BY_TYPE = {
             "theme": "主题-MK-2026清明主题.zip",
             "login": "登录-MK-2026清明.zip",
         },
-        "ekp_v14_16": {
-            "theme": "主题-V14〜V16-2026清明主题.zip",
+        "ekp_v14": {
+            "theme": "主题-V14-2026清明.zip",
+            "login": "登录-V14-2026清明.zip",
+        },
+        "ekp_v15": {
+            "theme": "主题-V15-2026清明.zip",
+            "login": "登录-V15-2026清明.zip",
+        },
+        "ekp_v16": {
+            "theme": "主题-V16-2026清明.zip",
             "login": "登录-V16-2026清明.zip",
         },
         "ekp_v17": {
-            "theme": "主题-V17-2026清明主题.zip",
+            "theme": "主题-V17-2026清明.zip",
             "login": "登录-V17-2026清明.zip",
         },
     },
@@ -58,37 +66,30 @@ TEMPLATE_ZIPS_BY_TYPE = {
             "theme": "mk-festival-26-spring主题包.zip",
             "login": "mk-festival-spring-登录包.zip",
         },
-        "ekp_v14_16": {
-            "theme": "主题-V14〜V16-2026春节主题.zip",
-            "login": "登录-V16〜V17-2026春节.zip",
+        "ekp_v14": {
+            "theme": "主题-V14-2026春节.zip",
+            "login": "登录-V14-2026春节.zip",
+        },
+        "ekp_v15": {
+            "theme": "主题-V15-2026春节.zip",
+            "login": "登录-V15-2026春节.zip",
+        },
+        "ekp_v16": {
+            "theme": "主题-V16-2026春节.zip",
+            "login": "登录-V16-2026春节.zip",
         },
         "ekp_v17": {
-            "theme": "主题-V17-2026春节主题.zip",
-            "login": "登录-V16〜V17-2026春节.zip",
+            "theme": "主题-V17-2026春节.zip",
+            "login": "登录-V17-2026春节.zip",
         },
     },
 }
 
 VERSION_LABELS = {
-    "ekp_v14_16": "V14〜V16",
+    "ekp_v14": "V14",
+    "ekp_v15": "V15",
+    "ekp_v16": "V16",
     "ekp_v17": "V17",
-}
-
-LOGIN_VARIANTS_BY_TYPE = {
-    "light-ui": {
-        "ekp_v14_16": [
-            {"label": "V14", "template": "登录-V14-2026清明.zip"},
-            {"label": "V15", "template": "登录-V15-2026清明.zip"},
-            {"label": "V16", "template": "登录-V16-2026清明.zip"},
-        ],
-    },
-    "dark-ui": {
-        "ekp_v14_16": [
-            {"label": "V14", "template": "登录-V14-2026春节.zip"},
-            {"label": "V15", "template": "登录-V15-2026春节.zip"},
-            {"label": "V16", "template": "登录-V16〜V17-2026春节.zip"},
-        ],
-    },
 }
 
 # Color replacement mapping for CSS (MK/EKP shared)
@@ -388,10 +389,6 @@ def resolve_samples_root(template_type: str, configured_root: Optional[str] = No
 
 def get_template_zips(template_type: str) -> Dict[str, Dict[str, str]]:
     return TEMPLATE_ZIPS_BY_TYPE.get(template_type, TEMPLATE_ZIPS_BY_TYPE["light-ui"])
-
-
-def get_login_variants(template_type: str) -> Dict[str, List[Dict[str, str]]]:
-    return LOGIN_VARIANTS_BY_TYPE.get(template_type, LOGIN_VARIANTS_BY_TYPE["light-ui"])
 
 
 def ensure_dir(path: Path):
@@ -1121,9 +1118,9 @@ def build_ekp_package(
     config_base: Optional[Path] = None,
 ) -> List[Path]:
     """
-    Build EKP (legacy) theme + login packages for a specific version.
+    Build EKP theme + login packages for a specific version.
 
-    product_key: one of ekp_v14_16, ekp_v17
+    product_key: one of ekp_v14, ekp_v15, ekp_v16, ekp_v17
     Returns list of output zip paths.
     """
     if config_base is None:
@@ -1160,8 +1157,8 @@ def build_ekp_package(
     theme_xml = inner_theme_dir / "design-xml" / "theme.xml"
     import datetime
     current_year = str(datetime.datetime.now().year)
-    theme_id = f"ekp_theme_{version_label}_{current_year}_{name_en}"
-    theme_name = f"ekp_theme_{version_label}_{current_year}_{title}"
+    theme_id = f"ekp_theme_{version_label}_{name_en}"
+    theme_name = f"ekp_theme_{version_label}_{title}"
     if theme_xml.exists():
         content = read_text(theme_xml)
         content = content.replace("$themeId$", theme_id)
@@ -1285,7 +1282,7 @@ def build_ekp_package(
     config_ini = inner_login_dir / "config.ini"
     # login_id = f"ekp_login_{version_label}_{current_year}_{name_en}"
     login_id = f"login_{version_label}_{name_en}"
-    login_name = f"ekp_login_{version_label}_{current_year}_{title}"
+    login_name = f"ekp_login_{version_label}_{title}"
     if config_ini.exists():
         content = read_text(config_ini)
         content = content.replace("$loginId$", login_id)
@@ -1381,82 +1378,6 @@ def build_ekp_package(
     success(f"EKP {version_label} login package: {login_output.name}")
 
     shutil.rmtree(login_extract_dir, ignore_errors=True)
-
-    # -------------------------------------------------------------------------
-    # Login variants (V14/V15 from V16 template)
-    # -------------------------------------------------------------------------
-    variants = get_login_variants(template_type).get(product_key, [])
-    for variant in variants:
-        variant_label = variant["label"]
-        variant_template = variant["template"]
-        variant_zip = sample_root / variant_template
-
-        if not variant_zip.exists():
-            warn(f"Login variant template not found: {variant_zip}, skipping")
-            continue
-
-        variant_extract = work_dir / f"ekp_login_{variant_label}_extract"
-        log(f"Building login variant: {variant_label}")
-
-        shutil.unpack_archive(variant_zip, variant_extract)
-        variant_inner = find_first_subdir(variant_extract)
-
-        for css_file in variant_extract.rglob("*.css"):
-            if "font/" in str(css_file):
-                continue
-            content = read_text(css_file)
-            modified = inject_color_into_css(content, theme_color, header_font, colors)
-            modified = inject_color_into_rgb(modified, theme_color)
-            write_text(css_file, modified)
-
-        if images.get("loginBackground"):
-            src = resolve_path(images["loginBackground"], config_base)
-            if src:
-                replaced = False
-                for loc in ["login_bg/bg-login.jpg", "images/bg-login.jpg"]:
-                    dest = variant_inner / loc
-                    if dest.parent.exists():
-                        replace_image(src, dest)
-                        replaced = True
-                        break
-                if not replaced:
-                    replace_image(src, variant_inner / "images" / "bg-login.jpg")
-                log(f"Replaced {variant_label} login background")
-
-                login_thumb_src = resolve_path(images.get("loginThumb"), config_base) if images.get("loginThumb") else None
-                if login_thumb_src:
-                    for thumb_loc in ["login_thumb.jpg"]:
-                        thumb_dest = variant_inner / thumb_loc
-                        if thumb_dest.parent.exists():
-                            replace_image(login_thumb_src, thumb_dest)
-                            log(f"Replaced {variant_label} login_thumb.jpg")
-                            break
-
-                login_thumb_variants = {
-                    "thumb-1.jpg": resolve_path(images.get("loginThumb1"), config_base) if images.get("loginThumb1") else None,
-                    "thumb-2.jpg": resolve_path(images.get("loginThumb2"), config_base) if images.get("loginThumb2") else None,
-                }
-                for thumb_name, thumb_src in login_thumb_variants.items():
-                    if thumb_src:
-                        thumb_dest = variant_inner / "login_bg" / thumb_name
-                        if thumb_dest.parent.exists():
-                            replace_image(thumb_src, thumb_dest)
-                            log(f"Replaced {variant_label} login_bg/{thumb_name}")
-
-        icon_files, icon_pixels = recolor_icon_directory(
-            variant_inner,
-            ["images", "icon", "login_bg"],
-            colors,
-        )
-        if icon_files > 0:
-            log(f"Recolored {variant_label} login icons: {icon_files} files / {icon_pixels} pixels")
-
-        variant_output = output_dir / f"登录-{variant_label}-{title}.zip"
-        repack_dir(variant_extract, variant_output, inner_name=None)
-        outputs.append(variant_output)
-        success(f"EKP {variant_label} login variant: {variant_output.name}")
-
-        shutil.rmtree(variant_extract, ignore_errors=True)
 
     return outputs
 
