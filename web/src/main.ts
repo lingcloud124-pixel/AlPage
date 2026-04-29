@@ -20,7 +20,7 @@ import {
   setupSettingsDialog,
 } from './ui-setup';
 import { loadDefaultTemplates } from './theme-engine';
-import { checkAuth, getUser, fetchUsers, switchUser } from './auth';
+import { checkAuth, getUser, redirectToLogin } from './auth';
 import { fetchCredits, updateCreditsDisplay } from './credits';
 import { initSidebar } from './components/sidebar';
 
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const isAuth = await checkAuth();
     if (!isAuth) {
-      window.location.href = '/login.html';
+      redirectToLogin();
       return;
     }
 
@@ -128,49 +128,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const avatarBtn = document.getElementById('userAvatarBtn');
-    if (avatarBtn) {
-      let dropdown: HTMLElement | null = null;
-
-      avatarBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (dropdown) { dropdown.remove(); dropdown = null; return; }
-
-        const users = await fetchUsers();
-        if (users.length === 0) return;
-
-        dropdown = document.createElement('div');
-        dropdown.className = 'user-avatar-dropdown';
-        users.forEach(u => {
-          const item = document.createElement('div');
-          item.className = 'user-avatar-dropdown-item' + (u.id === currentUser?.id ? ' active' : '');
-          const letter = document.createElement('span');
-          letter.className = 'user-avatar-dropdown-letter';
-          letter.textContent = (u.display_name || u.name || 'U').charAt(0).toUpperCase();
-          const name = document.createElement('span');
-          name.className = 'user-avatar-dropdown-name';
-          name.textContent = u.display_name || u.name;
-          item.appendChild(letter);
-          item.appendChild(name);
-          item.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            switchUser(u);
-          });
-          dropdown!.appendChild(item);
-        });
-
-        const rect = avatarBtn.getBoundingClientRect();
-        dropdown.style.position = 'fixed';
-        dropdown.style.top = `${rect.bottom + 6}px`;
-        dropdown.style.right = `${window.innerWidth - rect.right}px`;
-        document.body.appendChild(dropdown);
-      });
-
-      document.addEventListener('click', () => {
-        if (dropdown) { dropdown.remove(); dropdown = null; }
-      });
+    if (avatarBtn && currentUser) {
+      avatarBtn.title = currentUser.display_name || currentUser.name;
     }
   } catch (error) {
     console.error('Initialization failed:', error);
-    window.location.href = '/login.html';
+    redirectToLogin();
   }
 });

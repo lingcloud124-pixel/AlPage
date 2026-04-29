@@ -25,7 +25,7 @@ process.on('unhandledRejection', (reason) => {
 
 const [
   { default: express },
-  { initDb, closeDb },
+  { initDb, closeDb, ensureUserByLoginName },
   { authRouter },
   { modelConfigRouter },
   { exportJobsRouter },
@@ -55,15 +55,19 @@ const [
   import('./routes/credits.js'),
   import('./middleware/request-logger.js'),
   import('./routes/conversations.js'),
+  import('cookie-parser'),
 ]);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
+const { default: cookieParser } = await import('cookie-parser');
+
 const START_TIME = Date.now();
 
 app.use(dynamicCors);
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(requestLogger);
 
@@ -93,6 +97,13 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api/model-config', adminAuthMiddleware, modelConfigRouter);
 app.use('/api/security-config', adminAuthMiddleware, securityConfigRouter);
 app.use('/api/theme', authMiddleware);
+app.use('/api/theme', (req: any, _res: any, next: any) => {
+  const loginName = req.loginName as string | undefined;
+  if (loginName) {
+    req.userId = ensureUserByLoginName(loginName);
+  }
+  next();
+});
 app.use('/api/theme', rateLimitMiddleware);
 app.use('/api/theme', creditsMiddleware);
 app.use('/api/theme', exportJobsRouter);
@@ -131,6 +142,16 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 async function start() {
   await initDb();
   const { db, getSecurityConfig } = await import('./db.js');
+
+  app.get('/api/auth/me', (req, res) => {
+    const loginName = (req as any).loginName;
+    if (!loginName) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const userId = (req as any).userId;
+    res.json({ id: userId, name: loginName, display_name: loginName });
+  });
 
   app.get('/api/auth/users', async (_req, res) => {
     try {

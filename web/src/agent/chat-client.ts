@@ -1,5 +1,5 @@
 import type { ChatRequest, ChatResponse, AISettings } from '../types';
-import { authHeaders } from '../auth';
+import { redirectToLogin } from '../auth';
 import { fetchCredits, updateCreditsDisplay, formatNextReset } from '../credits';
 import { getCurrentProjectId } from '../project-manager';
 
@@ -130,7 +130,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders(),
+          credentials: 'same-origin',
         },
         body: JSON.stringify({
           model: imageSettings.model,
@@ -246,7 +246,7 @@ export async function chatCompletion(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders(),
+          credentials: 'same-origin',
         },
         body: JSON.stringify({
           model: settings.model || 'MiniMax-M2.7',
@@ -261,7 +261,7 @@ export async function chatCompletion(
       refreshTimeout();
 
       if (response.status === 401) {
-        window.location.href = '/login.html';
+        redirectToLogin();
         throw new Error('未授权，请重新登录');
       }
 

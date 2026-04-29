@@ -1,5 +1,4 @@
 import type { ExportJobRequest } from './export-job';
-import { authHeaders } from '../auth';
 
 export interface ThemeStudioExportBridge {
   enqueueExportJob?: (payload: ExportJobRequest) => Promise<{ accepted?: boolean; jobId?: string } | void> | { accepted?: boolean; jobId?: string } | void;
@@ -41,7 +40,8 @@ function getFetchBridge(source: unknown): ThemeStudioExportBridge | null {
       };
       const response = await fetchImpl('/api/theme/export-jobs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify(apiPayload),
       });
 
@@ -65,7 +65,8 @@ function getFetchBridge(source: unknown): ThemeStudioExportBridge | null {
     async pickDirectory() {
       const response = await fetchImpl('/api/theme/pick-directory', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
       });
 
       if (!response.ok) {

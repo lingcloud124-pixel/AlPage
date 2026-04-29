@@ -1,4 +1,4 @@
-import { authHeaders } from '../auth';
+
 import type { ExportBatch } from '../types';
 
 export function buildExportJobStatusUrl(jobId: string): string {
@@ -9,9 +9,7 @@ type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Respo
 
 export async function fetchExportJobStatus(fetchImpl: FetchLike, jobId: string): Promise<ExportBatch | null> {
   const response = await fetchImpl(buildExportJobStatusUrl(jobId), {
-    headers: {
-      ...authHeaders(),
-    },
+    credentials: 'same-origin',
   });
   if (!response.ok) return null;
 

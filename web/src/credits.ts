@@ -1,4 +1,3 @@
-import { authHeaders } from './auth';
 
 export interface CreditsInfo {
   credits: number;
@@ -11,7 +10,7 @@ export interface CreditsInfo {
 let cachedCredits: CreditsInfo | null = null;
 
 export async function fetchCredits(): Promise<CreditsInfo> {
-  const res = await fetch('/api/theme/credits', { headers: authHeaders() });
+  const res = await fetch('/api/theme/credits', { credentials: 'same-origin' });
   if (!res.ok) {
     return { credits: 0, maxCredits: 100, nextResetAt: '', quotaEnabled: false };
   }

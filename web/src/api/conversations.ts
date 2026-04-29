@@ -1,4 +1,3 @@
-import { authHeaders } from '../auth';
 import type {
   ConversationListItem,
   ConversationDetail,
@@ -9,13 +8,13 @@ import type {
 const BASE = '/api/theme/conversations';
 
 export async function listConversations(): Promise<ConversationListItem[]> {
-  const res = await fetch(BASE, { headers: authHeaders() });
+  const res = await fetch(BASE, { credentials: 'same-origin' });
   if (!res.ok) return [];
   return res.json();
 }
 
 export async function getConversation(id: string): Promise<ConversationDetail | null> {
-  const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, { headers: authHeaders() });
+  const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, { credentials: 'same-origin' });
   if (!res.ok) return null;
   return res.json();
 }
@@ -23,7 +22,8 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
 export async function createConversation(payload: ConversationCreatePayload): Promise<ConversationDetail | null> {
   const res = await fetch(BASE, {
     method: 'POST',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
     body: JSON.stringify(payload),
   });
   if (!res.ok) return null;
@@ -33,7 +33,8 @@ export async function createConversation(payload: ConversationCreatePayload): Pr
 export async function updateConversation(id: string, payload: ConversationUpdatePayload): Promise<boolean> {
   const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, {
     method: 'PUT',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
     body: JSON.stringify(payload),
   });
   return res.ok;
@@ -42,7 +43,7 @@ export async function updateConversation(id: string, payload: ConversationUpdate
 export async function toggleStar(id: string): Promise<boolean> {
   const res = await fetch(`${BASE}/${encodeURIComponent(id)}/star`, {
     method: 'PUT',
-    headers: authHeaders(),
+    credentials: 'same-origin',
   });
   return res.ok;
 }
@@ -50,7 +51,7 @@ export async function toggleStar(id: string): Promise<boolean> {
 export async function deleteConversation(id: string): Promise<boolean> {
   const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, {
     method: 'DELETE',
-    headers: authHeaders(),
+    credentials: 'same-origin',
   });
   return res.ok;
 }

@@ -15,7 +15,6 @@ import type { AISettings } from './types';
 import { normalizeExportRoot } from './export/export-paths';
 import { pickDirectoryViaBridge } from './export/export-bridge';
 import { getEffectiveExportRoot } from './agent/chat-client';
-import { fetchUsers, getUser, switchUser } from './auth';
 import { showWorkspaceLandingState } from './main';
 
 let previewTemplatesLoaded = false;
@@ -279,7 +278,6 @@ export function setupSettingsDialog() {
 
   function loadStoredSettings() {
     const settings = loadSettings() as AISettings & { modelName?: string; imageModelName?: string };
-    const accountSelector = document.getElementById('accountSelector') as HTMLSelectElement;
     const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement;
     const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
     const modelNameInput = document.getElementById('modelName') as HTMLInputElement;
@@ -288,18 +286,6 @@ export function setupSettingsDialog() {
     const imageModelNameInput = document.getElementById('imageModelName') as HTMLInputElement;
     const exportRootInput = document.getElementById('exportRoot') as HTMLInputElement;
     const uiThemeSelect = document.getElementById('uiThemeMode') as HTMLSelectElement;
-    const currentUser = getUser();
-
-    if (accountSelector) {
-      fetchUsers().then(users => {
-        accountSelector.innerHTML = users
-          .map(user => `<option value="${user.name}">${user.display_name}</option>`)
-          .join('');
-        if (currentUser?.name) accountSelector.value = currentUser.name;
-      }).catch(() => {
-        if (currentUser?.name) accountSelector.value = currentUser.name;
-      });
-    }
 
     if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || DEFAULT_CHAT_ENDPOINT;
     if (apiKeyInput) apiKeyInput.value = ''; // Server holds the key
@@ -351,7 +337,6 @@ export function setupSettingsDialog() {
   });
 
   async function saveSettingsForm() {
-    const accountSelector = document.getElementById('accountSelector') as HTMLSelectElement;
     const uiThemeSelect = document.getElementById('uiThemeMode') as HTMLSelectElement;
     const exportRootInput = document.getElementById('exportRoot') as HTMLInputElement | null;
 
@@ -368,19 +353,8 @@ export function setupSettingsDialog() {
       uiTheme: 'light',
     };
 
-    const currentUser = getUser();
-    const selectedAccount = accountSelector?.value;
     persistSettings(settings as any);
     applyUiTheme('light');
-
-    if (selectedAccount && selectedAccount !== currentUser?.name) {
-      const users = await fetchUsers();
-      const selectedUser = users.find(user => user.name === selectedAccount);
-      if (selectedUser) {
-        switchUser(selectedUser);
-        return;
-      }
-    }
 
     settingsModal.classList.remove('active');
     showNotification('设置已保存');

@@ -80,16 +80,17 @@ export async function initDb(): Promise<void> {
   `);
 
   // Seed users
+  // Seed default users (kept for dev/legacy compat)
   const stmt = db.prepare('INSERT OR IGNORE INTO users (id, name, display_name) VALUES (?, ?, ?)');
   stmt.bind([1, 'customer-a', '客户A']);
   stmt.step();
   stmt.free();
-  
+
   const stmt2 = db.prepare('INSERT OR IGNORE INTO users (id, name, display_name) VALUES (?, ?, ?)');
   stmt2.bind([2, 'customer-b', '客户B']);
   stmt2.step();
   stmt2.free();
-  
+
   const stmt3 = db.prepare('INSERT OR IGNORE INTO users (id, name, display_name) VALUES (?, ?, ?)');
   stmt3.bind([3, 'customer-c', '客户C']);
   stmt3.step();
@@ -434,4 +435,37 @@ export function getNextResetTime(): string {
     next6am.setDate(next6am.getDate() + 1);
   }
   return next6am.toISOString();
+}
+
+export function ensureUserByLoginName(loginName: string): number {
+  const findStmt = db.prepare('SELECT id FROM users WHERE name = ?');
+  findStmt.bind([loginName]);
+  if (findStmt.step()) {
+    const row = findStmt.getAsObject() as { id: number };
+    findStmt.free();
+    return row.id;
+  }
+  findStmt.free();
+
+  const displayName = loginName;
+  const insertStmt = db.prepare('INSERT INTO users (name, display_name) VALUES (?, ?)');
+  insertStmt.bind([loginName, displayName]);
+  insertStmt.step();
+  insertStmt.free();
+
+  const idStmt = db.prepare('SELECT last_insert_rowid() as id');
+  idStmt.step();
+  const row = idStmt.getAsObject() as { id: number };
+  idStmt.free();
+
+  const newUserId = row.id;
+  const creditNow = Math.floor(Date.now() / 1000);
+  const cs = db.prepare('INSERT INTO user_credits (user_id, credits, last_reset_at) VALUES (?, 10, ?)');
+  cs.bind([newUserId, creditNow]);
+  cs.step();
+  cs.free();
+
+  saveDb();
+  logger.info('Auto-created user from EKP SSO', { loginName, userId: newUserId });
+  return newUserId;
 }

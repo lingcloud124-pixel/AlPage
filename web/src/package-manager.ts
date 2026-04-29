@@ -6,7 +6,6 @@ import { createProject, getCurrentProjectId, loadProject, saveProject, safeJsonP
 import type { ExportBatchStatus, ExportJobQueueEntry } from './types';
 import { loadSettings, saveSettings, getEffectiveExportRoot } from './agent/chat-client';
 import { normalizeExportRoot } from './export/export-paths';
-import { authHeaders } from './auth';
 
 const EXPORT_JOB_QUEUE_KEY = 'theme-studio-export-jobs';
 
@@ -155,9 +154,7 @@ function closeProgressModal() {
 
 function triggerBlobDownload(dlUrl: string, filename: string) {
   fetch(dlUrl, {
-    headers: {
-      ...authHeaders(),
-    },
+    credentials: 'same-origin',
   })
     .then(res => {
       if (!res.ok) throw new Error('download failed');
