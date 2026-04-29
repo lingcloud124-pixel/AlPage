@@ -2229,23 +2229,7 @@ body[data-ui-theme="light"] .chat-cost-hint
   flex: 1;
   position: relative;
   overflow: hidden;
-  border-top-left-radius: 16px;
-}
-
-.preview-content::before
-{
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-top: 1px solid var(--border-strong);
-  border-left: 1px solid var(--border-strong);
-  border-top-left-radius: 16px;
-  pointer-events: none;
-  box-sizing: border-box;
-  z-index: 2;
+  background-color: #f5f5f5;
 }
 
 .preview-page
@@ -2349,7 +2333,7 @@ body[data-ui-theme="light"] .chat-cost-hint
     position: relative;
     width: 2215px;
     height: 1080px;
-    background-color: var(--login-bg-color);
+    background-color: #f5f5f5;
 }
 
 .login-bg
@@ -2359,7 +2343,7 @@ body[data-ui-theme="light"] .chat-cost-hint
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    background-color: var(--login-bg-color);
+    background-color: #f5f5f5;
 }
 
 .login-logo
@@ -5669,7 +5653,7 @@ body[data-ui-theme="light"] .chat-conversation-view .chat-shell-composer-inner,
 {
   height: 70px;
   padding: 14px 22px;
-  background: var(--surface-0);
+  background: #f5f5f5;
   border-bottom: 1px solid var(--border-subtle);
   backdrop-filter: blur(18px);
 }
@@ -5677,12 +5661,12 @@ body[data-ui-theme="light"] .chat-conversation-view .chat-shell-composer-inner,
 #previewPanel .workspace-topbar
 {
   border-bottom: none;
-  background: var(--surface-0);
+  background: #f5f5f5;
 }
 
 .preview-panel.expanded
 {
-  background: var(--surface-0);
+  background: #f5f5f5;
   border-top-left-radius: 16px;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
@@ -5692,13 +5676,12 @@ body[data-ui-theme="light"] .chat-conversation-view .chat-shell-composer-inner,
   border-right: none;
   border-bottom: none;
   overflow: hidden;
-  box-shadow: 0 0 0 10px var(--surface-0);
 }
 
 #previewPanel .workspace-topbar
 {
   border-bottom: none;
-  background: var(--surface-0);
+  background: #f5f5f5;
 }
 
 /* === Chat Panel Topbar: concave top-right corner === */
@@ -5761,7 +5744,7 @@ body[data-ui-theme="light"] .chat-conversation-view .chat-shell-composer-inner,
 .preview-content,
 .preview-page
 {
-  background: var(--surface-0);
+  background: #f5f5f5;
 }
 
 .side-panel
@@ -6302,6 +6285,7 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
   flex: 0 0 60px;
   display: flex;
   flex-direction: column;
+  padding: 12px 0;
   background-color: var(--panel-bg-color, #f8f9fa);
   border-right: 1px solid var(--border-color, #e5e7eb);
   overflow: hidden;
@@ -6321,7 +6305,7 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 0;
+  padding: 0;
   gap: 4px;
   flex: 1;
 }
