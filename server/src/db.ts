@@ -75,9 +75,15 @@ export async function initDb(): Promise<void> {
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT UNIQUE NOT NULL,
-      display_name TEXT NOT NULL
+      display_name TEXT NOT NULL,
+      last_login_at INTEGER
     );
   `);
+
+  // Migrate: add last_login_at column if missing (existing DBs)
+  try {
+    db.run('ALTER TABLE users ADD COLUMN last_login_at INTEGER');
+  } catch { /* column already exists */ }
 
   // Seed users
   // Seed default users (kept for dev/legacy compat)
@@ -443,13 +449,20 @@ export function ensureUserByLoginName(loginName: string): number {
   if (findStmt.step()) {
     const row = findStmt.getAsObject() as { id: number };
     findStmt.free();
+    const now = Math.floor(Date.now() / 1000);
+    const upd = db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?');
+    upd.bind([now, row.id]);
+    upd.step();
+    upd.free();
+    saveDb();
     return row.id;
   }
   findStmt.free();
 
   const displayName = loginName;
-  const insertStmt = db.prepare('INSERT INTO users (name, display_name) VALUES (?, ?)');
-  insertStmt.bind([loginName, displayName]);
+  const now = Math.floor(Date.now() / 1000);
+  const insertStmt = db.prepare('INSERT INTO users (name, display_name, last_login_at) VALUES (?, ?, ?)');
+  insertStmt.bind([loginName, displayName, now]);
   insertStmt.step();
   insertStmt.free();
 

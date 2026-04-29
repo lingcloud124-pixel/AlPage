@@ -143,20 +143,20 @@ async function start() {
   await initDb();
   const { db, getSecurityConfig } = await import('./db.js');
 
-  app.get('/api/auth/me', (req, res) => {
+  app.get('/api/auth/me', authMiddleware, (req, res) => {
     const loginName = (req as any).loginName;
     if (!loginName) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
-    const userId = (req as any).userId;
+    const userId = ensureUserByLoginName(loginName);
     res.json({ id: userId, name: loginName, display_name: loginName });
   });
 
   app.get('/api/auth/users', async (_req, res) => {
     try {
-      const stmt = db.prepare('SELECT id, name, display_name FROM users ORDER BY id');
-      const users: Array<{ id: number; name: string; display_name: string }> = [];
+      const stmt = db.prepare('SELECT id, name, display_name, last_login_at FROM users ORDER BY last_login_at DESC, id ASC');
+      const users: Array<{ id: number; name: string; display_name: string; last_login_at: number | null }> = [];
       while (stmt.step()) {
         users.push(stmt.getAsObject() as any);
       }

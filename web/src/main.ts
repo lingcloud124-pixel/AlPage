@@ -104,8 +104,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const isAuth = await checkAuth();
     if (!isAuth) {
-      redirectToLogin();
-      return;
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        console.warn('Local dev: auth skipped (no EKP cookie)');
+      } else {
+        redirectToLogin();
+        return;
+      }
     }
 
     runHealthCheck();

@@ -6,6 +6,9 @@ const EKP_SSO_USER = process.env.EKP_SSO_USER || '';
 const EKP_SSO_PASS = process.env.EKP_SSO_PASS || '';
 const SSO_COOKIE_NAME = 'LR_myekp';
 
+const DEV_MODE = process.env.NODE_ENV !== 'production' || !process.env.EKP_BASE_URL;
+const DEV_LOGIN_NAME = process.env.DEV_LOGIN_NAME || 'dev_user';
+
 interface EkpTokenResponse {
   result: boolean;
   errorMsg?: string;
@@ -48,6 +51,10 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   const token = req.cookies?.[SSO_COOKIE_NAME];
 
   if (!token) {
+    if (DEV_MODE) {
+      (req as any).loginName = DEV_LOGIN_NAME;
+      return next();
+    }
     res.status(401).json({ error: 'Not authenticated', code: 'NO_TOKEN' });
     return;
   }
