@@ -32,7 +32,7 @@ interface BuildDirectories {
   metadataDir: string;
 }
 
-const DEFAULT_SELECTED_PRODUCTS = ['mk', 'ekp_v14_16', 'ekp_v17'];
+const DEFAULT_SELECTED_PRODUCTS = ['mk', 'ekp_v14', 'ekp_v15', 'ekp_v16', 'ekp_v17'];
 
 function getVerifySelectionArgs(selectedProducts?: string[]) {
   return selectedProducts && selectedProducts.length > 0

@@ -12,6 +12,7 @@ describe('python sample package paths', () => {
     expect(source).toContain('"dark-ui": LOCAL_SAMPLES_DIR / "dark"');
     expect(source).toContain('"theme": "mk-festival-26-spring主题包.zip"');
     expect(source).toContain('"login": "mk-festival-spring-登录包.zip"');
+    expect(source).toContain('"theme": "主题-MK-2026清明主题.zip"');
     expect(source).not.toContain('LOCAL_SAMPLES_DIR / "light样例包"');
     expect(source).not.toContain('LOCAL_SAMPLES_DIR / "dark样例包"');
   });
@@ -21,8 +22,8 @@ describe('python sample package paths', () => {
 
     expect(source).toContain('"light-ui": LOCAL_SAMPLES_DIR / "light"');
     expect(source).toContain('"dark-ui": LOCAL_SAMPLES_DIR / "dark"');
-    expect(source).toContain('("主题-MK-", "mk-festival-26-spring主题包.zip")');
-    expect(source).toContain('("登录-MK-", "mk-festival-spring-登录包.zip")');
+    expect(source).toContain('VERIFY_RULES["expectedZips"].items()');
+    expect(source).not.toContain('("主题-MK-", "mk-festival-26-spring主题包.zip")');
     expect(source).not.toContain('LOCAL_SAMPLES_DIR / "light样例包"');
     expect(source).not.toContain('LOCAL_SAMPLES_DIR / "dark样例包"');
     expect(source).not.toContain('assets/references/samples/主题样例包');

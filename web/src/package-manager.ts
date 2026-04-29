@@ -12,7 +12,9 @@ const EXPORT_JOB_QUEUE_KEY = 'theme-studio-export-jobs';
 
 const PACKAGE_PRODUCTS = [
   { id: 'mk', label: 'MK（主题+登录）' },
-  { id: 'ekp_v14_16', label: 'EKP V14~V16（主题+登录）' },
+  { id: 'ekp_v14', label: 'EKP V14（主题+登录）' },
+  { id: 'ekp_v15', label: 'EKP V15（主题+登录）' },
+  { id: 'ekp_v16', label: 'EKP V16（主题+登录）' },
   { id: 'ekp_v17', label: 'EKP V17（主题+登录）' },
 ];
 

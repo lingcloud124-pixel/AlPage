@@ -2,7 +2,7 @@
 """
 Unified Theme Package Builder
 
-Supports: MK (modern), EKP v14~v16/v17
+Supports: MK (modern), EKP v14/v15/v16/v17
 Usage:
   python3 theme_builder.py --config theme-build-request.yaml
   python3 theme_builder.py --config theme-build-request.yaml --output ./output
@@ -63,24 +63,24 @@ TEMPLATE_ZIPS_BY_TYPE = {
     },
     "dark-ui": {
         "mk": {
-            "theme": "主题-MK-2026清明.zip",
-            "login": "登录-MK-2026清明.zip",
+            "theme": "mk-festival-26-spring主题包.zip",
+            "login": "mk-festival-spring-登录包.zip",
         },
         "ekp_v14": {
-            "theme": "主题-V14-2026清明.zip",
-            "login": "登录-V14-2026清明.zip",
+            "theme": "主题-V14-2026春节.zip",
+            "login": "登录-V14-2026春节.zip",
         },
         "ekp_v15": {
-            "theme": "主题-V15-2026清明.zip",
-            "login": "登录-V15-2026清明.zip",
+            "theme": "主题-V15-2026春节.zip",
+            "login": "登录-V15-2026春节.zip",
         },
         "ekp_v16": {
-            "theme": "主题-V16-2026清明.zip",
-            "login": "登录-V16-2026清明.zip",
+            "theme": "主题-V16-2026春节.zip",
+            "login": "登录-V16-2026春节.zip",
         },
         "ekp_v17": {
-            "theme": "主题-V17-2026清明.zip",
-            "login": "登录-V17-2026清明.zip",
+            "theme": "主题-V17-2026春节.zip",
+            "login": "登录-V17-2026春节.zip",
         },
     },
 }
@@ -88,25 +88,8 @@ TEMPLATE_ZIPS_BY_TYPE = {
 VERSION_LABELS = {
     "ekp_v14": "V14",
     "ekp_v15": "V15",
-    "ekp_v16": "V16",   
+    "ekp_v16": "V16",
     "ekp_v17": "V17",
-}
-
-LOGIN_VARIANTS_BY_TYPE = {
-    "light-ui": {
-        "ekp_v14_16": [
-            {"label": "V14", "template": "登录-V14-2026清明.zip"},
-            {"label": "V15", "template": "登录-V15-2026清明.zip"},
-            {"label": "V16", "template": "登录-V16-2026清明.zip"},
-        ],
-    },
-    "dark-ui": {
-        "ekp_v14_16": [
-            {"label": "V14", "template": "登录-V14-2026春节.zip"},
-            {"label": "V15", "template": "登录-V15-2026春节.zip"},
-            {"label": "V16", "template": "登录-V16-2026春节.zip"},
-        ],
-    },
 }
 
 # Color replacement mapping for CSS (MK/EKP shared)
@@ -406,10 +389,6 @@ def resolve_samples_root(template_type: str, configured_root: Optional[str] = No
 
 def get_template_zips(template_type: str) -> Dict[str, Dict[str, str]]:
     return TEMPLATE_ZIPS_BY_TYPE.get(template_type, TEMPLATE_ZIPS_BY_TYPE["light-ui"])
-
-
-def get_login_variants(template_type: str) -> Dict[str, List[Dict[str, str]]]:
-    return LOGIN_VARIANTS_BY_TYPE.get(template_type, LOGIN_VARIANTS_BY_TYPE["light-ui"])
 
 
 def ensure_dir(path: Path):
@@ -1139,9 +1118,9 @@ def build_ekp_package(
     config_base: Optional[Path] = None,
 ) -> List[Path]:
     """
-    Build EKP (legacy) theme + login packages for a specific version.
+    Build EKP theme + login packages for a specific version.
 
-    product_key: one of ekp_v14_16, ekp_v17
+    product_key: one of ekp_v14, ekp_v15, ekp_v16, ekp_v17
     Returns list of output zip paths.
     """
     if config_base is None:

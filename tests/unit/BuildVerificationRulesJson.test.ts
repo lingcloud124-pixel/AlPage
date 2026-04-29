@@ -10,10 +10,15 @@ describe('build verification rules json', () => {
       fs.readFileSync(path.join(projectRoot, 'config', 'build-verification-rules.json'), 'utf8'),
     );
 
-    expect(config.expectedZips).toHaveLength(15);
-    expect(config.expectedZips[0]).toEqual({
+    expect(config.expectedZips['light-ui']).toHaveLength(10);
+    expect(config.expectedZips['dark-ui']).toHaveLength(10);
+    expect(config.expectedZips['light-ui'][0]).toEqual({
       prefix: '主题-MK-',
       reference: '主题-MK-2026清明主题.zip',
+    });
+    expect(config.expectedZips['dark-ui'][0]).toEqual({
+      prefix: '主题-MK-',
+      reference: 'mk-festival-26-spring主题包.zip',
     });
 
     expect(config.loginImageChecks['登录-V17-']).toContain('login_thumb.jpg');
