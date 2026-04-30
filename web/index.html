@@ -86,7 +86,7 @@
                         <section class="landing-shell" id="chatLandingHero">
                             <div class="landing-hero landing-hero--compact">
                                 <div class="landing-hero-copy landing-hero-copy--centered">
-                                    <h1 class="landing-hero-title">一句话，生成<span class="landing-hero-highlight">可上线</span>主题包</h1>
+                                    <h1 class="landing-hero-title">办公视觉，<span class="landing-hero-highlight">随需而变</span>，OA主题即刻生成</h1>
                                     <p class="landing-hero-subtitle">告别繁琐代码配置，通过自然语言即刻定制 OA 专属皮肤</p>
                                 </div>
                             </div>
@@ -396,14 +396,8 @@
               if (!activePage) activePage = container.querySelector('.preview-page');
               if (!activePage) return;
 
-              var rendered = activePage;
-              if (activePage.firstElementChild) {
-                var childW = activePage.firstElementChild.offsetWidth || parseInt(activePage.firstElementChild.style.width) || 0;
-                var childH = activePage.firstElementChild.offsetHeight || parseInt(activePage.firstElementChild.style.height) || 0;
-                if (childW > 0 && childH > 0) {
-                  rendered = activePage.firstElementChild;
-                }
-              }
+              var rendered = activePage.firstElementChild;
+              if (!rendered) return;
 
               var rw = rendered.offsetWidth || parseInt(rendered.style.width) || 0;
               var rh = rendered.offsetHeight || parseInt(rendered.style.height) || 0;

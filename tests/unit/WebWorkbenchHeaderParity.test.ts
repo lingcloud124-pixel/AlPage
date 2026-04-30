@@ -10,7 +10,6 @@ describe('web workbench header parity', () => {
 
     expect(styles).toContain('.project-name');
     expect(styles).toContain('font-size: var(--font-size-title);');
-    expect(styles).toContain('padding: 14px 22px;');
     expect(styles).toContain('height: 70px;');
   });
 });

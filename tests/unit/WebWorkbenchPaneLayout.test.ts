@@ -16,5 +16,6 @@ describe('web workbench pane layout', () => {
     expect(styles).toContain('.pane-divider');
     expect(styles).toContain('#chatPanel');
     expect(styles).toContain('flex: 1 1 auto;');
+    expect(styles).toContain('.preview-page.active-preview');
   });
 });
