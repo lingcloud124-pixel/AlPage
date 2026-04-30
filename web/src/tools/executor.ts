@@ -1,6 +1,6 @@
 import type { ToolCall, ToolResult } from '../types';
 import { generateImage } from '../agent/chat-client';
-import { buildConfirmedProjectSnapshot, createConfirmedVersion, createServerExportJob } from '../export/online-export';
+import { buildConfirmedProjectSnapshot, createServerExportJob } from '../export/online-export';
 import { fetchExportJobStatus } from '../export/export-status-client';
 import { getCurrentProjectId, loadProject } from '../project-manager';
 import { resolvePrimaryContrast, validateColorScheme } from './contrast-validator';
@@ -417,10 +417,10 @@ async function createBackendExportJob(projectId: string, selectedProducts: strin
   }
 
   try {
-    const confirmedVersion = await createConfirmedVersion(projectId, buildConfirmedProjectSnapshot(project));
+    const snapshot = buildConfirmedProjectSnapshot(project);
     const exportJob = await createServerExportJob({
       projectId,
-      confirmedVersionId: confirmedVersion.id,
+      projectSnapshot: snapshot,
       selectedProducts,
     });
     if (!exportJob.id) {
@@ -429,7 +429,6 @@ async function createBackendExportJob(projectId: string, selectedProducts: strin
 
     return {
       jobId: exportJob.id,
-      confirmedVersionId: confirmedVersion.id,
       status: typeof exportJob.status === 'string' ? exportJob.status : 'queued',
     } as const;
   } catch (error) {
@@ -456,7 +455,7 @@ async function runExportJobTool(
   const pollingUrl = `/api/theme/export-jobs/${created.jobId}`;
   onProgress?.({
     type: 'export_status',
-    data: { tool, jobId: created.jobId, confirmedVersionId: created.confirmedVersionId, status: created.status, selectedProducts },
+    data: { tool, jobId: created.jobId, status: created.status, selectedProducts },
   });
 
   for (let attempt = 0; attempt < EXPORT_JOB_MAX_POLL_ATTEMPTS; attempt++) {
@@ -472,7 +471,6 @@ async function runExportJobTool(
           success: true,
           data: {
             jobId: created.jobId,
-            confirmedVersionId: created.confirmedVersionId,
             status: status.status,
             pollingUrl,
             result: status,
@@ -486,7 +484,6 @@ async function runExportJobTool(
           error: status.error ?? '导出任务失败，请检查服务日志。',
           data: {
             jobId: created.jobId,
-            confirmedVersionId: created.confirmedVersionId,
             status: status.status,
             pollingUrl,
             result: status,
@@ -503,7 +500,6 @@ async function runExportJobTool(
     error: `"${tool}" 任务超时，请稍后到导出记录中查看状态。`,
     data: {
       jobId: created.jobId,
-      confirmedVersionId: created.confirmedVersionId,
       status: 'timeout',
       pollingUrl,
     },

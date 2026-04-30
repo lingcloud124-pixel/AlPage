@@ -10,8 +10,6 @@ describe('server export job persistence contracts', () => {
 
     expect(dbSource).toContain('CREATE TABLE IF NOT EXISTS theme_export_jobs');
     expect(dbSource).not.toContain('DROP TABLE IF EXISTS theme_export_jobs');
-    expect(dbSource).toContain('CREATE TABLE IF NOT EXISTS theme_confirmed_versions');
-    expect(dbSource).not.toContain('DROP TABLE IF EXISTS theme_confirmed_versions');
   });
 
   test('export job store uses durable storage instead of process memory', () => {

@@ -1,21 +1,5 @@
-import type { ConfirmedProjectVersion, ServerExportJob } from '../types';
+import type { ServerExportJob } from '../types';
 import type { Project } from '../project-manager';
-
-export function appendConfirmedVersionToProject(project: Project, version: ConfirmedProjectVersion): Project {
-  return {
-    ...project,
-    confirmedVersions: [version, ...(project.confirmedVersions ?? [])],
-    updatedAt: Math.max(project.updatedAt, version.updatedAt),
-  };
-}
-
-export function setConfirmedVersionsOnProject(project: Project, versions: ConfirmedProjectVersion[]): Project {
-  return {
-    ...project,
-    confirmedVersions: [...versions],
-    updatedAt: versions.length > 0 ? Math.max(project.updatedAt, versions[0].updatedAt) : project.updatedAt,
-  };
-}
 
 export function appendServerExportJobToProject(project: Project, job: ServerExportJob): Project {
   return {

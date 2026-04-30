@@ -6,8 +6,6 @@ const SUPPORTED_EXPORT_PRODUCTS = new Set([
   'ekp_v17',
 ]);
 
-export const MAX_EXPORT_SNAPSHOT_BYTES = 2 * 1024 * 1024;
-
 export function normalizeAndValidateSelectedProducts(rawProducts: unknown): {
   products?: string[];
   error?: string;
@@ -27,26 +25,4 @@ export function normalizeAndValidateSelectedProducts(rawProducts: unknown): {
   }
 
   return { products };
-}
-
-export function validateExportSnapshotSize(snapshot: unknown): {
-  ok: boolean;
-  error?: string;
-  bytes?: number;
-} {
-  if (!snapshot || typeof snapshot !== 'object') {
-    return { ok: false, error: 'projectSnapshot 必须是对象' };
-  }
-
-  const serialized = JSON.stringify(snapshot);
-  const bytes = Buffer.byteLength(serialized, 'utf8');
-  if (bytes > MAX_EXPORT_SNAPSHOT_BYTES) {
-    return {
-      ok: false,
-      error: `projectSnapshot 体积超过限制（${MAX_EXPORT_SNAPSHOT_BYTES} bytes）`,
-      bytes,
-    };
-  }
-
-  return { ok: true, bytes };
 }

@@ -60,12 +60,11 @@ describe('web online export', () => {
     expect(snapshot.headerBgImageUrl).toBe('data:image/png;base64,AAAA');
   });
 
-  test('createServerExportJob sends confirmedVersionId without inline snapshot payload', async () => {
+  test('createServerExportJob sends projectSnapshot inline', async () => {
     const originalFetch = globalThis.fetch;
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => new Response(JSON.stringify({
       id: 'job-1',
       projectId: 'project-1',
-      confirmedVersionId: 'confirmed-1',
       status: 'queued',
       selectedProducts: ['mk'],
       createdAt: 100,
@@ -73,10 +72,12 @@ describe('web online export', () => {
     }), { status: 201, headers: { 'Content-Type': 'application/json' } }));
     globalThis.fetch = fetchMock as typeof fetch;
 
+    const snapshot = buildConfirmedProjectSnapshot(createProject(), 3000);
+
     try {
       await createServerExportJob({
         projectId: 'project-1',
-        confirmedVersionId: 'confirmed-1',
+        projectSnapshot: snapshot,
         selectedProducts: ['mk'],
       });
     } finally {
@@ -88,10 +89,9 @@ describe('web online export', () => {
       method: 'POST',
       credentials: 'same-origin',
     }));
-    expect(JSON.parse(String(request?.body))).toEqual({
-      projectId: 'project-1',
-      confirmedVersionId: 'confirmed-1',
-      selectedProducts: ['mk'],
-    });
+    const body = JSON.parse(String(request?.body));
+    expect(body.projectId).toBe('project-1');
+    expect(body.projectSnapshot).toMatchObject({ projectId: 'project-1' });
+    expect(body.selectedProducts).toEqual(['mk']);
   });
 });

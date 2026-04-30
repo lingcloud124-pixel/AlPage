@@ -81,18 +81,6 @@ describe('web export bridge', () => {
     const dispatched = await dispatchExportJobToBridge({
       fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
         calls.push({ input, init });
-        if (String(input).includes('/confirmed-versions')) {
-          return new Response(JSON.stringify({
-            id: 'confirmed-1',
-            projectId: 'project-bridge',
-            createdAt: 1,
-            updatedAt: 1,
-            projectSnapshot: { projectId: 'project-bridge' },
-          }), {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
         return new Response(JSON.stringify({ accepted: true, jobId: 'export-1712999999000' }), {
           status: 202,
           headers: { 'Content-Type': 'application/json' },
@@ -105,15 +93,12 @@ describe('web export bridge', () => {
       jobId: 'export-1712999999000',
       mode: 'api',
     });
-    expect(calls).toHaveLength(2);
-    expect(String(calls[0].input)).toBe('/api/theme/projects/project-bridge/confirmed-versions');
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0].input)).toBe('/api/theme/export-jobs');
     expect(calls[0].init?.method).toBe('POST');
-    expect(String(calls[1].input)).toBe('/api/theme/export-jobs');
-    expect(calls[1].init?.method).toBe('POST');
-    expect(JSON.parse(String(calls[1].init?.body))).toEqual({
-      projectId: 'project-bridge',
-      confirmedVersionId: 'confirmed-1',
-      selectedProducts: ['mk'],
-    });
+    const body = JSON.parse(String(calls[0].init?.body));
+    expect(body.projectId).toBe('project-bridge');
+    expect(body.projectSnapshot).toMatchObject({ projectId: 'project-bridge' });
+    expect(body.selectedProducts).toEqual(['mk']);
   });
 });

@@ -225,16 +225,6 @@ export async function initDb(): Promise<void> {
   db.run('CREATE INDEX IF NOT EXISTS idx_theme_export_jobs_user_updated ON theme_export_jobs(user_id, updated_at DESC)');
   db.run('CREATE INDEX IF NOT EXISTS idx_theme_export_jobs_status_created ON theme_export_jobs(status, created_at ASC)');
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS theme_confirmed_versions (
-      id TEXT PRIMARY KEY,
-      project_id TEXT NOT NULL,
-      user_id INTEGER NOT NULL,
-      snapshot TEXT NOT NULL DEFAULT '{}',
-      created_at INTEGER NOT NULL
-    )
-  `);
-
   // Save to disk
   flushDb();
   startBackupScheduler();

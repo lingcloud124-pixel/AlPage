@@ -26,7 +26,6 @@ export interface ExportJobSnapshot {
 export interface MemoryExportJob {
   id: string;
   userId: number;
-  confirmedVersionId: string;
   status: ExportJobStatus;
   selectedProducts: string[];
   snapshot: ExportJobSnapshot;
@@ -63,7 +62,6 @@ function mapRowToJob(row: ExportJobRow | null | undefined): MemoryExportJob | un
   return {
     id: row.id,
     userId: row.user_id,
-    confirmedVersionId: row.confirmed_version_id,
     status: row.status,
     selectedProducts: parseJson<string[]>(row.selected_products, []),
     snapshot: parseJson<ExportJobSnapshot>(row.snapshot, {
@@ -92,7 +90,6 @@ function loadSingleJob(sql: string, params: Array<string | number>): MemoryExpor
 
 export function createExportJob(data: {
   userId: number;
-  confirmedVersionId: string;
   selectedProducts: string[];
   snapshot: ExportJobSnapshot;
 }): MemoryExportJob {
@@ -100,7 +97,6 @@ export function createExportJob(data: {
   const job: MemoryExportJob = {
     id: `job-${Date.now()}-${randomUUID().slice(0, 8)}`,
     userId: data.userId,
-    confirmedVersionId: data.confirmedVersionId,
     status: 'queued',
     selectedProducts: data.selectedProducts,
     snapshot: data.snapshot,
@@ -118,7 +114,7 @@ export function createExportJob(data: {
   stmt.bind([
     job.id,
     job.userId,
-    job.confirmedVersionId,
+    '',
     job.status,
     JSON.stringify(job.selectedProducts),
     JSON.stringify(job.snapshot),

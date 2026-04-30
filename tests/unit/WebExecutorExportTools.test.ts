@@ -52,29 +52,20 @@ describe('web executor export tools', () => {
     vi.useRealTimers();
   });
 
-  test('build confirms the project first, then exports and polls until completion', async () => {
+  test('build exports directly with inline snapshot and polls until completion', async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        id: 'confirmed-1',
-        projectId: 'project-1',
-        createdAt: 10,
-        updatedAt: 10,
-        projectSnapshot: createProject(),
-      }), { status: 201, headers: { 'Content-Type': 'application/json' } }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         accepted: true,
         jobId: 'job-1',
         id: 'job-1',
         status: 'queued',
-        confirmedVersionId: 'confirmed-1',
         selectedProducts: ['mk'],
         createdAt: 10,
         updatedAt: 10,
       }), { status: 201, headers: { 'Content-Type': 'application/json' } }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         id: 'job-1',
-        confirmedVersionId: 'confirmed-1',
         status: 'packaging',
         selectedProducts: ['mk'],
         createdAt: 10,
@@ -82,7 +73,6 @@ describe('web executor export tools', () => {
       }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         id: 'job-1',
-        confirmedVersionId: 'confirmed-1',
         status: 'completed',
         selectedProducts: ['mk'],
         result: { downloadUrl: '/api/theme/export-jobs/job-1/download' },
@@ -102,34 +92,28 @@ describe('web executor export tools', () => {
     await vi.runAllTimersAsync();
     const result = await resultPromise;
 
-    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/theme/projects/project-1/confirmed-versions', expect.objectContaining({
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/theme/export-jobs', expect.objectContaining({
       method: 'POST',
       credentials: 'same-origin',
     }));
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/theme/export-jobs', expect.objectContaining({
-      method: 'POST',
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/theme/export-jobs/job-1', expect.objectContaining({
       credentials: 'same-origin',
     }));
-    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/theme/export-jobs/job-1', expect.objectContaining({
-      credentials: 'same-origin',
-    }));
-    const exportCall = fetchMock.mock.calls[1][1];
-    expect(JSON.parse(String(exportCall?.body))).toEqual({
-      projectId: 'project-1',
-      confirmedVersionId: 'confirmed-1',
-      selectedProducts: ['mk'],
-    });
+    const exportCall = fetchMock.mock.calls[0][1];
+    const body = JSON.parse(String(exportCall?.body));
+    expect(body.projectId).toBe('project-1');
+    expect(body.projectSnapshot).toMatchObject({ projectId: 'project-1' });
+    expect(body.selectedProducts).toEqual(['mk']);
     expect(result).toMatchObject({
       success: true,
       data: {
         jobId: 'job-1',
         status: 'completed',
-        confirmedVersionId: 'confirmed-1',
         pollingUrl: '/api/theme/export-jobs/job-1',
       },
     });
     expect(progressEvents).toEqual(expect.arrayContaining([
-      expect.objectContaining({ type: 'export_status', data: expect.objectContaining({ status: 'queued', confirmedVersionId: 'confirmed-1' }) }),
+      expect.objectContaining({ type: 'export_status', data: expect.objectContaining({ status: 'queued' }) }),
       expect.objectContaining({ type: 'export_status', data: expect.objectContaining({ status: 'packaging' }) }),
       expect.objectContaining({ type: 'export_status', data: expect.objectContaining({ status: 'completed' }) }),
     ]));

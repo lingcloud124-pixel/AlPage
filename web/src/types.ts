@@ -151,14 +151,6 @@ export interface ConfirmedProjectSnapshot {
   confirmedAt: number;
 }
 
-export interface ConfirmedProjectVersion {
-  id: string;
-  projectId: string;
-  createdAt: number;
-  updatedAt: number;
-  projectSnapshot: ConfirmedProjectSnapshot;
-}
-
 export type ServerExportJobStatus =
   | 'queued'
   | 'preparing'
@@ -177,7 +169,6 @@ export interface ServerExportJobResult {
 export interface ServerExportJob {
   id: string;
   projectId: string;
-  confirmedVersionId: string;
   status: ServerExportJobStatus;
   selectedProducts: string[];
   error?: string;

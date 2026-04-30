@@ -33,64 +33,29 @@ function getFetchBridge(source: unknown): ThemeStudioExportBridge | null {
 
   return {
     async enqueueExportJob(payload: ExportJobRequest) {
-      const apiPayload = {
-        projectId: payload.batch.projectSnapshot.projectId,
-        selectedProducts: payload.batch.selectedProducts,
-      };
-      
-      if (!apiPayload.projectId || typeof apiPayload.projectId !== 'string' || apiPayload.projectId.trim() === '') {
+      const projectId = payload.batch.projectSnapshot.projectId;
+      if (!projectId || typeof projectId !== 'string' || projectId.trim() === '') {
         throw new Error('projectId is required and must be a non-empty string');
       }
-      
-      const trimmedProjectId = apiPayload.projectId.trim();
-      const confirmedVersionResponse = await fetchImpl(`/api/theme/projects/${trimmedProjectId}/confirmed-versions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ projectSnapshot: payload.batch.projectSnapshot }),
-      });
 
-      if (!confirmedVersionResponse.ok) {
-        let message = `确认版本创建失败 (${confirmedVersionResponse.status})`;
-        try {
-          const errorData = await confirmedVersionResponse.json() as { error?: string };
-          if (errorData?.error) message = errorData.error;
-        } catch {
-          // ignore non-JSON error responses
-        }
-        const error = new Error(message) as Error & { status?: number };
-        error.status = confirmedVersionResponse.status;
-        throw error;
-      }
+      const trimmedProjectId = projectId.trim();
 
-      const confirmedVersion = await confirmedVersionResponse.json() as { id?: string };
-      if (!confirmedVersion.id) {
-        throw new Error('确认版本创建成功，但未返回 version id');
-      }
-      
-      if (typeof confirmedVersion.id !== 'string' || confirmedVersion.id.trim() === '') {
-        throw new Error('确认版本创建成功，但返回的 version id 无效');
-      }
-      
-      const trimmedConfirmedVersionId = confirmedVersion.id.trim();
       const response = await fetchImpl('/api/theme/export-jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({
           projectId: trimmedProjectId,
-          confirmedVersionId: trimmedConfirmedVersionId,
-          selectedProducts: apiPayload.selectedProducts,
+          projectSnapshot: payload.batch.projectSnapshot,
+          selectedProducts: payload.batch.selectedProducts,
         }),
       });
 
       if (!response.ok) {
-        let message = `导出桥接请求失败 (${response.status})`;
+        let message = `导出任务提交失败 (${response.status})`;
         try {
           const errorData = await response.json() as { error?: string };
-          if (errorData?.error) {
-            message = errorData.error;
-          }
+          if (errorData?.error) message = errorData.error;
         } catch {
           // ignore non-JSON error responses
         }

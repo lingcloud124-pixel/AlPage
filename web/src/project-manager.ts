@@ -1,4 +1,4 @@
-import type { ChatMessage, ConfirmedProjectVersion, ExportBatch, ServerExportJob } from './types';
+import type { ChatMessage, ExportBatch, ServerExportJob } from './types';
 import { DEFAULT_LIGHT_UI_PRIMARY, deriveColorsFromPrimary, toCssVarRecord } from './theme/color-utils';
 import type { ProjectVisualContext } from './tools/project-visual-context-store';
 
@@ -15,7 +15,6 @@ export interface Project {
   bgImageUrl?: string;
   headerBgImageUrl?: string;
   visualContext?: ProjectVisualContext;
-  confirmedVersions?: ConfirmedProjectVersion[];
   serverExportJobs?: ServerExportJob[];
   exportBatches?: ExportBatch[];
   pinned?: boolean;
