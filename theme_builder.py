@@ -143,6 +143,13 @@ DEFAULT_THEME_VARIABLES = {
     "gradient-mid": "#F7F3CD",
 }
 
+PREFERRED_RAW_COLOR_VARIABLES = {
+    "#144e48": "alter-color",
+    "#333333": "header-font-color",
+    "#fbfcf2": "portal-header-bg-extend-color",
+    "#e5e7eb": "border-color",
+}
+
 # RGB replacements (for rgba() variants)
 RGB_REPLACEMENTS = [
     (r"255,\s*134,\s*36", None),  # orange
@@ -151,6 +158,7 @@ RGB_REPLACEMENTS = [
 ]
 
 MAX_PACKAGE_TITLE_LENGTH = 10
+MK_LOGIN_PART_CODE_MAX_LENGTH = 36
 
 DIRECT_THEME_PATTERNS: List[Tuple[str, List[str]]] = [
     ("shenergy-enterprise", [r"申能", r"\bshenergy\b"]),
@@ -478,8 +486,12 @@ def build_mk_login_slug(template_name: str, name_en: str) -> str:
     slug = normalize_name_en(name_en) or "project"
     match = re.match(r"^(login\d+-festival-).+$", template_name)
     if match:
-        return f"{match.group(1)}{slug}"
-    return f"login-{slug}"
+        prefix = match.group(1)
+        max_slug_length = max(1, MK_LOGIN_PART_CODE_MAX_LENGTH - len(prefix))
+        return f"{prefix}{slug[:max_slug_length]}"
+    prefix = "login-"
+    max_slug_length = max(1, MK_LOGIN_PART_CODE_MAX_LENGTH - len(prefix))
+    return f"{prefix}{slug[:max_slug_length]}"
 
 
 # =============================================================================
@@ -493,6 +505,31 @@ def hex_to_rgb(hex_color: str) -> tuple:
     if len(clean) == 3:
         clean = "".join(c * 2 for c in clean)
     return tuple(int(clean[i : i + 2], 16) for i in (0, 2, 4))
+
+
+def _match_hex_style(reference: str, actual: str) -> str:
+    return actual.upper() if any(c.isalpha() and c.isupper() for c in reference) else actual.lower()
+
+
+def _replace_theme_variable_declarations(
+    content: str,
+    colors: Optional[Dict[str, str]] = None,
+) -> str:
+    result = content
+    palette = colors or {}
+    for var_name, actual in palette.items():
+        if not isinstance(actual, str) or not actual.startswith("#"):
+            continue
+        pattern = re.compile(
+            rf"(?P<prefix>(?:\$|--){re.escape(var_name)}\s*:\s*)(?P<value>#[0-9A-Fa-f]{{3,8}})"
+        )
+
+        def _replace(match: re.Match) -> str:
+            styled = _match_hex_style(match.group("value"), actual)
+            return f"{match.group('prefix')}{styled}"
+
+        result = pattern.sub(_replace, result)
+    return result
 
 
 def build_color_replacements(theme_color: str) -> Dict[str, str]:
@@ -514,6 +551,7 @@ def inject_color_into_css(
     header_font: str = "#333333",
     colors: Optional[Dict[str, str]] = None,
 ) -> str:
+    result = _replace_theme_variable_declarations(content, colors)
     replacements = build_color_replacements(theme_color)
     for hex_code in BG_VARIANTS:
         replacements[hex_code.lower()] = header_font.lower()
@@ -525,14 +563,20 @@ def inject_color_into_css(
         actual = (colors or {}).get(var_name)
         if not actual:
             continue
-        replacements[default_hex.lower()] = actual.lower()
-        replacements[default_hex.upper()] = actual.upper()
+        preferred_var = PREFERRED_RAW_COLOR_VARIABLES.get(default_hex.lower())
+        if preferred_var == var_name:
+            replacements[default_hex.lower()] = actual.lower()
+            replacements[default_hex.upper()] = actual.upper()
         for legacy_hex in LEGACY_VARIABLE_COLOR_VARIANTS.get(var_name, []):
             replacements[legacy_hex.lower()] = actual.lower()
             replacements[legacy_hex.upper()] = actual.upper()
-    result = content
-    for old, new in replacements.items():
-        result = result.replace(old, new)
+    placeholder_map = {}
+    for index, (old, new) in enumerate(replacements.items()):
+        token = f"__THEME_REPLACEMENT_{index}__"
+        placeholder_map[token] = new
+        result = result.replace(old, token)
+    for token, new in placeholder_map.items():
+        result = result.replace(token, new)
     return result
 
 
