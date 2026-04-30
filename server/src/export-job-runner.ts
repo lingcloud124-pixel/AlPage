@@ -3,8 +3,9 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { listQueuedExportJobs, updateExportJob } from './export-jobs-memory-store.js';
+import { listQueuedExportJobs, requeueInFlightExportJobs, updateExportJob } from './export-jobs-memory-store.js';
 import { buildServerExportAssetSnapshot, buildServerExportYaml } from './export-build-shared.js';
+import { logger } from './logger.js';
 
 const STEP_DELAY_MS = 50;
 const execFileAsync = promisify(execFile);
@@ -18,6 +19,7 @@ function delay(ms: number): Promise<void> {
 }
 
 async function runJob(jobId: string): Promise<void> {
+  logger.info('Starting export job', { jobId });
   const preparing = updateExportJob(jobId, { status: 'preparing', error: null });
   if (!preparing) return;
 
@@ -67,9 +69,13 @@ async function runJob(jobId: string): Promise<void> {
 
   await delay(STEP_DELAY_MS);
   updateExportJob(jobId, { status: 'capturing', error: null });
+  logger.info('Export job entered stage', { jobId, stage: 'capturing' });
 
   try {
     const prepareScriptPath = path.join(PROJECT_ROOT, 'scripts', 'prepare_export_assets.py');
+    const prepareEnv = process.env.SCREENSHOT_BASE_URL
+      ? { ...process.env, SCREENSHOT_BASE_URL: process.env.SCREENSHOT_BASE_URL }
+      : process.env;
     await execFileAsync('python3', [
       prepareScriptPath,
       '--snapshot',
@@ -80,10 +86,11 @@ async function runJob(jobId: string): Promise<void> {
       metadataDir,
     ], {
       cwd: PROJECT_ROOT,
-      env: { ...process.env, SCREENSHOT_BASE_URL: 'http://localhost:5173' },
+      env: prepareEnv,
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
+    logger.error('Export job asset preparation failed', { jobId, reason });
     updateExportJob(jobId, {
       status: 'failed',
       error: `Asset preparation failed: ${reason}`,
@@ -97,6 +104,7 @@ async function runJob(jobId: string): Promise<void> {
 
   await delay(STEP_DELAY_MS);
   updateExportJob(jobId, { status: 'packaging', error: null });
+  logger.info('Export job entered stage', { jobId, stage: 'packaging' });
 
   const yamlPath = path.join(metadataDir, 'theme-build-request.yaml');
   const primaryColor = colors['primary-color']
@@ -131,6 +139,7 @@ async function runJob(jobId: string): Promise<void> {
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
+    logger.error('Export job packaging failed', { jobId, reason });
     updateExportJob(jobId, {
       status: 'failed',
       error: `Packaging failed: ${reason}`,
@@ -148,6 +157,7 @@ async function runJob(jobId: string): Promise<void> {
 
   await delay(STEP_DELAY_MS);
   updateExportJob(jobId, { status: 'verifying', error: null });
+  logger.info('Export job entered stage', { jobId, stage: 'verifying' });
 
   try {
     const verifyScriptPath = path.join(PROJECT_ROOT, 'scripts', 'verify-build.py');
@@ -161,6 +171,7 @@ async function runJob(jobId: string): Promise<void> {
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
+    logger.error('Export job verification failed', { jobId, reason });
     updateExportJob(jobId, {
       status: 'failed',
       error: `Verification failed: ${reason}`,
@@ -198,6 +209,7 @@ async function runJob(jobId: string): Promise<void> {
       mode: 'packaged',
     },
   });
+  logger.info('Export job completed', { jobId, packageCount, snapshotName });
 }
 
 async function processQueuedJobs(): Promise<void> {
@@ -216,6 +228,12 @@ async function processQueuedJobs(): Promise<void> {
 
 export function startExportJobRunner(intervalMs: number = 250): void {
   if (pollTimer) return;
+  const recoveredCount = requeueInFlightExportJobs();
+  if (recoveredCount > 0) {
+    logger.warn('Recovered interrupted export jobs on startup', { count: recoveredCount });
+  }
+  logger.info('Export job runner started', { intervalMs });
+  void processQueuedJobs();
   pollTimer = setInterval(() => {
     void processQueuedJobs();
   }, intervalMs);

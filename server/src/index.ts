@@ -70,6 +70,27 @@ const { default: cookieParser } = await import('cookie-parser');
 
 const START_TIME = Date.now();
 
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`${name} is required`);
+  }
+  return value;
+}
+
+function validateStartupConfig(): void {
+  requireEnv('ADMIN_PASSWORD');
+
+  const enableDevAuth = process.env.ENABLE_DEV_AUTH === 'true' && process.env.NODE_ENV !== 'production';
+  if (enableDevAuth) {
+    return;
+  }
+
+  requireEnv('EKP_BASE_URL');
+  requireEnv('EKP_SSO_USER');
+  requireEnv('EKP_SSO_PASS');
+}
+
 app.use(dynamicCors);
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
@@ -146,8 +167,9 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 async function start() {
+  validateStartupConfig();
   await initDb();
-  const { db, getSecurityConfig } = await import('./db.js');
+  const { db } = await import('./db.js');
 
   app.get('/api/auth/me', authMiddleware, (req, res) => {
     const loginName = (req as any).loginName;
@@ -159,7 +181,7 @@ async function start() {
     res.json({ id: userId, name: loginName, display_name: loginName });
   });
 
-  app.get('/api/auth/users', async (_req, res) => {
+  app.get('/api/auth/users', adminAuthMiddleware, async (_req, res) => {
     try {
       const stmt = db.prepare('SELECT id, name, display_name, last_login_at FROM users ORDER BY last_login_at DESC, id ASC');
       const users: Array<{ id: number; name: string; display_name: string; last_login_at: number | null }> = [];

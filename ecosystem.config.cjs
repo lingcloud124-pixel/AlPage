@@ -2,9 +2,9 @@ module.exports = {
   apps: [
     {
       name: 'theme-studio',
-      cwd: './server',
-      script: './node_modules/.bin/tsx',
-      args: 'src/index.ts',
+      cwd: '.',
+      script: 'node',
+      args: 'server/dist/index.js',
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,
@@ -21,6 +21,7 @@ module.exports = {
       merge_logs: true,
       env: {
         NODE_ENV: 'production',
+        PORT: 3001,
       },
     },
   ],

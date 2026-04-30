@@ -5,9 +5,10 @@ import { ADMIN_SESSION_COOKIE, validateSession } from '../admin-session.js';
 const EKP_BASE_URL = process.env.EKP_BASE_URL || '';
 const EKP_SSO_USER = process.env.EKP_SSO_USER || '';
 const EKP_SSO_PASS = process.env.EKP_SSO_PASS || '';
+const EKP_TOKEN_RESOLVE_PATH = process.env.EKP_TOKEN_RESOLVE_PATH || '/sys/authentication/sso/loginService_rest/getTokenLoginName';
 const SSO_COOKIE_NAME = 'LR_myekp';
 
-const DEV_MODE = process.env.NODE_ENV !== 'production' || !process.env.EKP_BASE_URL;
+const DEV_MODE = process.env.NODE_ENV !== 'production' && process.env.ENABLE_DEV_AUTH === 'true';
 const DEV_LOGIN_NAME = process.env.DEV_LOGIN_NAME || 'dev_user';
 
 interface EkpTokenResponse {
@@ -16,19 +17,28 @@ interface EkpTokenResponse {
   loginName?: string;
 }
 
+function buildTokenResolveUrl(token: string): string {
+  const base = EKP_BASE_URL.replace(/\/+$/, '');
+  const path = EKP_TOKEN_RESOLVE_PATH.startsWith('/') ? EKP_TOKEN_RESOLVE_PATH : `/${EKP_TOKEN_RESOLVE_PATH}`;
+  return `${base}${path}?token=${encodeURIComponent(token)}`;
+}
+
 async function resolveLoginName(token: string): Promise<string | null> {
   if (!EKP_BASE_URL) {
-    logger.warn('EKP_BASE_URL not configured, skipping token validation');
+    logger.error('EKP_BASE_URL not configured');
     return null;
   }
 
   try {
-    const url = `${EKP_BASE_URL}/api/sys-authentication/loginService/getTokenLoginName?token=${encodeURIComponent(token)}`;
     const headers: Record<string, string> = {};
     if (EKP_SSO_USER && EKP_SSO_PASS) {
-      headers['Authorization'] = `Basic ${Buffer.from(`${EKP_SSO_USER}:${EKP_SSO_PASS}`).toString('base64')}`;
+      headers.Authorization = `Basic ${Buffer.from(`${EKP_SSO_USER}:${EKP_SSO_PASS}`).toString('base64')}`;
     }
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
+
+    const res = await fetch(buildTokenResolveUrl(token), {
+      headers,
+      signal: AbortSignal.timeout(5000),
+    });
 
     if (!res.ok) {
       logger.error('EKP token validation HTTP error', { status: res.status });
@@ -76,9 +86,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 
 export function adminAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   const adminPassword = process.env.ADMIN_PASSWORD;
-
   if (!adminPassword) {
-    return next();
+    res.status(503).json({ error: 'Admin authentication is not configured' });
+    return;
   }
 
   const sessionToken = req.cookies?.[ADMIN_SESSION_COOKIE] as string | undefined;
@@ -86,24 +96,5 @@ export function adminAuthMiddleware(req: Request, res: Response, next: NextFunct
     return next();
   }
 
-
-  const authorization = req.headers.authorization;
-  if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
-    const bearerToken = authorization.slice(7);
-    if (bearerToken === adminPassword) {
-      return next();
-    }
-  }
-
-  const providedPassword = req.headers['x-admin-password'] as string;
-  if (providedPassword === adminPassword) {
-    return next();
-  }
-
-  const queryPassword = req.query.admin_password as string;
-  if (queryPassword === adminPassword) {
-    return next();
-  }
-
-  res.status(401).json({ error: 'Unauthorized: Invalid admin password' });
+  res.status(401).json({ error: 'Unauthorized' });
 }

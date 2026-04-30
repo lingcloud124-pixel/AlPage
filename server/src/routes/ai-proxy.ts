@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import http from 'http';
 import https from 'https';
+import net from 'net';
 import { createHash, createHmac } from 'crypto';
 import { getModelConfig } from './model-config.js';
 import { getSecurityConfig, deductCredits } from '../db.js';
 import { buildSignedRequest, VolcAuth } from '../services/jimeng-client.js';
+import { logger } from '../logger.js';
 
 const router = Router();
 const VOLCENGINE_ARK_IMAGE_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/images/generations';
@@ -513,26 +515,56 @@ async function handleJimengImageRequest(
   return { statusCode: 504, body: { error: 'Jimeng generation timeout (180s)', base_resp: { status_code: 50500, status_msg: 'Generation timeout' } } };
 }
 
+function isPrivateOrLocalHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  if (!normalized) return true;
+  if (normalized === 'localhost' || normalized === '0.0.0.0' || normalized === '::1') return true;
+  if (normalized.endsWith('.local')) return true;
+
+  const ipVersion = net.isIP(normalized);
+  if (ipVersion === 4) {
+    const [a, b] = normalized.split('.').map(Number);
+    if (a === 10 || a === 127 || a === 0) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    return false;
+  }
+
+  if (ipVersion === 6) {
+    return normalized === '::1' || normalized.startsWith('fc') || normalized.startsWith('fd') || normalized.startsWith('fe80:');
+  }
+
+  return false;
+}
+
 function validateProxyImageHost(url: string): boolean {
   try {
     const securityConfig = getSecurityConfig();
-    
+
     if (securityConfig?.enabled_features?.proxyImage === false) {
       return false;
     }
-    
+
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      return false;
+    }
+
     const allowedHosts = securityConfig?.proxy_image_hosts || [];
     if (allowedHosts.length === 0) {
-      return true;
+      return false;
     }
-    
-    const parsedUrl = new URL(url);
+
     const host = parsedUrl.hostname;
-    
+    if (isPrivateOrLocalHost(host)) {
+      return false;
+    }
+
     return allowedHosts.some((allowedHost: string) => {
       if (allowedHost === '*') return true;
       if (allowedHost === host) return true;
-      
+
       if (allowedHost.startsWith('*.') && allowedHost.length > 2) {
         const domain = allowedHost.slice(2);
         return host.endsWith('.' + domain) || host === domain;
@@ -541,7 +573,7 @@ function validateProxyImageHost(url: string): boolean {
       return false;
     });
   } catch (error) {
-    console.error('Error validating proxy image host:', error);
+    logger.error('Error validating proxy image host', error);
     return false;
   }
 }
@@ -580,8 +612,6 @@ router.post('/chat', async (req, res) => {
       const contentType = proxyRes.headers['content-type'] || 'application/json';
       res.writeHead(proxyRes.statusCode!, {
         'Content-Type': contentType,
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': '*',
       });
 
       if (!String(contentType).includes('text/event-stream')) {
@@ -643,14 +673,14 @@ router.post('/chat', async (req, res) => {
     });
 
     proxyReq.on('error', (error) => {
-      console.error('Chat proxy error:', error);
+      logger.error('Chat proxy error', error);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to proxy request' });
       }
     });
 
     proxyReq.on('timeout', () => {
-      console.error('Chat proxy timeout');
+      logger.error('Chat proxy timeout');
       proxyReq.destroy();
       if (!res.headersSent) {
         res.status(504).json({ error: 'Request timeout' });
@@ -661,7 +691,7 @@ router.post('/chat', async (req, res) => {
     proxyReq.write(body);
     proxyReq.end();
   } catch (error) {
-    console.error('Chat proxy setup error:', error);
+    logger.error('Chat proxy setup error', error);
     if (!res.headersSent) {
       res.status(500).json({ error: 'Internal server error' });
     }
@@ -698,9 +728,9 @@ router.post('/image', async (req, res) => {
         if (result.statusCode >= 200 && result.statusCode < 300) {
           return res.status(result.statusCode).json(result.body);
         }
-        console.warn(`[image] Jimeng failed (${result.statusCode}), falling back to next provider`);
+        logger.warn('Jimeng failed, falling back to next provider', { statusCode: result.statusCode });
       } catch (error) {
-        console.warn('[image] Jimeng error, falling back to next provider:', error instanceof Error ? error.message : error);
+        logger.warn('Jimeng error, falling back to next provider', { error: error instanceof Error ? error.message : String(error) });
       }
     }
     const volcengineArkConfig = selectedProvider === 'ark'
@@ -721,22 +751,20 @@ router.post('/image', async (req, res) => {
       proxyReq.on('response', (proxyRes) => {
         res.writeHead(proxyRes.statusCode!, {
           'Content-Type': proxyRes.headers['content-type'] || 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': '*',
         });
 
         proxyRes.pipe(res);
       });
 
       proxyReq.on('error', (error) => {
-        console.error('Volcengine image proxy error:', error);
+        logger.error('Volcengine image proxy error', error);
         if (!res.headersSent) {
           res.status(500).json({ error: 'Failed to proxy Volcengine image request' });
         }
       });
 
       proxyReq.on('timeout', () => {
-        console.error('Volcengine image proxy timeout');
+        logger.error('Volcengine image proxy timeout');
         proxyReq.destroy();
         if (!res.headersSent) {
           res.status(504).json({ error: 'Request timeout' });
@@ -770,22 +798,20 @@ router.post('/image', async (req, res) => {
     proxyReq.on('response', (proxyRes) => {
       res.writeHead(proxyRes.statusCode!, {
         'Content-Type': proxyRes.headers['content-type'] || 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': '*',
       });
 
       proxyRes.pipe(res);
     });
 
     proxyReq.on('error', (error) => {
-      console.error('Image proxy error:', error);
+      logger.error('Image proxy error', error);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to proxy request' });
       }
     });
 
     proxyReq.on('timeout', () => {
-      console.error('Image proxy timeout');
+      logger.error('Image proxy timeout');
       proxyReq.destroy();
       if (!res.headersSent) {
         res.status(504).json({ error: 'Request timeout' });
@@ -800,7 +826,7 @@ router.post('/image', async (req, res) => {
     proxyReq.write(body);
     proxyReq.end();
   } catch (error) {
-    console.error('Image proxy setup error:', error);
+    logger.error('Image proxy setup error', error);
     if (!res.headersSent) {
       res.status(500).json({ error: error instanceof Error ? error.message : 'Internal server error' });
     }
@@ -834,9 +860,6 @@ router.get('/proxy-image', async (req, res) => {
     });
 
     proxyReq.on('response', (proxyRes) => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', '*');
       res.setHeader('Cache-Control', 'public, max-age=86400');
 
       if (proxyRes.headers['content-type']) {
@@ -850,14 +873,14 @@ router.get('/proxy-image', async (req, res) => {
     });
 
     proxyReq.on('error', (error) => {
-      console.error('Image proxy error:', error);
+      logger.error('Image proxy error', error);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to fetch image' });
       }
     });
 
     proxyReq.on('timeout', () => {
-      console.error('Image proxy timeout');
+      logger.error('Image proxy timeout');
       proxyReq.destroy();
       if (!res.headersSent) {
         res.status(504).json({ error: 'Request timeout' });
@@ -866,7 +889,7 @@ router.get('/proxy-image', async (req, res) => {
 
     proxyReq.end();
   } catch (error) {
-    console.error('Image proxy setup error:', error);
+    logger.error('Image proxy setup error', error);
     if (!res.headersSent) {
       res.status(500).json({ error: 'Invalid URL or internal server error' });
     }

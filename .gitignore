@@ -30,6 +30,7 @@ tests/latest/
 tests/history/
 tests/fixtures/zips/
 server/data/
+data/
 server/node_modules/
 test-jimeng/node_modules/
 test-jimeng/output_direct/

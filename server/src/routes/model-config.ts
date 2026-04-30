@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db, saveDb } from '../db.js';
+import { logger } from '../logger.js';
 
 const router = Router();
 
@@ -197,7 +198,7 @@ router.get('/', async (_req, res) => {
       imageModel: config.imageModel,
     });
   } catch (error) {
-    console.error('Get model config error:', error);
+    logger.error('Get model config error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -247,7 +248,7 @@ router.put('/', async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Update model config error:', error);
+    logger.error('Update model config error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getSecurityConfig, updateSecurityConfig } from '../db.js';
+import { logger } from '../logger.js';
 
 const router = Router();
 
@@ -38,7 +39,7 @@ router.get('/', async (req: Request, res: Response) => {
       updated_at
     });
   } catch (error) {
-    console.error('Error fetching security config:', error);
+    logger.error('Error fetching security config', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -78,7 +79,7 @@ router.put('/', async (req: Request, res: Response) => {
       updated_at
     });
   } catch (error) {
-    console.error('Error updating security config:', error);
+    logger.error('Error updating security config', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

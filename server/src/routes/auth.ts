@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db.js';
+import { logger } from '../logger.js';
 
 const router = Router();
 
@@ -13,7 +14,7 @@ router.get('/users', async (_req, res) => {
     stmt.free();
     res.json(users);
   } catch (error) {
-    console.error('List users error:', error);
+    logger.error('List users error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

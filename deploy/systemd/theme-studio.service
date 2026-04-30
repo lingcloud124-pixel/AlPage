@@ -1,0 +1,18 @@
+[Unit]
+Description=Theme Studio Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/theme-studio
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node server/dist/index.js
+Restart=always
+RestartSec=5
+User=www-data
+Group=www-data
+StandardOutput=append:/srv/theme-studio/logs/systemd-out.log
+StandardError=append:/srv/theme-studio/logs/systemd-error.log
+
+[Install]
+WantedBy=multi-user.target

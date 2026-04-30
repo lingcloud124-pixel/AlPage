@@ -5,6 +5,7 @@ import fs from 'fs';
 import archiver from 'archiver';
 import { createExportJob, getExportJobByIdAndUser, updateExportJob } from '../export-jobs-memory-store.js';
 import { getSecurityConfig } from '../db.js';
+import { logger } from '../logger.js';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ router.post('/pick-directory', async (_req, res) => {
     const desktop = path.join(home, 'Desktop', 'ThemeStudio-Exports');
     res.json({ path: desktop });
   } catch (error) {
-    console.error('Pick directory error:', error);
+    logger.error('Pick directory error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -58,7 +59,7 @@ router.post('/export-jobs', async (req, res) => {
       updatedAt: job.updatedAt,
     });
   } catch (error) {
-    console.error('Create export job error:', error);
+    logger.error('Create export job error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -83,7 +84,7 @@ router.get('/export-jobs/:id', async (req, res) => {
       updatedAt: job.updatedAt,
     });
   } catch (error) {
-    console.error('Get export job error:', error);
+    logger.error('Get export job error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -157,7 +158,7 @@ router.get('/export-jobs/:id/download', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(requestedFile)}"`);
     fs.createReadStream(filePath).pipe(res);
   } catch (error) {
-    console.error('Download export job error:', error);
+    logger.error('Download export job error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -193,7 +194,7 @@ router.patch('/export-jobs/:id', async (req, res) => {
       updatedAt: updated.updatedAt,
     });
   } catch (error) {
-    console.error('Update export job error', error);
+    logger.error('Update export job error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

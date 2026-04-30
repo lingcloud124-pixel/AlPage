@@ -65,11 +65,6 @@ export async function initDb(): Promise<void> {
   db.run('PRAGMA synchronous=NORMAL');
   db.run('PRAGMA busy_timeout=5000');
 
-  db.run('DROP TABLE IF EXISTS theme_export_jobs');
-  db.run('DROP TABLE IF EXISTS theme_confirmed_versions');
-  db.run('DROP TABLE IF EXISTS theme_chat_messages');
-  db.run('DROP TABLE IF EXISTS theme_projects');
-
   // Create users table
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -210,6 +205,32 @@ export async function initDb(): Promise<void> {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS theme_export_jobs (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      selected_products TEXT NOT NULL DEFAULT '[]',
+      snapshot TEXT NOT NULL DEFAULT '{}',
+      error TEXT,
+      result TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_theme_export_jobs_user_updated ON theme_export_jobs(user_id, updated_at DESC)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_theme_export_jobs_status_created ON theme_export_jobs(status, created_at ASC)');
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS theme_confirmed_versions (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      snapshot TEXT NOT NULL DEFAULT '{}',
+      created_at INTEGER NOT NULL
+    )
+  `);
+
   // Save to disk
   flushDb();
   startBackupScheduler();
@@ -270,7 +291,7 @@ function startBackupScheduler(): void {
   }, 10000);
 }
 
-const EXPORT_OUTPUT_DIR = join(process.cwd(), '..', 'output', 'service-jobs');
+const EXPORT_OUTPUT_DIR = join(process.cwd(), 'output', 'service-jobs');
 const EXPORT_RETENTION_DAYS = 30;
 
 function cleanupOldExportFiles(): void {
@@ -327,7 +348,7 @@ export function getSecurityConfig(): any {
       enabled_features: JSON.parse(row.enabled_features as string)
     };
   } catch (e) {
-    console.error('Error parsing security config JSON:', e);
+    logger.error('Error parsing security config JSON', e);
     return null;
   }
 }

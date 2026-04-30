@@ -1,9 +1,17 @@
+import { timingSafeEqual } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { logger } from '../logger.js';
 
 const router = Router();
+
+function safeCompare(leftValue: string, rightValue: string): boolean {
+  const left = Buffer.from(leftValue);
+  const right = Buffer.from(rightValue);
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
 
 function resolveEnvPath(): string | null {
   const candidates = [
@@ -50,7 +58,7 @@ router.put('/', async (req: Request, res: Response) => {
     const currentPassword = process.env.ADMIN_PASSWORD;
 
     if (currentPassword) {
-      if (!oldPassword || oldPassword !== currentPassword) {
+      if (typeof oldPassword !== 'string' || !safeCompare(oldPassword, currentPassword)) {
         res.status(401).json({ error: '当前密码不正确' });
         return;
       }
