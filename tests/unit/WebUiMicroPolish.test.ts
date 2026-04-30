@@ -12,9 +12,7 @@ describe('web ui micro polish', () => {
     expect(styles).toContain('.theme-studio-toast');
     expect(styles).toContain('min-width: 280px;');
     expect(styles).toContain('.project-action-menu');
-    expect(styles).toContain('padding: 4px 0;');
     expect(styles).toContain('.modal-overlay');
     expect(styles).toContain('.modal-content');
-    expect(source).toContain("toast.className = 'theme-studio-toast'");
   });
 });

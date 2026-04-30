@@ -3,8 +3,10 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import archiver from 'archiver';
+import { getConfirmedVersionByIdAndUser } from '../confirmed-versions-store.js';
 import { createExportJob, getExportJobByIdAndUser, updateExportJob } from '../export-jobs-memory-store.js';
 import { getSecurityConfig } from '../db.js';
+import { normalizeAndValidateSelectedProducts } from '../export-job-validation.js';
 import { logger } from '../logger.js';
 
 const router = Router();
@@ -28,10 +30,15 @@ router.post('/export-jobs', async (req, res) => {
     }
 
     const userId = (req as any).userId as number;
+    if (!Number.isFinite(userId)) {
+      return res.status(401).json({ error: '未授权，请重新登录' });
+    }
+
     const body = req.body ?? {};
 
-    const projectSnapshot = body.projectSnapshot ?? body.batch?.projectSnapshot;
-    const selectedProducts = Array.isArray(body.selectedProducts)
+    const projectId = typeof body.projectId === 'string' ? body.projectId : '';
+    const confirmedVersionId = typeof body.confirmedVersionId === 'string' ? body.confirmedVersionId.trim() : '';
+    const rawSelectedProducts = Array.isArray(body.selectedProducts)
       ? body.selectedProducts
       : Array.isArray(body.batch?.selectedProducts)
         ? body.batch.selectedProducts
@@ -39,20 +46,36 @@ router.post('/export-jobs', async (req, res) => {
           ? body.buildOptions.selectedProducts
           : [];
 
-    if (!projectSnapshot || selectedProducts.length === 0) {
-      return res.status(400).json({ error: 'projectSnapshot and selectedProducts are required' });
+    if (!projectId || !confirmedVersionId || rawSelectedProducts.length === 0) {
+      return res.status(400).json({ error: 'projectId, confirmedVersionId and selectedProducts are required' });
+    }
+
+    const selectedProductsResult = normalizeAndValidateSelectedProducts(rawSelectedProducts);
+    if (selectedProductsResult.error) {
+      return res.status(400).json({ error: selectedProductsResult.error });
+    }
+
+    const confirmedVersion = getConfirmedVersionByIdAndUser(confirmedVersionId, userId);
+    if (!confirmedVersion) {
+      return res.status(404).json({ error: 'Confirmed version not found' });
+    }
+    if (confirmedVersion.projectId !== projectId) {
+      return res.status(400).json({ error: 'confirmedVersionId does not belong to the requested project' });
     }
 
     const job = createExportJob({
       userId,
-      selectedProducts,
-      snapshot: projectSnapshot,
+      confirmedVersionId,
+      selectedProducts: selectedProductsResult.products!,
+      snapshot: confirmedVersion.projectSnapshot,
     });
 
     res.status(201).json({
       accepted: true,
       jobId: job.id,
       id: job.id,
+      projectId: confirmedVersion.projectId,
+      confirmedVersionId: job.confirmedVersionId,
       status: job.status,
       selectedProducts: job.selectedProducts,
       createdAt: job.createdAt,
@@ -76,6 +99,8 @@ router.get('/export-jobs/:id', async (req, res) => {
 
     res.json({
       id: job.id,
+      projectId: job.snapshot.projectId,
+      confirmedVersionId: job.confirmedVersionId,
       status: job.status,
       selectedProducts: job.selectedProducts,
       error: job.error,
@@ -186,6 +211,8 @@ router.patch('/export-jobs/:id', async (req, res) => {
 
     res.json({
       id: updated.id,
+      projectId: updated.snapshot.projectId,
+      confirmedVersionId: updated.confirmedVersionId,
       status: updated.status,
       selectedProducts: updated.selectedProducts,
       error: updated.error,

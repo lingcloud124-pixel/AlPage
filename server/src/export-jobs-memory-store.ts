@@ -10,12 +10,26 @@ export type ExportJobStatus =
   | 'completed'
   | 'failed';
 
+export interface ExportJobSnapshot {
+  projectId: string;
+  name: string;
+  nameEn: string;
+  templateType: 'light-ui' | 'dark-ui';
+  colors: Record<string, string>;
+  bgImageUrl?: string;
+  headerBgImageUrl?: string;
+  visualContext?: unknown;
+  sourceUpdatedAt: number;
+  confirmedAt: number;
+}
+
 export interface MemoryExportJob {
   id: string;
   userId: number;
+  confirmedVersionId: string;
   status: ExportJobStatus;
   selectedProducts: string[];
-  snapshot: Record<string, unknown>;
+  snapshot: ExportJobSnapshot;
   error: string | null;
   result: Record<string, unknown> | null;
   createdAt: number;
@@ -25,6 +39,7 @@ export interface MemoryExportJob {
 type ExportJobRow = {
   id: string;
   user_id: number;
+  confirmed_version_id: string;
   status: ExportJobStatus;
   selected_products: string;
   snapshot: string;
@@ -48,9 +63,18 @@ function mapRowToJob(row: ExportJobRow | null | undefined): MemoryExportJob | un
   return {
     id: row.id,
     userId: row.user_id,
+    confirmedVersionId: row.confirmed_version_id,
     status: row.status,
     selectedProducts: parseJson<string[]>(row.selected_products, []),
-    snapshot: parseJson<Record<string, unknown>>(row.snapshot, {}),
+    snapshot: parseJson<ExportJobSnapshot>(row.snapshot, {
+      projectId: '',
+      name: '',
+      nameEn: '',
+      templateType: 'light-ui',
+      colors: {},
+      sourceUpdatedAt: 0,
+      confirmedAt: 0,
+    }),
     error: row.error ?? null,
     result: parseJson<Record<string, unknown> | null>(row.result, null),
     createdAt: row.created_at,
@@ -68,13 +92,15 @@ function loadSingleJob(sql: string, params: Array<string | number>): MemoryExpor
 
 export function createExportJob(data: {
   userId: number;
+  confirmedVersionId: string;
   selectedProducts: string[];
-  snapshot: Record<string, unknown>;
+  snapshot: ExportJobSnapshot;
 }): MemoryExportJob {
   const now = Date.now();
   const job: MemoryExportJob = {
     id: `job-${Date.now()}-${randomUUID().slice(0, 8)}`,
     userId: data.userId,
+    confirmedVersionId: data.confirmedVersionId,
     status: 'queued',
     selectedProducts: data.selectedProducts,
     snapshot: data.snapshot,
@@ -86,12 +112,13 @@ export function createExportJob(data: {
 
   const stmt = db.prepare(`
     INSERT INTO theme_export_jobs (
-      id, user_id, status, selected_products, snapshot, error, result, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      id, user_id, confirmed_version_id, status, selected_products, snapshot, error, result, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   stmt.bind([
     job.id,
     job.userId,
+    job.confirmedVersionId,
     job.status,
     JSON.stringify(job.selectedProducts),
     JSON.stringify(job.snapshot),

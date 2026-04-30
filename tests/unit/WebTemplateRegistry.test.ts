@@ -14,7 +14,7 @@ describe('web template registry', () => {
     expect(registry.login).toMatchObject({
       id: 'login',
       name: '登录页',
-      width: 2215,
+      width: 1920,
       height: 1080,
     });
 
@@ -22,7 +22,7 @@ describe('web template registry', () => {
       id: 'desktop',
       name: '主页',
       width: 1920,
-      height: 1079,
+      height: 1080,
     });
 
     expect(registry['header-default'].name).toBe(getWebHeaderSemantics()['header-default'].name);

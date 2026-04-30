@@ -3,13 +3,15 @@ import type { Project } from '../project-manager';
 import { buildProjectExportNameEn } from '../project-naming';
 
 function resolveConfirmedSnapshotImageUrl(project: Project, imageUrl: string | undefined): string | undefined {
-  if (imageUrl && !imageUrl.startsWith('blob:')) {
-    return imageUrl;
+  if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '' && !imageUrl.startsWith('blob:')) {
+    return imageUrl.trim();
   }
-  const visualContextImage = project.visualContext?.imageInput?.dataUrl?.trim();
-  if (visualContextImage) {
-    return visualContextImage;
+  
+  const visualContextImage = project.visualContext?.imageInput?.dataUrl;
+  if (visualContextImage && typeof visualContextImage === 'string' && visualContextImage.trim() !== '') {
+    return visualContextImage.trim();
   }
+  
   return undefined;
 }
 
@@ -46,7 +48,12 @@ async function themeApiFetch(path: string, options: RequestInit = {}): Promise<R
 }
 
 export async function createConfirmedVersion(projectId: string, snapshot: ConfirmedProjectSnapshot): Promise<ConfirmedProjectVersion> {
-  const response = await themeApiFetch(`/projects/${projectId}/confirmed-versions`, {
+  if (!projectId || typeof projectId !== 'string' || projectId.trim() === '') {
+    throw new Error('projectId is required and must be a non-empty string');
+  }
+  
+  const trimmedProjectId = projectId.trim();
+  const response = await themeApiFetch(`/projects/${trimmedProjectId}/confirmed-versions`, {
     method: 'POST',
     body: JSON.stringify({ projectSnapshot: snapshot }),
   });
@@ -67,9 +74,26 @@ export async function listConfirmedVersions(projectId: string): Promise<Confirme
 }
 
 export async function createServerExportJob(input: CreateServerExportJobInput): Promise<ServerExportJob> {
+  if (!input.projectId || typeof input.projectId !== 'string' || input.projectId.trim() === '') {
+    throw new Error('projectId is required and must be a non-empty string');
+  }
+  if (!input.confirmedVersionId || typeof input.confirmedVersionId !== 'string' || input.confirmedVersionId.trim() === '') {
+    throw new Error('confirmedVersionId is required and must be a non-empty string');
+  }
+  if (!Array.isArray(input.selectedProducts) || input.selectedProducts.length === 0) {
+    throw new Error('selectedProducts is required and must be a non-empty array');
+  }
+  
+  const trimmedProjectId = input.projectId.trim();
+  const trimmedConfirmedVersionId = input.confirmedVersionId.trim();
+  
   const response = await themeApiFetch('/export-jobs', {
     method: 'POST',
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      projectId: trimmedProjectId,
+      confirmedVersionId: trimmedConfirmedVersionId,
+      selectedProducts: input.selectedProducts,
+    }),
   });
 
   if (!response.ok) {

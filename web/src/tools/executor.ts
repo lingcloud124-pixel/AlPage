@@ -1,5 +1,8 @@
 import type { ToolCall, ToolResult } from '../types';
 import { generateImage } from '../agent/chat-client';
+import { buildConfirmedProjectSnapshot, createConfirmedVersion, createServerExportJob } from '../export/online-export';
+import { fetchExportJobStatus } from '../export/export-status-client';
+import { getCurrentProjectId, loadProject } from '../project-manager';
 import { resolvePrimaryContrast, validateColorScheme } from './contrast-validator';
 import {
   buildThemeGenerationReport,
@@ -398,6 +401,115 @@ function loadColors(args: { nameEn: string }): ToolResult {
   }
 }
 
+const EXPORT_JOB_POLL_INTERVAL_MS = 1500;
+const EXPORT_JOB_MAX_POLL_ATTEMPTS = 120;
+
+function normalizeExportSelectedProducts(args: Record<string, unknown>): string[] {
+  const rawProducts = Array.isArray(args.selectedProducts) ? args.selectedProducts : [];
+  const products = rawProducts.filter((value): value is string => typeof value === 'string').map((value) => value.trim()).filter(Boolean);
+  return products.length > 0 ? Array.from(new Set(products)) : ['mk'];
+}
+
+async function createBackendExportJob(projectId: string, selectedProducts: string[]) {
+  const project = await loadProject(projectId);
+  if (!project) {
+    return { error: '当前项目不存在，请重新生成并确认主题。' } as const;
+  }
+
+  try {
+    const confirmedVersion = await createConfirmedVersion(projectId, buildConfirmedProjectSnapshot(project));
+    const exportJob = await createServerExportJob({
+      projectId,
+      confirmedVersionId: confirmedVersion.id,
+      selectedProducts,
+    });
+    if (!exportJob.id) {
+      return { error: '导出任务创建成功，但未返回 jobId。' } as const;
+    }
+
+    return {
+      jobId: exportJob.id,
+      confirmedVersionId: confirmedVersion.id,
+      status: typeof exportJob.status === 'string' ? exportJob.status : 'queued',
+    } as const;
+  } catch (error) {
+    return { error: (error as Error).message } as const;
+  }
+}
+
+async function runExportJobTool(
+  tool: 'screenshot' | 'build' | 'verify',
+  args: Record<string, unknown>,
+  onProgress?: ProgressCallback,
+): Promise<ToolResult> {
+  const projectId = getCurrentProjectId();
+  if (!projectId) {
+    return { success: false, error: '当前没有可导出的项目，请先生成并确认主题。' };
+  }
+
+  const selectedProducts = normalizeExportSelectedProducts(args);
+  const created = await createBackendExportJob(projectId, selectedProducts);
+  if ('error' in created) {
+    return { success: false, error: created.error };
+  }
+
+  const pollingUrl = `/api/theme/export-jobs/${created.jobId}`;
+  onProgress?.({
+    type: 'export_status',
+    data: { tool, jobId: created.jobId, confirmedVersionId: created.confirmedVersionId, status: created.status, selectedProducts },
+  });
+
+  for (let attempt = 0; attempt < EXPORT_JOB_MAX_POLL_ATTEMPTS; attempt++) {
+    const status = await fetchExportJobStatus(fetch, created.jobId);
+    if (status) {
+      onProgress?.({
+        type: 'export_status',
+        data: { tool, jobId: created.jobId, status: status.status, result: status },
+      });
+
+      if (status.status === 'completed') {
+        return {
+          success: true,
+          data: {
+            jobId: created.jobId,
+            confirmedVersionId: created.confirmedVersionId,
+            status: status.status,
+            pollingUrl,
+            result: status,
+          },
+        };
+      }
+
+      if (status.status === 'failed') {
+        return {
+          success: false,
+          error: status.error ?? '导出任务失败，请检查服务日志。',
+          data: {
+            jobId: created.jobId,
+            confirmedVersionId: created.confirmedVersionId,
+            status: status.status,
+            pollingUrl,
+            result: status,
+          },
+        };
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, EXPORT_JOB_POLL_INTERVAL_MS));
+  }
+
+  return {
+    success: false,
+    error: `"${tool}" 任务超时，请稍后到导出记录中查看状态。`,
+    data: {
+      jobId: created.jobId,
+      confirmedVersionId: created.confirmedVersionId,
+      status: 'timeout',
+      pollingUrl,
+    },
+  };
+}
+
 /**
  * 工具参数验证 — 在执行前拦截无效参数
  */
@@ -438,7 +550,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
     return { success: false, error: validationError };
   }
 
-  const TOOL_TIMEOUT = tool === 'generate_theme_pipeline' || tool === 'generate_theme_previews'
+  const TOOL_TIMEOUT = tool === 'generate_theme_pipeline' || tool === 'generate_theme_previews' || tool === 'screenshot' || tool === 'build' || tool === 'verify'
     ? 300_000 : 15_000;
 
   const execute = async (): Promise<ToolResult> => {
@@ -732,7 +844,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
       case 'screenshot':
       case 'build':
       case 'verify':
-        return { success: false, error: `"${tool}" 需要 Node.js 后端支持` };
+        return runExportJobTool(tool, args, onProgress);
 
       default:
         return { success: false, error: `未知工具: ${tool}` };

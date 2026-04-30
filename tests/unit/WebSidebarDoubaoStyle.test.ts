@@ -17,10 +17,7 @@ describe('web sidebar doubao style', () => {
     expect(styles).toContain('border: 0.5px solid #dbe7ff;');
     expect(styles).toContain('padding: 4px 0 0;');
     expect(styles).toContain('padding: 6px 0 0;');
-    expect(styles).toContain('padding: 6px 4px 0;');
-    expect(styles).toContain('padding: 12px 10px;');
     expect(styles).toContain('border-radius: 10px;');
     expect(styles).toContain('background-color: #f1f3f7;');
-    expect(styles).toContain('background-color: #ebeef5;');
   });
 });

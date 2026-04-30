@@ -36,13 +36,52 @@ function getFetchBridge(source: unknown): ThemeStudioExportBridge | null {
       const apiPayload = {
         projectId: payload.batch.projectSnapshot.projectId,
         selectedProducts: payload.batch.selectedProducts,
-        projectSnapshot: payload.batch.projectSnapshot,
       };
+      
+      if (!apiPayload.projectId || typeof apiPayload.projectId !== 'string' || apiPayload.projectId.trim() === '') {
+        throw new Error('projectId is required and must be a non-empty string');
+      }
+      
+      const trimmedProjectId = apiPayload.projectId.trim();
+      const confirmedVersionResponse = await fetchImpl(`/api/theme/projects/${trimmedProjectId}/confirmed-versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ projectSnapshot: payload.batch.projectSnapshot }),
+      });
+
+      if (!confirmedVersionResponse.ok) {
+        let message = `确认版本创建失败 (${confirmedVersionResponse.status})`;
+        try {
+          const errorData = await confirmedVersionResponse.json() as { error?: string };
+          if (errorData?.error) message = errorData.error;
+        } catch {
+          // ignore non-JSON error responses
+        }
+        const error = new Error(message) as Error & { status?: number };
+        error.status = confirmedVersionResponse.status;
+        throw error;
+      }
+
+      const confirmedVersion = await confirmedVersionResponse.json() as { id?: string };
+      if (!confirmedVersion.id) {
+        throw new Error('确认版本创建成功，但未返回 version id');
+      }
+      
+      if (typeof confirmedVersion.id !== 'string' || confirmedVersion.id.trim() === '') {
+        throw new Error('确认版本创建成功，但返回的 version id 无效');
+      }
+      
+      const trimmedConfirmedVersionId = confirmedVersion.id.trim();
       const response = await fetchImpl('/api/theme/export-jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify(apiPayload),
+        body: JSON.stringify({
+          projectId: trimmedProjectId,
+          confirmedVersionId: trimmedConfirmedVersionId,
+          selectedProducts: apiPayload.selectedProducts,
+        }),
       });
 
       if (!response.ok) {

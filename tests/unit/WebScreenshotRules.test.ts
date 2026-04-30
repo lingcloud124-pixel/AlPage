@@ -28,17 +28,9 @@ describe('web screenshot rules', () => {
     expect(thumbnailTargetsByName.thumb).toMatchObject({
       selector: '.desktop-wrapper',
       outputName: 'thumb',
-      width: 1440,
-      height: 800,
+      width: 720,
+      height: 510,
       format: 'jpeg',
-    });
-
-    expect(thumbnailTargetsByName.banner_personal).toMatchObject({
-      selector: '.desktop-wrapper',
-      outputName: 'banner_personal',
-      width: 1600,
-      height: 572,
-      format: 'png',
     });
   });
 

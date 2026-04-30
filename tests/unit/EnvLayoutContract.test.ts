@@ -8,7 +8,7 @@ describe('env layout contract', () => {
   test('server loads dotenv from root env file path', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'server/src/index.ts'), 'utf8');
 
-    expect(source).toContain("config({ path: join(__dirname, '..', '..', '.env')");
+    expect(source).toContain("resolve(process.cwd(), '.env')");
   });
 
   test('repository keeps only root env example and removes nested examples', () => {

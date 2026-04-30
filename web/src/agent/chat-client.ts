@@ -128,9 +128,9 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       response = await fetch('/api/theme/image', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          credentials: 'same-origin',
         },
         body: JSON.stringify({
           model: imageSettings.model,
@@ -244,9 +244,9 @@ export async function chatCompletion(
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       response = await fetch('/api/theme/chat', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          credentials: 'same-origin',
         },
         body: JSON.stringify({
           model: settings.model || 'MiniMax-M2.7',

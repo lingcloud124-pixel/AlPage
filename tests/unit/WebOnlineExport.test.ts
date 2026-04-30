@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import type { Project } from '../../web/src/project-manager';
-import { buildConfirmedProjectSnapshot } from '../../web/src/export/online-export';
+import { buildConfirmedProjectSnapshot, createServerExportJob } from '../../web/src/export/online-export';
 
 function createProject(): Project {
   return {
@@ -58,5 +58,40 @@ describe('web online export', () => {
 
     expect(snapshot.bgImageUrl).toBe('data:image/png;base64,AAAA');
     expect(snapshot.headerBgImageUrl).toBe('data:image/png;base64,AAAA');
+  });
+
+  test('createServerExportJob sends confirmedVersionId without inline snapshot payload', async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => new Response(JSON.stringify({
+      id: 'job-1',
+      projectId: 'project-1',
+      confirmedVersionId: 'confirmed-1',
+      status: 'queued',
+      selectedProducts: ['mk'],
+      createdAt: 100,
+      updatedAt: 100,
+    }), { status: 201, headers: { 'Content-Type': 'application/json' } }));
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    try {
+      await createServerExportJob({
+        projectId: 'project-1',
+        confirmedVersionId: 'confirmed-1',
+        selectedProducts: ['mk'],
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    const request = fetchMock.mock.calls[0]?.[1];
+    expect(fetchMock).toHaveBeenCalledWith('/api/theme/export-jobs', expect.objectContaining({
+      method: 'POST',
+      credentials: 'same-origin',
+    }));
+    expect(JSON.parse(String(request?.body))).toEqual({
+      projectId: 'project-1',
+      confirmedVersionId: 'confirmed-1',
+      selectedProducts: ['mk'],
+    });
   });
 });

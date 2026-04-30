@@ -28,6 +28,7 @@ const [
   { initDb, closeDb, ensureUserByLoginName },
   { authRouter },
   { modelConfigRouter },
+  { confirmedVersionsRouter },
   { exportJobsRouter },
   { startExportJobRunner },
   { aiProxyRouter },
@@ -46,6 +47,7 @@ const [
   import('./db.js'),
   import('./routes/auth.js'),
   import('./routes/model-config.js'),
+  import('./routes/confirmed-versions.js'),
   import('./routes/export-jobs.js'),
   import('./export-job-runner.js'),
   import('./routes/ai-proxy.js'),
@@ -133,6 +135,7 @@ app.use('/api/theme', (req: any, _res: any, next: any) => {
 });
 app.use('/api/theme', rateLimitMiddleware);
 app.use('/api/theme', creditsMiddleware);
+app.use('/api/theme', confirmedVersionsRouter);
 app.use('/api/theme', exportJobsRouter);
 app.use('/api/theme', aiProxyRouter);
 app.use('/api/theme/credits', creditsRouter);

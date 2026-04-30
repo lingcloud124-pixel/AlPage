@@ -154,7 +154,7 @@ function closeProgressModal() {
   if (overlay) overlay.remove();
 }
 
-function triggerBlobDownload(dlUrl: string, filename: string) {
+function triggerBlobDownload(dlUrl: string, filename: string, el?: HTMLElement) {
   fetch(dlUrl, {
     credentials: 'same-origin',
   })
@@ -173,12 +173,11 @@ function triggerBlobDownload(dlUrl: string, filename: string) {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     })
     .catch(() => {
-      const a = document.createElement('a');
-      a.href = dlUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      showNotificationWithOptions('下载失败，请稍后重试', { variant: 'critical' });
+      if (el) {
+        (el as HTMLButtonElement).disabled = false;
+        el.textContent = '下载文件';
+      }
     });
 }
 
@@ -213,7 +212,7 @@ function renderProgressWithDownload(step: string, detail?: string, dlUrl?: strin
     const downloadBtn = document.getElementById('progressDownloadBtn');
     if (downloadBtn) {
       downloadBtn.addEventListener('click', () => {
-        triggerBlobDownload(downloadBtn.dataset.dlUrl ?? '', downloadBtn.dataset.filename ?? '');
+        triggerBlobDownload(downloadBtn.dataset.dlUrl ?? '', downloadBtn.dataset.filename ?? '', downloadBtn);
         const el = downloadBtn as HTMLElement;
         el.textContent = '已下载';
         (el as HTMLButtonElement).disabled = true;

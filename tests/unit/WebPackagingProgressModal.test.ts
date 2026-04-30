@@ -19,4 +19,12 @@ describe('web packaging progress modal', () => {
     expect(styles).toContain('.package-progress-notice');
     expect(styles).toContain('.package-progress-notice.is-visible');
   });
+
+  test('download failure shows error notification instead of anchor navigation', () => {
+    const source = fs.readFileSync(path.join(projectRoot, 'web/src/package-manager.ts'), 'utf8');
+
+    expect(source).not.toMatch(/const a = document\.createElement\('a'\);\s*a\.href = dlUrl/);
+    expect(source).toContain('showNotificationWithOptions');
+    expect(source).toMatch(/\(el as HTMLButtonElement\)\.disabled = false/);
+  });
 });

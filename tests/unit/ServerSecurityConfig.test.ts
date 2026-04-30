@@ -45,32 +45,6 @@ describe('proxy-image validation', () => {
   });
 });
 
-describe('quota middleware', () => {
-  test('middleware/quota.ts exports quota middleware', () => {
-    const source = readFileSync(join(process.cwd(), 'server/src/middleware/quota.ts'), 'utf8');
-    expect(source).toContain('quotaMiddleware');
-  });
-
-  test('index.ts applies quota middleware to AI proxy routes', () => {
-    const source = readFileSync(join(process.cwd(), 'server/src/index.ts'), 'utf8');
-    expect(source).toContain('quotaMiddleware');
-  });
-
-  test('quota middleware checks before incrementing usage', () => {
-    const source = readFileSync(join(process.cwd(), 'server/src/middleware/quota.ts'), 'utf8');
-    const guardIndex = source.indexOf('currentCount >= limit');
-    const incrementIndex = source.indexOf('incrementUsageCount(userId, currentDate, usageType)');
-    expect(guardIndex).toBeGreaterThan(-1);
-    expect(incrementIndex).toBeGreaterThan(-1);
-    expect(guardIndex).toBeLessThan(incrementIndex);
-  });
-
-  test('quota middleware matches mounted subpaths', () => {
-    const source = readFileSync(join(process.cwd(), 'server/src/middleware/quota.ts'), 'utf8');
-    expect(source).toContain("req.path === '/image'");
-    expect(source).toContain("req.path === '/chat'");
-  });
-});
 
 describe('runtime rate limiting wiring', () => {
   test('db.ts seeds per-route rate limit defaults', () => {

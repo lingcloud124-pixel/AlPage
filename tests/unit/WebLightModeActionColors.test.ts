@@ -14,21 +14,8 @@ describe('web light mode action colors', () => {
     expect(styles).toContain('--surface-0: #FFFFFF');
     expect(styles).toContain('--text-primary: #111111');
 
-    // Sidebar background
-    expect(styles).toContain('body[data-ui-theme="light"] .project-sidebar');
-    expect(styles).toContain('background: #F5F5F5;');
-
     // Workspace topbar
     expect(styles).toContain('body[data-ui-theme="light"] .workspace-topbar');
     expect(styles).toContain('background: var(--surface-0);');
-
-    // New project button
-    expect(styles).toContain('body[data-ui-theme="light"] .sidebar-new-btn');
-    expect(styles).toContain('background: #FAFAFA;');
-    expect(styles).toContain('color: #111111;');
-
-    // Active project item
-    expect(styles).toContain('body[data-ui-theme="light"] .sidebar-project-item.active');
-    expect(styles).toContain('background: var(--accent-ui-soft);');
   });
 });

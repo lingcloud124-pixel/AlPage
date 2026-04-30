@@ -209,6 +209,7 @@ export async function initDb(): Promise<void> {
     CREATE TABLE IF NOT EXISTS theme_export_jobs (
       id TEXT PRIMARY KEY,
       user_id INTEGER NOT NULL,
+      confirmed_version_id TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL,
       selected_products TEXT NOT NULL DEFAULT '[]',
       snapshot TEXT NOT NULL DEFAULT '{}',
@@ -218,6 +219,9 @@ export async function initDb(): Promise<void> {
       updated_at INTEGER NOT NULL
     )
   `);
+  if (!hasColumn('theme_export_jobs', 'confirmed_version_id')) {
+    db.run(`ALTER TABLE theme_export_jobs ADD COLUMN confirmed_version_id TEXT NOT NULL DEFAULT ''`);
+  }
   db.run('CREATE INDEX IF NOT EXISTS idx_theme_export_jobs_user_updated ON theme_export_jobs(user_id, updated_at DESC)');
   db.run('CREATE INDEX IF NOT EXISTS idx_theme_export_jobs_status_created ON theme_export_jobs(status, created_at ASC)');
 

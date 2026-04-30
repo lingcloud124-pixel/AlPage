@@ -65,7 +65,7 @@ describe('web export bridge', () => {
     });
   });
 
-  test('falls back to the local export API bridge when window bridge is unavailable', async () => {
+  test('falls back to the theme export API when window bridge is unavailable', async () => {
     const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const request = buildExportJobRequest({
       project: createProject(),
@@ -81,6 +81,18 @@ describe('web export bridge', () => {
     const dispatched = await dispatchExportJobToBridge({
       fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
         calls.push({ input, init });
+        if (String(input).includes('/confirmed-versions')) {
+          return new Response(JSON.stringify({
+            id: 'confirmed-1',
+            projectId: 'project-bridge',
+            createdAt: 1,
+            updatedAt: 1,
+            projectSnapshot: { projectId: 'project-bridge' },
+          }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
         return new Response(JSON.stringify({ accepted: true, jobId: 'export-1712999999000' }), {
           status: 202,
           headers: { 'Content-Type': 'application/json' },
@@ -93,8 +105,15 @@ describe('web export bridge', () => {
       jobId: 'export-1712999999000',
       mode: 'api',
     });
-    expect(calls).toHaveLength(1);
-    expect(String(calls[0].input)).toBe('/api/export/jobs');
+    expect(calls).toHaveLength(2);
+    expect(String(calls[0].input)).toBe('/api/theme/projects/project-bridge/confirmed-versions');
     expect(calls[0].init?.method).toBe('POST');
+    expect(String(calls[1].input)).toBe('/api/theme/export-jobs');
+    expect(calls[1].init?.method).toBe('POST');
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({
+      projectId: 'project-bridge',
+      confirmedVersionId: 'confirmed-1',
+      selectedProducts: ['mk'],
+    });
   });
 });

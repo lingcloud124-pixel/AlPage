@@ -396,8 +396,14 @@
               if (!activePage) activePage = container.querySelector('.preview-page');
               if (!activePage) return;
 
-              var rendered = activePage.firstElementChild;
-              if (!rendered) return;
+              var rendered = activePage;
+              if (activePage.firstElementChild) {
+                var childW = activePage.firstElementChild.offsetWidth || parseInt(activePage.firstElementChild.style.width) || 0;
+                var childH = activePage.firstElementChild.offsetHeight || parseInt(activePage.firstElementChild.style.height) || 0;
+                if (childW > 0 && childH > 0) {
+                  rendered = activePage.firstElementChild;
+                }
+              }
 
               var rw = rendered.offsetWidth || parseInt(rendered.style.width) || 0;
               var rh = rendered.offsetHeight || parseInt(rendered.style.height) || 0;
@@ -424,7 +430,7 @@
           document.addEventListener('DOMContentLoaded', function() {
             setTimeout(resizePreview, 200);
             setTimeout(resizePreview, 1000);
-            document.querySelectorAll('.preview-tabs button').forEach(function(btn) {
+            document.querySelectorAll('.topbar-tabs .tab-btn').forEach(function(btn) {
               btn.addEventListener('click', function() { setTimeout(resizePreview, 100); });
             });
           });

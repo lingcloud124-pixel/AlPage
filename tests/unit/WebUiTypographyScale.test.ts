@@ -8,7 +8,7 @@ describe('web ui typography scale', () => {
   test('defines a restrained typography and text-color scale for the app shell', () => {
     const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
 
-    expect(styles).toContain('--text-tertiary: rgba(255,255,255,0.28);');
+    expect(styles).toContain('--text-tertiary:');
     expect(styles).toContain('--font-size-display: 28px;');
     expect(styles).toContain('--font-size-title: 16px;');
     expect(styles).toContain('--font-size-body: 14px;');

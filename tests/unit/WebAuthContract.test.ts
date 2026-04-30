@@ -5,13 +5,12 @@ import { describe, expect, test } from 'vitest';
 const projectRoot = process.cwd();
 
 describe('web auth contract', () => {
-  test('auth.ts uses user selection model instead of jwt login endpoints', () => {
+  test('auth.ts uses session-based auth with /api/auth/me check', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'web/src/auth.ts'), 'utf8');
 
-    expect(source).toContain('X-User-Id');
-    expect(source).toContain('/api/auth/users');
-    expect(source).not.toContain('/api/auth/login');
-    expect(source).not.toContain('/api/auth/me');
+    expect(source).toContain('/api/auth/me');
+    expect(source).toContain('theme-studio-user');
+    expect(source).toContain('getUser');
     expect(source).not.toContain('theme-studio-token');
   });
 
