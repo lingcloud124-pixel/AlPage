@@ -384,52 +384,6 @@
             </div>
         </div>
 
-        <script>
-          function resizePreview() {
-            var containers = document.querySelectorAll('.preview-content');
-            containers.forEach(function(container) {
-              var cw = container.clientWidth;
-              var ch = container.clientHeight;
-              if (cw === 0 || ch === 0) return;
-
-              var activePage = container.querySelector('.preview-page.active-preview');
-              if (!activePage) activePage = container.querySelector('.preview-page');
-              if (!activePage) return;
-
-              var rendered = activePage.firstElementChild;
-              if (!rendered) return;
-
-              var rw = rendered.offsetWidth || parseInt(rendered.style.width) || 0;
-              var rh = rendered.offsetHeight || parseInt(rendered.style.height) || 0;
-              if (rw === 0 || rh === 0) return;
-
-              var horizontalInset = 24;
-              var innerWidth = Math.max(cw - horizontalInset * 2, 0);
-              if (innerWidth === 0) return;
-
-              var scaleX = innerWidth / rw;
-              var scaleY = ch / rh;
-              var scale = Math.min(scaleX, scaleY);
-
-              var offsetX = horizontalInset + (innerWidth - rw * scale) / 2;
-              var offsetY = (ch - rh * scale) / 2;
-
-              rendered.style.transform = 'scale(' + scale + ') translate3d(' + (offsetX / scale) + 'px, ' + (offsetY / scale) + 'px, 0)';
-              rendered.style.transformOrigin = 'top left';
-            });
-          }
-
-          window.addEventListener('resize', resizePreview);
-          window.resizePreview = resizePreview;
-          document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(resizePreview, 200);
-            setTimeout(resizePreview, 1000);
-            document.querySelectorAll('.preview-tabs button').forEach(function(btn) {
-              btn.addEventListener('click', function() { setTimeout(resizePreview, 100); });
-            });
-          });
-        </script>
-
         <script type="module" src="/src/main.ts"></script>
     </div> <!-- end workspaceView -->
 

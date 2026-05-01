@@ -39,18 +39,21 @@ export async function renderTemplate(
   const html = await loadHTMLTemplate(config.htmlPath);
 
   targetElement.innerHTML = '';
-  targetElement.style.width = config.width + 'px';
-  targetElement.style.height = config.height + 'px';
+  targetElement.style.width = '100%';
+  targetElement.style.height = '100%';
   targetElement.style.position = 'relative';
   targetElement.style.overflow = 'hidden';
   targetElement.style.flexShrink = '0';
-  targetElement.style.transformOrigin = 'top left';
+  targetElement.style.display = 'block';
 
   const wrapper = document.createElement('div');
   wrapper.className = `template-${templateId}`;
   wrapper.style.width = config.width + 'px';
   wrapper.style.height = config.height + 'px';
-  wrapper.style.position = 'relative';
+  wrapper.style.position = 'absolute';
+  wrapper.style.top = '0';
+  wrapper.style.left = '0';
+  wrapper.style.transformOrigin = 'top left';
   wrapper.style.overflow = 'hidden';
   wrapper.innerHTML = html;
 

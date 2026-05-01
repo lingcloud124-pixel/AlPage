@@ -23,6 +23,7 @@ import { loadDefaultTemplates } from './theme-engine';
 import { checkAuth, getUser, redirectToLogin } from './auth';
 import { fetchCredits, updateCreditsDisplay } from './credits';
 import { initSidebar } from './components/sidebar';
+import { registerPreviewResize, resizePreviewPages } from './preview/resize-preview';
 
 declare global {
   interface Window {
@@ -116,6 +117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyUiTheme('light');
     hydrateHeaderSelectOptions();
     initializeColorEditor();
+    registerPreviewResize();
     await initializeFeatureModules();
 
     const workspaceView = document.getElementById('workspaceView');
@@ -135,6 +137,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (avatarBtn && currentUser) {
       avatarBtn.title = currentUser.display_name || currentUser.name;
     }
+
+    window.setTimeout(resizePreviewPages, 200);
+    window.setTimeout(resizePreviewPages, 1000);
   } catch (error) {
     console.error('Initialization failed:', error);
     redirectToLogin();

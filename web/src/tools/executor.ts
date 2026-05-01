@@ -39,6 +39,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   ]);
 }
 
+function normalizeThemeToolError(message: string): string {
+  if (
+    /输入图片审核未通过/u.test(message)
+    || /暂不支持.*图片/u.test(message)
+    || /不支持.*图片/u.test(message)
+  ) {
+    return '当前仅支持文字生图，暂不支持基于上传图片继续生成';
+  }
+  return message;
+}
+
 function getThemeTarget(): HTMLElement {
   return document.getElementById('previewPanel') ?? document.documentElement;
 }
@@ -642,7 +653,11 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
 
         const imgResult = await generateImage(finalPrompt);
         if (!imgResult.success || !imgResult.url) {
-          return { success: false, error: imgResult.error ?? '背景图生成失败', fallback: 'direct-color-gen' } as ToolResult;
+          return {
+            success: false,
+            error: normalizeThemeToolError(imgResult.error ?? '背景图生成失败'),
+            fallback: 'direct-color-gen',
+          } as ToolResult;
         }
 
         onProgress?.({ type: 'image_generated', data: { imageUrl: imgResult.url } });

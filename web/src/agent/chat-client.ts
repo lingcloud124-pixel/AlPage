@@ -108,6 +108,17 @@ export function getImageSettings(): { endpoint: string; apiKey: string; model: s
   };
 }
 
+function normalizeImageGenerationError(message: string): string {
+  if (
+    /输入图片审核未通过/u.test(message)
+    || /暂不支持.*图片/u.test(message)
+    || /不支持.*图片/u.test(message)
+  ) {
+    return '当前仅支持文字生图，暂不支持基于上传图片继续生成';
+  }
+  return message;
+}
+
 export async function generateImage(prompt: string): Promise<{ success: boolean; url?: string; error?: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 300_000);
@@ -163,7 +174,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
       }
       const errorBody = response ? await response.text() : 'no response';
       const statusCode = response?.status ?? 0;
-      return { success: false, error: `图像生成失败 (${statusCode}): ${errorBody}` };
+      return { success: false, error: normalizeImageGenerationError(`图像生成失败 (${statusCode}): ${errorBody}`) };
     }
 
     const data = await response.json();
@@ -186,7 +197,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
         50500: '服务内部错误，请重试',
       };
       const detail = errorMap[baseStatusCode] ?? baseStatusMsg ?? `未知错误 (${baseStatusCode})`;
-      return { success: false, error: `图像生成失败: ${detail}` };
+      return { success: false, error: normalizeImageGenerationError(`图像生成失败: ${detail}`) };
     }
 
     const imageUrlFromUrls = data.data?.image_urls?.[0];
@@ -211,7 +222,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
     if ((e as Error).name === 'AbortError') {
       return { success: false, error: '图像生成超时（180秒）' };
     }
-    return { success: false, error: `图像生成失败: ${(e as Error).message}` };
+    return { success: false, error: normalizeImageGenerationError(`图像生成失败: ${(e as Error).message}`) };
   } finally {
     clearTimeout(timeoutId);
   }

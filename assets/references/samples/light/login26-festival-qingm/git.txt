@@ -1,0 +1,6 @@
+commitor=<no commitor>
+commit=<no any commit>
+hash=<no any commit>
+date=<no date>
+branch=<no git branch>
+repository=<no origin>

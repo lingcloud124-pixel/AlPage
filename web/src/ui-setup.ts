@@ -16,6 +16,7 @@ import { normalizeExportRoot } from './export/export-paths';
 import { pickDirectoryViaBridge } from './export/export-bridge';
 import { getEffectiveExportRoot } from './agent/chat-client';
 import { showWorkspaceLandingState } from './main';
+import { toggleSidebar } from './components/sidebar';
 
 let previewTemplatesLoaded = false;
 
@@ -57,6 +58,7 @@ export function expandPreview() {
   if (!previewPanel) return;
   previewPanel.classList.add('expanded');
   appContainer?.classList.add('preview-open');
+  toggleSidebar(false);
 
   if (!previewTemplatesLoaded) {
     loadDefaultTemplates();

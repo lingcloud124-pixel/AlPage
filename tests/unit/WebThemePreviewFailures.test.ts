@@ -42,4 +42,19 @@ describe('web theme preview failures', () => {
       ],
     });
   });
+
+  test('returns friendly copy when image generation does not support uploaded-image continuation', async () => {
+    generateImageMock.mockResolvedValueOnce({ success: false, error: '图像生成失败: 输入图片审核未通过' });
+
+    const result = await executeTool({
+      tool: 'generate_theme_pipeline',
+      args: {
+        prompt: 'prompt-with-uploaded-image-context',
+        templateType: 'light-ui',
+      },
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('当前仅支持文字生图，暂不支持基于上传图片继续生成');
+  });
 });

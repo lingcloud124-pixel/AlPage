@@ -1,5 +1,6 @@
 import type { ToolCall } from '../types';
 import { resolvePreferredHueHint } from '../theme/color-utils';
+import { adjustHsl, deriveColorsFromPrimary, normalizePrimaryForTemplate } from '../theme/color-utils';
 import type { ThemeAgentDebugState } from '../chat-manager';
 
 function normalizeTemplateType(value: unknown): 'light-ui' | 'dark-ui' {
@@ -69,6 +70,87 @@ export function isSimpleConfirmationMessage(text: string | undefined): boolean {
 function inferTemplateTypeFromText(text: string | undefined): 'light-ui' | 'dark-ui' {
   if (!text) return 'light-ui';
   return /dark-ui|深色/u.test(text) ? 'dark-ui' : 'light-ui';
+}
+
+function normalizeHex(hex: string): string {
+  const trimmed = hex.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) return trimmed.toUpperCase();
+  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
+    const chars = trimmed.slice(1).split('');
+    return `#${chars.map((char) => char + char).join('').toUpperCase()}`;
+  }
+  return trimmed.toUpperCase();
+}
+
+function extractHexColor(text: string | undefined): string | null {
+  if (!text) return null;
+  const match = text.match(/#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/);
+  return match ? normalizeHex(match[0]) : null;
+}
+
+function isColorAdjustmentMessage(text: string | undefined): boolean {
+  if (!text) return false;
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) return false;
+
+  if (extractHexColor(text)) return true;
+
+  const colorContext = /(主题色|主色|颜色|色调|配色|色彩)/u.test(text);
+  const colorAction = /(改成|换成|调成|调整|改一下|换一下|改为|换为|调为|偏|深一点|浅一点|亮一点|暗一点|鲜艳|柔和|暖一点|冷一点)/u.test(text);
+  const namedColor = /(红|蓝|绿|黄|金|橙|紫|粉|棕|咖|褐|灰|青|墨绿|酒红|卡其|米色|藏蓝|深棕|浅棕|暖白)/u.test(text);
+  const brightnessOnly = /(亮一点|暗一点|深一点|浅一点|更亮|更暗|更深|更浅)/u.test(text);
+
+  return (colorContext && (colorAction || namedColor))
+    || (colorAction && namedColor)
+    || brightnessOnly;
+}
+
+function pickSemanticColorHex(
+  text: string,
+  templateType: 'light-ui' | 'dark-ui',
+): string | null {
+  const defs: Array<{ pattern: RegExp; hex: string }> = [
+    { pattern: /(深棕|棕色|咖啡色|咖色|褐色)/u, hex: templateType === 'dark-ui' ? '#8A4B2A' : '#8B4513' },
+    { pattern: /(酒红|深红|红色)/u, hex: templateType === 'dark-ui' ? '#8B1E3F' : '#B22222' },
+    { pattern: /(藏蓝|深蓝|蓝色)/u, hex: templateType === 'dark-ui' ? '#1F4E8C' : '#1565C0' },
+    { pattern: /(墨绿|深绿|绿色)/u, hex: templateType === 'dark-ui' ? '#2B5D34' : '#2E7D32' },
+    { pattern: /(金色|金黄|黄色)/u, hex: templateType === 'dark-ui' ? '#A67C00' : '#C69214' },
+    { pattern: /(橙色)/u, hex: templateType === 'dark-ui' ? '#A64B00' : '#EF6C00' },
+    { pattern: /(紫色)/u, hex: templateType === 'dark-ui' ? '#4A2374' : '#6A1B9A' },
+    { pattern: /(粉色)/u, hex: templateType === 'dark-ui' ? '#92204E' : '#D81B60' },
+    { pattern: /(灰色)/u, hex: templateType === 'dark-ui' ? '#5C6773' : '#7A8694' },
+  ];
+
+  const matched = defs.find((def) => def.pattern.test(text));
+  return matched ? matched.hex : null;
+}
+
+function buildAdjustedPrimaryColor(params: {
+  userMessage: string;
+  currentPrimaryColor?: string;
+  templateType: 'light-ui' | 'dark-ui';
+}): string | null {
+  const { userMessage, currentPrimaryColor, templateType } = params;
+  const explicitHex = extractHexColor(userMessage);
+  if (explicitHex) return explicitHex;
+
+  const semanticHex = pickSemanticColorHex(userMessage, templateType);
+  if (semanticHex) return normalizePrimaryForTemplate(semanticHex, templateType);
+
+  if (!currentPrimaryColor || !/^#[0-9a-fA-F]{6}$/.test(currentPrimaryColor)) return null;
+
+  let adjusted = currentPrimaryColor;
+  const shouldLighten = /(亮一点|浅一点|更亮|更浅|太暗|太深)/u.test(userMessage);
+  const shouldDarken = /(暗一点|深一点|更暗|更深|太亮|太浅)/u.test(userMessage);
+  const shouldWarm = /(暖一点|偏暖)/u.test(userMessage);
+  const shouldCool = /(冷一点|偏冷)/u.test(userMessage);
+
+  if (shouldLighten && !shouldDarken) adjusted = adjustHsl(adjusted, 8);
+  if (shouldDarken && !shouldLighten) adjusted = adjustHsl(adjusted, -8);
+  if (shouldWarm && !shouldCool) adjusted = adjustHsl(adjusted, 0, 6);
+  if (shouldCool && !shouldWarm) adjusted = adjustHsl(adjusted, 0, -6);
+
+  return normalizePrimaryForTemplate(adjusted, templateType);
 }
 
 function buildDominantColorPhrase(primaryHint: string | undefined): string | null {
@@ -156,8 +238,35 @@ export function enrichToolCallsWithColorHints(
     templateType?: 'light-ui' | 'dark-ui';
     latestThemeAgentDebugState?: ThemeAgentDebugState | null;
     latestThemePreviews?: Array<{ url: string; style: string; prompt: string; directionLabel?: string }> | null;
+    currentColors?: Record<string, string>;
   },
 ): ToolCall[] {
+  const templateType = context.templateType ?? 'light-ui';
+  if (isColorAdjustmentMessage(context.userMessage)) {
+    const currentPrimaryColor =
+      context.currentColors?.['primary-color']
+      ?? context.currentColors?.primaryColor
+      ?? context.currentColors?.['--primary-color'];
+    const adjustedPrimary = buildAdjustedPrimaryColor({
+      userMessage: context.userMessage,
+      currentPrimaryColor,
+      templateType,
+    });
+
+    if (adjustedPrimary) {
+      return [{
+        tool: 'update_colors',
+        args: {
+          colors: deriveColorsFromPrimary(adjustedPrimary, templateType),
+        },
+      }, ...toolCalls.filter((toolCall) =>
+        toolCall.tool !== 'generate_theme_pipeline'
+        && toolCall.tool !== 'generate_theme_previews'
+        && toolCall.tool !== 'analyze_image'
+      )];
+    }
+  }
+
   const selectionResult = detectThemeSelection(
     context.userMessage,
     context.latestThemePreviews,

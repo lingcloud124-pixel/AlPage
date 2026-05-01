@@ -99,4 +99,48 @@ describe('web theme tool call color hints', () => {
     expect(prompt).toContain('abstract 2026 numerals');
     expect(prompt).toContain('no UI elements');
   });
+
+  test('routes explicit hex theme color edits to update_colors instead of image generation', () => {
+    const enriched = enrichToolCallsWithColorHints([], {
+      userMessage: '我想把主题色改成#6A2500',
+      assistantMessage: '好的，我来帮您调整。',
+      templateType: 'light-ui',
+      currentColors: {
+        'primary-color': '#61D1D1',
+      },
+    });
+
+    expect(enriched[0].tool).toBe('update_colors');
+    expect(enriched[0].args.colors).toMatchObject({
+      'primary-color': '#6A2500',
+    });
+  });
+
+  test('routes semantic color edits to update_colors instead of image generation', () => {
+    const enriched = enrichToolCallsWithColorHints([], {
+      userMessage: '主题色改成深棕色，更稳重一点',
+      assistantMessage: '好的，我来帮您调整。',
+      templateType: 'light-ui',
+      currentColors: {
+        'primary-color': '#61D1D1',
+      },
+    });
+
+    expect(enriched[0].tool).toBe('update_colors');
+    expect(String((enriched[0].args.colors as Record<string, string>)['primary-color'])).toMatch(/^#[0-9A-Fa-f]{6}$/);
+  });
+
+  test('routes brightness-only color adjustments to update_colors using current primary color', () => {
+    const enriched = enrichToolCallsWithColorHints([], {
+      userMessage: '这个颜色太暗了，亮一点',
+      assistantMessage: '好的，我来帮您调整。',
+      templateType: 'light-ui',
+      currentColors: {
+        'primary-color': '#6A2500',
+      },
+    });
+
+    expect(enriched[0].tool).toBe('update_colors');
+    expect((enriched[0].args.colors as Record<string, string>)['primary-color']).not.toBe('#6A2500');
+  });
 });

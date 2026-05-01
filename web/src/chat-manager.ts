@@ -1243,6 +1243,7 @@ export function setupChatInterface(deps: ChatDeps) {
       templateType,
       latestThemeAgentDebugState,
       latestThemePreviews,
+      currentColors: getCurrentColors(),
     });
     const TOOL_GLOBAL_TIMEOUT = 120_000;
     const toolStartTime = Date.now();
