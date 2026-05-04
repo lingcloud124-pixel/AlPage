@@ -24,7 +24,7 @@ import type { ThemePreview } from './tools/executor';
 import { classifyImageIntent } from './image-intent';
 import { applyPrimaryImageToProject } from './primary-image-flow';
 import { showNotificationWithOptions } from './package-manager';
-import { resolveLegacyLandingPrompt } from './landing-prompts';
+import { renderLandingPromptButtons, resolveLegacyLandingPreset } from './landing-prompts';
 import { createConversation, updateConversation } from './api/conversations';
 import type { ConversationCreatePayload, ConversationUpdatePayload, ConversationImageData } from './types';
 import { setActiveConversation, getActiveConversationId, refreshSidebar } from './components/sidebar';
@@ -57,6 +57,7 @@ let latestThemePreviews: Array<{
 interface SendUserMessageOptions {
   displayMessage?: string;
   directPreviewPrompt?: string;
+  directPreviewPrimaryHint?: string;
 }
 
 export function getConversationHistory() { return conversationHistory; }
@@ -549,6 +550,29 @@ export function setupChatInterface(deps: ChatDeps) {
     input.style.height = `${resolvedHeight}px`;
     if (composerInner) composerInner.style.minHeight = `${resolvedHeight + 56}px`;
   };
+
+  const refreshLandingPromptButtons = () => {
+    const landingPromptContainer = document.querySelector<HTMLElement>('.landing-starter-pills.theme-suggestions');
+    if (!landingPromptContainer) return;
+    renderLandingPromptButtons(landingPromptContainer);
+
+    landingPromptContainer.onclick = (event) => {
+      const target = event.target as HTMLElement | null;
+      const button = target?.closest<HTMLElement>('.landing-prompt-trigger[data-prompt]');
+      const displayPrompt = button?.dataset.prompt?.trim();
+      if (!displayPrompt || !defaultMessageInput) return;
+
+      const preset = resolveLegacyLandingPreset(displayPrompt);
+      defaultMessageInput.value = displayPrompt;
+      resizeMessageInput(defaultMessageInput, defaultComposerInner);
+      void sendUserMessage('default', {
+        displayMessage: displayPrompt,
+        directPreviewPrompt: preset.prompt,
+        directPreviewPrimaryHint: preset.primaryHint,
+      });
+    };
+  };
+
   resizeMessageInput(defaultMessageInput, defaultComposerInner);
   resizeMessageInput(conversationMessageInput, conversationComposerInner);
   defaultMessageInput.addEventListener('input', () => resizeMessageInput(defaultMessageInput, defaultComposerInner));
@@ -765,6 +789,7 @@ export function setupChatInterface(deps: ChatDeps) {
     const fallbackInput = source === 'default' ? conversationMessageInput : defaultMessageInput;
     const displayMessage = options?.displayMessage?.trim() ?? '';
     const directPreviewPrompt = options?.directPreviewPrompt?.trim() ?? '';
+    const directPreviewPrimaryHint = options?.directPreviewPrimaryHint?.trim() ?? '';
     const inputContent = activeInput ? activeInput.value.trim() : '';
     const content = displayMessage || inputContent;
     const hasText = Boolean(content);
@@ -839,8 +864,6 @@ export function setupChatInterface(deps: ChatDeps) {
         if (primaryResult.success) {
           addMessageToChat('ai', [
             primaryResult.message,
-            primaryResult.primaryColor ? `主色已提取为 ${primaryResult.primaryColor}。` : '',
-            primaryResult.enforcedReason ?? '',
           ].filter(Boolean).join(' '));
           deps.expandPreview();
                   deps.setChatPanelWidth(372);
@@ -928,8 +951,6 @@ export function setupChatInterface(deps: ChatDeps) {
       addMessageToChat('ai', primaryResult.success
         ? [
             '已将当前参考图升级为主图并生成主题预览。',
-            primaryResult.primaryColor ? `主色已提取为 ${primaryResult.primaryColor}。` : '',
-            primaryResult.enforcedReason ?? '',
           ].filter(Boolean).join(' ')
         : `⚠️ ${primaryResult.message}`);
       if (primaryResult.success) {
@@ -945,6 +966,7 @@ export function setupChatInterface(deps: ChatDeps) {
         args: {
           prompt: directPreviewPrompt,
           templateType: 'light-ui',
+          ...(directPreviewPrimaryHint ? { primaryHint: directPreviewPrimaryHint } : {}),
         },
       });
       toolLoadingEl.remove();
@@ -963,7 +985,6 @@ export function setupChatInterface(deps: ChatDeps) {
         const toolResultMsg = [
           `🎨 主题已应用！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
           data?.dominantColors?.length ? `识别到的候选主色 ${data.dominantColors.slice(0, 3).join(' / ')}。` : '',
-          data?.enforcementReason ?? '',
           `对比度校验：${data?.contrastValidation?.passed ? '通过' : '存在风险'}。`,
         ].filter(Boolean).join(' ');
         await addMessageToChat('ai', toolResultMsg);
@@ -1026,20 +1047,10 @@ export function setupChatInterface(deps: ChatDeps) {
     }
   }
 
-  const landingPromptButtons = document.querySelectorAll<HTMLElement>('.landing-prompt-trigger[data-prompt]');
-  landingPromptButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      const displayPrompt = button.dataset.prompt?.trim();
-      if (!displayPrompt || !defaultMessageInput) return;
-      const directPreviewPrompt = resolveLegacyLandingPrompt(displayPrompt);
-      defaultMessageInput.value = displayPrompt;
-      resizeMessageInput(defaultMessageInput, defaultComposerInner);
-      sendUserMessage('default', {
-        displayMessage: displayPrompt,
-        directPreviewPrompt,
-      });
-    });
-  });
+  const landingPromptContainer = document.querySelector<HTMLElement>('.landing-starter-pills.theme-suggestions');
+  if (landingPromptContainer) {
+    refreshLandingPromptButtons();
+  }
 
   const landingGalleryCards = document.querySelectorAll<HTMLElement>('.landing-gallery-trigger[data-image-src][data-theme-name]');
   landingGalleryCards.forEach((card) => {
@@ -1350,7 +1361,6 @@ export function setupChatInterface(deps: ChatDeps) {
               `🎨 主题已应用！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
               appliedData?.dominantColors?.length ? `识别到的候选主色 ${appliedData.dominantColors.slice(0, 3).join(' / ')}。` : '',
               appliedData?.fallbackUsed ? '本次提色未稳定完成，已回退应用默认主色。' : '',
-              appliedData?.enforcementReason ?? '',
               `对比度校验：${contrastPassed ? '通过' : '存在风险'}。`,
             ].filter(Boolean).join(' ');
             await addMessageToChat('ai', appliedMsg);
