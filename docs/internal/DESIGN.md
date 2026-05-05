@@ -326,9 +326,10 @@ font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 | active 背景 | `var(--border-strong)` |
 | active 字色 | `var(--text-primary)` |
 
-#### 设置按钮（#sidebarSettingsBtn）
+#### 配置入口
 
-- hover：仅变色（`var(--text-primary)`），**无底色**
+- 前台工作区已不再暴露 `#sidebarSettingsBtn` 等设置入口
+- 模型、导出与常规配置统一通过后台 `/admin` 管理
 
 ### 6.4 Topbar
 

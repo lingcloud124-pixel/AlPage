@@ -1,6 +1,8 @@
 # Sidebar Navigation Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+>
+> **Status:** Historical implementation plan. The current frontend no longer exposes `#sidebarSettingsBtn`, `#sidebarSettingsFullBtn`, or `#settingsModal`; workspace configuration is managed via backend `/admin`.
 
 **Goal:** Add a Gemini-style left sidebar navigation with conversation history, favorites, and project restore.
 
@@ -169,9 +171,6 @@ In `web/index.html`, inside `.app-container`, before `<div class="chat-panel" id
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
     <div class="sidebar-spacer"></div>
-    <button class="sidebar-icon-btn sidebar-settings-btn" id="sidebarSettingsBtn" title="设置">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    </button>
   </div>
   <div class="sidebar-expanded" id="sidebarExpanded">
     <div class="sidebar-header">
@@ -194,12 +193,7 @@ In `web/index.html`, inside `.app-container`, before `<div class="chat-panel" id
         <div class="sidebar-section-items" id="sidebarHistoryItems"></div>
       </div>
     </div>
-    <div class="sidebar-bottom">
-      <button class="sidebar-settings-full" id="sidebarSettingsFullBtn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        设置
-      </button>
-    </div>
+    <div class="sidebar-bottom"></div>
   </div>
 </div>
 ```
@@ -251,7 +245,7 @@ Functions to implement:
 Event wiring:
 - `#sidebarToggleBtn` / `#sidebarCollapseBtn` → `toggleSidebar()`
 - `#sidebarNewChatBtn` / `#sidebarNewChatFullBtn` → `startNewConversation()` (imported from chat-manager)
-- `#sidebarSettingsBtn` / `#sidebarSettingsFullBtn` → open settings dialog
+- Frontend settings entry has been removed; workspace configuration is managed via backend `/admin`
 - Item click → load conversation + restore
 - "…" → star toggle / delete
 
@@ -379,9 +373,10 @@ When user clicks delete in "…" menu:
 - `setActiveConversation(id)` adds `.active` class to matching item, removes from others
 - Store active ID in sidebar module
 
-**Step 3: Settings button wiring**
+**Step 3: Settings ownership**
 
-- `#sidebarSettingsBtn` and `#sidebarSettingsFullBtn` → open `#settingsModal`
+- Historical note only: frontend settings entry has been removed
+- Current behavior: workspace configuration is managed via backend `/admin`
 
 **Step 4: Verify full flow in browser**
 

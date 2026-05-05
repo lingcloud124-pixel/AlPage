@@ -1,13 +1,23 @@
 import { expect, test } from '@playwright/test';
 
+declare global {
+  interface Window {
+    __themeStudioTest?: {
+      expandPreview: () => void;
+    };
+  }
+}
+
 test.describe('preview scale layout', () => {
   test('keeps the login preview inside the preview viewport at narrow layout widths', async ({ page }) => {
     await page.setViewportSize({ width: 1365, height: 768 });
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    await page.getByRole('button', { name: '用科技蓝主题图生成主题包' }).click();
-    await page.waitForTimeout(1200);
+    await page.evaluate(() => {
+      window.__themeStudioTest?.expandPreview();
+    });
+    await page.waitForTimeout(800);
 
     const data = await page.locator('body').evaluate(() => {
       const previewContent = document.querySelector('.preview-content');

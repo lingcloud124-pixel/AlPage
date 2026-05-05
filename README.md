@@ -123,7 +123,7 @@ A: 当前 Web 主链路不依赖手动编辑 `manifest.json`。该文件主要�
 A: 这是旧 TypeScript 工具链的 bug。新的 `theme_builder.py` 已正确处理主题类型检测，不会出现此问题。
 
 **Q: 如何查看生成的主题包**
-A: Web 导出默认输出到你在设置中配置的导出根目录下：`projects/{projectId}-{nameEn}/exports/{timestamp}/输出包/`。根目录脚本默认仍可输出到项目内 `output/`。
+A: Web 导出路径以后台 `/admin` 中配置的导出根目录为准，前台已不再提供单独的配置入口。导出结果位于：`projects/{projectId}-{nameEn}/exports/{timestamp}/输出包/`。根目录脚本默认仍可输出到项目内 `output/`。
 
 **Q: 克隆到其他电脑后没有 API 密钥**
 A: `.env` 文件被 git 忽略。正确步骤：
