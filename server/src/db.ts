@@ -145,7 +145,7 @@ export async function initDb(): Promise<void> {
       credits_per_conversation INTEGER NOT NULL DEFAULT 25,
       credits_per_image INTEGER NOT NULL DEFAULT 50,
       daily_credits_limit INTEGER NOT NULL DEFAULT 100,
-      credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 100 免费积分\n2、每成功生成 1 次图片，扣除 10 积分\n3、每日积分将在 当日 24:00 自动清零并重新发放\n4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」',
+      credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放\n4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」',
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `);
@@ -163,9 +163,9 @@ export async function initDb(): Promise<void> {
       db.run('ALTER TABLE security_config ADD COLUMN credits_per_image INTEGER NOT NULL DEFAULT 50');
     }
     if (!colNames.includes('credits_tooltip_content')) {
-      db.run(`ALTER TABLE security_config ADD COLUMN credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 100 免费积分
-2、每成功生成 1 次图片，扣除 10 积分
-3、每日积分将在 当日 24:00 自动清零并重新发放
+      db.run(`ALTER TABLE security_config ADD COLUMN credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 10 次免费生成主题背景图的机会
+2、每成功生成 1 次主题背景图，扣除 1 次机会
+3、每日生成次数将在次日 06:00 自动清零并重新发放
 4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」'`);
     }
   } catch {
@@ -174,8 +174,10 @@ export async function initDb(): Promise<void> {
 
   db.run(`
     INSERT OR IGNORE INTO security_config (id, cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, credits_per_image, daily_credits_limit, credits_tooltip_content)
-    VALUES (1, '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:4173","http://127.0.0.1:4173"]', '[]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 50, 100, '1、每位用户每日可获得 100 免费积分\n2、每成功生成 1 次图片，扣除 10 积分\n3、每日积分将在 当日 24:00 自动清零并重新发放\n4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」')
+    VALUES (1, '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:4173","http://127.0.0.1:4173"]', '[]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 50, 100, '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放\n4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」')
   `);
+
+  db.run(`UPDATE security_config SET credits_tooltip_content = '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放\n4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」' WHERE credits_tooltip_content LIKE '%100 免费积分%'`);
 
   // Create user_credits table
   db.run(`
