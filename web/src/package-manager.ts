@@ -5,6 +5,7 @@ import { fetchExportJobStatus } from './export/export-status-client';
 import { createProject, getCurrentProjectId, loadProject, saveProject, safeJsonParse, getLastProjectMutationError, setCurrentProjectId } from './project-manager';
 import type { ExportBatchStatus, ExportJobQueueEntry } from './types';
 import { loadSettings, saveSettings, getEffectiveExportRoot } from './agent/chat-client';
+import { apiFetch, resolveApiUrl } from './api-base';
 import { normalizeExportRoot } from './export/export-paths';
 
 const EXPORT_JOB_QUEUE_KEY = 'theme-studio-export-jobs';
@@ -16,6 +17,13 @@ const PACKAGE_PRODUCTS = [
   { id: 'ekp_v16', label: 'EKP V16（主题+登录）' },
   { id: 'ekp_v17', label: 'EKP V17（主题+登录）' },
 ];
+
+function formatExportDatePrefix(now: Date = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
 
 function persistExportJobQueue(request: ReturnType<typeof buildExportJobRequest>): void {
   try {
@@ -155,9 +163,7 @@ function closeProgressModal() {
 }
 
 function triggerBlobDownload(dlUrl: string, filename: string) {
-  fetch(dlUrl, {
-    credentials: 'same-origin',
-  })
+  apiFetch(dlUrl)
     .then(res => {
       if (!res.ok) throw new Error('download failed');
       return res.blob();
@@ -367,8 +373,8 @@ async function trackExportJobStatus(projectId: string, batchId: string, productC
 
     if (statusStr === 'completed') {
       const snapshotName = (await loadProject(projectId))?.nameEn ?? projectId;
-      const dlUrl = `/api/theme/export-jobs/${batchId}/download?all=true`;
-      const filename = `${snapshotName}-all.zip`;
+      const dlUrl = resolveApiUrl(`/api/theme/export-jobs/${batchId}/download?all=true`);
+      const filename = `${formatExportDatePrefix()}-${snapshotName}.zip`;
 
       renderProgressWithDownload(
         'completed',

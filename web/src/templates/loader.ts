@@ -1,5 +1,6 @@
 import type { ColorSetting } from '../components/color-editor';
 import { initLoginBehavior } from './login-behavior';
+import { initDesktopBehavior } from './desktop-behavior';
 import { buildThemeImageAssignments } from './theme-images';
 import { getTemplateRegistry, type TemplateConfig } from '../theme/template-registry';
 
@@ -48,6 +49,7 @@ export async function renderTemplate(
 
   const wrapper = document.createElement('div');
   wrapper.className = `template-${templateId}`;
+  wrapper.dataset.templateId = templateId;
   wrapper.style.width = config.width + 'px';
   wrapper.style.height = config.height + 'px';
   wrapper.style.position = 'absolute';
@@ -61,6 +63,11 @@ export async function renderTemplate(
 
   if (config.id === 'login') {
     initLoginBehavior(wrapper);
+    return;
+  }
+
+  if (config.id === 'desktop') {
+    initDesktopBehavior(wrapper);
   }
 }
 

@@ -1,13 +1,168 @@
-export const LEGACY_LANDING_PROMPTS: Record<string, string> = {
-  '想做一套有新年氛围的主题皮肤，整体轻盈喜庆，适合门户首页和工作台展示。': '一张 2026 年元旦主题的节日海报，风格现代且融合传统元素： 视觉主体：多只带有颗粒质感的红色灯笼，以渐变橙红为主色调，呈现出层叠、错落的悬浮效果，背景是浅橘色到浅米渐变的色肌理质感的底色，整体氛围温暖喜庆。 文字信息： 核心文案：手写飘逸艺术字体 “2026”进行艺术变形，与大气又飘逸的手写书法字体“元旦快乐”做一个设计组合，搭配英文 “NEW YEAR\'S DAY”，以及精致小字 “一元复始・万象更新”； 辅助文字：竖排的 “HAPPY NEW YEAR”，右侧标注 “2026”“01/01”，还有简约精致的中式小图标呼应节日氛围增加设计感；背景有隐隐约约的骏马奔腾的画面。 整体设计通过灯笼元素串联元旦与马年的节日属性，色彩温暖、排版简洁，既有现代设计感，又传递了新年的喜庆氛围。16:9，1080P。',
-  '做一套春节主题皮肤，要有节日感和热闹气氛，适合标准产品首页展示。': '萌系3D卡通风格，营造新年喜庆且温馨的视觉氛围。大透视构图，极低的仰视角度，超广角镜头拍摄的人物，呈现狮子头与镜头互动，画面以巨大狮子头主导视觉，主体是一个穿着华丽的传统服装的舞狮福娃一跃而起，将狮子头抛向镜头，表情开心。狮子头极度靠近镜头（占据画面2/3以上），人物在画面中后方较小，形成强烈的大小对比和视觉冲击力。以正红色为背景，人物周围悬浮着金币和金元宝和红包，增加了画面的艺术效果和动感，整体色调以暖红、暖黄为主，营造出热闹喜庆的春节聚餐氛围，细节丰富，光影温暖。突出鱼眼镜头效果，夸张的透视比例关系。采用 3D渲染风格，类似皮克斯动画质感，画面左面有金色艺术字体“Happy New Year”，搭配祥云元素装饰。和金色“HAPPY CHINESE NEW YEAR” 小字。16:9，1080P。',
-  '来一套春日气息的清明节主题皮肤': '创作一幅清新雅致的清明节气插画，以青绿山水为背景，远处层叠的朦胧雨中山峦若隐若现。近景绘制杨柳垂丝随风轻拂，嫩绿新叶上沾有晶莹雨滴。画面中央设计传统白瓷食盒，内盛青团（艾草糯米团），表面泛着油光，旁置一壶清茶与两盏茶杯。添加燕子低飞元素象征春分三候，地面点缀零星野花与破土春笋。整体采用淡彩水墨风格，色彩以青绿、淡粉为主，留白处题写‘清明安康’书法字样，字体清瘦劲挺。画面右下角添加油纸伞、斗笠等小物件增强节气氛围，通过细腻的光影表现雨后湿润的空气质感。16:9，1080P。',
-  '需要一套国风端午节主题包': '新中式美学融合意识流的梦幻插画。画面由数十层半透明、重叠的“水墨光影幕布”构成，每层幕布都以湿墨晕染或罩染法表现出深蓝、淡绿、金色的水纹或云纹，光线穿透这些幕布形成Mirror and watermoon illusion of的奇幻效果。极小的龙舟并非在具象水面，而是如梦境般穿梭于这些幕布形成的“千重浪”之间，龙舟本身也呈现为半透明的光影。背景为极致的淡雅白色留白，仅有幕布的边缘隐约可见。肌理磨砂，高斯模糊，动态模糊，炫彩光影。俯视，超广角镜头。氛围大气而灵动，极具观赏性。右下角点缀竖式小字中文瘦金体“端午佳节”，其旁有极小英文“DRAGON BOAT FESTIVAL”及极小的红色印章设计。16:9，1080P。',
-  '推行科技创新，做一套科技主题包': '生成一张3D主视觉kv,主视觉位于中心，画面下方是无数条,条状数据线条从底边向画面左侧主视觉汇聚,玻璃质感,冰蓝色渐变,其中夹杂着几条青色，紫色线条,画面中心是一个榫桙结构的主体,主体由多个立方体组合而成,蓝白色主色调,立方体内部带有科技纹理,榫桙结构,中心一个立方体上写有“AI",多层错落,.主体四周有一些高速移动的色块、数据科技元素,画面带有景深效果。画面右侧留白。浅色渐变背景,全局光照,大师级作品,超高清画质,8k,光线柔和明亮.通透感强。16:9，1080P。',
-  '做一套温馨的中秋节主题': '温馨的中秋节微缩景观场景，微缩中式庭院里，一张小木桌上摆放着精致的月饼、桂花茶和迷你月亮灯，桌面散落着桂花枝与桂花，旁边有一只迷你小兔子摆件。背景是微缩的中式亭台楼阁和发光的大月亮，柔和的夕阳光线从左侧洒入，温暖的琥珀色光晕笼罩整个微型世界，暖黄色调营造团圆氛围。前景清晰细腻，远景建筑轮廓虚化，浅景深效果突出前景，中等俯视角度呈现精致的小世界感，8K超清细节，微缩摄影风格，写实微缩模型质感，温馨治愈的节日氛围，轻度暗角散景。主文案为"桂香满庭，月满中秋"。16:9，1080P。',
-  '为祖国庆生，做一个国庆节主题包': '展开的古典画卷、卷轴左右展开,画卷中的山水场景：群山、岩石、湖水、沙洲,中式建筑：红色古塔、亭台楼阁、廊桥,松树、山石、园林植被,上方飘动的红绸、红色丝带,两只金色飞鸟/仙鹤，振翅飞翔,红色布景底台，整体国庆舞台感,国潮中国风、国庆主题海报,纸艺+场景模型质感、微缩景观风格,3D CG 高精渲染、商业主视觉海报,新中式山水意境、节庆礼赞风格,庄重又喜庆的国家纪念日视觉,横版构图，中心主体构图,卷轴从画面左右向中间展开，中间场景稍微凸起,前景：卷轴边与红色底布,中景：山水、楼阁、树木构成的立体场景,上景：飞舞的红绸自左至右弧形穿过，与金色飞鸟形成动势,空间层次分明：前景卷轴，中景建筑与山石，后景浅色远山,纪念叙事感：以山河与建筑象征国家发展、盛世华章,画面顶部：大字金色书法主标「盛世篇章 锦绣山河」,主标下方：年份区间「(1949-2026)」置于中央，衬托纪念性质,底部中央：日期「2026.10.1」大号数字,日期下方：对称排布的口号文案「举国同庆 盛世中华 谱写时代荣光 共筑大国之梦」,文字整体使用金色，搭配略带浮雕或发光效果,上下文字中间大面积留给画卷和山水景观，形成“上字、中景、下字”的三段式布局,高饱和度红金配色，暖色基调,柔和体积光，从画面上方或斜侧打下来，勾勒建筑和红绸高光,金色飞鸟有轻微发光边缘、光晕轨迹,画卷纸张带有细腻纹理和淡金色描边,山体和建筑略带软阴影，增强微缩模型的立体感,背景渐变红色，从深红到偏橙红，营造舞台与幕布的氛围,整体画面干净、无明显噪点，偏“广告大片”质感,国庆主题 CG 海报、建国纪念主视觉参考,新中式山水 + 纸艺模型风格的融合参考,舞台装置艺术 / 微缩沙盘场景摄影感,国潮品牌春节、国庆整合传播 KV 风格,传统山水长卷意象的现代三维演绎。16:9，1080P。',
+export interface LandingPromptPreset {
+  label?: string;
+  prompt: string;
+  primaryHint?: string;
+}
+
+export interface LandingPromptEntry {
+  label: string;
+  prompt: string;
+  primaryHint?: string;
+}
+
+const LANDING_PROMPT_STORAGE_KEY = 'themeStudioLandingPrompts';
+
+export const LANDING_PROMPT_ENTRIES: LandingPromptEntry[] = [
+  {
+    label: '做一套春节氛围主题，热闹一点',
+    prompt: '萌系3D卡通风格，营造新年喜庆且温馨的视觉氛围。大透视构图，极低的仰视角度，超广角镜头拍摄的人物，呈现狮子头与镜头互动，画面以巨大狮子头主导视觉，主体是一个穿着华丽的传统服装的舞狮福娃一跃而起，将狮子头抛向镜头，表情开心。狮子头极度靠近镜头（占据画面2/3以上），人物在画面中后方较小，形成强烈的大小对比和视觉冲击力。以正红色为背景，人物周围悬浮着金币和金元宝和红包，增加了画面的艺术效果和动感，整体色调以暖红、暖黄为主，营造出热闹喜庆的春节聚餐氛围，细节丰富，光影温暖。突出鱼眼镜头效果，夸张的透视比例关系。采用 3D渲染风格，类似皮克斯动画质感，画面左面有金色艺术字体“Happy New Year”，搭配祥云元素装饰。和金色“HAPPY CHINESE NEW YEAR” 小字。16:9，1080P。',
+    primaryHint: '#C90808',
+  },
+  {
+    label: '生成一套科技感企业门户皮肤',
+    prompt: '主色神空蓝，未来感 流动彩带光束带 由远到近环绕 背景模糊的光晕 4K超高清细节。16:9，1080P。',
+    primaryHint: '#0E50D6',
+  },
+  {
+    label: '想要一个高级蓝色商务主题',
+    prompt: '流畅极少蓝白色渐变小笔刷发光在变换、空间感，光线追踪，浩渺感，孤独感，全景视角，透白渐变背景，流光溢彩，C4d建模。16:9，1080P。',
+    primaryHint: '#138AEB',
+  },
+  {
+    label: '来一套国风政务风格主题包',
+    prompt: '创作一幅大气简约的国风国庆主题海报，采用纵向构图，背景为红橙渐变的暖色调，带有细腻的光影层次以营造喜庆氛围。画面中景呈现被暖光笼罩的古代风格古典宫殿建筑；背景是朦胧的金色山水轮廓，天空点缀着绽放的烟花；前景有一条蜿蜒的金色光带（似河流或道路）向宫殿延伸，增强空间纵深感；整体风格融合国风意境与现代光影设计，既显庄重又具热烈的国庆庆典感。16:9，1080P。',
+    primaryHint: '#DA0404',
+  },
+  {
+    label: '做一个绿色生态办公主题',
+    prompt: '月球表面，未来感太空站矗立，金属质感建筑线条流畅，内部全息投影显示量子计算数据，智能机器人在通道穿梭。太空种植区绿意盎然，能源循环系统高效运转，充满科技与生活融合的未来感。16:9，1080P。',
+    primaryHint: '#14981F',
+  },
+  {
+    label: '生成新能源行业办公主题',
+    prompt: '高科技，蓝白色为主色，绿色点缀，玻璃透明质感，虚拟电厂场景图，主要建筑为火电厂房、烟囱、冷凝塔，风力发电机、光伏板绿树，高分辨率，16:9，1080P。',
+    primaryHint: '#0CAC8E',
+  },
+  {
+    label: '需要一个 AI 未来科技风格主题',
+    prompt: '未来科技感kv背景，天空蓝色渐变，画面面左侧是一个由光线构成的智能科技“AI”立体字体，周围环绕着适当数据洪流，有公路的元素，背景中夹杂着代表人工智能的二进制代码图案，画面核心是适用于Al技术发布会，8K分辨率，高级感，OC渲染，Blender，C4D，超清，中心构图，大师级配色，穿插蓝紫色配色。16:9，1080P。',
+    primaryHint: '#2C19B9',
+  },
+  {
+    label: '生成一套金融行业办公主题',
+    prompt: '科技感背景设计，矢量风格，数字化，文字信息位于画面左侧：左侧主体为一个悬浮蓝金渐变半透明发光的环形仪表盘造型的科技感金融数据结构，由多个蓝金半透明渐变方块组合而成的 K 线与交易链路复杂结构，蓝金渐变主色调，金色光线和小型数据币形方块围绕金融结构，科技光效、光线、光泽，背景是简单的蓝金渐变光轨曲线夹杂动态粒子且投映出蓝金渐变光，整体画面动感流畅，光影层次丰富，蓝金调为主，营造出专业、安全、高端、创新的金融科技氛围。16:9，1080P。',
+    primaryHint: '#9E7A37',
+  },
+];
+
+export const LEGACY_LANDING_PROMPTS: Record<string, LandingPromptPreset> = {
+  '做一套春节氛围主题，热闹一点': {
+    prompt: '萌系3D卡通风格，营造新年喜庆且温馨的视觉氛围。大透视构图，极低的仰视角度，超广角镜头拍摄的人物，呈现狮子头与镜头互动，画面以巨大狮子头主导视觉，主体是一个穿着华丽的传统服装的舞狮福娃一跃而起，将狮子头抛向镜头，表情开心。狮子头极度靠近镜头（占据画面2/3以上），人物在画面中后方较小，形成强烈的大小对比和视觉冲击力。以正红色为背景，人物周围悬浮着金币和金元宝和红包，增加了画面的艺术效果和动感，整体色调以暖红、暖黄为主，营造出热闹喜庆的春节聚餐氛围，细节丰富，光影温暖。突出鱼眼镜头效果，夸张的透视比例关系。采用 3D渲染风格，类似皮克斯动画质感，画面左面有金色艺术字体“Happy New Year”，搭配祥云元素装饰。和金色“HAPPY CHINESE NEW YEAR” 小字。16:9，1080P。',
+    primaryHint: '#C90808',
+  },
+  '生成一套科技感企业门户皮肤': {
+    prompt: '主色神空蓝，未来感 流动彩带光束带 由远到近环绕 背景模糊的光晕 4K超高清细节。16:9，1080P。',
+    primaryHint: '#0E50D6',
+  },
+  '想要一个高级蓝色商务主题': {
+    prompt: '流畅极少蓝白色渐变小笔刷发光在变换、空间感，光线追踪，浩渺感，孤独感，全景视角，透白渐变背景，流光溢彩，C4d建模。16:9，1080P。',
+    primaryHint: '#138AEB',
+  },
+  '来一套国风政务风格主题包': {
+    prompt: '创作一幅大气简约的国风国庆主题海报，采用纵向构图，背景为红橙渐变的暖色调，带有细腻的光影层次以营造喜庆氛围。画面中景呈现被暖光笼罩的古代风格古典宫殿建筑；背景是朦胧的金色山水轮廓，天空点缀着绽放的烟花；前景有一条蜿蜒的金色光带（似河流或道路）向宫殿延伸，增强空间纵深感；整体风格融合国风意境与现代光影设计，既显庄重又具热烈的国庆庆典感。16:9，1080P。',
+    primaryHint: '#DA0404',
+  },
+  '做一个绿色生态办公主题': {
+    prompt: '月球表面，未来感太空站矗立，金属质感建筑线条流畅，内部全息投影显示量子计算数据，智能机器人在通道穿梭。太空种植区绿意盎然，能源循环系统高效运转，充满科技与生活融合的未来感。16:9，1080P。',
+    primaryHint: '#14981F',
+  },
+  '生成新能源行业办公主题': {
+    prompt: '高科技，蓝白色为主色，绿色点缀，玻璃透明质感，虚拟电厂场景图，主要建筑为火电厂房、烟囱、冷凝塔，风力发电机、光伏板绿树，高分辨率，16:9，1080P。',
+    primaryHint: '#0CAC8E',
+  },
+  '需要一个 AI 未来科技风格主题': {
+    prompt: '未来科技感kv背景，天空蓝色渐变，画面面左侧是一个由光线构成的智能科技“AI”立体字体，周围环绕着适当数据洪流，有公路的元素，背景中夹杂着代表人工智能的二进制代码图案，画面核心是适用于Al技术发布会，8K分辨率，高级感，OC渲染，Blender，C4D，超清，中心构图，大师级配色，穿插蓝紫色配色。16:9，1080P。',
+    primaryHint: '#2C19B9',
+  },
+  '生成一套金融行业办公主题': {
+    prompt: '科技感背景设计，矢量风格，数字化，文字信息位于画面左侧：左侧主体为一个悬浮蓝金渐变半透明发光的环形仪表盘造型的科技感金融数据结构，由多个蓝金半透明渐变方块组合而成的 K 线与交易链路复杂结构，蓝金渐变主色调，金色光线和小型数据币形方块围绕金融结构，科技光效、光线、光泽，背景是简单的蓝金渐变光轨曲线夹杂动态粒子且投映出蓝金渐变光，整体画面动感流畅，光影层次丰富，蓝金调为主，营造出专业、安全、高端、创新的金融科技氛围。16:9，1080P。',
+    primaryHint: '#9E7A37',
+  },
 };
 
+export function getLandingPromptEntries(): LandingPromptEntry[] {
+  const customEntries = loadCustomLandingPromptEntries();
+  return (customEntries ?? LANDING_PROMPT_ENTRIES).map((entry) => ({ ...entry }));
+}
+
+export function getDefaultLandingPromptEntries(): LandingPromptEntry[] {
+  return LANDING_PROMPT_ENTRIES.map((entry) => ({ ...entry }));
+}
+
+export function loadCustomLandingPromptEntries(): LandingPromptEntry[] | null {
+  try {
+    const raw = localStorage.getItem(LANDING_PROMPT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LandingPromptEntry[];
+    if (!Array.isArray(parsed) || parsed.length !== LANDING_PROMPT_ENTRIES.length) return null;
+    const normalized = parsed.map((entry, index) => ({
+      label: typeof entry?.label === 'string' ? entry.label.trim() : '',
+      prompt: typeof entry?.prompt === 'string' ? entry.prompt.trim() : '',
+      primaryHint: typeof entry?.primaryHint === 'string' ? entry.primaryHint.trim() : '',
+    }));
+    if (normalized.some((entry) => !entry.label || !entry.prompt)) return null;
+    return normalized.map((entry, index) => ({
+      label: entry.label,
+      prompt: entry.prompt,
+      primaryHint: normalizePrimaryHint(entry.primaryHint) || LANDING_PROMPT_ENTRIES[index].primaryHint,
+    }));
+  } catch {
+    return null;
+  }
+}
+
+export function saveLandingPromptEntries(entries: LandingPromptEntry[]): void {
+  const normalized = entries.map((entry, index) => ({
+    label: entry.label.trim(),
+    prompt: entry.prompt.trim(),
+    primaryHint: normalizePrimaryHint(entry.primaryHint) || LANDING_PROMPT_ENTRIES[index]?.primaryHint || '',
+  }));
+  localStorage.setItem(LANDING_PROMPT_STORAGE_KEY, JSON.stringify(normalized));
+}
+
+export function resetLandingPromptEntries(): void {
+  localStorage.removeItem(LANDING_PROMPT_STORAGE_KEY);
+}
+
+export function renderLandingPromptButtons(container: HTMLElement): void {
+  container.innerHTML = '';
+  for (const entry of getLandingPromptEntries()) {
+    const button = document.createElement('button');
+    button.className = 'landing-starter-pill theme-btn landing-prompt-trigger';
+    button.dataset.prompt = entry.label;
+    button.textContent = entry.label;
+    container.appendChild(button);
+  }
+}
+
 export function resolveLegacyLandingPrompt(labelOrPrompt: string): string {
-  return LEGACY_LANDING_PROMPTS[labelOrPrompt] ?? labelOrPrompt;
+  return resolveLegacyLandingPreset(labelOrPrompt).prompt ?? labelOrPrompt;
+}
+
+export function resolveLegacyLandingPreset(labelOrPrompt: string): LandingPromptPreset {
+  const customEntry = getLandingPromptEntries().find((entry) => entry.label === labelOrPrompt);
+  if (customEntry) {
+    return {
+      label: customEntry.label,
+      prompt: customEntry.prompt,
+      primaryHint: customEntry.primaryHint,
+    };
+  }
+  const preset = LEGACY_LANDING_PROMPTS[labelOrPrompt];
+  return preset ?? { prompt: labelOrPrompt };
+}
+
+function normalizePrimaryHint(primaryHint: string | undefined): string {
+  const normalized = primaryHint?.trim().toUpperCase() ?? '';
+  return /^#[0-9A-F]{6}$/.test(normalized) ? normalized : '';
 }

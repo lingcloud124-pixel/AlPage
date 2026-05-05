@@ -8,6 +8,13 @@ import { getSecurityConfig } from '../db.js';
 
 const router = Router();
 
+function formatDatePrefix(now: Date = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
+
 router.post('/pick-directory', async (_req, res) => {
   try {
     const home = os.homedir();
@@ -129,8 +136,8 @@ router.get('/export-jobs/:id/download', async (req, res) => {
         return;
       }
 
-      const snapshotName = (result?.snapshotName as string) ?? id;
-      const archiveName = `${snapshotName}-all.zip`;
+      const snapshotName = String((result?.snapshotName as string) ?? id).trim() || id;
+      const archiveName = `${formatDatePrefix()}-${snapshotName}.zip`;
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(archiveName)}"`);
 

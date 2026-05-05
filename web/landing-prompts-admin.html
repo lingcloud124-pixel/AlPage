@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme Studio - 快捷指令配置</title>
+  <link rel="stylesheet" href="/src/styles.css">
+</head>
+<body data-ui-theme="light" class="landing-admin-page">
+  <div class="landing-admin-shell">
+    <div class="landing-admin-container">
+      <header class="landing-admin-header">
+        <div>
+          <h1>快捷指令配置</h1>
+          <p class="landing-admin-subtitle">独立维护首页 8 条快捷指令。保存后首页立即生效，无需改代码。</p>
+        </div>
+        <div class="landing-admin-header-actions">
+          <a class="landing-admin-link" href="http://127.0.0.1:5173/">返回首页</a>
+        </div>
+      </header>
+
+      <section class="landing-admin-card">
+        <div class="landing-admin-card-header">
+          <h2>首页快捷指令</h2>
+          <span class="landing-admin-badge">8 条</span>
+        </div>
+        <div class="landing-admin-card-copy">每条快捷指令支持编辑标题、长咒语 Prompt 和固定主题色。</div>
+        <div id="landingPromptAdminList" class="landing-prompt-config-list landing-prompt-config-list--admin"></div>
+      </section>
+
+      <footer class="landing-admin-footer">
+        <button id="landingPromptResetBtn" class="landing-admin-btn landing-admin-btn-secondary" type="button">恢复默认</button>
+        <button id="landingPromptSaveBtn" class="landing-admin-btn landing-admin-btn-primary" type="button">保存配置</button>
+      </footer>
+    </div>
+  </div>
+  <script type="module" src="/src/landing-prompts-admin.ts"></script>
+</body>
+</html>

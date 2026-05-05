@@ -2,6 +2,7 @@ import type { ToolCall } from '../types';
 import { resolvePreferredHueHint } from '../theme/color-utils';
 import { adjustHsl, deriveColorsFromPrimary, normalizePrimaryForTemplate } from '../theme/color-utils';
 import type { ThemeAgentDebugState } from '../chat-manager';
+import { resolveFestivalColorRule } from '../theme/festival-color-rules';
 
 function normalizeTemplateType(value: unknown): 'light-ui' | 'dark-ui' {
   return value === 'dark-ui' ? 'dark-ui' : 'light-ui';
@@ -225,7 +226,9 @@ export function inferPrimaryHintFromText(
   templateType: 'light-ui' | 'dark-ui',
 ): string | undefined {
   if (!text) return undefined;
-  return resolvePreferredHueHint(text, templateType)?.label;
+  const explicit = resolvePreferredHueHint(text, templateType)?.label;
+  if (explicit) return explicit;
+  return resolveFestivalColorRule(text)?.primaryHint;
 }
 
 export function enrichToolCallsWithColorHints(
@@ -263,6 +266,7 @@ export function enrichToolCallsWithColorHints(
         toolCall.tool !== 'generate_theme_pipeline'
         && toolCall.tool !== 'generate_theme_previews'
         && toolCall.tool !== 'analyze_image'
+        && toolCall.tool !== 'apply_selected_theme'
       )];
     }
   }

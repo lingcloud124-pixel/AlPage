@@ -696,7 +696,7 @@ export function setupChatInterface(deps: ChatDeps) {
     });
   }
 
-  async function setLandingGalleryImage(imageSrc: string, themeName: string) {
+  async function setLandingGalleryImage(imageSrc: string, themeName: string, primaryHint?: string) {
     if (!defaultMessageInput) return;
     try {
       const response = await fetch(imageSrc);
@@ -720,6 +720,11 @@ export function setupChatInterface(deps: ChatDeps) {
       renderImagePreviewBar();
       defaultMessageInput.value = `用这张图，生成一个${themeName}主题包`;
       resizeMessageInput(defaultMessageInput, defaultComposerInner);
+      if (primaryHint) {
+        defaultMessageInput.dataset.primaryHint = primaryHint;
+      } else {
+        delete defaultMessageInput.dataset.primaryHint;
+      }
       await ensureActiveProjectForImageUpload();
       showConversationChatView();
       await sendUserMessage('default');
@@ -846,6 +851,7 @@ export function setupChatInterface(deps: ChatDeps) {
       if (finalRole === 'primary' && currentProjectId) {
         const statusEl = addStatusMessage('正在根据主图提取主题色并生成预览...');
         const imageDataUrl = imagesToSend[0];
+        const lockedPrimaryHint = activeInput?.dataset.primaryHint?.trim() ?? '';
         updateProjectVisualContext(currentProjectId, {
           imageInput: {
             dataUrl: imageDataUrl,
@@ -859,7 +865,11 @@ export function setupChatInterface(deps: ChatDeps) {
           projectId: currentProjectId,
           imageDataUrl,
           message: content || imageIntent.matchedPhrase || '',
+          primaryHint: lockedPrimaryHint,
         });
+        if (activeInput?.dataset.primaryHint) {
+          delete activeInput.dataset.primaryHint;
+        }
         statusEl.remove();
         if (primaryResult.success) {
           addMessageToChat('ai', [
@@ -1057,8 +1067,9 @@ export function setupChatInterface(deps: ChatDeps) {
     const triggerSelection = () => {
       const imageSrc = card.dataset.imageSrc?.trim();
       const themeName = card.dataset.themeName?.trim();
+      const primaryHint = card.dataset.primaryHint?.trim();
       if (!imageSrc || !themeName) return;
-      setLandingGalleryImage(imageSrc, themeName);
+      setLandingGalleryImage(imageSrc, themeName, primaryHint);
     };
 
     card.addEventListener('click', triggerSelection);

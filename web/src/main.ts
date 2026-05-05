@@ -21,7 +21,7 @@ import {
 } from './ui-setup';
 import { loadDefaultTemplates } from './theme-engine';
 import { checkAuth, getUser, redirectToLogin } from './auth';
-import { fetchCredits, updateCreditsDisplay } from './credits';
+import { fetchCredits, setupCreditsTooltip, updateCreditsDisplay } from './credits';
 import { initSidebar } from './components/sidebar';
 import { registerPreviewResize, resizePreviewPages } from './preview/resize-preview';
 
@@ -36,6 +36,9 @@ export function showWorkspaceLandingState(): void {
   const chatPanel = document.getElementById('chatPanel');
   if (workspaceView) workspaceView.classList.remove('view-hidden');
   setCurrentProjectId(null);
+  resetThemeTargetStyles();
+  applyTemplateSpecificThemeVars('light-ui');
+  syncColorEditorFromTheme();
   chatPanel?.classList.add('landing-mode');
   collapsePreview();
   setChatPanelWidth(null);
@@ -94,7 +97,7 @@ async function initializeFeatureModules() {
     if (project.headerBgImageUrl) {
       applyThemeImageAssignments('desktop', project.headerBgImageUrl);
     }
-    applyTemplateSpecificThemeVars(project);
+    applyTemplateSpecificThemeVars(project.templateType);
     syncColorEditorFromTheme();
     expandPreview();
     setChatPanelWidth(378);
@@ -123,6 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const workspaceView = document.getElementById('workspaceView');
     if (workspaceView) workspaceView.classList.remove('view-hidden');
     showWorkspaceLandingState();
+    setupCreditsTooltip();
 
     const creditsInfo = await fetchCredits();
     updateCreditsDisplay(creditsInfo);

@@ -1,4 +1,5 @@
 import { computePreviewTransform } from './scale-layout';
+import { getTemplateConfig } from '../theme/template-registry';
 
 const DEFAULT_HORIZONTAL_INSET = 24;
 const DEFAULT_VERTICAL_INSET = 24;
@@ -17,8 +18,10 @@ export function resizePreviewPages(): void {
     const rendered = activePage.firstElementChild as HTMLElement | null;
     if (!rendered) return;
 
-    const renderedWidth = rendered.offsetWidth || parseInt(rendered.style.width, 10) || 0;
-    const renderedHeight = rendered.offsetHeight || parseInt(rendered.style.height, 10) || 0;
+    const templateId = rendered.dataset.templateId;
+    const templateConfig = templateId ? getTemplateConfig(templateId) : undefined;
+    const renderedWidth = templateConfig?.width || parseInt(rendered.style.width, 10) || rendered.offsetWidth || 0;
+    const renderedHeight = templateConfig?.height || parseInt(rendered.style.height, 10) || rendered.offsetHeight || 0;
     if (renderedWidth === 0 || renderedHeight === 0) return;
 
     const layout = computePreviewTransform({

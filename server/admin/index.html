@@ -192,6 +192,10 @@
               <input type="number" id="creditsPerImage" placeholder="例如: 50">
             </div>
           </div>
+          <div style="margin-top: 12px;">
+            <label>前台积分规则说明文案</label>
+            <textarea id="creditsTooltipContent" rows="6" placeholder="每行一条，将展示在首页积分说明气泡中"></textarea>
+          </div>
           <p class="subtitle" style="margin-top: 6px; font-size: 12px;">积分每日 06:00 自动重置为上限值，每次生成图片扣除对应积分；对话不消耗积分</p>
         </div>
 
@@ -439,6 +443,7 @@
         document.getElementById('proxyImageAllowlist').value = securityData.proxyImageHosts?.join('\n') || '';
         document.getElementById('dailyCreditsLimit').value = securityData.dailyCreditsLimit ?? '100';
         document.getElementById('creditsPerImage').value = securityData.creditsPerImage ?? '50';
+        document.getElementById('creditsTooltipContent').value = securityData.creditsTooltipContent || '';
 
         const creditsEnabled = securityData.enabledFeatures?.quota !== false;
         document.getElementById('enableCreditsLimit').checked = creditsEnabled;
@@ -486,7 +491,8 @@
             rateLimiting: true
           },
           dailyCreditsLimit: parseInt(document.getElementById('dailyCreditsLimit').value) || 100,
-          creditsPerImage: parseInt(document.getElementById('creditsPerImage').value) || 50
+          creditsPerImage: parseInt(document.getElementById('creditsPerImage').value) || 50,
+          creditsTooltipContent: document.getElementById('creditsTooltipContent').value
         };
 
         const fetchOpts = {
@@ -519,6 +525,7 @@
               enabledFeatures: body.enabledFeatures,
               dailyCreditsLimit: body.dailyCreditsLimit,
               creditsPerImage: body.creditsPerImage,
+              creditsTooltipContent: body.creditsTooltipContent,
             })
           })
         ]);

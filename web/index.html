@@ -64,16 +64,18 @@
                         <button id="landingHomeBtn" class="landing-brand" type="button" title="返回首页" aria-label="返回首页">
                             <div class="landing-brand-lockup">
                                 <img class="landing-brand-logo-image" src="/branding/landray-logo.png" alt="Landray 蓝凌" loading="eager">
-                                <span class="landing-brand-divider"></span>
-                                <span class="landing-brand-copy">标准产品主题包 AI 生成工具</span>
                             </div>
                         </button>
                         <div class="landing-topbar-actions">
-                            <button id="landingCreditsChip" class="landing-credits-chip" type="button" title="当前积分" style="display: none;">
+                            <button id="landingCreditsChip" class="landing-credits-chip" type="button" style="display: none;" aria-describedby="landingCreditsTooltip">
                                 <span>积分</span>
                                 <span id="landingCreditsText">120</span>
                                 <span class="landing-credits-spark" aria-hidden="true">✦</span>
                             </button>
+                            <div id="landingCreditsTooltip" class="landing-credits-tooltip" role="tooltip" aria-hidden="true">
+                                <div class="landing-credits-tooltip-title">积分规则说明：</div>
+                                <ol id="landingCreditsTooltipList" class="landing-credits-tooltip-list"></ol>
+                            </div>
                             <button id="userAvatarBtn" class="user-avatar-btn" type="button" title="切换用户">
                                 <span id="userAvatarLetter" class="user-avatar-letter">U</span>
                             </button>
@@ -86,8 +88,8 @@
                         <section class="landing-shell" id="chatLandingHero">
                             <div class="landing-hero landing-hero--compact">
                                 <div class="landing-hero-copy landing-hero-copy--centered">
-                                    <h1 class="landing-hero-title">一句话，生成<span class="landing-hero-highlight">可上线</span>主题包</h1>
-                                    <p class="landing-hero-subtitle">告别繁琐代码配置，通过自然语言即刻定制 OA 专属皮肤</p>
+                                    <h1 class="landing-hero-title"><span class="landing-hero-highlight">快速生成</span> 企业主题</h1>
+                                    <p class="landing-hero-subtitle">面向蓝凌标准产品的企业主题生成、预览与交付工具</p>
                                 </div>
                             </div>
 
@@ -118,29 +120,7 @@
                             </div>
 
                             <section class="landing-section landing-section--after-composer" aria-labelledby="landingStartTitle">
-                                <div class="landing-starter-pills theme-suggestions" data-tooltip="点击快捷指令，生图效果更佳" title="点击快捷指令，生图效果更佳">
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="想做一套有新年氛围的主题皮肤，整体轻盈喜庆，适合门户首页和工作台展示。">
-                                        想做一套有新年氛围的主题皮肤
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="做一套春节主题皮肤，要有节日感和热闹气氛，适合标准产品首页展示。">
-                                        做一套春节主题皮肤，要有节日感和热闹气氛
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="来一套春日气息的清明节主题皮肤">
-                                        来一套春日气息的清明节主题皮肤
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="需要一套国风端午节主题包">
-                                        需要一套国风端午节主题包
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="推行科技创新，做一套科技主题包">
-                                        推行科技创新，做一套科技主题包
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="做一套温馨的中秋节主题">
-                                        做一套温馨的中秋节主题
-                                    </button>
-                                    <button class="landing-starter-pill theme-btn landing-prompt-trigger" data-prompt="为祖国庆生，做一个国庆节主题包">
-                                        为祖国庆生，做一个国庆节主题包
-                                    </button>
-                                </div>
+                                <div class="landing-starter-pills theme-suggestions" data-tooltip="点击快捷指令，生图效果更佳" title="点击快捷指令，生图效果更佳"></div>
                             </section>
                         </section>
 
@@ -153,7 +133,7 @@
                                     <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Mid-AutumnFestival-01.png" data-theme-name="中秋" aria-label="用中秋主题图生成主题包" role="button" tabindex="0">
                                         <img class="landing-template-image" src="/workbench-gallery/Mid-AutumnFestival-01.png" alt="中秋主题效果图" loading="lazy">
                                     </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Cooperation-02.png" data-theme-name="协作办公" aria-label="用协作办公主题图生成主题包" role="button" tabindex="0">
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Cooperation-02.png" data-theme-name="生生不息 共筑未来" aria-label="用协作办公主题图生成主题包" role="button" tabindex="0">
                                         <img class="landing-template-image" src="/workbench-gallery/Cooperation-02.png" alt="企业主题效果图" loading="lazy">
                                     </article>
                                     <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Technology-03.png" data-theme-name="科技蓝" aria-label="用科技蓝主题图生成主题包" role="button" tabindex="0">
@@ -162,7 +142,7 @@
                                     <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Industry-04.png" data-theme-name="智能工厂" aria-label="用智能工厂主题图生成主题包" role="button" tabindex="0">
                                         <img class="landing-template-image" src="/workbench-gallery/Industry-04.png" alt="科技工厂主题效果图" loading="lazy">
                                     </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/WorkCabin-05.png" data-theme-name="工作舱" aria-label="用工作舱主题图生成主题包" role="button" tabindex="0">
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/WorkCabin-05.png" data-theme-name="数据中台" aria-label="用工作舱主题图生成主题包" role="button" tabindex="0">
                                         <img class="landing-template-image" src="/workbench-gallery/WorkCabin-05.png" alt="办公工作台主题效果图" loading="lazy">
                                     </article>
                                     <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/EnvironmentalProtection-06.png" data-theme-name="环保科技" aria-label="用环保科技主题图生成主题包" role="button" tabindex="0">
@@ -180,6 +160,12 @@
                                     <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/NationalDay-10.png" data-theme-name="国庆" aria-label="用国庆主题图生成主题包" role="button" tabindex="0">
                                         <img class="landing-template-image" src="/workbench-gallery/NationalDay-10.png" alt="国庆主题效果图" loading="lazy">
                                     </article>
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/city-11.png" data-theme-name="城市未来" data-primary-hint="#DA362B" aria-label="用城市未来主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/city-11.png" alt="城市未来主题效果图" loading="lazy">
+                                    </article>
+                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/run-12.png" data-theme-name="奔跑活力" data-primary-hint="#DA0404" aria-label="用奔跑活力主题图生成主题包" role="button" tabindex="0">
+                                        <img class="landing-template-image" src="/workbench-gallery/run-12.png" alt="奔跑活力主题效果图" loading="lazy">
+                                    </article>
                                 </div>
                             </section>
                             <div class="landing-page-footer" aria-label="功能说明">
@@ -196,7 +182,7 @@
                         <div class="image-preview-bar" id="conversationImagePreviewBar"></div>
                         <div class="input-row chat-shell-composer">
                             <div class="chat-input-wrapper chat-shell-composer-inner">
-                                <textarea id="conversationMessageInput" rows="1" placeholder="描述您需要的活动/节日主题..."></textarea>
+                                <textarea id="conversationMessageInput" rows="1" placeholder="发送修改意见"></textarea>
                                 <button id="conversationPlusBtn" class="plus-btn ui-icon-button chat-shell-plus" title="添加图片">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -318,8 +304,8 @@
                 <!-- Header -->
                 <header class="settings-header">
                     <div>
-                        <h2 class="settings-title">API设置</h2>
-                        <p class="settings-subtitle">配置您的工作区 API 凭据和环境参数</p>
+                        <h2 class="settings-title">工作区配置</h2>
+                        <p class="settings-subtitle">按后台配置页的方式管理当前工作区的模型、导出与常规选项</p>
                     </div>
                     <button class="modal-close-btn" aria-label="关闭">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -328,7 +314,6 @@
 
                 <!-- Scrollable Body -->
                 <div class="settings-body">
-                    <!-- Section 1: Account -->
                     <section class="settings-section">
                         <div class="section-heading">
                             <span class="section-accent"></span>
@@ -351,17 +336,101 @@
                         </div>
                     </section>
 
-                    <!-- Section 2: Interface Settings -->
                     <section class="settings-section">
                         <div class="section-heading">
                             <span class="section-accent"></span>
-                            <h3>界面与常规设置</h3>
+                            <h3>对话模型</h3>
                         </div>
                         <div class="settings-card">
                             <div class="form-row">
                                 <div class="form-label-group">
+                                    <label class="form-label" for="apiEndpoint">API Endpoint</label>
+                                    <span class="form-label-desc">默认通过内置聊天代理转发</span>
+                                </div>
+                                <div class="form-input-wrap">
+                                    <input id="apiEndpoint" type="text" placeholder="/api/chat/chat/completions">
+                                    <div class="form-input-help" id="apiEndpointHelp"></div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label-group">
+                                    <label class="form-label" for="apiKey">API Key</label>
+                                    <span class="form-label-desc">当前由服务端托管，前台仅保留兼容字段</span>
+                                </div>
+                                <div class="form-input-wrap">
+                                    <input id="apiKey" type="password" placeholder="Server managed">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label-group">
+                                    <label class="form-label" for="modelName">模型名称</label>
+                                    <span class="form-label-desc">用于对话生成的默认模型</span>
+                                </div>
+                                <div class="form-input-wrap">
+                                    <input id="modelName" type="text" placeholder="MiniMax-M2.7">
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="settings-section">
+                        <div class="section-heading">
+                            <span class="section-accent"></span>
+                            <h3>生图模型</h3>
+                        </div>
+                        <div class="settings-card">
+                            <div class="form-row">
+                                <div class="form-label-group">
+                                    <label class="form-label" for="imageApiEndpoint">API Endpoint</label>
+                                    <span class="form-label-desc">默认通过内置生图代理转发</span>
+                                </div>
+                                <div class="form-input-wrap">
+                                    <input id="imageApiEndpoint" type="text" placeholder="/api/image/image_generation">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label-group">
+                                    <label class="form-label" for="imageApiKey">API Key</label>
+                                    <span class="form-label-desc">当前由服务端托管，前台仅保留兼容字段</span>
+                                </div>
+                                <div class="form-input-wrap">
+                                    <input id="imageApiKey" type="password" placeholder="Server managed">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label-group">
+                                    <label class="form-label" for="imageModelName">模型名称</label>
+                                    <span class="form-label-desc">用于主题主图生成的默认模型</span>
+                                </div>
+                                <div class="form-input-wrap">
+                                    <input id="imageModelName" type="text" placeholder="image-01">
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="settings-section">
+                        <div class="section-heading">
+                            <span class="section-accent"></span>
+                            <h3>导出与常规设置</h3>
+                        </div>
+                        <div class="settings-card">
+                            <div class="form-row">
+                                <div class="form-label-group">
+                                    <label class="form-label" for="exportRoot">导出根目录</label>
+                                    <span class="form-label-desc">用于主题包导出和桥接选择的默认位置</span>
+                                </div>
+                                <div class="form-input-wrap">
+                                    <div class="export-root-picker">
+                                        <input id="exportRoot" type="text" placeholder="/Users/you/Desktop/exports">
+                                        <button id="chooseExportRootBtn" type="button" class="export-root-picker-btn">选择目录</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label-group">
                                     <label class="form-label" for="uiThemeMode">界面模式</label>
-                                    <span class="form-label-desc">选择您偏好的视觉主题</span>
+                                    <span class="form-label-desc">当前与后台保持一致，仅提供 Light 模式</span>
                                 </div>
                                 <div class="form-input-wrap">
                                     <select id="uiThemeMode" disabled>
@@ -371,6 +440,7 @@
                             </div>
                         </div>
                     </section>
+
                 </div>
 
                 <!-- Footer -->

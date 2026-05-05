@@ -2,6 +2,7 @@ import type { ChatRequest, ChatResponse, AISettings } from '../types';
 import { redirectToLogin } from '../auth';
 import { fetchCredits, updateCreditsDisplay, formatNextReset } from '../credits';
 import { getCurrentProjectId } from '../project-manager';
+import { apiFetch } from '../api-base';
 
 export const SETTINGS_KEY = 'themeStudioSettings';
 // Backend API endpoints
@@ -137,11 +138,10 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
     let response: Response | null = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      response = await fetch('/api/theme/image', {
+      response = await apiFetch('/api/theme/image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          credentials: 'same-origin',
         },
         body: JSON.stringify({
           model: imageSettings.model,
@@ -253,11 +253,10 @@ export async function chatCompletion(
     let response: Response | null = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      response = await fetch('/api/theme/chat', {
+      response = await apiFetch('/api/theme/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          credentials: 'same-origin',
         },
         body: JSON.stringify({
           model: settings.model || 'MiniMax-M2.7',

@@ -1,3 +1,5 @@
+import { apiFetch } from './api-base';
+
 const USER_KEY = 'theme-studio-user';
 
 const EKP_LOGIN_URL = '/sys/authentication/sso/login_auto.jsp';
@@ -24,7 +26,7 @@ function setUser(user: AuthUser): void {
 
 export async function checkAuth(): Promise<boolean> {
   try {
-    const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+    const res = await apiFetch('/api/auth/me');
     if (!res.ok) return false;
     const user = await res.json() as AuthUser;
     setUser(user);

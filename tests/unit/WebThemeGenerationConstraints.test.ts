@@ -102,4 +102,27 @@ describe('web theme generation constraints', () => {
       result.derivedColors['primary-color'],
     )).toBeGreaterThanOrEqual(4.5);
   });
+
+  test('locks dragon boat festival to the configured safe dark green when user did not explicitly ask for another color', () => {
+    const result = pickBestThemeCandidate(
+      ['#B9382A', '#D2B260', '#5A8E54'],
+      'light-ui',
+      'green',
+      '需要一套国风端午节主题包',
+    );
+
+    expect(result.primaryColor.toUpperCase()).toBe('#2F6B45');
+    expect(result.enforcementReason).toContain('节日安全主色');
+  });
+
+  test('does not override explicit user red preference even on dragon boat festival semantics', () => {
+    const result = pickBestThemeCandidate(
+      ['#B9382A', '#D2B260', '#5A8E54'],
+      'light-ui',
+      'red',
+      '端午节主题，但我就是想要红色',
+    );
+
+    expect(result.primaryColor.toUpperCase()).not.toBe('#2F6B45');
+  });
 });
