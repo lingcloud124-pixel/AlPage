@@ -1,3 +1,5 @@
+import { apiFetch, resolveApiUrl } from '../api-base';
+
 import type {
   ConversationListItem,
   ConversationDetail,
@@ -5,25 +7,24 @@ import type {
   ConversationUpdatePayload,
 } from '../types';
 
-const BASE = '/api/theme/conversations';
+const BASE = resolveApiUrl('/api/theme/conversations');
 
 export async function listConversations(): Promise<ConversationListItem[]> {
-  const res = await fetch(BASE, { credentials: 'same-origin' });
+  const res = await apiFetch(BASE);
   if (!res.ok) return [];
   return res.json();
 }
 
 export async function getConversation(id: string): Promise<ConversationDetail | null> {
-  const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, { credentials: 'same-origin' });
+  const res = await apiFetch(`${BASE}/${encodeURIComponent(id)}`);
   if (!res.ok) return null;
   return res.json();
 }
 
 export async function createConversation(payload: ConversationCreatePayload): Promise<ConversationDetail | null> {
-  const res = await fetch(BASE, {
+  const res = await apiFetch(BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
     body: JSON.stringify(payload),
   });
   if (!res.ok) return null;
@@ -31,27 +32,24 @@ export async function createConversation(payload: ConversationCreatePayload): Pr
 }
 
 export async function updateConversation(id: string, payload: ConversationUpdatePayload): Promise<boolean> {
-  const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, {
+  const res = await apiFetch(`${BASE}/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
     body: JSON.stringify(payload),
   });
   return res.ok;
 }
 
 export async function toggleStar(id: string): Promise<boolean> {
-  const res = await fetch(`${BASE}/${encodeURIComponent(id)}/star`, {
+  const res = await apiFetch(`${BASE}/${encodeURIComponent(id)}/star`, {
     method: 'PUT',
-    credentials: 'same-origin',
   });
   return res.ok;
 }
 
 export async function deleteConversation(id: string): Promise<boolean> {
-  const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, {
+  const res = await apiFetch(`${BASE}/${encodeURIComponent(id)}`, {
     method: 'DELETE',
-    credentials: 'same-origin',
   });
   return res.ok;
 }

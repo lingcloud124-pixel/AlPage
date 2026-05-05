@@ -135,7 +135,7 @@ export async function initDb(): Promise<void> {
   db.run(`
     CREATE TABLE IF NOT EXISTS security_config (
       id INTEGER PRIMARY KEY CHECK (id = 1),
-      cors_origins TEXT NOT NULL DEFAULT '["http://localhost:5173"]',
+      cors_origins TEXT NOT NULL DEFAULT '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:4173","http://127.0.0.1:4173"]',
       proxy_image_hosts TEXT NOT NULL DEFAULT '[]',
       rate_limits TEXT NOT NULL DEFAULT '{}',
       enabled_features TEXT NOT NULL DEFAULT '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}',
@@ -144,6 +144,7 @@ export async function initDb(): Promise<void> {
       credits_per_conversation INTEGER NOT NULL DEFAULT 25,
       credits_per_image INTEGER NOT NULL DEFAULT 50,
       daily_credits_limit INTEGER NOT NULL DEFAULT 100,
+      credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 100 免费积分\n2、每成功生成 1 次图片，扣除 10 积分\n3、每日积分将在 当日 24:00 自动清零并重新发放\n4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」',
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `);
@@ -160,13 +161,19 @@ export async function initDb(): Promise<void> {
     if (!colNames.includes('credits_per_image')) {
       db.run('ALTER TABLE security_config ADD COLUMN credits_per_image INTEGER NOT NULL DEFAULT 50');
     }
+    if (!colNames.includes('credits_tooltip_content')) {
+      db.run(`ALTER TABLE security_config ADD COLUMN credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 100 免费积分
+2、每成功生成 1 次图片，扣除 10 积分
+3、每日积分将在 当日 24:00 自动清零并重新发放
+4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」'`);
+    }
   } catch {
     // Column may already exist, ignore
   }
 
   db.run(`
-    INSERT OR IGNORE INTO security_config (id, cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, credits_per_image, daily_credits_limit)
-    VALUES (1, '["http://localhost:5173"]', '[]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 50, 100)
+    INSERT OR IGNORE INTO security_config (id, cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, credits_per_image, daily_credits_limit, credits_tooltip_content)
+    VALUES (1, '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:4173","http://127.0.0.1:4173"]', '[]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 50, 100, '1、每位用户每日可获得 100 免费积分\n2、每成功生成 1 次图片，扣除 10 积分\n3、每日积分将在 当日 24:00 自动清零并重新发放\n4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」')
   `);
 
   // Create user_credits table
@@ -356,7 +363,8 @@ daily_image_gen_limit?: number,
 daily_chat_adjust_limit?: number,
 credits_per_conversation?: number,
 credits_per_image?: number,
-daily_credits_limit?: number
+daily_credits_limit?: number,
+credits_tooltip_content?: string
 ): Promise<void> {
   const current = getSecurityConfig();
   
@@ -370,6 +378,7 @@ daily_credits_limit?: number
 if (credits_per_conversation !== undefined) updateFields.credits_per_conversation = credits_per_conversation;
 if (credits_per_image !== undefined) updateFields.credits_per_image = credits_per_image;
 if (daily_credits_limit !== undefined) updateFields.daily_credits_limit = daily_credits_limit;
+if (credits_tooltip_content !== undefined) updateFields.credits_tooltip_content = credits_tooltip_content;
   
   if (Object.keys(updateFields).length === 0) {
     return;

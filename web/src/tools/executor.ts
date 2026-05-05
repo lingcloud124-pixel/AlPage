@@ -14,6 +14,8 @@ import {
   resolvePreferredHueHint,
   type DerivedColors,
 } from '../theme/color-utils';
+import { resolveEnterprisePrimaryFromText, snapToEnterpriseGreen } from '../theme/enterprise-primary-mapper';
+import { resolveFestivalColorRule } from '../theme/festival-color-rules';
 import { buildThemeImageAssignments } from '../templates/theme-images';
 import { updateProjectVisualContext, loadProjectVisualContext } from './project-visual-context-store';
 import { loadCustomerVisualProfile } from './customer-visual-profile-store';
@@ -40,6 +42,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
       setTimeout(() => reject(new Error(`工具 "${label}" 执行超时（${ms}ms）`)), ms)
     ),
   ]);
+}
+
+function normalizeThemeToolError(message: string): string {
+  if (
+    /输入图片审核未通过/u.test(message)
+    || /暂不支持.*图片/u.test(message)
+    || /不支持.*图片/u.test(message)
+  ) {
+    return '当前仅支持文字生图，暂不支持基于上传图片继续生成';
+  }
+  return message;
 }
 
 function getThemeTarget(): HTMLElement {
@@ -89,12 +102,15 @@ export function quantizedBucketToHex(r: number, g: number, b: number): string {
 function buildCandidateOutcome(
   primaryHex: string,
   templateType: 'light-ui' | 'dark-ui',
+  options?: { preservePrimary?: boolean },
 ): {
   primaryHex: string;
   derivedColors: DerivedColors;
   report: ReturnType<typeof buildThemeGenerationReport>;
 } {
-  const normalizedPrimary = normalizePrimaryForTemplate(primaryHex, templateType);
+  const normalizedPrimary = options?.preservePrimary
+    ? primaryHex
+    : normalizePrimaryForTemplate(primaryHex, templateType);
   const contrastResolved = templateType === 'light-ui'
     ? resolvePrimaryContrast(normalizedPrimary)
     : { primary: normalizedPrimary, text: '#333333', adjusted: false };
@@ -106,6 +122,12 @@ function buildCandidateOutcome(
   return { primaryHex: contrastResolved.primary, derivedColors, report };
 }
 
+function resolveLockedPrimaryHex(primaryHint: string | undefined): string | null {
+  if (!primaryHint) return null;
+  const normalized = primaryHint.trim().toUpperCase();
+  return /^#[0-9A-F]{6}$/.test(normalized) ? normalized : null;
+}
+
 function buildPromptWithPreferredHue(
   bgPrompt: string,
   preferredHueHint: string,
@@ -113,6 +135,10 @@ function buildPromptWithPreferredHue(
 ): string {
   const hint = resolvePreferredHueHint(preferredHueHint, templateType);
   if (!hint) return bgPrompt;
+
+  if (/^#[0-9A-F]{6}$/.test(hint.label)) {
+    return `${bgPrompt.trim().replace(/\s+$/, '')} Use ${hint.label} as the exact dominant brand color. This hex must define the final primary visual color and all supporting accents should align to it.`.trim();
+  }
 
   const hueDirectiveMap: Record<string, string> = {
     red: 'Use a dominant festive red palette. Red must be the unmistakable primary visual color, with other accents only supporting it.',
@@ -147,6 +173,7 @@ export function pickBestThemeCandidate(
   dominantColors: string[],
   templateType: 'light-ui' | 'dark-ui',
   preferredHueHint?: string,
+  semanticSourceText?: string,
 ): {
   primaryColor: string;
   derivedColors: DerivedColors;
@@ -155,7 +182,95 @@ export function pickBestThemeCandidate(
   enforcedPreferredHue: boolean;
   enforcementReason?: string;
 } {
-  const ranked = rankPrimaryCandidates(dominantColors, templateType, preferredHueHint);
+  const explicitHex = typeof semanticSourceText === 'string'
+    ? semanticSourceText.match(/#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/)?.[0]
+    : undefined;
+  if (explicitHex) {
+    const normalizedHex = explicitHex.length === 4
+      ? `#${explicitHex.slice(1).split('').map((char) => char + char).join('')}`.toUpperCase()
+      : explicitHex.toUpperCase();
+    const { primaryHex, derivedColors, report } = buildCandidateOutcome(
+      normalizedHex,
+      templateType,
+      { preservePrimary: true },
+    );
+    return {
+      primaryColor: primaryHex,
+      derivedColors,
+      report,
+      triedCandidates: dominantColors.map((hex) => ({ hex, score: 0, passed: false })),
+      enforcedPreferredHue: false,
+      enforcementReason: `用户明确指定主题色 ${normalizedHex}，已优先使用该颜色。`,
+    };
+  }
+
+  const lockedPrimaryHex = resolveLockedPrimaryHex(preferredHueHint);
+  if (lockedPrimaryHex) {
+    const { primaryHex, derivedColors, report } = buildCandidateOutcome(
+      lockedPrimaryHex,
+      templateType,
+      { preservePrimary: true },
+    );
+    return {
+      primaryColor: primaryHex,
+      derivedColors,
+      report,
+      triedCandidates: dominantColors.map((hex) => ({ hex, score: 0, passed: false })),
+      enforcedPreferredHue: true,
+      enforcementReason: `快捷入口已锁定主题色 ${lockedPrimaryHex}，跳过图片提色候选选择。`,
+    };
+  }
+
+  const festivalRule = resolveFestivalColorRule(semanticSourceText ?? '');
+  const explicitHueHint = resolvePreferredHueHint(semanticSourceText ?? '', templateType)?.label;
+  if (
+    festivalRule
+    && (!explicitHueHint || explicitHueHint === festivalRule.primaryHint)
+  ) {
+    const { primaryHex, derivedColors, report } = buildCandidateOutcome(
+      festivalRule.primaryHex,
+      templateType,
+      { preservePrimary: true },
+    );
+    return {
+      primaryColor: primaryHex,
+      derivedColors,
+      report,
+      triedCandidates: dominantColors.map((hex) => ({ hex, score: 0, passed: false })),
+      enforcedPreferredHue: false,
+      enforcementReason: `命中节日安全主色：${festivalRule.id} → ${festivalRule.primaryHex}`,
+    };
+  }
+
+  const semanticMatch = resolveEnterprisePrimaryFromText(semanticSourceText ?? '');
+  if (semanticMatch?.confidence === 'high') {
+    const { primaryHex, derivedColors, report } = buildCandidateOutcome(
+      semanticMatch.presetHex,
+      templateType,
+      { preservePrimary: true },
+    );
+    return {
+      primaryColor: primaryHex,
+      derivedColors,
+      report,
+      triedCandidates: dominantColors.map((hex) => ({ hex, score: 0, passed: false })),
+      enforcedPreferredHue: false,
+      enforcementReason: semanticMatch.reason,
+    };
+  }
+
+  const ranked = rankPrimaryCandidates(
+    dominantColors,
+    templateType,
+    preferredHueHint,
+    semanticMatch?.confidence === 'medium'
+      ? {
+          hex: semanticMatch.presetHex,
+          family: semanticMatch.family,
+          confidence: 'medium',
+        }
+      : undefined,
+  );
   const hint = resolvePreferredHueHint(preferredHueHint, templateType);
   let candidatePool = ranked;
   const fallbackHex = hint?.fallbackHex
@@ -192,6 +307,27 @@ export function pickBestThemeCandidate(
       };
     }
     candidatePool = hueMatched;
+  }
+
+  const snappedBest = snapToEnterpriseGreen(candidatePool[0].hex);
+  if (snappedBest) {
+    const { derivedColors, report } = buildCandidateOutcome(
+      snappedBest.snappedHex,
+      templateType,
+      { preservePrimary: true },
+    );
+    return {
+      primaryColor: snappedBest.snappedHex,
+      derivedColors,
+      report,
+      triedCandidates: candidatePool.map((candidate) => ({
+        hex: candidate.hex,
+        score: candidate.score,
+        passed: buildCandidateOutcome(candidate.hex, templateType).report.passed,
+      })),
+      enforcedPreferredHue: false,
+      enforcementReason: snappedBest.reason,
+    };
   }
 
   let best = candidatePool[0];
@@ -677,7 +813,32 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         const imageUrl = (args.imageUrl ?? args.selectedImageUrl ?? args.url ?? '') as string;
         const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
         const preferredHueHint = (args.primaryHint ?? args.preferredHue ?? args.colorDirection ?? '') as string;
+        const lockedPrimaryHex = resolveLockedPrimaryHex(preferredHueHint);
         if (!imageUrl) return { success: false, error: 'apply_selected_theme 需要 imageUrl 参数' };
+
+        if (lockedPrimaryHex) {
+          const colors = deriveColorsFromPrimary(lockedPrimaryHex, templateType);
+          const report = buildThemeGenerationReport(lockedPrimaryHex, colors, templateType);
+          const contrast = validateColorScheme({ ...colors });
+          updateColors({ ...colors });
+          applyThemeImages('login', imageUrl);
+          applyThemeImages('desktop', imageUrl);
+          return {
+            success: true,
+            data: {
+              primaryColor: lockedPrimaryHex,
+              imageUrl,
+              applied: true,
+              preferredHueHint,
+              enforcedPreferredHue: true,
+              enforcementReason: `快捷入口已锁定主题色 ${lockedPrimaryHex}，跳过图片分析。`,
+              dominantColors: [],
+              generationReport: report,
+              triedCandidates: [],
+              contrastValidation: contrast,
+            },
+          };
+        }
 
         const analyzeResult = await analyzeImageAsync(imageUrl);
         const dominantColors = (analyzeResult.data as Record<string, unknown>)?.dominantColors as string[] | undefined;
@@ -706,7 +867,12 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           };
         }
 
-        const selected = pickBestThemeCandidate(dominantColors, templateType, preferredHueHint);
+        const selected = pickBestThemeCandidate(
+          dominantColors,
+          templateType,
+          preferredHueHint,
+          String(args.semanticSourceText ?? args.prompt ?? ''),
+        );
         const contrast = validateColorScheme({ ...selected.derivedColors });
         updateColors({ ...selected.derivedColors });
         applyThemeImages('login', imageUrl);
@@ -738,6 +904,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           rawBgPrompt,
           templateType,
         );
+        const lockedPrimaryHex = resolveLockedPrimaryHex(preferredHueHint);
         let finalPrompt = rawBgPrompt;
 
         if (preferredHueHint) {
@@ -750,10 +917,44 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
 
         const imgResult = await generateImage(finalPrompt);
         if (!imgResult.success || !imgResult.url) {
-          return { success: false, error: imgResult.error ?? '背景图生成失败', fallback: 'direct-color-gen' } as ToolResult;
+          return {
+            success: false,
+            error: normalizeThemeToolError(imgResult.error ?? '背景图生成失败'),
+            fallback: 'direct-color-gen',
+          } as ToolResult;
         }
 
         onProgress?.({ type: 'image_generated', data: { imageUrl: imgResult.url } });
+
+        if (lockedPrimaryHex) {
+          const colors = deriveColorsFromPrimary(lockedPrimaryHex, templateType);
+          const report = buildThemeGenerationReport(lockedPrimaryHex, colors, templateType);
+          const contrast = validateColorScheme({ ...colors });
+          updateColors({ ...colors });
+          applyThemeImages('login', imgResult.url);
+          applyThemeImages('desktop', imgResult.url);
+          const projectId = (globalThis as any).__themeStudioCurrentProjectId as string | undefined;
+          if (projectId) {
+            try { updateProjectVisualContext(projectId, { latestAcceptedScenePlan: undefined }); } catch {}
+          }
+          return {
+            success: true,
+            data: {
+              primaryColor: lockedPrimaryHex,
+              imageUrl: imgResult.url,
+              applied: true,
+              originalPrompt: rawBgPrompt,
+              themeAgentDebug: { toolCallPrompt: rawBgPrompt, feedbackRegenerated, finalPrompt, preferredHueHint },
+              preferredHueHint,
+              enforcedPreferredHue: true,
+              enforcementReason: `快捷入口已锁定主题色 ${lockedPrimaryHex}，跳过图片提色分析。`,
+              dominantColors: [],
+              generationReport: report,
+              triedCandidates: [],
+              contrastValidation: contrast,
+            },
+          };
+        }
 
         const analyzeResult = await analyzeImageAsync(imgResult.url);
         const dominantColors = (analyzeResult.data as Record<string, unknown>)?.dominantColors as string[] | undefined;
@@ -789,7 +990,12 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           };
         }
 
-        const selected = pickBestThemeCandidate(dominantColors, templateType, preferredHueHint);
+        const selected = pickBestThemeCandidate(
+          dominantColors,
+          templateType,
+          preferredHueHint,
+          rawBgPrompt,
+        );
         const contrast = validateColorScheme({ ...selected.derivedColors });
         updateColors({ ...selected.derivedColors });
         applyThemeImages('login', imgResult.url);

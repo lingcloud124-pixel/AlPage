@@ -1,18 +1,85 @@
 
+import { apiFetch } from './api-base';
+
 export interface CreditsInfo {
   credits: number;
   maxCredits: number;
   nextResetAt: string;
   costPerImage?: number;
   quotaEnabled?: boolean;
+  creditsTooltipContent?: string;
 }
 
 let cachedCredits: CreditsInfo | null = null;
 
+const DEFAULT_CREDITS_TOOLTIP_LINES = [
+  '1、每位用户每日可获得 100 免费积分',
+  '2、每成功生成 1 次图片，扣除 10 积分',
+  '3、每日积分将在 当日 24:00 自动清零并重新发放',
+  '4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」',
+];
+
+export function setupCreditsTooltip(): void {
+  const chip = document.getElementById('landingCreditsChip') as HTMLButtonElement | null;
+  const tooltip = document.getElementById('landingCreditsTooltip') as HTMLElement | null;
+  if (!chip || !tooltip) return;
+
+  const show = () => {
+    tooltip.classList.add('is-visible');
+    tooltip.setAttribute('aria-hidden', 'false');
+  };
+
+  const hide = () => {
+    tooltip.classList.remove('is-visible');
+    tooltip.setAttribute('aria-hidden', 'true');
+  };
+
+  chip.addEventListener('mouseenter', show);
+  chip.addEventListener('mouseleave', () => {
+    if (!tooltip.matches(':hover')) hide();
+  });
+  tooltip.addEventListener('mouseenter', show);
+  tooltip.addEventListener('mouseleave', hide);
+
+  chip.addEventListener('click', (event) => {
+    event.preventDefault();
+    if (tooltip.classList.contains('is-visible')) {
+      hide();
+    } else {
+      show();
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const target = event.target as Node | null;
+    if (!target) return;
+    if (chip.contains(target) || tooltip.contains(target)) return;
+    hide();
+  });
+}
+
+function updateCreditsTooltipContent(content?: string): void {
+  const list = document.getElementById('landingCreditsTooltipList');
+  if (!list) return;
+
+  const lines = (content || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const finalLines = lines.length > 0 ? lines : DEFAULT_CREDITS_TOOLTIP_LINES;
+  list.innerHTML = '';
+  finalLines.forEach((line) => {
+    const item = document.createElement('li');
+    item.textContent = line;
+    list.appendChild(item);
+  });
+}
+
 export async function fetchCredits(): Promise<CreditsInfo> {
-  const res = await fetch('/api/theme/credits', { credentials: 'same-origin' });
+  const res = await apiFetch('/api/theme/credits');
   if (!res.ok) {
-    return { credits: 0, maxCredits: 100, nextResetAt: '', quotaEnabled: false };
+    return { credits: 0, maxCredits: 100, nextResetAt: '', quotaEnabled: false, creditsTooltipContent: DEFAULT_CREDITS_TOOLTIP_LINES.join('\n') };
   }
   cachedCredits = await res.json();
   updateCostHints(cachedCredits!.costPerImage, cachedCredits!.quotaEnabled !== false);
@@ -24,7 +91,7 @@ export function getCachedCredits(): CreditsInfo | null {
 }
 
 export function updateCreditsDisplay(info?: CreditsInfo): void {
-  if (!info) info = cachedCredits || { credits: 0, maxCredits: 100, nextResetAt: '', quotaEnabled: false };
+  if (!info) info = cachedCredits || { credits: 0, maxCredits: 100, nextResetAt: '', quotaEnabled: false, creditsTooltipContent: DEFAULT_CREDITS_TOOLTIP_LINES.join('\n') };
   cachedCredits = info;
   const quotaEnabled = info.quotaEnabled !== false;
 
@@ -41,6 +108,8 @@ export function updateCreditsDisplay(info?: CreditsInfo): void {
   if (landingCreditsChip) {
     landingCreditsChip.style.display = quotaEnabled ? '' : 'none';
   }
+
+  updateCreditsTooltipContent(info.creditsTooltipContent);
 
   updateCostHints(info.costPerImage, quotaEnabled);
 

@@ -1,4 +1,5 @@
 import type { ExportJobRequest } from './export-job';
+import { resolveApiUrl } from '../api-base';
 
 export interface ThemeStudioExportBridge {
   enqueueExportJob?: (payload: ExportJobRequest) => Promise<{ accepted?: boolean; jobId?: string } | void> | { accepted?: boolean; jobId?: string } | void;
@@ -33,22 +34,16 @@ function getFetchBridge(source: unknown): ThemeStudioExportBridge | null {
 
   return {
     async enqueueExportJob(payload: ExportJobRequest) {
-      const projectId = payload.batch.projectSnapshot.projectId;
-      if (!projectId || typeof projectId !== 'string' || projectId.trim() === '') {
-        throw new Error('projectId is required and must be a non-empty string');
-      }
-
-      const trimmedProjectId = projectId.trim();
-
-      const response = await fetchImpl('/api/theme/export-jobs', {
+      const apiPayload = {
+        projectId: payload.batch.projectSnapshot.projectId,
+        selectedProducts: payload.batch.selectedProducts,
+        projectSnapshot: payload.batch.projectSnapshot,
+      };
+      const response = await fetchImpl(resolveApiUrl('/api/theme/export-jobs'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          projectId: trimmedProjectId,
-          projectSnapshot: payload.batch.projectSnapshot,
-          selectedProducts: payload.batch.selectedProducts,
-        }),
+        credentials: 'include',
+        body: JSON.stringify(apiPayload),
       });
 
       if (!response.ok) {
@@ -67,10 +62,10 @@ function getFetchBridge(source: unknown): ThemeStudioExportBridge | null {
       return await response.json() as { accepted?: boolean; jobId?: string };
     },
     async pickDirectory() {
-      const response = await fetchImpl('/api/theme/pick-directory', {
+      const response = await fetchImpl(resolveApiUrl('/api/theme/pick-directory'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
+        credentials: 'include',
       });
 
       if (!response.ok) {

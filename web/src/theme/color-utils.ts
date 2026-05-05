@@ -280,6 +280,14 @@ export interface PreferredHueHint {
   boost: number;
 }
 
+interface ThemeColorRiskPenalty {
+  pinkPenalty: number;
+  macaronPenalty: number;
+  fluorescentPenalty: number;
+  creamPenalty: number;
+  lowContrastPenalty: number;
+}
+
 export interface ThemeGenerationCheck {
   label: string;
   passed: boolean;
@@ -310,9 +318,38 @@ function getHueDistance(a: number, b: number): number {
   return Math.min(delta, 360 - delta);
 }
 
+function calculateThemeRiskPenalty(h: number, s: number, l: number): ThemeColorRiskPenalty {
+  const pinkPenalty = ((h >= 300 && h <= 360) || (h >= 0 && h <= 10)) && s > 35 && l > 55 ? 40 : 0;
+  const macaronPenalty = l > 72 && s < 45 ? 18 : 0;
+  const fluorescentPenalty = s > 78 && l > 58 ? 24 : 0;
+  const creamPenalty = h >= 35 && h <= 55 && s < 28 && l > 84 ? 22 : 0;
+  const lowContrastPenalty = l > 74 ? 12 : 0;
+  return {
+    pinkPenalty,
+    macaronPenalty,
+    fluorescentPenalty,
+    creamPenalty,
+    lowContrastPenalty,
+  };
+}
+
+function totalThemeRiskPenalty(penalty: ThemeColorRiskPenalty): number {
+  return penalty.pinkPenalty
+    + penalty.macaronPenalty
+    + penalty.fluorescentPenalty
+    + penalty.creamPenalty
+    + penalty.lowContrastPenalty;
+}
+
 export function isDisallowedThemeColor(hex: string): boolean {
-  const { s, l } = hexToHsl(hex);
-  return s < 20 || l > 80 || l < 25;
+  const { h, s, l } = hexToHsl(hex);
+  const penalty = calculateThemeRiskPenalty(h, s, l);
+  return s < 20
+    || l > 80
+    || l < 25
+    || penalty.pinkPenalty >= 40
+    || penalty.fluorescentPenalty >= 24
+    || penalty.creamPenalty >= 22;
 }
 
 export function pickFallbackPaletteColorByHue(targetHue?: number): string {
@@ -502,6 +539,7 @@ export function rankPrimaryCandidates(
   dominantColors: string[],
   templateType: 'light-ui' | 'dark-ui',
   preferredHueHint?: string,
+  semanticBoostHint?: { hex: string; family: string; confidence: 'medium' | 'low' },
 ): PaletteCandidate[] {
   const seen = new Set<string>();
   const candidates: PaletteCandidate[] = [];
@@ -513,6 +551,7 @@ export function rankPrimaryCandidates(
     if (isDisallowedThemeColor(hex)) continue;
 
     const { h, s, l } = hexToHsl(hex);
+    const penalty = calculateThemeRiskPenalty(h, s, l);
     let score = s;
     let reason = '饱和度优先';
 
@@ -544,6 +583,20 @@ export function rankPrimaryCandidates(
         reason += `；偏离已确认主色方向(${hint.label})`;
       }
     }
+
+    if (semanticBoostHint?.confidence === 'medium') {
+      const semanticHue = hexToHsl(semanticBoostHint.hex).h;
+      const semanticDistance = getHueDistance(h, semanticHue);
+      if (semanticDistance <= 20) {
+        score += 18;
+        reason += '；匹配中置信企业语义主色方向';
+      } else if (semanticDistance <= 35) {
+        score += 8;
+        reason += '；接近中置信企业语义主色方向';
+      }
+    }
+
+    score -= totalThemeRiskPenalty(penalty);
 
     candidates.push({ hex, h, s, l, score, reason });
   }

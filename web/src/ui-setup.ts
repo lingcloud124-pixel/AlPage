@@ -7,6 +7,9 @@ import {
   DEFAULT_IMAGE_ENDPOINT,
   describeChatEndpointUsage,
 } from './agent/chat-client';
+import {
+  getDefaultLandingPromptEntries,
+} from './landing-prompts';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, loadDefaultTemplates } from './theme-engine';
 import { setupChatInterface } from './chat-manager';
 import { showNotification, setupMainActions } from './package-manager';
@@ -16,6 +19,7 @@ import { normalizeExportRoot } from './export/export-paths';
 import { pickDirectoryViaBridge } from './export/export-bridge';
 import { getEffectiveExportRoot } from './agent/chat-client';
 import { showWorkspaceLandingState } from './main';
+import { toggleSidebar } from './components/sidebar';
 
 let previewTemplatesLoaded = false;
 
@@ -42,13 +46,11 @@ export function syncWorkbenchLayoutForActiveTab(hasPreview: boolean, activeTabId
     setChatPanelWidth(null);
     return;
   }
-
-  if (activeTabId === 'mainPageTab') {
-    setChatPanelWidth(372);
-    return;
+  const chatPanel = document.getElementById('chatPanel') as HTMLElement | null;
+  if (!chatPanel) return;
+  if (!chatPanel.style.width) {
+    setChatPanelWidth(378);
   }
-
-  setChatPanelWidth(null);
 }
 
 export function expandPreview() {
@@ -57,6 +59,8 @@ export function expandPreview() {
   if (!previewPanel) return;
   previewPanel.classList.add('expanded');
   appContainer?.classList.add('preview-open');
+  toggleSidebar(false);
+  syncWorkbenchLayoutForActiveTab(true, 'loginTab');
 
   if (!previewTemplatesLoaded) {
     loadDefaultTemplates();
@@ -166,6 +170,31 @@ export function setupTabSwitching() {
     if (activeTabInfo.btn) moveIndicator(activeTabInfo.btn);
   }
 
+  function syncPageVisibility(activePage: HTMLElement) {
+    TAB_MAP.forEach(({ pageId }) => {
+      const candidate = document.getElementById(pageId) as HTMLElement | null;
+      if (!candidate) return;
+      const isActive = candidate === activePage;
+      candidate.classList.toggle('active-preview', isActive);
+      candidate.style.display = isActive ? 'block' : 'none';
+      candidate.style.pointerEvents = isActive ? 'auto' : 'none';
+      candidate.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    });
+  }
+
+  async function activateTab(btn: HTMLButtonElement, page: HTMLElement, templateId: string) {
+    if (!page.firstElementChild) {
+      await renderTemplate(templateId, page);
+    }
+    activeTabInfo.btn?.classList.remove('active-tab');
+    btn.classList.add('active-tab');
+    syncPageVisibility(page);
+    activeTabInfo = { btn, page, templateId };
+    moveIndicator(btn);
+    syncWorkbenchLayoutForActiveTab(true, btn.id as 'loginTab' | 'mainPageTab');
+    requestAnimationFrame(() => (window as any).resizePreview?.());
+  }
+
   TAB_MAP.forEach(tabInfo => {
     const { btnId, pageId, templateId } = tabInfo;
     const btn = document.getElementById(btnId) as HTMLButtonElement;
@@ -174,7 +203,7 @@ export function setupTabSwitching() {
 
     if (btnId === 'loginTab') {
       btn.classList.add('active-tab');
-      page.classList.add('active-preview');
+      syncPageVisibility(page);
       activeTabInfo = { btn, page, templateId };
       requestAnimationFrame(() => {
         moveIndicator(btn);
@@ -183,15 +212,12 @@ export function setupTabSwitching() {
     }
 
     btn.addEventListener('click', async () => {
-      if (activeTabInfo.btn === btn) return;
-      activeTabInfo.btn?.classList.remove('active-tab');
-      activeTabInfo.page?.classList.remove('active-preview');
-      btn.classList.add('active-tab');
-      page.classList.add('active-preview');
-      activeTabInfo = { btn, page, templateId };
-      moveIndicator(btn);
-      if (!page.firstElementChild) await renderTemplate(templateId, page);
-      requestAnimationFrame(() => (window as any).resizePreview?.());
+      if (activeTabInfo.btn === btn) {
+        syncWorkbenchLayoutForActiveTab(true, btn.id as 'loginTab' | 'mainPageTab');
+        requestAnimationFrame(() => (window as any).resizePreview?.());
+        return;
+      }
+      await activateTab(btn, page, templateId);
     });
   });
 
@@ -259,7 +285,6 @@ export function setupSettingsDialog() {
   const closeModalBtn = settingsModal.querySelector('.modal-close-btn') as HTMLElement;
   const saveBtn = document.getElementById('saveSettings') as HTMLButtonElement;
   const cancelBtn = document.getElementById('cancelSettings') as HTMLButtonElement;
-
   if (!settingsBtn || !settingsModal || !closeModalBtn || !saveBtn || !cancelBtn) {
     console.error('Settings modal elements not found');
     return;
@@ -299,7 +324,6 @@ export function setupSettingsDialog() {
     }
     if (uiThemeSelect) uiThemeSelect.value = 'light';
     updateChatEndpointHelp(apiEndpointInput?.value || DEFAULT_CHAT_ENDPOINT);
-    
     // Hide API key rows — server holds the keys now
     const apiKeyRow = apiKeyInput?.closest('.form-row') as HTMLElement;
     if (apiKeyRow) apiKeyRow.style.display = 'none';

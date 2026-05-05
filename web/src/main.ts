@@ -21,8 +21,9 @@ import {
 } from './ui-setup';
 import { loadDefaultTemplates } from './theme-engine';
 import { checkAuth, getUser, redirectToLogin } from './auth';
-import { fetchCredits, updateCreditsDisplay } from './credits';
+import { fetchCredits, setupCreditsTooltip, updateCreditsDisplay } from './credits';
 import { initSidebar } from './components/sidebar';
+import { registerPreviewResize, resizePreviewPages } from './preview/resize-preview';
 
 declare global {
   interface Window {
@@ -35,6 +36,9 @@ export function showWorkspaceLandingState(): void {
   const chatPanel = document.getElementById('chatPanel');
   if (workspaceView) workspaceView.classList.remove('view-hidden');
   setCurrentProjectId(null);
+  resetThemeTargetStyles();
+  applyTemplateSpecificThemeVars('light-ui');
+  syncColorEditorFromTheme();
   chatPanel?.classList.add('landing-mode');
   collapsePreview();
   setChatPanelWidth(null);
@@ -93,7 +97,7 @@ async function initializeFeatureModules() {
     if (project.headerBgImageUrl) {
       applyThemeImageAssignments('desktop', project.headerBgImageUrl);
     }
-    applyTemplateSpecificThemeVars(project);
+    applyTemplateSpecificThemeVars(project.templateType);
     syncColorEditorFromTheme();
     expandPreview();
     setChatPanelWidth(378);
@@ -116,11 +120,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyUiTheme('light');
     hydrateHeaderSelectOptions();
     initializeColorEditor();
+    registerPreviewResize();
     await initializeFeatureModules();
 
     const workspaceView = document.getElementById('workspaceView');
     if (workspaceView) workspaceView.classList.remove('view-hidden');
     showWorkspaceLandingState();
+    setupCreditsTooltip();
 
     const creditsInfo = await fetchCredits();
     updateCreditsDisplay(creditsInfo);
@@ -135,6 +141,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (avatarBtn && currentUser) {
       avatarBtn.title = currentUser.display_name || currentUser.name;
     }
+
+    window.setTimeout(resizePreviewPages, 200);
+    window.setTimeout(resizePreviewPages, 1000);
   } catch (error) {
     console.error('Initialization failed:', error);
     redirectToLogin();

@@ -399,7 +399,7 @@
 }
 
 .login-submit-btn:hover {
-  background-color: var(--login-accent-hover-color, var(--hover-login-btn-bg, var(--alter-color)));
+  background-color: var(--login-accent-hover-color, var(--primary-color-hover));
 }
 
 .login-submit-btn:active {

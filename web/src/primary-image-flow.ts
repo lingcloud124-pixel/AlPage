@@ -22,6 +22,7 @@ export async function applyPrimaryImageToProject(args: {
   projectId: string;
   imageDataUrl: string;
   message: string;
+  primaryHint?: string;
 }): Promise<PrimaryImageApplyResult> {
   try {
     const project = await loadProject(args.projectId);
@@ -29,13 +30,14 @@ export async function applyPrimaryImageToProject(args: {
       return { success: false, message: '当前项目不存在，无法应用主图。' };
     }
 
-    const preferredHueHint = inferHueHintFromMessage(args.message, project.templateType);
+    const preferredHueHint = args.primaryHint?.trim() || inferHueHintFromMessage(args.message, project.templateType);
     const result = await executeTool({
       tool: 'apply_selected_theme',
       args: {
         imageUrl: args.imageDataUrl,
         templateType: project.templateType,
-        preferredHueHint,
+        primaryHint: preferredHueHint,
+        semanticSourceText: args.message,
       },
     });
 

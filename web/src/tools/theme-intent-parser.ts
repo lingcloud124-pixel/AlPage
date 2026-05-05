@@ -1,3 +1,5 @@
+import { ENTERPRISE_PRIMARY_PALETTE } from '../theme/enterprise-primary-palette';
+
 export interface ThemeIntent {
   originalInput: string;
   templateType: 'light-ui' | 'dark-ui';
@@ -116,6 +118,28 @@ export function parseThemeIntent(
     boost(categoryScores, 'festival', 4);
   }
 
+  for (const preset of ENTERPRISE_PRIMARY_PALETTE) {
+    const enterpriseMatch = [
+      ...preset.semanticTags,
+      ...preset.industries,
+      ...preset.moods,
+    ].some((token) => lower.includes(token.toLowerCase()));
+    if (!enterpriseMatch) continue;
+
+    if (['blue', 'teal', 'gray'].includes(preset.family)) {
+      boost(categoryScores, 'corporate', 2);
+      boost(categoryScores, 'technology', 1);
+    } else if (preset.family === 'green') {
+      boost(categoryScores, 'corporate', 2);
+      boost(categoryScores, 'nature', 1);
+    } else if (preset.family === 'orange' || preset.family === 'red') {
+      boost(categoryScores, 'corporate', 2);
+    } else if (preset.family === 'purple') {
+      boost(categoryScores, 'corporate', 1);
+      boost(categoryScores, 'technology', 1);
+    }
+  }
+
   const colorHints: string[] = [];
   if (lower.includes('红') || lower.includes('red')) colorHints.push('red');
   if (lower.includes('金') || lower.includes('gold')) colorHints.push('gold');
@@ -124,12 +148,28 @@ export function parseThemeIntent(
   if (lower.includes('紫') || lower.includes('purple')) colorHints.push('purple');
   if (lower.includes('粉') || lower.includes('pink')) colorHints.push('pink');
 
+  for (const preset of ENTERPRISE_PRIMARY_PALETTE) {
+    const enterpriseMatch = preset.semanticTags.some((token) => lower.includes(token.toLowerCase()));
+    if (!enterpriseMatch) continue;
+    if (preset.family === 'blue' || preset.family === 'teal') colorHints.push('blue');
+    if (preset.family === 'green') colorHints.push('green');
+    if (preset.family === 'orange') colorHints.push('orange');
+    if (preset.family === 'red') colorHints.push('red');
+    if (preset.family === 'purple') colorHints.push('purple');
+  }
+
   const styleHints: string[] = [];
   if (lower.includes('科技') || lower.includes('technology')) styleHints.push('tech');
   if (lower.includes('写实') || lower.includes('photorealistic')) styleHints.push('photorealistic');
   if (lower.includes('极简') || lower.includes('minimal')) styleHints.push('minimal');
   if (lower.includes('高级') || lower.includes('premium')) styleHints.push('premium');
   if (lower.includes('企业') || lower.includes('corporate')) styleHints.push('corporate');
+
+  if (ENTERPRISE_PRIMARY_PALETTE.some((preset) =>
+    [...preset.semanticTags, ...preset.industries, ...preset.moods].some((token) => lower.includes(token.toLowerCase()))
+  )) {
+    styleHints.push('corporate');
+  }
 
   const toneHints: string[] = [];
   if (lower.includes('温暖') || lower.includes('暖') || lower.includes('warm')) toneHints.push('warm');
@@ -145,9 +185,9 @@ export function parseThemeIntent(
     templateType,
     category,
     subCategory: inferSubCategory(text, category),
-    styleHints,
-    toneHints,
-    colorHints,
+    styleHints: Array.from(new Set(styleHints)),
+    toneHints: Array.from(new Set(toneHints)),
+    colorHints: Array.from(new Set(colorHints)),
     uiUseCase: 'login',
     categoryScores,
   };

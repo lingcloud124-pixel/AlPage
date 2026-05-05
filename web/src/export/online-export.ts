@@ -1,6 +1,7 @@
 import type { ConfirmedProjectSnapshot, ServerExportJob } from '../types';
 import type { Project } from '../project-manager';
 import { buildProjectExportNameEn } from '../project-naming';
+import { apiFetch } from '../api-base';
 
 function resolveConfirmedSnapshotImageUrl(project: Project, imageUrl: string | undefined): string | undefined {
   if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '' && !imageUrl.startsWith('blob:')) {
@@ -31,9 +32,8 @@ export function buildConfirmedProjectSnapshot(project: Project, now: number = Da
 }
 
 async function themeApiFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  return fetch(`/api/theme${path}`, {
+  return apiFetch(`/api/theme${path}`, {
     ...options,
-    credentials: 'same-origin',
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
