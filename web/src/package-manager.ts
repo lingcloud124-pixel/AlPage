@@ -216,8 +216,7 @@ function renderProgressWithDownload(step: string, detail?: string, dlUrl?: strin
       downloadBtn.addEventListener('click', () => {
         triggerBlobDownload(downloadBtn.dataset.dlUrl ?? '', downloadBtn.dataset.filename ?? '');
         const el = downloadBtn as HTMLElement;
-        el.textContent = '已下载';
-        (el as HTMLButtonElement).disabled = true;
+        (el as HTMLButtonElement).style.display = 'none';
       });
     }
     const dismissBtn = document.getElementById('progressDismissBtn');
@@ -251,6 +250,7 @@ async function resolveExportRoot(): Promise<string> {
 }
 
 async function startPackagingProcess() {
+  console.log('[Packaging] startPackagingProcess called');
   const startBtn = document.getElementById('packageStartBtn') as HTMLButtonElement;
   if (startBtn) startBtn.disabled = true;
 
@@ -259,6 +259,7 @@ async function startPackagingProcess() {
     document.querySelectorAll<HTMLInputElement>('input[type="checkbox"][id$="_cb"]').forEach(cb => {
       if (cb.checked) selectedProducts.push(cb.value);
     });
+    console.log('[Packaging] selectedProducts:', selectedProducts);
 
     if (selectedProducts.length === 0) {
       showNotification('请至少选择一个产品进行打包');
@@ -267,6 +268,7 @@ async function startPackagingProcess() {
     }
 
     const project = await ensureProjectForPackaging();
+    console.log('[Packaging] project:', project ? project.id : 'null');
     if (!project) {
       showNotification('请先创建或打开一个项目，再执行打包');
       if (startBtn) startBtn.disabled = false;
@@ -279,12 +281,15 @@ async function startPackagingProcess() {
     let exportRoot: string;
     try {
       exportRoot = await resolveExportRoot();
+      console.log('[Packaging] exportRoot:', exportRoot);
     } catch (e) {
+      console.error('[Packaging] resolveExportRoot failed:', e);
       renderProgress('failed', (e as Error).message);
       return;
     }
 
     renderProgress('正在提交打包任务...');
+    console.log('[Packaging] submitting export job...');
 
     const vars = getAllCSSVariables();
     const request = buildExportJobRequest({
@@ -310,6 +315,7 @@ async function startPackagingProcess() {
     persistExportJobQueue(request);
 
     const dispatchResult = await dispatchExportJobToBridge(window, request);
+    console.log('[Packaging] dispatchResult:', JSON.stringify(dispatchResult));
     if (!dispatchResult.accepted) {
       markLatestExportBatchStatus(updatedProject.id, request.batch.id, 'bridge_unavailable');
       renderProgress(
@@ -325,6 +331,7 @@ async function startPackagingProcess() {
     const backendJobId = dispatchResult.jobId ?? request.batch.id;
     trackExportJobStatus(updatedProject.id, backendJobId, selectedProducts.length);
   } catch (e) {
+    console.error('[Packaging] unexpected error:', e);
     if (!document.getElementById('packageProgressModal')?.classList.contains('active')) {
       openProgressModal();
     }
@@ -343,62 +350,70 @@ async function trackExportJobStatus(projectId: string, batchId: string, productC
   const MAX_STATUS_POLL_ATTEMPTS = 120;
   const poll = async () => {
     attempts += 1;
-    const status = await fetchExportJobStatus(fetch, batchId).catch(() => null);
-    if (!status) {
-      if (attempts >= MAX_STATUS_POLL_ATTEMPTS) {
-        renderProgress('failed', '导出任务状态查询超时，请稍后刷新项目列表或重试打包');
+    try {
+      const status = await fetchExportJobStatus(fetch, batchId).catch(() => null);
+      if (!status) {
+        if (attempts >= MAX_STATUS_POLL_ATTEMPTS) {
+          renderProgress('failed', '导出任务状态查询超时，请稍后刷新项目列表或重试打包');
+          return;
+        }
+        window.setTimeout(poll, 2000);
         return;
       }
-      window.setTimeout(poll, 2000);
-      return;
-    }
 
-    const project = await loadProject(projectId);
-    if (!project) return;
+      const project = await loadProject(projectId);
+      if (!project) return;
 
-    await saveProject(updateExportBatchInProject(project, batchId, {
-      status: status.status,
-      exportDir: status.exportDir,
-      projectDir: status.projectDir,
-      exportRoot: status.exportRoot,
-      error: status.error,
-    }));
+      await saveProject(updateExportBatchInProject(project, batchId, {
+        status: status.status,
+        exportDir: status.exportDir,
+        projectDir: status.projectDir,
+        exportRoot: status.exportRoot,
+        error: status.error,
+      }));
 
-    const statusStr = String(status.status ?? '');
+      const statusStr = String(status.status ?? '');
 
-    if (statusStr === 'completed') {
-      const snapshotName = (await loadProject(projectId))?.nameEn ?? projectId;
-      const dlUrl = resolveApiUrl(`/api/theme/export-jobs/${batchId}/download?all=true`);
-      const filename = `${formatExportDatePrefix()}-${snapshotName}.zip`;
+      if (statusStr === 'completed') {
+        const snapshotName = (await loadProject(projectId))?.nameEn ?? projectId;
+        const dlUrl = resolveApiUrl(`/api/theme/export-jobs/${batchId}/download?all=true`);
+        const filename = `${formatExportDatePrefix()}-${snapshotName}.zip`;
 
-      renderProgressWithDownload(
-        'completed',
-        `<div class="export-steps">
+        renderProgressWithDownload(
+          'completed',
+          `<div class="export-steps">
           <div class="export-step"><span class="export-step-num">1</span><span class="export-step-text">点击 <b>下载文件</b> 按钮，保存 zip 包到本地</span></div>
           <div class="export-step"><span class="export-step-num">2</span><span class="export-step-text">解压 zip 包，获得各产品的主题包文件</span></div>
           <div class="export-step"><span class="export-step-num">3</span><span class="export-step-text">前往 MK 系统门户管理板块导入主题包</span></div>
           <div class="export-step"><span class="export-step-num">4</span><span class="export-step-text">在系统中选择新主题，即可切换使用</span></div>
         </div>`,
-        dlUrl,
-        filename,
-      );
-      return;
-    }
+          dlUrl,
+          filename,
+        );
+        return;
+      }
 
-    if (statusStr === 'failed') {
-      renderProgress('failed', status.error ?? '请检查服务器日志');
-      return;
-    }
+      if (statusStr === 'failed') {
+        renderProgress('failed', status.error ?? '请检查服务器日志');
+        return;
+      }
 
-    const statusLabels: Record<string, string> = {
-      queued: '排队中...',
-      preparing: '正在准备素材...',
-      capturing: '正在截图...',
-      packaging: '正在打包...',
-      verifying: '正在验证...',
-    };
-    renderProgress(statusLabels[statusStr] ?? '处理中...');
-    window.setTimeout(poll, 1500);
+      const statusLabels: Record<string, string> = {
+        queued: '排队中...',
+        preparing: '正在准备素材...',
+        capturing: '正在截图...',
+        packaging: '正在打包...',
+        verifying: '正在验证...',
+      };
+      renderProgress(statusLabels[statusStr] ?? '处理中...');
+      window.setTimeout(poll, 1500);
+    } catch (err) {
+      if (attempts >= MAX_STATUS_POLL_ATTEMPTS) {
+        renderProgress('failed', `状态查询异常：${(err as Error).message}`);
+        return;
+      }
+      window.setTimeout(poll, 2000);
+    }
   };
 
   void poll();

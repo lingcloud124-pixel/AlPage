@@ -10,6 +10,7 @@ const MAX_BACKUPS = 24;
 
 let db: Database;
 let backupTimer: ReturnType<typeof setInterval> | null = null;
+let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Schedule a debounced write to disk (500ms). Multiple rapid saves coalesce into one. */
@@ -243,6 +244,10 @@ export function closeDb(): void {
     clearInterval(backupTimer);
     backupTimer = null;
   }
+  if (cleanupTimer) {
+    clearInterval(cleanupTimer);
+    cleanupTimer = null;
+  }
   try {
     flushDb();
     (db as any).close();
@@ -283,7 +288,7 @@ function rotateBackups(): void {
 function startBackupScheduler(): void {
   backupDb();
   backupTimer = setInterval(backupDb, BACKUP_INTERVAL_MS);
-  setInterval(() => {
+  cleanupTimer = setInterval(() => {
     cleanupOldExportFiles();
     vacuumDb();
   }, 24 * 60 * 60 * 1000);
@@ -497,7 +502,7 @@ export function ensureUserByLoginName(loginName: string): number {
 
   const newUserId = row.id;
   const creditNow = Math.floor(Date.now() / 1000);
-  const cs = db.prepare('INSERT INTO user_credits (user_id, credits, last_reset_at) VALUES (?, 10, ?)');
+  const cs = db.prepare('INSERT INTO user_credits (user_id, credits, last_reset_at) VALUES (?, 100, ?)');
   cs.bind([newUserId, creditNow]);
   cs.step();
   cs.free();

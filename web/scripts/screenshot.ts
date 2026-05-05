@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { spawn } from 'child_process';
+import { spawn, execFileSync } from 'child_process';
 import { chromium, type Browser, type Page } from 'playwright';
 import sharp from 'sharp';
 
@@ -195,9 +195,15 @@ async function startPreviewServer(baseUrl?: string): Promise<DevServerHandle> {
   }
 
   const viteBin = path.join(WEB_ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
+  const distDir = path.join(WEB_ROOT, 'dist');
+  if (!fs.existsSync(path.join(distDir, 'index.html'))) {
+    console.log('Building web app for preview server...');
+    execFileSync(process.execPath, [viteBin, 'build'], { cwd: WEB_ROOT, stdio: 'inherit' });
+  }
+
   const child = spawn(
     process.execPath,
-    [viteBin, '--host', '127.0.0.1', '--port', String(DEFAULT_SERVER_PORT), '--strictPort'],
+    [viteBin, 'preview', '--host', '127.0.0.1', '--port', String(DEFAULT_SERVER_PORT), '--strictPort'],
     {
       cwd: WEB_ROOT,
       stdio: 'ignore',

@@ -219,8 +219,14 @@ async function processQueuedJobs(): Promise<void> {
   try {
     const queuedJobs = listQueuedExportJobs(5);
     for (const job of queuedJobs) {
-      await runJob(job.id);
+      try {
+        await runJob(job.id);
+      } catch (error) {
+        logger.error('Export job threw unexpected error', { jobId: job.id, error: error instanceof Error ? error.message : String(error) });
+      }
     }
+  } catch (error) {
+    logger.error('Export job queue processing failed', { error: error instanceof Error ? error.message : String(error) });
   } finally {
     isProcessing = false;
   }

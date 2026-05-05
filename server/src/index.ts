@@ -59,7 +59,6 @@ const [
   import('./routes/conversations.js'),
   import('./routes/admin-password.js'),
   import('./routes/admin-auth.js'),
-  import('cookie-parser'),
 ]);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

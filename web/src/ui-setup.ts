@@ -163,7 +163,6 @@ export function setupTabSwitching() {
   function moveIndicator(btn: HTMLButtonElement) {
     if (!indicator) return;
     indicator.style.left = btn.offsetLeft + 'px';
-    indicator.style.width = btn.offsetWidth + 'px';
   }
 
   function syncActiveIndicator() {
@@ -205,10 +204,8 @@ export function setupTabSwitching() {
       btn.classList.add('active-tab');
       syncPageVisibility(page);
       activeTabInfo = { btn, page, templateId };
-      requestAnimationFrame(() => {
-        moveIndicator(btn);
-        requestAnimationFrame(() => moveIndicator(btn));
-      });
+      requestAnimationFrame(() => moveIndicator(btn));
+      setTimeout(() => moveIndicator(btn), 50);
     }
 
     btn.addEventListener('click', async () => {

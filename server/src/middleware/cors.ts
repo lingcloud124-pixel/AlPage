@@ -23,13 +23,18 @@ export const dynamicCors: RequestHandler = (req, res, next) => {
 
   const defaultOrigins = [...LOCAL_DEV_ORIGINS];
 
-  let allowedOrigins: string[] = defaultOrigins;
+  const corsDisabled = securityConfig?.enabled_features?.cors === false;
 
-  if (securityConfig?.enabled_features?.cors !== false) {
-    allowedOrigins = mergeAllowedOrigins(securityConfig?.cors_origins);
-  } else {
-    allowedOrigins = [];
+  if (corsDisabled) {
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(403);
+      return;
+    }
+    next();
+    return;
   }
+
+  const allowedOrigins = mergeAllowedOrigins(securityConfig?.cors_origins);
 
   const origin = req.headers.origin as string;
 
@@ -50,7 +55,7 @@ export const dynamicCors: RequestHandler = (req, res, next) => {
     return false;
   });
 
-  if (isAllowed || allowedOrigins.length === 0) {
+  if (isAllowed) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id');
