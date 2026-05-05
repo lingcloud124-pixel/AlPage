@@ -1,4 +1,4 @@
-import { getCurrentProjectId } from '../project-manager';
+import { getCurrentProjectId, loadProject } from '../project-manager';
 import { DEFAULT_LIGHT_UI_PRIMARY, deriveColorsFromPrimary, toCssVarRecord } from '../theme/color-utils';
 
 export interface ColorSetting {
@@ -81,7 +81,19 @@ function getActiveTemplateType(): 'light-ui' | 'dark-ui' {
   return type === 'dark-ui' ? 'dark-ui' : 'light-ui';
 }
 
-function getResetBaselineColors(): Record<string, string> {
+async function getResetBaselineColors(): Promise<Record<string, string>> {
+  const pid = getCurrentProjectId();
+  if (pid) {
+    const project = await loadProject(pid);
+    if (project?.colors && Object.keys(project.colors).length > 0) {
+      const result: Record<string, string> = {};
+      for (const setting of colorSettings) {
+        const varName = setting.property.substring(2);
+        result[setting.property] = project.colors[varName] ?? setting.defaultValue;
+      }
+      return result;
+    }
+  }
   return Object.fromEntries(colorSettings.map((setting) => [setting.property, setting.defaultValue]));
 }
 
@@ -151,8 +163,8 @@ export function initializeColorEditor(): void {
   resetButton.style.marginTop = '20px';
   resetButton.classList.add('reset-button');
   
-  resetButton.addEventListener('click', () => {
-    const baselineColors = getResetBaselineColors();
+  resetButton.addEventListener('click', async () => {
+    const baselineColors = await getResetBaselineColors();
     for (const s of colorSettings) {
       setCSSVar(s.property, baselineColors[s.property] ?? s.defaultValue);
     }
