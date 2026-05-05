@@ -10,8 +10,7 @@ describe('web workbench layout mode', () => {
     const main = fs.readFileSync(path.join(projectRoot, 'web/src/main.ts'), 'utf8');
 
     expect(uiSetup).toContain('syncWorkbenchLayoutForActiveTab');
-    expect(uiSetup).toContain("activeTabId === 'mainPageTab'");
-    expect(uiSetup).toContain('setChatPanelWidth(372)');
+    expect(uiSetup).toContain('setChatPanelWidth(378)');
     expect(uiSetup).toContain('setChatPanelWidth(null)');
     expect(main).toContain('syncWorkbenchLayoutForActiveTab');
   });

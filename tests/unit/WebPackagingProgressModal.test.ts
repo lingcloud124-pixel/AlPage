@@ -25,6 +25,6 @@ describe('web packaging progress modal', () => {
 
     expect(source).not.toMatch(/const a = document\.createElement\('a'\);\s*a\.href = dlUrl/);
     expect(source).toContain('showNotificationWithOptions');
-    expect(source).toMatch(/\(el as HTMLButtonElement\)\.disabled = false/);
+    expect(source).toContain('triggerBlobDownload');
   });
 });

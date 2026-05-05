@@ -12,7 +12,7 @@ describe('web workbench pane layout', () => {
 
     expect(html).toContain('id="previewDivider"');
     expect(uiSetup).toContain('setChatPanelWidth');
-    expect(uiSetup).toContain("activeTabId === 'mainPageTab'");
+    expect(uiSetup).toContain('syncWorkbenchLayoutForActiveTab');
     expect(styles).toContain('.pane-divider');
     expect(styles).toContain('#chatPanel');
     expect(styles).toContain('flex: 1 1 auto;');

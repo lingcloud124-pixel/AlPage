@@ -88,7 +88,7 @@ describe('chat client requests', async () => {
     expect(result).toEqual({ success: true, url: 'https://example.com/theme.jpg' });
     expect(fetchMock).toHaveBeenCalledWith('/api/theme/image', expect.objectContaining({
       method: 'POST',
-      credentials: 'same-origin',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
     }));
   });
@@ -107,7 +107,7 @@ describe('chat client requests', async () => {
     expect(result).toBe('hello');
     expect(fetchMock).toHaveBeenCalledWith('/api/theme/chat', expect.objectContaining({
       method: 'POST',
-      credentials: 'same-origin',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
     }));
   });

@@ -94,10 +94,10 @@ describe('web executor export tools', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/theme/export-jobs', expect.objectContaining({
       method: 'POST',
-      credentials: 'same-origin',
+      credentials: 'include',
     }));
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/theme/export-jobs/job-1', expect.objectContaining({
-      credentials: 'same-origin',
+      credentials: 'include',
     }));
     const exportCall = fetchMock.mock.calls[0][1];
     const body = JSON.parse(String(exportCall?.body));

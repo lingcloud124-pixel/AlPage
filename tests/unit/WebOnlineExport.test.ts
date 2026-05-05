@@ -87,7 +87,7 @@ describe('web online export', () => {
     const request = fetchMock.mock.calls[0]?.[1];
     expect(fetchMock).toHaveBeenCalledWith('/api/theme/export-jobs', expect.objectContaining({
       method: 'POST',
-      credentials: 'same-origin',
+      credentials: 'include',
     }));
     const body = JSON.parse(String(request?.body));
     expect(body.projectId).toBe('project-1');
