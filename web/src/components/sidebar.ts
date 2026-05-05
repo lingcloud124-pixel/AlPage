@@ -11,16 +11,12 @@ export function initSidebar(): void {
   const collapseBtn = document.getElementById('sidebarCollapseBtn');
   const newChatBtn = document.getElementById('sidebarNewChatBtn');
   const newChatFullBtn = document.getElementById('sidebarNewChatFullBtn');
-  const settingsBtn = document.getElementById('sidebarSettingsBtn');
-  const settingsFullBtn = document.getElementById('sidebarSettingsFullBtn');
 
   toggleBtn?.addEventListener('click', () => toggleSidebar(true));
   collapseBtn?.addEventListener('click', () => toggleSidebar(false));
   headerRow?.addEventListener('click', () => toggleSidebar(false));
   newChatBtn?.addEventListener('click', () => dispatchNewConversation());
   newChatFullBtn?.addEventListener('click', () => dispatchNewConversation());
-  settingsBtn?.addEventListener('click', () => openSettings());
-  settingsFullBtn?.addEventListener('click', () => openSettings());
 
   refreshSidebar();
 }
@@ -57,13 +53,6 @@ export async function refreshSidebar(): Promise<void> {
 
 function dispatchNewConversation(): void {
   window.dispatchEvent(new CustomEvent('sidebar:new-conversation'));
-}
-
-function openSettings(): void {
-  const settingsModal = document.getElementById('settingsModal');
-  if (settingsModal) {
-    settingsModal.classList.remove('is-hidden');
-  }
 }
 
 function renderSidebarList(items: ConversationListItem[]): void {
@@ -108,7 +97,16 @@ function createSidebarItem(item: ConversationListItem): HTMLElement {
 
   const menuBtn = document.createElement('button');
   menuBtn.className = 'sidebar-item-menu';
-  menuBtn.textContent = '…';
+  menuBtn.type = 'button';
+  menuBtn.setAttribute('aria-label', '更多操作');
+  menuBtn.title = '更多操作';
+  menuBtn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.75" fill="currentColor"></circle>
+      <circle cx="12" cy="12" r="1.75" fill="currentColor"></circle>
+      <circle cx="19" cy="12" r="1.75" fill="currentColor"></circle>
+    </svg>
+  `;
   menuBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     showItemMenu(el, item);

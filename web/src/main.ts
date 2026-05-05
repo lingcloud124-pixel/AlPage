@@ -17,7 +17,6 @@ import {
   setupPreviewPanel,
   setupBackToHome,
   setupCollapsibleColorPanel,
-  setupSettingsDialog,
 } from './ui-setup';
 import { loadDefaultTemplates } from './theme-engine';
 import { checkAuth, getUser, redirectToLogin } from './auth';
@@ -28,6 +27,10 @@ import { registerPreviewResize, resizePreviewPages } from './preview/resize-prev
 declare global {
   interface Window {
     currentTheme: any;
+    __themeStudioTest?: {
+      expandPreview: () => void;
+      collapsePreview: () => void;
+    };
   }
 }
 
@@ -73,12 +76,15 @@ async function initializeFeatureModules() {
     setChatPanelWidth,
   });
   setupCollapsibleColorPanel();
-  setupSettingsDialog();
   setupMainActions();
   setupQualityCheck();
   setupPreviewPanel();
   setupBackToHome();
   initSidebar();
+  window.__themeStudioTest = {
+    expandPreview,
+    collapsePreview,
+  };
 
   window.addEventListener('sidebar:restore-project', ((e: CustomEvent) => {
     const snapshot = e.detail as Record<string, unknown>;

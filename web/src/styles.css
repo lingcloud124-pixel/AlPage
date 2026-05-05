@@ -2340,7 +2340,6 @@ body[data-ui-theme="light"] .chat-cost-hint
   font-size: 13px;
   background: var(--accent-ui-soft);
   color: var(--text-secondary);
-  cursor: pointer;
 }
 
 .top-actions
@@ -6707,6 +6706,12 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
   transition: background-color 0.15s, opacity 0.15s;
 }
 
+.sidebar-item-menu svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
 .sidebar-item:hover .sidebar-item-menu {
   opacity: 1;
   pointer-events: auto;
@@ -6722,7 +6727,20 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
 }
 
 .sidebar-settings-full {
-  display: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: #3d4350;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 .sidebar-settings-full:hover {
@@ -6741,13 +6759,14 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
 
 .sidebar-item-menu-dropdown {
   position: absolute;
-  right: 8px;
   background: #fff;
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
   z-index: 100;
-  min-width: 100px;
+  min-width: 112px;
+  width: max-content;
+  max-width: 160px;
   overflow: hidden;
 }
 
@@ -6764,6 +6783,7 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
   cursor: pointer;
   text-align: left;
   transition: background-color 0.1s;
+  white-space: nowrap;
 }
 
 .sidebar-item-menu-dropdown button:hover {

@@ -1,23 +1,12 @@
 import { renderTemplate } from './templates/loader';
 import { getCurrentProjectId } from './project-manager';
 import {
-  loadSettings,
-  saveSettings as persistSettings,
-  DEFAULT_CHAT_ENDPOINT,
-  DEFAULT_IMAGE_ENDPOINT,
-  describeChatEndpointUsage,
-} from './agent/chat-client';
-import {
   getDefaultLandingPromptEntries,
 } from './landing-prompts';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, loadDefaultTemplates } from './theme-engine';
 import { setupChatInterface } from './chat-manager';
-import { showNotification, setupMainActions } from './package-manager';
+import { setupMainActions } from './package-manager';
 import { initializeColorEditor } from './components/color-editor';
-import type { AISettings } from './types';
-import { normalizeExportRoot } from './export/export-paths';
-import { pickDirectoryViaBridge } from './export/export-bridge';
-import { getEffectiveExportRoot } from './agent/chat-client';
 import { showWorkspaceLandingState } from './main';
 import { toggleSidebar } from './components/sidebar';
 
@@ -274,115 +263,4 @@ export function setupCollapsibleColorPanel() {
   if (sidePanelClose) {
     sidePanelClose.addEventListener('click', closePanel);
   }
-}
-
-export function setupSettingsDialog() {
-  const settingsBtn = document.getElementById('sidebarSettingsBtn');
-  const settingsModal = document.getElementById('settingsModal') as HTMLElement;
-  const closeModalBtn = settingsModal.querySelector('.modal-close-btn') as HTMLElement;
-  const saveBtn = document.getElementById('saveSettings') as HTMLButtonElement;
-  const cancelBtn = document.getElementById('cancelSettings') as HTMLButtonElement;
-  if (!settingsBtn || !settingsModal || !closeModalBtn || !saveBtn || !cancelBtn) {
-    console.error('Settings modal elements not found');
-    return;
-  }
-
-  settingsBtn.addEventListener('click', () => {
-    settingsModal.classList.add('active');
-    loadStoredSettings();
-  });
-
-  closeModalBtn.addEventListener('click', closeSettingsDialog);
-  cancelBtn.addEventListener('click', closeSettingsDialog);
-  saveBtn.addEventListener('click', saveSettingsForm);
-
-  function closeSettingsDialog() { settingsModal.classList.remove('active'); }
-
-  function loadStoredSettings() {
-    const settings = loadSettings() as AISettings & { modelName?: string; imageModelName?: string };
-    const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement;
-    const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
-    const modelNameInput = document.getElementById('modelName') as HTMLInputElement;
-    const imageApiEndpointInput = document.getElementById('imageApiEndpoint') as HTMLInputElement;
-    const imageApiKeyInput = document.getElementById('imageApiKey') as HTMLInputElement;
-    const imageModelNameInput = document.getElementById('imageModelName') as HTMLInputElement;
-    const exportRootInput = document.getElementById('exportRoot') as HTMLInputElement;
-    const uiThemeSelect = document.getElementById('uiThemeMode') as HTMLSelectElement;
-
-    if (apiEndpointInput) apiEndpointInput.value = settings.apiEndpoint || DEFAULT_CHAT_ENDPOINT;
-    if (apiKeyInput) apiKeyInput.value = ''; // Server holds the key
-    if (modelNameInput) modelNameInput.value = settings.modelName || settings.model || 'MiniMax-M2.7';
-    if (imageApiEndpointInput) imageApiEndpointInput.value = settings.imageApiEndpoint || DEFAULT_IMAGE_ENDPOINT;
-    if (imageApiKeyInput) imageApiKeyInput.value = ''; // Server holds the key
-    if (imageModelNameInput) imageModelNameInput.value = settings.imageModelName || settings.imageModel || 'image-01';
-    if (exportRootInput) {
-      exportRootInput.value = settings.exportRoot || '';
-      exportRootInput.placeholder = getEffectiveExportRoot();
-    }
-    if (uiThemeSelect) uiThemeSelect.value = 'light';
-    updateChatEndpointHelp(apiEndpointInput?.value || DEFAULT_CHAT_ENDPOINT);
-    // Hide API key rows — server holds the keys now
-    const apiKeyRow = apiKeyInput?.closest('.form-row') as HTMLElement;
-    if (apiKeyRow) apiKeyRow.style.display = 'none';
-    const imageApiKeyRow = imageApiKeyInput?.closest('.form-row') as HTMLElement;
-    if (imageApiKeyRow) imageApiKeyRow.style.display = 'none';
-    const apiEndpointRow = apiEndpointInput?.closest('.form-row') as HTMLElement;
-    if (apiEndpointRow) apiEndpointRow.style.display = 'none';
-    const modelNameRow = modelNameInput?.closest('.form-row') as HTMLElement;
-    if (modelNameRow) modelNameRow.style.display = 'none';
-  }
-
-  function updateChatEndpointHelp(endpoint: string) {
-    const helpEl = document.getElementById('apiEndpointHelp');
-    if (!helpEl) return;
-    const message = describeChatEndpointUsage(endpoint || DEFAULT_CHAT_ENDPOINT);
-    helpEl.textContent = message;
-    helpEl.dataset.status = message.includes('将通过内置 /api/chat 代理') || message.includes('将直接请求这个完整地址')
-      ? 'ok'
-      : 'warn';
-  }
-
-  const chooseExportRootBtn = document.getElementById('chooseExportRootBtn') as HTMLButtonElement | null;
-  chooseExportRootBtn?.addEventListener('click', async () => {
-    const exportRootInput = document.getElementById('exportRoot') as HTMLInputElement | null;
-    try {
-      const pickedPath = await pickDirectoryViaBridge(window);
-      if (!pickedPath) {
-        showNotification('当前本地桥接尚未提供目录选择能力，请先手动填写导出根目录');
-        return;
-      }
-      if (exportRootInput) exportRootInput.value = normalizeExportRoot(pickedPath);
-    } catch {
-      showNotification('目录选择失败，请确认本地导出桥接已启动，或先手动填写导出根目录');
-    }
-  });
-
-  async function saveSettingsForm() {
-    const uiThemeSelect = document.getElementById('uiThemeMode') as HTMLSelectElement;
-    const exportRootInput = document.getElementById('exportRoot') as HTMLInputElement | null;
-
-    const settings = {
-      apiEndpoint: DEFAULT_CHAT_ENDPOINT,
-      apiKey: '',
-      model: 'MiniMax-M2.7',
-      modelName: 'MiniMax-M2.7',
-      imageApiEndpoint: DEFAULT_IMAGE_ENDPOINT,
-      imageApiKey: '',
-      imageModel: 'image-01',
-      imageModelName: 'image-01',
-      exportRoot: exportRootInput?.value ? normalizeExportRoot(exportRootInput.value) : '',
-      uiTheme: 'light',
-    };
-
-    persistSettings(settings as any);
-    applyUiTheme('light');
-
-    settingsModal.classList.remove('active');
-    showNotification('设置已保存');
-  }
-
-  const apiEndpointInput = document.getElementById('apiEndpoint') as HTMLInputElement | null;
-  apiEndpointInput?.addEventListener('input', () => {
-    updateChatEndpointHelp(apiEndpointInput.value || DEFAULT_CHAT_ENDPOINT);
-  });
 }
