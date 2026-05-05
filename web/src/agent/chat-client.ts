@@ -169,7 +169,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
           const errData = await response.json();
           if (errData.code === 'CREDITS_EXHAUSTED') {
             updateCreditsDisplay({ credits: errData.remainingCredits ?? 0, maxCredits: 100, nextResetAt: errData.nextResetAt ?? '' });
-            return { success: false, error: `积分不足，今日使用次数已用完。${formatNextReset(errData.nextResetAt)}自动恢复` };
+            return { success: false, error: `今日生成次数已用完。${formatNextReset(errData.nextResetAt)}自动恢复` };
           }
         } catch { /* fall through */ }
       }
