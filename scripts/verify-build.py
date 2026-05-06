@@ -42,6 +42,7 @@ PRODUCT_TO_PREFIXES = {
     "ekp_v16": ["主题-V16-", "登录-V16-"],
     "ekp_v17": ["主题-V17-", "登录-V17-"],
 }
+PACKAGE_README_NAME = "readme.txt"
 
 OLD_COLORS = {
     "#2c615c",
@@ -212,8 +213,12 @@ def verify_structure(gen_path, ref_path, prefix=""):
         only_gen = sorted(set(gen_files) - set(ref_files))
 
         allowed_extra = set(STRUCTURE_EXTRA_ALLOWED.get(prefix, []))
+        allowed_extra.add(PACKAGE_README_NAME)
         if allowed_extra and only_gen:
-            only_gen = [f for f in only_gen if f not in allowed_extra]
+            only_gen = [
+                f for f in only_gen
+                if f not in allowed_extra and not f.endswith(f"/{PACKAGE_README_NAME}")
+            ]
 
         issues = []
         if only_ref:

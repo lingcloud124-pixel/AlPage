@@ -92,6 +92,16 @@ VERSION_LABELS = {
     "ekp_v17": "V17",
 }
 
+PACKAGE_README_NAME = "readme.txt"
+PACKAGE_README_CONTENT = """主题包使用说明
+
+1. 压缩包为导入原始包，请勿提前解压后再导入系统。
+2. 主题包与登录包需要按产品版本分别导入，请确认版本匹配后再操作。
+3. 导入前建议先备份当前线上主题与登录配置。
+4. 若压缩包内包含预览图或背景图，属于交付内容的一部分，请勿删除。
+5. 如需二次修改，请基于本次导出的源素材重新打包，不建议直接改动压缩包内部文件。
+"""
+
 # Color replacement mapping for CSS (MK/EKP shared)
 COLOR_VARIANTS = {
     "#144e48": None,
@@ -1499,6 +1509,11 @@ def repack_dir(source_dir: Path, output_zip: Path, inner_name: Optional[str] = N
             else:
                 arcname = str(rel)
             zf.write(file_path, arcname)
+        if inner_name:
+            readme_arcname = str(Path(inner_name) / PACKAGE_README_NAME)
+        else:
+            readme_arcname = PACKAGE_README_NAME
+        zf.writestr(readme_arcname, PACKAGE_README_CONTENT)
 
 
 def find_first_subdir(parent: Path) -> Path:

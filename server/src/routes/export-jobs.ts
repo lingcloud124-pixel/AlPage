@@ -159,6 +159,7 @@ router.get('/export-jobs/:id/download', async (req, res) => {
 
     const result = job.result ?? {};
     const packagesDir = result?.packagesDir as string | undefined;
+    const packagesReadmePath = result?.packagesReadmePath as string | undefined;
     if (!packagesDir || !fs.existsSync(packagesDir)) {
       return res.json({
         id,
@@ -202,6 +203,9 @@ router.get('/export-jobs/:id/download', async (req, res) => {
 
       const archive = archiver('zip', { zlib: { level: 6 } });
       archive.pipe(res);
+      if (packagesReadmePath && fs.existsSync(packagesReadmePath)) {
+        archive.file(packagesReadmePath, { name: path.basename(packagesReadmePath) });
+      }
       for (const file of files) {
         archive.file(path.join(packagesDir, file), { name: file });
       }
