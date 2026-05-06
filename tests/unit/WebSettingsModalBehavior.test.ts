@@ -4,12 +4,17 @@ import { describe, expect, test } from 'vitest';
 
 const projectRoot = process.cwd();
 
-describe('web settings modal behavior', () => {
-  test('scopes the close button to settings modal and does not close on overlay click', () => {
-    const source = fs.readFileSync(path.join(projectRoot, 'web/src/ui-setup.ts'), 'utf8');
+describe('web settings surface removal', () => {
+  test('frontend no longer ships workspace settings modal or sidebar entrypoints', () => {
+    const uiSetupSource = fs.readFileSync(path.join(projectRoot, 'web/src/ui-setup.ts'), 'utf8');
+    const indexSource = fs.readFileSync(path.join(projectRoot, 'web/index.html'), 'utf8');
+    const mainSource = fs.readFileSync(path.join(projectRoot, 'web/src/main.ts'), 'utf8');
 
-    expect(source).toContain("settingsModal.querySelector('.modal-close-btn')");
-    expect(source).not.toContain("document.querySelector('.modal-close-btn')");
-    expect(source).not.toContain("if (e.target === settingsModal) closeSettingsDialog()");
+    expect(uiSetupSource).not.toContain('settingsModal');
+    expect(uiSetupSource).not.toContain('setupSettingsDialog');
+    expect(indexSource).not.toContain('settingsModal');
+    expect(indexSource).not.toContain('sidebarSettingsBtn');
+    expect(indexSource).not.toContain('sidebarSettingsFullBtn');
+    expect(mainSource).not.toContain('setupSettingsDialog');
   });
 });
