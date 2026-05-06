@@ -16,7 +16,6 @@ const DEFAULT_CREDITS_TOOLTIP_LINES = [
   '1、每位用户每日可获得 10 次免费生成主题背景图的机会',
   '2、每成功生成 1 次主题背景图，扣除 1 次机会',
   '3、每日生成次数将在次日 06:00 自动清零并重新发放',
-  '4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」',
 ];
 
 export function setupCreditsTooltip(): void {
