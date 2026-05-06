@@ -100,4 +100,16 @@ describe('web theme preview failures', () => {
       triedCandidates: [],
     });
   });
+
+  test('single preview branch in chat manager applies preview images immediately before confirmation', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const source = fs.readFileSync(path.join(process.cwd(), 'web/src/chat-manager.ts'), 'utf8');
+
+    expect(source).toContain("if (previews.length === 1 && previews[0]?.url) {");
+    expect(source).toContain("applyThemeImageAssignments('login', previews[0].url);");
+    expect(source).toContain("applyThemeImageAssignments('desktop', previews[0].url);");
+    expect(source).toContain('deps.expandPreview();');
+    expect(source).toContain('deps.setChatPanelWidth(372);');
+  });
 });

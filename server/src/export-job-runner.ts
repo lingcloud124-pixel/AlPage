@@ -11,11 +11,25 @@ const STEP_DELAY_MS = 50;
 const execFileAsync = promisify(execFile);
 const PROJECT_ROOT = path.resolve(import.meta.dirname, '../..');
 const SERVICE_EXPORT_ROOT = path.join(PROJECT_ROOT, 'output', 'service-jobs');
+const EXPORT_DIRECTORY_README_NAME = '使用说明.txt';
+const EXPORT_DIRECTORY_README_CONTENT = `主题包使用说明
+
+1. 本目录下每个 zip 对应一个产品版本的主题包或登录包，请按实际环境选择导入。
+2. 单个产品 zip 内附带 readme.txt，可在导入前提供给实施或运维同事参考。
+3. 导入前建议备份现网主题、登录页与相关静态资源。
+4. 如需重新调整文案、配色或图片，请基于本次导出素材重新生成，不建议直接修改 zip 内文件。
+`;
 let pollTimer: NodeJS.Timeout | null = null;
 let isProcessing = false;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function writeExportDirectoryReadme(packagesDir: string): string {
+  const readmePath = path.join(packagesDir, EXPORT_DIRECTORY_README_NAME);
+  fs.writeFileSync(readmePath, EXPORT_DIRECTORY_README_CONTENT, 'utf8');
+  return readmePath;
 }
 
 async function runJob(jobId: string): Promise<void> {
@@ -191,6 +205,7 @@ async function runJob(jobId: string): Promise<void> {
   const packageCount = fs.existsSync(packagesDir)
     ? fs.readdirSync(packagesDir).filter((entry) => entry.toLowerCase().endsWith('.zip')).length
     : 0;
+  const packagesReadmePath = writeExportDirectoryReadme(packagesDir);
 
   const snapshotName = snapshot.nameEn ?? snapshot.name ?? projectId;
   updateExportJob(jobId, {
@@ -204,6 +219,7 @@ async function runJob(jobId: string): Promise<void> {
       assetsDir,
       metadataDir,
       packagesDir,
+      packagesReadmePath,
       preparedAssetsManifestPath: path.join(metadataDir, 'prepared-assets-manifest.json'),
       yamlPath,
       mode: 'packaged',

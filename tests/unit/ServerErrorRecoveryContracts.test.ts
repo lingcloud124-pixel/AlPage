@@ -25,6 +25,8 @@ describe('server error recovery contracts', () => {
     expect(validationSource).toContain('selectedProducts 包含不支持的产品');
     expect(source).toContain('Export job is not ready for download');
     expect(source).toContain("return res.status(400).json({ error: selectedProductsResult.error });");
+    expect(source).toContain('packagesReadmePath');
+    expect(source).toContain('archive.file(packagesReadmePath');
   });
 
   test('runner re-queues interrupted in-flight jobs so one failed task does not block subsequent work', () => {

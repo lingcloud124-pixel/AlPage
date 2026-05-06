@@ -545,9 +545,13 @@ export function setupChatInterface(deps: ChatDeps) {
   conversationSendBtn.addEventListener('click', () => sendUserMessage('conversation'));
   const resizeMessageInput = (input: HTMLTextAreaElement, composerInner: HTMLElement | null) => {
     input.style.height = '40px';
+    const scrollable = input.scrollHeight > 72;
     const nextHeight = Math.min(input.scrollHeight, 72);
     const resolvedHeight = Math.max(40, nextHeight);
     input.style.height = `${resolvedHeight}px`;
+    input.dataset.scrollLocked = String(input.scrollHeight <= 72);
+    input.classList.toggle('is-scrollable', scrollable);
+    input.scrollTop = scrollable ? input.scrollHeight : 0;
     if (composerInner) composerInner.style.minHeight = `${resolvedHeight + 56}px`;
   };
 
@@ -699,7 +703,8 @@ export function setupChatInterface(deps: ChatDeps) {
   async function setLandingGalleryImage(imageSrc: string, themeName: string, primaryHint?: string) {
     if (!defaultMessageInput) return;
     try {
-      const response = await fetch(imageSrc);
+      const resolvedImageUrl = new URL(imageSrc, window.location.origin).toString();
+      const response = await fetch(resolvedImageUrl);
       if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
       const blob = await response.blob();
       const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -725,12 +730,23 @@ export function setupChatInterface(deps: ChatDeps) {
       } else {
         delete defaultMessageInput.dataset.primaryHint;
       }
+    } catch (error) {
+      console.warn('[chat-manager] 推荐图资源加载失败:', error);
+      showNotificationWithOptions('推荐图加载失败，请稍后重试', {
+        variant: 'critical',
+        position: 'top-center',
+        durationMs: 2400,
+      });
+      return;
+    }
+
+    try {
       await ensureActiveProjectForImageUpload();
       showConversationChatView();
       await sendUserMessage('default');
     } catch (error) {
-      console.warn('[chat-manager] 推荐图加载失败:', error);
-      showNotificationWithOptions('推荐图加载失败，请稍后重试', {
+      console.warn('[chat-manager] 推荐图应用失败:', error);
+      showNotificationWithOptions('推荐图应用失败，请稍后重试', {
         variant: 'critical',
         position: 'top-center',
         durationMs: 2400,
@@ -1336,6 +1352,12 @@ export function setupChatInterface(deps: ChatDeps) {
             latestThemePreviews = prevData?.previews ?? null;
             const previews = prevData?.previews ?? [];
             if (previews.length > 0) {
+              if (previews.length === 1 && previews[0]?.url) {
+                applyThemeImageAssignments('login', previews[0].url);
+                applyThemeImageAssignments('desktop', previews[0].url);
+                deps.expandPreview();
+                deps.setChatPanelWidth(372);
+              }
               const imageCards = previews.map((p, i) =>
                 `<div style="flex:1;min-width:0;text-align:center;">` +
                 `<img src="${p.url}" style="width:100%;border-radius:8px;border:1px solid #ccc;cursor:pointer;" onclick="window.__selectThemePreview(${i})" />` +

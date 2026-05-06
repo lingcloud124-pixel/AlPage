@@ -23,6 +23,9 @@ describe('server export job runner', () => {
     expect(source).toContain('prepared-assets-manifest.json');
     expect(source).toContain('theme_builder.py');
     expect(source).toContain('verify-build.py');
+    expect(source).toContain("const EXPORT_DIRECTORY_README_NAME = '使用说明.txt'");
+    expect(source).toContain('writeExportDirectoryReadme(packagesDir)');
+    expect(source).toContain('packagesReadmePath');
     expect(source).toContain("mode: 'packaged'");
   });
 });

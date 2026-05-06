@@ -49,6 +49,17 @@ describe('python sample package paths', () => {
     expect(source).toContain('MK login packages must keep the template wrapper directory unchanged.');
   });
 
+  test('package rebuild injects a usage txt file and verifier allows it as extra output', () => {
+    const builderSource = fs.readFileSync(path.join(projectRoot, 'theme_builder.py'), 'utf8');
+    const verifierSource = fs.readFileSync(path.join(projectRoot, 'scripts', 'verify-build.py'), 'utf8');
+
+    expect(builderSource).toContain('PACKAGE_README_NAME = "readme.txt"');
+    expect(builderSource).toContain('zf.writestr(readme_arcname, PACKAGE_README_CONTENT)');
+    expect(verifierSource).toContain('PACKAGE_README_NAME = "readme.txt"');
+    expect(verifierSource).toContain('allowed_extra.add(PACKAGE_README_NAME)');
+    expect(verifierSource).toContain('f.endswith(f"/{PACKAGE_README_NAME}")');
+  });
+
   test('mk package rebuild rewrites internal package identifiers away from the sample slug', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'theme_builder.py'), 'utf8');
 
