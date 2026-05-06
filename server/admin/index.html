@@ -88,6 +88,22 @@
     .modal-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 360px; max-width: 90vw; }
     .modal-box h2 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
     .modal-box .actions { margin-top: 20px; justify-content: flex-end; }
+    .user-action-btn { white-space: nowrap; }
+    .drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 160; }
+    .drawer-overlay.open { display: block; }
+    .drawer { position: fixed; top: 0; right: 0; width: min(720px, 92vw); height: 100vh; background: var(--card); border-left: 1px solid var(--border); box-shadow: -24px 0 48px rgba(0,0,0,.32); transform: translateX(100%); transition: transform .24s ease; z-index: 180; display: flex; flex-direction: column; }
+    .drawer.open { transform: translateX(0); }
+    .drawer-header { padding: 24px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .drawer-title { font-size: 18px; font-weight: 600; }
+    .drawer-subtitle { color: var(--muted); font-size: 13px; margin-top: 6px; }
+    .drawer-body { padding: 20px 24px 28px; overflow: auto; }
+    .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .summary-card { background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .summary-card-label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .summary-card-value { font-size: 20px; font-weight: 600; }
+    .drawer-section-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    .close-btn { width: 36px; height: 36px; padding: 0; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 20px; line-height: 1; }
+    .close-btn:hover { color: var(--text); border-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -115,8 +131,8 @@
       <p class="subtitle">配置 AI 模型和查看用户，配置保存后立即生效</p>
 
       <div class="tab-bar">
-        <button class="tab-btn active" onclick="switchTab('config')">产品配置</button>
-        <button class="tab-btn" onclick="switchTab('users')">用户列表</button>
+        <button class="tab-btn active" data-tab="config" onclick="switchTab('config')">产品配置</button>
+        <button class="tab-btn" data-tab="users" onclick="switchTab('users')">用户列表</button>
       </div>
 
       <div class="tab-panel active" id="tab-config">
@@ -200,8 +216,18 @@
         </div>
 
         <details style="margin-top: 16px;">
-          <summary style="cursor: pointer; color: var(--muted); font-size: 13px; user-select: none;">高级设置（跨域、代理等，通常无需修改）</summary>
+          <summary style="cursor: pointer; color: var(--muted); font-size: 13px; user-select: none;">高级设置（存储、跨域、代理等，通常无需修改）</summary>
           <div style="margin-top: 12px;">
+            <div class="row">
+              <div>
+                <label>数据库备份保留份数</label>
+                <input type="number" id="backupRetentionCount" placeholder="例如: 8">
+              </div>
+              <div>
+                <label>导出产物保留天数</label>
+                <input type="number" id="exportRetentionDays" placeholder="例如: 7">
+              </div>
+            </div>
             <label>跨域资源共享 (CORS) 允许域名列表</label>
             <textarea id="corsAllowlist" placeholder="每行一个域名&#10;http://localhost:5173（已默认配置）" rows="3"></textarea>
             
@@ -223,7 +249,7 @@
         <h2>用户列表 <span class="badge">SSO 自动创建</span></h2>
         <table>
           <thead>
-            <tr><th>ID</th><th>标识</th><th>显示名称</th><th>最后登录</th></tr>
+            <tr><th>ID</th><th>标识</th><th>显示名称</th><th>最后登录</th><th>操作</th></tr>
           </thead>
           <tbody id="userTableBody"></tbody>
         </table>
@@ -233,6 +259,48 @@
   </div>
 
   <div class="toast" id="toast"></div>
+  <div class="drawer-overlay" id="userUsageDrawerOverlay" onclick="closeUserUsageDrawer()"></div>
+  <aside class="drawer" id="userUsageDrawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div>
+        <div class="drawer-title" id="userUsageDrawerTitle">用户使用情况</div>
+        <div class="drawer-subtitle" id="userUsageDrawerSubtitle">选择一个用户后查看统计概览与最近记录</div>
+      </div>
+      <button class="close-btn" type="button" onclick="closeUserUsageDrawer()" aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-body">
+      <div class="summary-grid" id="userUsageSummary">
+        <div class="summary-card">
+          <div class="summary-card-label">累计调用次数</div>
+          <div class="summary-card-value">-</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">累计积分消耗</div>
+          <div class="summary-card-value">-</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">最近使用时间</div>
+          <div class="summary-card-value">-</div>
+        </div>
+      </div>
+      <div class="drawer-section-title">最近使用记录</div>
+      <table>
+        <thead>
+          <tr>
+            <th>时间</th>
+            <th>场景</th>
+            <th>模型</th>
+            <th>原始输入</th>
+            <th>最终 Prompt</th>
+            <th>耗时</th>
+            <th>积分</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody id="userUsageLogTableBody"></tbody>
+      </table>
+    </div>
+  </aside>
 
   <div class="modal-overlay" id="changePasswordModal">
     <div class="modal-box">
@@ -252,11 +320,12 @@
 
   <script>
     let _authenticated = false;
+    let _activeUsageUserId = null;
 
     function switchTab(name) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      document.querySelector(`.tab-btn:nth-child(${name === 'config' ? 1 : 2})`).classList.add('active');
+      document.querySelector(`.tab-btn[data-tab="${name}"]`).classList.add('active');
       document.getElementById(`tab-${name}`).classList.add('active');
       if (name === 'users') loadUsers();
     }
@@ -317,6 +386,84 @@
       el.textContent = msg;
       el.className = `toast ${type} show`;
       setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatTime(value) {
+      if (!value) return '-';
+      try {
+        return new Date(Number(value)).toLocaleString('zh-CN');
+      } catch (_e) {
+        return '-';
+      }
+    }
+
+    function setUserUsageSummary(summary) {
+      const cards = document.querySelectorAll('#userUsageSummary .summary-card-value');
+      cards[0].textContent = String(summary?.totalCalls ?? 0);
+      cards[1].textContent = String(summary?.totalCreditsCost ?? 0);
+      cards[2].textContent = summary?.latestStartedAt ? formatTime(summary.latestStartedAt) : '-';
+    }
+
+    function renderUserUsageRows(items) {
+      const tbody = document.getElementById('userUsageLogTableBody');
+      tbody.innerHTML = items.map(item => `
+        <tr>
+          <td>${escapeHtml(formatTime(item.startedAt))}</td>
+          <td>${escapeHtml(item.scene)}</td>
+          <td>${escapeHtml(item.modelProvider)} / ${escapeHtml(item.modelName)}</td>
+          <td>${escapeHtml(item.rawInput || '-')}</td>
+          <td>${escapeHtml(item.finalPrompt || '-')}</td>
+          <td>${escapeHtml(item.durationMs ? `${item.durationMs}ms` : '-')}</td>
+          <td>${escapeHtml(item.creditsCost ?? 0)}</td>
+          <td>${escapeHtml(item.status)}</td>
+        </tr>
+      `).join('');
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="color: var(--muted);">暂无聊天或生图使用记录</td></tr>';
+      }
+    }
+
+    function closeUserUsageDrawer() {
+      _activeUsageUserId = null;
+      document.getElementById('userUsageDrawer').classList.remove('open');
+      document.getElementById('userUsageDrawer').setAttribute('aria-hidden', 'true');
+      document.getElementById('userUsageDrawerOverlay').classList.remove('open');
+    }
+
+    async function openUserUsageDrawer(userId, loginName, displayName) {
+      if (!_authenticated) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+
+      _activeUsageUserId = userId;
+      document.getElementById('userUsageDrawerTitle').textContent = displayName || loginName || `用户 #${userId}`;
+      document.getElementById('userUsageDrawerSubtitle').textContent = `${loginName || `用户 #${userId}`} 的累计调用情况与最近聊天/生图记录`;
+      setUserUsageSummary({ totalCalls: '-', totalCreditsCost: '-', latestStartedAt: null });
+      renderUserUsageRows([]);
+      document.getElementById('userUsageDrawer').classList.add('open');
+      document.getElementById('userUsageDrawer').setAttribute('aria-hidden', 'false');
+      document.getElementById('userUsageDrawerOverlay').classList.add('open');
+
+      try {
+        const res = await fetch(`/api/admin/usage-logs/users/${userId}?limit=20`, { credentials: 'same-origin' });
+        if (res.status === 401) { closeUserUsageDrawer(); showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
+        const data = await res.json();
+        if (_activeUsageUserId !== userId) return;
+        setUserUsageSummary(data.summary || {});
+        renderUserUsageRows(Array.isArray(data.items) ? data.items : []);
+      } catch (e) {
+        toast('加载用户使用情况失败: ' + e.message, 'error');
+      }
     }
 
     function toggleCreditsSettings() {
@@ -443,6 +590,8 @@
         document.getElementById('proxyImageAllowlist').value = securityData.proxyImageHosts?.join('\n') || '';
         document.getElementById('dailyCreditsLimit').value = securityData.dailyCreditsLimit ?? '100';
         document.getElementById('creditsPerImage').value = securityData.creditsPerImage ?? '50';
+        document.getElementById('backupRetentionCount').value = securityData.backupRetentionCount ?? '8';
+        document.getElementById('exportRetentionDays').value = securityData.exportRetentionDays ?? '7';
         document.getElementById('creditsTooltipContent').value = securityData.creditsTooltipContent || '';
 
         const creditsEnabled = securityData.enabledFeatures?.quota !== false;
@@ -492,6 +641,8 @@
           },
           dailyCreditsLimit: parseInt(document.getElementById('dailyCreditsLimit').value) || 100,
           creditsPerImage: parseInt(document.getElementById('creditsPerImage').value) || 50,
+          backupRetentionCount: parseInt(document.getElementById('backupRetentionCount').value) || 8,
+          exportRetentionDays: parseInt(document.getElementById('exportRetentionDays').value) || 7,
           creditsTooltipContent: document.getElementById('creditsTooltipContent').value
         };
 
@@ -525,6 +676,8 @@
               enabledFeatures: body.enabledFeatures,
               dailyCreditsLimit: body.dailyCreditsLimit,
               creditsPerImage: body.creditsPerImage,
+              backupRetentionCount: body.backupRetentionCount,
+              exportRetentionDays: body.exportRetentionDays,
               creditsTooltipContent: body.creditsTooltipContent,
             })
           })
@@ -591,9 +744,16 @@
         tbody.innerHTML = users.map(u => `
           <tr>
             <td>${u.id}</td>
-            <td>${u.name}</td>
-            <td>${u.display_name}</td>
+            <td>${escapeHtml(u.name)}</td>
+            <td>${escapeHtml(u.display_name)}</td>
             <td>${u.last_login_at ? new Date(u.last_login_at * 1000).toLocaleString('zh-CN') : '-'}</td>
+            <td>
+              <button
+                type="button"
+                class="btn-primary btn-sm user-action-btn"
+                onclick='openUserUsageDrawer(${Number(u.id)}, ${JSON.stringify(String(u.name ?? ''))}, ${JSON.stringify(String(u.display_name ?? ''))})'
+              >查看使用情况</button>
+            </td>
           </tr>
         `).join('');
       } catch (e) {

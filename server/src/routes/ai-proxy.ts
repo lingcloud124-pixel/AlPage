@@ -7,6 +7,7 @@ import { getModelConfig } from './model-config.js';
 import { getSecurityConfig, deductCredits } from '../db.js';
 import { buildSignedRequest, VolcAuth } from '../services/jimeng-client.js';
 import { logger } from '../logger.js';
+import { createUsageLog, finalizeUsageLog } from '../usage-logs.js';
 
 const router = Router();
 const VOLCENGINE_ARK_IMAGE_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/images/generations';
@@ -53,6 +54,50 @@ function buildImageRequestBody(
     prompt,
     response_format: requestBody.response_format ?? 'url',
   };
+}
+
+function extractLastUserMessageContent(messages: unknown): string {
+  if (!Array.isArray(messages)) return '';
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i] as Record<string, unknown> | undefined;
+    if (!message || message.role !== 'user') continue;
+    const content = message.content;
+    if (typeof content === 'string') return content;
+    if (Array.isArray(content)) {
+      return content
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object' && 'text' in item) {
+            return String((item as Record<string, unknown>).text ?? '');
+          }
+          return '';
+        })
+        .filter(Boolean)
+        .join('\n');
+    }
+  }
+  return '';
+}
+
+function startUsageLogSafe(input: Parameters<typeof createUsageLog>[0]): string | null {
+  try {
+    return createUsageLog(input).id;
+  } catch (error) {
+    logger.warn('Create usage log failed', { error: error instanceof Error ? error.message : String(error) });
+    return null;
+  }
+}
+
+function finishUsageLogSafe(
+  usageLogId: string | null,
+  payload: Parameters<typeof finalizeUsageLog>[1],
+): void {
+  if (!usageLogId) return;
+  try {
+    finalizeUsageLog(usageLogId, payload);
+  } catch (error) {
+    logger.warn('Finalize usage log failed', { error: error instanceof Error ? error.message : String(error), usageLogId });
+  }
 }
 
 function resolveTarget(endpoint: string): { client: typeof http | typeof https; options: http.RequestOptions } {
@@ -579,6 +624,23 @@ function validateProxyImageHost(url: string): boolean {
 }
 
 router.post('/chat', async (req, res) => {
+  const chatUserId = (req as any).userId || 1;
+  const chatLoginName = typeof (req as any).loginName === 'string' ? (req as any).loginName : `user-${chatUserId}`;
+  const chatConversationId = typeof req.body?.conversationId === 'string' ? req.body.conversationId : '';
+  let chatUsageLogId: string | null = null;
+  let chatUsageFinalized = false;
+  let chatFailureMessage: string | null = null;
+  const finalizeChatUsage = () => {
+    if (chatUsageFinalized) return;
+    chatUsageFinalized = true;
+    const success = !!res.statusCode && res.statusCode >= 200 && res.statusCode < 300;
+    finishUsageLogSafe(chatUsageLogId, {
+      status: success ? 'success' : 'failed',
+      errorMessage: success ? null : (chatFailureMessage ?? `HTTP ${res.statusCode || 500}`),
+      creditsCost: 0,
+    });
+  };
+  res.on('finish', finalizeChatUsage);
   try {
     const config = getModelConfig();
     const securityConfig = getSecurityConfig();
@@ -605,6 +667,22 @@ router.post('/chat', async (req, res) => {
         reasoning_split: true,
       },
     };
+
+    chatUsageLogId = startUsageLogSafe({
+      userId: chatUserId,
+      loginName: chatLoginName,
+      scene: 'chat',
+      rawInput: extractLastUserMessageContent(req.body?.messages),
+      finalPrompt: {
+        model: requestBody.model,
+        messages: requestBody.messages,
+        extra_body: requestBody.extra_body,
+      },
+      modelProvider: 'chat',
+      modelName: String(requestBody.model || config.chatModel || 'MiniMax-M2.7'),
+      creditsCost: 0,
+      conversationId: chatConversationId,
+    });
 
     const proxyReq = client.request(options);
 
@@ -674,6 +752,7 @@ router.post('/chat', async (req, res) => {
 
     proxyReq.on('error', (error) => {
       logger.error('Chat proxy error', error);
+      chatFailureMessage = error instanceof Error ? error.message : String(error);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to proxy request' });
       }
@@ -681,6 +760,7 @@ router.post('/chat', async (req, res) => {
 
     proxyReq.on('timeout', () => {
       logger.error('Chat proxy timeout');
+      chatFailureMessage = 'Request timeout';
       proxyReq.destroy();
       if (!res.headersSent) {
         res.status(504).json({ error: 'Request timeout' });
@@ -692,6 +772,7 @@ router.post('/chat', async (req, res) => {
     proxyReq.end();
   } catch (error) {
     logger.error('Chat proxy setup error', error);
+    chatFailureMessage = error instanceof Error ? error.message : 'Internal server error';
     if (!res.headersSent) {
       res.status(500).json({ error: 'Internal server error' });
     }
@@ -700,17 +781,50 @@ router.post('/chat', async (req, res) => {
 
 router.post('/image', async (req, res) => {
   const imageUserId = (req as any).userId || 1;
+  const imageLoginName = typeof (req as any).loginName === 'string' ? (req as any).loginName : `user-${imageUserId}`;
+  const imageConversationId = typeof req.body?.conversationId === 'string' ? req.body.conversationId : '';
   const imageSecurityConfig = getSecurityConfig();
   const imageCreditsPerGen = imageSecurityConfig?.credits_per_image ?? 50;
+  const imageQuotaEnabled = imageSecurityConfig?.enabled_features?.quota !== false;
+  const imageRawInput = typeof req.body?.prompt === 'string' ? req.body.prompt : '';
+  let imageUsageLogId: string | null = null;
+  let imageUsageFinalized = false;
+  let imageFailureMessage: string | null = null;
+  const finalizeImageUsage = () => {
+    if (imageUsageFinalized) return;
+    imageUsageFinalized = true;
+    const success = !!res.statusCode && res.statusCode >= 200 && res.statusCode < 300;
+    const creditsCost = success && imageQuotaEnabled ? imageCreditsPerGen : 0;
+    finishUsageLogSafe(imageUsageLogId, {
+      status: success ? 'success' : 'failed',
+      errorMessage: success ? null : (imageFailureMessage ?? `HTTP ${res.statusCode || 500}`),
+      creditsCost,
+    });
+  };
+  const startImageUsageLog = (input: { modelProvider: string; modelName: string; finalPrompt: unknown }) => {
+    if (imageUsageLogId) return;
+    imageUsageLogId = startUsageLogSafe({
+      userId: imageUserId,
+      loginName: imageLoginName,
+      scene: 'image',
+      rawInput: imageRawInput,
+      finalPrompt: input.finalPrompt,
+      modelProvider: input.modelProvider,
+      modelName: input.modelName,
+      creditsCost: 0,
+      conversationId: imageConversationId,
+    });
+  };
   res.on('finish', () => {
     if (
-      imageSecurityConfig?.enabled_features?.quota !== false &&
+      imageQuotaEnabled &&
       res.statusCode &&
       res.statusCode >= 200 &&
       res.statusCode < 300
     ) {
       deductCredits(imageUserId, imageCreditsPerGen);
     }
+    finalizeImageUsage();
   });
   try {
     const config = getModelConfig();
@@ -726,6 +840,14 @@ router.post('/image', async (req, res) => {
           (req.body ?? {}) as Record<string, unknown>,
         );
         if (result.statusCode >= 200 && result.statusCode < 300) {
+          startImageUsageLog({
+            modelProvider: 'jimeng',
+            modelName: config.imageModel || 'jimeng_t2i_v40',
+            finalPrompt: {
+              prompt: imageRawInput,
+              body: req.body ?? {},
+            },
+          });
           return res.status(result.statusCode).json(result.body);
         }
         logger.warn('Jimeng failed, falling back to next provider', { statusCode: result.statusCode });
@@ -738,7 +860,13 @@ router.post('/image', async (req, res) => {
       : null;
     if (selectedProvider === 'ark' && volcengineArkConfig) {
       const tempApiKey = await getVolcengineTemporaryApiKey(volcengineArkConfig);
-      const requestBody = JSON.stringify(buildVolcengineArkImageBody(req.body, config.imageModel || volcengineArkConfig.model));
+      const builtArkBody = buildVolcengineArkImageBody(req.body, config.imageModel || volcengineArkConfig.model);
+      const requestBody = JSON.stringify(builtArkBody);
+      startImageUsageLog({
+        modelProvider: 'ark',
+        modelName: config.imageModel || volcengineArkConfig.model,
+        finalPrompt: builtArkBody,
+      });
       const { client, options } = resolveTarget(volcengineArkConfig.imageEndpoint);
       options.headers = {
         'Authorization': `Bearer ${tempApiKey}`,
@@ -758,6 +886,7 @@ router.post('/image', async (req, res) => {
 
       proxyReq.on('error', (error) => {
         logger.error('Volcengine image proxy error', error);
+        imageFailureMessage = error instanceof Error ? error.message : String(error);
         if (!res.headersSent) {
           res.status(500).json({ error: 'Failed to proxy Volcengine image request' });
         }
@@ -765,6 +894,7 @@ router.post('/image', async (req, res) => {
 
       proxyReq.on('timeout', () => {
         logger.error('Volcengine image proxy timeout');
+        imageFailureMessage = 'Request timeout';
         proxyReq.destroy();
         if (!res.headersSent) {
           res.status(504).json({ error: 'Request timeout' });
@@ -787,6 +917,16 @@ router.post('/image', async (req, res) => {
 
     const { client, options } = resolveTarget(config.imageEndpoint);
     const provider = detectImageProvider(config.imageEndpoint);
+    const builtImageBody = buildImageRequestBody(
+      provider,
+      (req.body ?? {}) as Record<string, unknown>,
+      config.imageModel || 'image-01',
+    );
+    startImageUsageLog({
+      modelProvider: provider,
+      modelName: config.imageModel || 'image-01',
+      finalPrompt: builtImageBody,
+    });
     options.headers = {
       'Authorization': `Bearer ${config.imageApiKey}`,
       'Content-Type': 'application/json',
@@ -805,6 +945,7 @@ router.post('/image', async (req, res) => {
 
     proxyReq.on('error', (error) => {
       logger.error('Image proxy error', error);
+      imageFailureMessage = error instanceof Error ? error.message : String(error);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to proxy request' });
       }
@@ -812,21 +953,19 @@ router.post('/image', async (req, res) => {
 
     proxyReq.on('timeout', () => {
       logger.error('Image proxy timeout');
+      imageFailureMessage = 'Request timeout';
       proxyReq.destroy();
       if (!res.headersSent) {
         res.status(504).json({ error: 'Request timeout' });
       }
     });
 
-    const body = JSON.stringify(buildImageRequestBody(
-      provider,
-      (req.body ?? {}) as Record<string, unknown>,
-      config.imageModel || 'image-01',
-    ));
+    const body = JSON.stringify(builtImageBody);
     proxyReq.write(body);
     proxyReq.end();
   } catch (error) {
     logger.error('Image proxy setup error', error);
+    imageFailureMessage = error instanceof Error ? error.message : 'Internal server error';
     if (!res.headersSent) {
       res.status(500).json({ error: error instanceof Error ? error.message : 'Internal server error' });
     }

@@ -6,7 +6,8 @@ import { logger } from './logger.js';
 const DB_PATH = join(process.cwd(), 'data', 'theme-studio.db');
 const BACKUP_DIR = join(process.cwd(), 'data', 'backups');
 const BACKUP_INTERVAL_MS = 60 * 60 * 1000;
-const MAX_BACKUPS = 24;
+const DEFAULT_BACKUP_RETENTION_COUNT = 8;
+const DEFAULT_EXPORT_RETENTION_DAYS = 7;
 
 let db: Database;
 let backupTimer: ReturnType<typeof setInterval> | null = null;
@@ -145,6 +146,8 @@ export async function initDb(): Promise<void> {
       credits_per_conversation INTEGER NOT NULL DEFAULT 25,
       credits_per_image INTEGER NOT NULL DEFAULT 50,
       daily_credits_limit INTEGER NOT NULL DEFAULT 100,
+      backup_retention_count INTEGER NOT NULL DEFAULT 8,
+      export_retention_days INTEGER NOT NULL DEFAULT 7,
       credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放',
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
@@ -162,6 +165,12 @@ export async function initDb(): Promise<void> {
     if (!colNames.includes('credits_per_image')) {
       db.run('ALTER TABLE security_config ADD COLUMN credits_per_image INTEGER NOT NULL DEFAULT 50');
     }
+    if (!colNames.includes('backup_retention_count')) {
+      db.run(`ALTER TABLE security_config ADD COLUMN backup_retention_count INTEGER NOT NULL DEFAULT ${DEFAULT_BACKUP_RETENTION_COUNT}`);
+    }
+    if (!colNames.includes('export_retention_days')) {
+      db.run(`ALTER TABLE security_config ADD COLUMN export_retention_days INTEGER NOT NULL DEFAULT ${DEFAULT_EXPORT_RETENTION_DAYS}`);
+    }
     if (!colNames.includes('credits_tooltip_content')) {
       db.run(`ALTER TABLE security_config ADD COLUMN credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 10 次免费生成主题背景图的机会
 2、每成功生成 1 次主题背景图，扣除 1 次机会
@@ -173,8 +182,8 @@ export async function initDb(): Promise<void> {
   }
 
   db.run(`
-    INSERT OR IGNORE INTO security_config (id, cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, credits_per_image, daily_credits_limit, credits_tooltip_content)
-    VALUES (1, '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:4173","http://127.0.0.1:4173"]', '[]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 50, 100, '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放')
+    INSERT OR IGNORE INTO security_config (id, cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, credits_per_image, daily_credits_limit, backup_retention_count, export_retention_days, credits_tooltip_content)
+    VALUES (1, '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:4173","http://127.0.0.1:4173"]', '[]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 50, 100, 8, 7, '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放')
   `);
 
   db.run(`UPDATE security_config SET credits_tooltip_content = '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放' WHERE credits_tooltip_content LIKE '%100 免费积分%'`);
@@ -235,6 +244,29 @@ export async function initDb(): Promise<void> {
   db.run('CREATE INDEX IF NOT EXISTS idx_theme_export_jobs_user_updated ON theme_export_jobs(user_id, updated_at DESC)');
   db.run('CREATE INDEX IF NOT EXISTS idx_theme_export_jobs_status_created ON theme_export_jobs(status, created_at ASC)');
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS usage_logs (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      login_name TEXT NOT NULL DEFAULT '',
+      scene TEXT NOT NULL DEFAULT '',
+      raw_input TEXT NOT NULL DEFAULT '',
+      final_prompt TEXT NOT NULL DEFAULT '',
+      model_provider TEXT NOT NULL DEFAULT '',
+      model_name TEXT NOT NULL DEFAULT '',
+      credits_cost INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'pending',
+      error_message TEXT,
+      conversation_id TEXT NOT NULL DEFAULT '',
+      job_id TEXT NOT NULL DEFAULT '',
+      started_at INTEGER NOT NULL,
+      finished_at INTEGER,
+      duration_ms INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_started ON usage_logs(started_at DESC)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_user_started ON usage_logs(user_id, started_at DESC)');
+
   // Save to disk
   flushDb();
   startBackupScheduler();
@@ -278,10 +310,12 @@ function backupDb(): void {
 function rotateBackups(): void {
   try {
     if (!existsSync(BACKUP_DIR)) return;
+    const config = getSecurityConfig();
+    const retentionCount = Math.max(1, Number(config?.backup_retention_count ?? DEFAULT_BACKUP_RETENTION_COUNT));
     const files = readdirSync(BACKUP_DIR)
       .filter(f => f.startsWith('theme-studio-') && f.endsWith('.db'))
       .sort();
-    while (files.length > MAX_BACKUPS) {
+    while (files.length > retentionCount) {
       unlinkSync(join(BACKUP_DIR, files.shift()!));
     }
   } catch {}
@@ -300,12 +334,13 @@ function startBackupScheduler(): void {
 }
 
 const EXPORT_OUTPUT_DIR = join(process.cwd(), 'output', 'service-jobs');
-const EXPORT_RETENTION_DAYS = 30;
 
 function cleanupOldExportFiles(): void {
   try {
     if (!existsSync(EXPORT_OUTPUT_DIR)) return;
-    const cutoff = Date.now() - EXPORT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    const config = getSecurityConfig();
+    const retentionDays = Math.max(1, Number(config?.export_retention_days ?? DEFAULT_EXPORT_RETENTION_DAYS));
+    const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
     const jobDirs = readdirSync(EXPORT_OUTPUT_DIR);
     let cleaned = 0;
     for (const dir of jobDirs) {
@@ -371,10 +406,10 @@ daily_chat_adjust_limit?: number,
 credits_per_conversation?: number,
 credits_per_image?: number,
 daily_credits_limit?: number,
+backup_retention_count?: number,
+export_retention_days?: number,
 credits_tooltip_content?: string
 ): Promise<void> {
-  const current = getSecurityConfig();
-  
   const updateFields: Record<string, any> = {};
   if (cors_origins !== undefined) updateFields.cors_origins = JSON.stringify(cors_origins);
   if (proxy_image_hosts !== undefined) updateFields.proxy_image_hosts = JSON.stringify(proxy_image_hosts);
@@ -385,6 +420,8 @@ credits_tooltip_content?: string
 if (credits_per_conversation !== undefined) updateFields.credits_per_conversation = credits_per_conversation;
 if (credits_per_image !== undefined) updateFields.credits_per_image = credits_per_image;
 if (daily_credits_limit !== undefined) updateFields.daily_credits_limit = daily_credits_limit;
+if (backup_retention_count !== undefined) updateFields.backup_retention_count = backup_retention_count;
+if (export_retention_days !== undefined) updateFields.export_retention_days = export_retention_days;
 if (credits_tooltip_content !== undefined) updateFields.credits_tooltip_content = credits_tooltip_content;
   
   if (Object.keys(updateFields).length === 0) {

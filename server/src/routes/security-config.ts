@@ -28,14 +28,14 @@ function normalizeMultilineText(value: unknown): string | undefined {
   return normalized || undefined;
 }
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (_req: Request, res: Response) => {
   try {
     const config = getSecurityConfig();
     if (!config) {
       return res.status(404).json({ error: 'Security config not found' });
     }
     
-    const { cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, credits_per_image, daily_credits_limit, credits_tooltip_content, updated_at } = config;
+    const { cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, credits_per_image, daily_credits_limit, backup_retention_count, export_retention_days, credits_tooltip_content, updated_at } = config;
     res.json({
       corsOrigins: cors_origins,
       proxyImageHosts: proxy_image_hosts,
@@ -46,6 +46,8 @@ router.get('/', async (req: Request, res: Response) => {
       creditsPerConversation: credits_per_conversation ?? 50,
       creditsPerImage: credits_per_image ?? 50,
       dailyCreditsLimit: daily_credits_limit ?? 100,
+      backupRetentionCount: backup_retention_count ?? 8,
+      exportRetentionDays: export_retention_days ?? 7,
       creditsTooltipContent: credits_tooltip_content ?? '',
       updated_at
     });
@@ -70,12 +72,14 @@ router.put('/', async (req: Request, res: Response) => {
     const creditsPerConversation = normalizePositiveInteger(req.body?.creditsPerConversation);
     const creditsPerImage = normalizePositiveInteger(req.body?.creditsPerImage);
     const dailyCreditsLimit = normalizePositiveInteger(req.body?.dailyCreditsLimit);
+    const backupRetentionCount = normalizePositiveInteger(req.body?.backupRetentionCount);
+    const exportRetentionDays = normalizePositiveInteger(req.body?.exportRetentionDays);
     const creditsTooltipContent = normalizeMultilineText(req.body?.creditsTooltipContent);
     
-    await updateSecurityConfig(corsOrigins, proxyImageHosts, rateLimits, enabledFeatures, dailyImageGenLimit, dailyChatAdjustLimit, creditsPerConversation, creditsPerImage, dailyCreditsLimit, creditsTooltipContent);
+    await updateSecurityConfig(corsOrigins, proxyImageHosts, rateLimits, enabledFeatures, dailyImageGenLimit, dailyChatAdjustLimit, creditsPerConversation, creditsPerImage, dailyCreditsLimit, backupRetentionCount, exportRetentionDays, creditsTooltipContent);
     
     const updatedConfig = getSecurityConfig();
-    const { cors_origins: updatedCors, proxy_image_hosts: updatedProxy, rate_limits: updatedLimits, enabled_features: updatedFeatures, daily_image_gen_limit: updatedImageLimit, daily_chat_adjust_limit: updatedChatLimit, credits_per_conversation: updatedCreditsPerConv, credits_per_image: updatedCreditsPerImage, daily_credits_limit: updatedDailyCredits, credits_tooltip_content: updatedCreditsTooltipContent, updated_at } = updatedConfig;
+    const { cors_origins: updatedCors, proxy_image_hosts: updatedProxy, rate_limits: updatedLimits, enabled_features: updatedFeatures, daily_image_gen_limit: updatedImageLimit, daily_chat_adjust_limit: updatedChatLimit, credits_per_conversation: updatedCreditsPerConv, credits_per_image: updatedCreditsPerImage, daily_credits_limit: updatedDailyCredits, backup_retention_count: updatedBackupRetentionCount, export_retention_days: updatedExportRetentionDays, credits_tooltip_content: updatedCreditsTooltipContent, updated_at } = updatedConfig;
     
     res.json({
       success: true,
@@ -88,6 +92,8 @@ router.put('/', async (req: Request, res: Response) => {
       creditsPerConversation: updatedCreditsPerConv ?? 50,
       creditsPerImage: updatedCreditsPerImage ?? 50,
       dailyCreditsLimit: updatedDailyCredits ?? 100,
+      backupRetentionCount: updatedBackupRetentionCount ?? 8,
+      exportRetentionDays: updatedExportRetentionDays ?? 7,
       creditsTooltipContent: updatedCreditsTooltipContent ?? '',
       updated_at
     });

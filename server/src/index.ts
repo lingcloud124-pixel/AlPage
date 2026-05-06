@@ -41,6 +41,7 @@ const [
   { conversationsRouter },
   { default: adminPasswordRouter },
   { default: adminAuthRouter },
+  { usageLogsRouter },
 ] = await Promise.all([
   import('express'),
   import('./db.js'),
@@ -59,6 +60,7 @@ const [
   import('./routes/conversations.js'),
   import('./routes/admin-password.js'),
   import('./routes/admin-auth.js'),
+  import('./routes/usage-logs.js'),
 ]);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -121,6 +123,7 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api/model-config', adminAuthMiddleware, modelConfigRouter);
 app.use('/api/security-config', adminAuthMiddleware, securityConfigRouter);
 app.use('/api/admin-password', adminAuthMiddleware, adminPasswordRouter);
+app.use('/api/admin/usage-logs', adminAuthMiddleware, usageLogsRouter);
 app.use('/api/admin-auth', adminAuthRouter);
 app.use('/api/theme', authMiddleware);
 app.use('/api/theme', (req: any, _res: any, next: any) => {

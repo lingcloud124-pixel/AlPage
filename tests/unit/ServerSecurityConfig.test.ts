@@ -14,6 +14,12 @@ describe('security config database schema', () => {
     expect(source).toContain('daily_chat_adjust_limit INTEGER NOT NULL DEFAULT');
   });
 
+  test('security_config schema includes storage retention controls with small-team defaults', () => {
+    const source = readFileSync(join(process.cwd(), 'server/src/db.ts'), 'utf8');
+    expect(source).toContain('backup_retention_count INTEGER NOT NULL DEFAULT 8');
+    expect(source).toContain('export_retention_days INTEGER NOT NULL DEFAULT 7');
+  });
+
   test('security_config table has proper constraints', () => {
     const source = readFileSync(join(process.cwd(), 'server/src/db.ts'), 'utf8');
     expect(source).toContain('CHECK (id = 1)');
@@ -62,5 +68,25 @@ describe('runtime rate limiting wiring', () => {
     expect(source).toContain('rateLimitMiddleware');
     expect(source).toContain('Map<string');
     expect(source).toContain('429');
+  });
+});
+
+describe('storage retention admin configuration', () => {
+  test('security config route returns and updates backup/export retention settings', () => {
+    const source = readFileSync(join(process.cwd(), 'server/src/routes/security-config.ts'), 'utf8');
+    expect(source).toContain('backupRetentionCount');
+    expect(source).toContain('exportRetentionDays');
+    expect(source).toContain("const backupRetentionCount = normalizePositiveInteger(req.body?.backupRetentionCount);");
+    expect(source).toContain("const exportRetentionDays = normalizePositiveInteger(req.body?.exportRetentionDays);");
+  });
+
+  test('admin page exposes retention fields and saves them through security config', () => {
+    const source = readFileSync(join(process.cwd(), 'server/admin/index.html'), 'utf8');
+    expect(source).toContain('id="backupRetentionCount"');
+    expect(source).toContain('id="exportRetentionDays"');
+    expect(source).toContain("document.getElementById('backupRetentionCount').value = securityData.backupRetentionCount ?? '8';");
+    expect(source).toContain("document.getElementById('exportRetentionDays').value = securityData.exportRetentionDays ?? '7';");
+    expect(source).toContain("backupRetentionCount: parseInt(document.getElementById('backupRetentionCount').value) || 8");
+    expect(source).toContain("exportRetentionDays: parseInt(document.getElementById('exportRetentionDays').value) || 7");
   });
 });
