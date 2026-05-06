@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getUserUsageDetails, listUsageLogs } from '../usage-logs.js';
+import { getUsageOverview, getUserUsageOverview, listUsageLogs, listUsersWithImageUsage } from '../usage-logs.js';
 import { logger } from '../logger.js';
 
 const router = Router();
@@ -31,6 +31,21 @@ router.get('/', (_req, res) => {
   }
 });
 
+router.get('/overview', (req, res) => {
+  try {
+    const rawDays = typeof req.query.days === 'string' ? Number(req.query.days) : undefined;
+    const days = Number.isFinite(rawDays) ? rawDays : 7;
+
+    res.json({
+      summary: getUsageOverview(days),
+      users: listUsersWithImageUsage(days),
+    });
+  } catch (error) {
+    logger.error('Get usage overview error', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/users/:userId', (req, res) => {
   try {
     const userId = Number(req.params.userId);
@@ -40,7 +55,9 @@ router.get('/users/:userId', (req, res) => {
 
     const rawLimit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
     const limit = Number.isFinite(rawLimit) ? rawLimit : 20;
-    const details = getUserUsageDetails(userId, limit);
+    const rawDays = typeof req.query.days === 'string' ? Number(req.query.days) : undefined;
+    const days = Number.isFinite(rawDays) ? rawDays : 7;
+    const details = getUserUsageOverview(userId, limit, days);
     res.json(details);
   } catch (error) {
     logger.error('Get user usage details error', error);

@@ -26,11 +26,33 @@ export interface UsageLogRecord {
 export interface UserUsageDetails {
   summary: {
     userId: number;
-    totalCalls: number;
-    totalCreditsCost: number;
-    latestStartedAt: number | null;
+    totalImageCalls: number;
+    totalDownloadCount: number;
   };
+  trend: DailyImageTrendPoint[];
   items: UsageLogRecord[];
+  downloadItems: UsageLogRecord[];
+}
+
+export interface DailyImageTrendPoint {
+  dateKey: string;
+  label: string;
+  count: number;
+}
+
+export interface UsageOverviewSummary {
+  totalImageCalls: number;
+  activeUserCount: number;
+  totalDownloadCount: number;
+  trend: DailyImageTrendPoint[];
+}
+
+export interface UserImageUsageListItem {
+  id: number;
+  name: string;
+  displayName: string;
+  lastLoginAt: number | null;
+  trend: DailyImageTrendPoint[];
 }
 
 type UsageLogRow = {
@@ -50,6 +72,13 @@ type UsageLogRow = {
   started_at: number;
   finished_at: number | null;
   duration_ms: number;
+};
+
+type UserRow = {
+  id: number;
+  name: string;
+  display_name: string;
+  last_login_at: number | null;
 };
 
 function clipText(value: string, maxLength: number): string {
@@ -89,6 +118,88 @@ function mapRow(row: UsageLogRow): UsageLogRecord {
     finishedAt: row.finished_at,
     durationMs: row.duration_ms,
   };
+}
+
+function startOfDay(timestamp: number): number {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+function formatDayKey(timestamp: number): string {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDayLabel(timestamp: number): string {
+  const date = new Date(timestamp);
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+function getTrendWindow(days: number, now: number = Date.now()): { startAt: number; dayStarts: number[] } {
+  const safeDays = Math.min(Math.max(1, Math.floor(days)), 30);
+  const todayStart = startOfDay(now);
+  const startAt = todayStart - (safeDays - 1) * 24 * 60 * 60 * 1000;
+  const dayStarts = Array.from({ length: safeDays }, (_value, index) => startAt + index * 24 * 60 * 60 * 1000);
+  return { startAt, dayStarts };
+}
+
+export function buildDailyImageTrend(
+  timestamps: number[],
+  days: number = 7,
+  now: number = Date.now(),
+): DailyImageTrendPoint[] {
+  const { dayStarts } = getTrendWindow(days, now);
+  const counts = new Map<string, number>();
+
+  for (const timestamp of timestamps) {
+    const key = formatDayKey(timestamp);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  return dayStarts.map((dayStart) => {
+    const dateKey = formatDayKey(dayStart);
+    return {
+      dateKey,
+      label: formatDayLabel(dayStart),
+      count: counts.get(dateKey) ?? 0,
+    };
+  });
+}
+
+function listImageLogTimestamps(filters?: { userId?: number; fromTimestamp?: number }): number[] {
+  const where = ["scene = 'image'"];
+  const params: Array<number> = [];
+
+  if (filters?.userId) {
+    where.push('user_id = ?');
+    params.push(filters.userId);
+  }
+  if (typeof filters?.fromTimestamp === 'number') {
+    where.push('started_at >= ?');
+    params.push(filters.fromTimestamp);
+  }
+
+  const stmt = db.prepare(`
+    SELECT started_at
+    FROM usage_logs
+    WHERE ${where.join(' AND ')}
+    ORDER BY started_at ASC
+  `);
+  stmt.bind(params);
+
+  const timestamps: number[] = [];
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as { started_at?: number };
+    if (typeof row.started_at === 'number') {
+      timestamps.push(row.started_at);
+    }
+  }
+  stmt.free();
+  return timestamps;
 }
 
 export function createUsageLog(input: {
@@ -232,26 +343,80 @@ export function listUsageLogs(filters?: {
   return rows;
 }
 
-export function getUserUsageDetails(userId: number, limit: number = 20): UserUsageDetails {
-  const safeLimit = Math.min(Math.max(1, Math.floor(limit)), 100);
+export function getUsageOverview(days: number = 7): UsageOverviewSummary {
+  const { startAt } = getTrendWindow(days);
+  const trendTimestamps = listImageLogTimestamps({ fromTimestamp: startAt });
 
   const summaryStmt = db.prepare(`
     SELECT
-      COUNT(*) AS total_calls,
-      COALESCE(SUM(credits_cost), 0) AS total_credits_cost,
-      MAX(started_at) AS latest_started_at
+      COUNT(*) AS total_image_calls,
+      COUNT(DISTINCT user_id) AS active_user_count,
+      (
+        SELECT COUNT(*) AS total_download_count
+        FROM usage_logs
+        WHERE scene = 'export'
+      ) AS total_download_count
     FROM usage_logs
-    WHERE user_id = ? AND scene IN ('chat', 'image')
+    WHERE scene = 'image' AND started_at >= ?
   `);
-  summaryStmt.bind([userId]);
+  summaryStmt.bind([startAt]);
   const summaryRow = summaryStmt.step()
-    ? (summaryStmt.getAsObject() as { total_calls?: number; total_credits_cost?: number; latest_started_at?: number | null })
+    ? (summaryStmt.getAsObject() as { total_image_calls?: number; active_user_count?: number })
+    : null;
+  summaryStmt.free();
+
+  return {
+    totalImageCalls: Number(summaryRow?.total_image_calls ?? 0),
+    activeUserCount: Number(summaryRow?.active_user_count ?? 0),
+    totalDownloadCount: Number((summaryRow as { total_download_count?: number } | null)?.total_download_count ?? 0),
+    trend: buildDailyImageTrend(trendTimestamps, days),
+  };
+}
+
+export function listUsersWithImageUsage(days: number = 7): UserImageUsageListItem[] {
+  const { startAt } = getTrendWindow(days);
+  const stmt = db.prepare('SELECT id, name, display_name, last_login_at FROM users ORDER BY last_login_at DESC, id ASC');
+  const users: UserImageUsageListItem[] = [];
+
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as UserRow;
+    users.push({
+      id: Number(row.id),
+      name: String(row.name ?? ''),
+      displayName: String(row.display_name ?? ''),
+      lastLoginAt: row.last_login_at == null ? null : Number(row.last_login_at),
+      trend: buildDailyImageTrend(listImageLogTimestamps({ userId: Number(row.id), fromTimestamp: startAt }), days),
+    });
+  }
+
+  stmt.free();
+  return users;
+}
+
+export function getUserUsageOverview(userId: number, limit: number = 20, days: number = 7): UserUsageDetails {
+  const safeLimit = Math.min(Math.max(1, Math.floor(limit)), 100);
+  const { startAt } = getTrendWindow(days);
+
+  const summaryStmt = db.prepare(`
+    SELECT
+      COUNT(*) AS total_image_calls,
+      (
+        SELECT COUNT(*) AS total_download_count
+        FROM usage_logs
+        WHERE user_id = ? AND scene = 'export'
+      ) AS total_download_count
+    FROM usage_logs
+    WHERE user_id = ? AND scene = 'image'
+  `);
+  summaryStmt.bind([userId, userId]);
+  const summaryRow = summaryStmt.step()
+    ? (summaryStmt.getAsObject() as { total_image_calls?: number; total_download_count?: number })
     : null;
   summaryStmt.free();
 
   const detailStmt = db.prepare(`
     SELECT * FROM usage_logs
-    WHERE user_id = ? AND scene IN ('chat', 'image')
+    WHERE user_id = ? AND scene = 'image'
     ORDER BY started_at DESC
     LIMIT ?
   `);
@@ -262,13 +427,27 @@ export function getUserUsageDetails(userId: number, limit: number = 20): UserUsa
   }
   detailStmt.free();
 
+  const downloadStmt = db.prepare(`
+    SELECT * FROM usage_logs
+    WHERE user_id = ? AND scene = 'export'
+    ORDER BY started_at DESC
+    LIMIT ?
+  `);
+  downloadStmt.bind([userId, safeLimit]);
+  const downloadItems: UsageLogRecord[] = [];
+  while (downloadStmt.step()) {
+    downloadItems.push(mapRow(downloadStmt.getAsObject() as UsageLogRow));
+  }
+  downloadStmt.free();
+
   return {
     summary: {
       userId,
-      totalCalls: Number(summaryRow?.total_calls ?? 0),
-      totalCreditsCost: Number(summaryRow?.total_credits_cost ?? 0),
-      latestStartedAt: summaryRow?.latest_started_at == null ? null : Number(summaryRow.latest_started_at),
+      totalImageCalls: Number(summaryRow?.total_image_calls ?? 0),
+      totalDownloadCount: Number(summaryRow?.total_download_count ?? 0),
     },
+    trend: buildDailyImageTrend(listImageLogTimestamps({ userId, fromTimestamp: startAt }), days),
     items,
+    downloadItems,
   };
 }

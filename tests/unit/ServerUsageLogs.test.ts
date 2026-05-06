@@ -34,32 +34,59 @@ describe('server usage logs', () => {
     expect(source).toContain("scene: 'image'");
   });
 
-  test('usage log helpers expose per-user summary and recent logs for drawer details', () => {
+  test('export download route records usage log lifecycle events', () => {
+    const source = fs.readFileSync(path.join(projectRoot, 'server/src/routes/export-jobs.ts'), 'utf8');
+
+    expect(source).toContain('createUsageLog');
+    expect(source).toContain('finalizeUsageLog');
+    expect(source).toContain("scene: 'export'");
+    expect(source).toContain("router.get('/export-jobs/:id/download'");
+  });
+
+  test('usage log helpers expose image-focused overview and trend aggregations', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'server/src/usage-logs.ts'), 'utf8');
 
-    expect(source).toContain('export function getUserUsageDetails');
-    expect(source).toContain('COUNT(*) AS total_calls');
-    expect(source).toContain('COALESCE(SUM(credits_cost), 0) AS total_credits_cost');
-    expect(source).toContain('MAX(started_at) AS latest_started_at');
-    expect(source).toContain("WHERE user_id = ? AND scene IN ('chat', 'image')");
+    expect(source).toContain('export function getUserUsageOverview');
+    expect(source).toContain('export function listUsersWithImageUsage');
+    expect(source).toContain('export function buildDailyImageTrend');
+    expect(source).toContain("scene = 'image'");
+    expect(source).toContain('COUNT(*) AS total_image_calls');
+    expect(source).toContain('COUNT(DISTINCT user_id) AS active_user_count');
+    expect(source).toContain('COUNT(*) AS total_download_count');
   });
 
-  test('admin route exposes per-user usage detail endpoint for drawer data', () => {
+  test('admin route exposes image overview endpoint for users table and drawer data', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'server/src/routes/usage-logs.ts'), 'utf8');
 
+    expect(source).toContain("router.get('/overview'");
     expect(source).toContain("router.get('/users/:userId'");
-    expect(source).toContain('getUserUsageDetails');
+    expect(source).toContain('getUserUsageOverview');
+    expect(source).toContain('listUsersWithImageUsage');
   });
 
-  test('admin panel exposes user drawer instead of top-level usage tab', () => {
+  test('admin panel shows image-focused overview, sparkline trends and drawer record list', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'server/admin/index.html'), 'utf8');
 
     expect(source).not.toContain("onclick=\"switchTab('usage')\"");
     expect(source).toContain('id="userUsageDrawer"');
-    expect(source).toContain('id="userUsageSummary"');
-    expect(source).toContain('id="userUsageLogTableBody"');
+    expect(source).toContain('id="usageOverviewPanel"');
+    expect(source).toContain('id="usageOverviewDownloadCount"');
+    expect(source).toContain('id="userUsageCountValue"');
+    expect(source).toContain('id="userUsageTrend"');
+    expect(source).toContain('id="userDownloadCountValue"');
+    expect(source).toContain('id="userUsageRecordList"');
+    expect(source).toContain('id="userDownloadRecordList"');
+    expect(source).toContain('function renderSparkline(');
+    expect(source).toContain('function renderUsageOverview(');
+    expect(source).toContain('function renderUserUsageRecords(');
+    expect(source).toContain('function renderUserDownloadRecords(');
+    expect(source).toContain('title="${escapeHtml(');
+    expect(source).toContain('/api/admin/usage-logs/overview');
     expect(source).toContain('async function openUserUsageDrawer(');
     expect(source).toContain('/api/admin/usage-logs/users/');
     expect(source).toContain('查看使用情况');
+    expect(source).not.toContain('全站近 7 天生图趋势');
+    expect(source).not.toContain('<th>ID</th>');
+    expect(source).not.toContain('<th>近 7 天生图趋势</th>');
   });
 });

@@ -7,6 +7,7 @@ import { createExportJob, getExportJobByIdAndUser, updateExportJob } from '../ex
 import { getSecurityConfig } from '../db.js';
 import { normalizeAndValidateSelectedProducts } from '../export-job-validation.js';
 import { logger } from '../logger.js';
+import { createUsageLog, finalizeUsageLog } from '../usage-logs.js';
 
 const router = Router();
 
@@ -15,6 +16,38 @@ function formatDatePrefix(now: Date = new Date()): string {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}${month}${day}`;
+}
+
+function startExportUsageLog(req: any, input: { jobId: string; rawInput: string; finalPrompt: string }): string | null {
+  try {
+    const userId = Number(req.userId);
+    const loginName = typeof req.loginName === 'string' ? req.loginName : '';
+    if (!Number.isFinite(userId) || !loginName) {
+      return null;
+    }
+    return createUsageLog({
+      userId,
+      loginName,
+      scene: 'export',
+      rawInput: input.rawInput,
+      finalPrompt: input.finalPrompt,
+      modelProvider: 'theme-download',
+      modelName: 'zip',
+      jobId: input.jobId,
+    }).id;
+  } catch (error) {
+    logger.warn('Create export usage log failed', { error: error instanceof Error ? error.message : String(error) });
+    return null;
+  }
+}
+
+function finalizeExportUsageLog(usageLogId: string | null, status: 'success' | 'failed', errorMessage?: string): void {
+  if (!usageLogId) return;
+  try {
+    finalizeUsageLog(usageLogId, { status, errorMessage });
+  } catch (error) {
+    logger.warn('Finalize export usage log failed', { error: error instanceof Error ? error.message : String(error), usageLogId });
+  }
 }
 
 router.post('/pick-directory', async (_req, res) => {
@@ -110,6 +143,7 @@ router.get('/export-jobs/:id', async (req, res) => {
 });
 
 router.get('/export-jobs/:id/download', async (req, res) => {
+  let usageLogId: string | null = null;
   try {
     const userId = (req as any).userId as number;
     const { id } = req.params;
@@ -144,14 +178,25 @@ router.get('/export-jobs/:id/download', async (req, res) => {
 
       if (files.length === 1) {
         const filePath = path.join(packagesDir, files[0]);
+        usageLogId = startExportUsageLog(req, {
+          jobId: id,
+          rawInput: 'download-single-theme',
+          finalPrompt: files[0],
+        });
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(files[0])}"`);
+        finalizeExportUsageLog(usageLogId, 'success');
         fs.createReadStream(filePath).pipe(res);
         return;
       }
 
       const snapshotName = String((result?.snapshotName as string) ?? id).trim() || id;
       const archiveName = `${formatDatePrefix()}-${snapshotName}.zip`;
+      usageLogId = startExportUsageLog(req, {
+        jobId: id,
+        rawInput: 'download-all-themes',
+        finalPrompt: archiveName,
+      });
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(archiveName)}"`);
 
@@ -161,6 +206,7 @@ router.get('/export-jobs/:id/download', async (req, res) => {
         archive.file(path.join(packagesDir, file), { name: file });
       }
       archive.finalize();
+      finalizeExportUsageLog(usageLogId, 'success');
       return;
     }
 
@@ -174,10 +220,17 @@ router.get('/export-jobs/:id/download', async (req, res) => {
       return res.status(404).json({ error: 'File not found' });
     }
 
+    usageLogId = startExportUsageLog(req, {
+      jobId: id,
+      rawInput: 'download-selected-theme',
+      finalPrompt: requestedFile,
+    });
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(requestedFile)}"`);
+    finalizeExportUsageLog(usageLogId, 'success');
     fs.createReadStream(filePath).pipe(res);
   } catch (error) {
+    finalizeExportUsageLog(usageLogId, 'failed', error instanceof Error ? error.message : String(error));
     logger.error('Download export job error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
