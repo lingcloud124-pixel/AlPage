@@ -1,6 +1,6 @@
 import type { ChatRequest, ChatResponse, AISettings } from '../types';
 import { redirectToLogin } from '../auth';
-import { fetchCredits, updateCreditsDisplay, formatNextReset } from '../credits';
+import { fetchCredits, updateCreditsDisplay, formatNextReset, getCachedCredits } from '../credits';
 import { getCurrentProjectId } from '../project-manager';
 import { apiFetch } from '../api-base';
 
@@ -189,8 +189,9 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
         try {
           const errData = await response.json();
           if (errData.code === 'CREDITS_EXHAUSTED') {
-            updateCreditsDisplay({ credits: errData.remainingCredits ?? 0, maxCredits: 100, nextResetAt: errData.nextResetAt ?? '' });
-            return { success: false, error: `今日生成次数已用完。${formatNextReset(errData.nextResetAt)}自动恢复` };
+            const cached = getCachedCredits();
+            updateCreditsDisplay({ credits: errData.remainingCredits ?? 0, maxCredits: cached?.maxCredits ?? 10, nextResetAt: errData.nextResetAt ?? '' });
+            return { success: false, error: `今日积分已用完。${formatNextReset(errData.nextResetAt)}自动恢复` };
           }
         } catch { /* fall through */ }
       }

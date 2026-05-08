@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
 
 [
+  resolve(process.cwd(), 'server', '.env'),
   resolve(process.cwd(), '.env'),
   resolve(process.cwd(), '..', '.env'),
   resolve(process.cwd(), '..', 'web', '.env'),
@@ -143,6 +144,17 @@ app.use('/api/theme/conversations', conversationsRouter);
 app.use('/admin', express.static(join(__dirname, '..', 'admin')));
 app.get('/admin/{*splat}', (_req, res) => {
   res.sendFile(join(__dirname, '..', 'admin', 'index.html'));
+});
+
+const webDist = join(__dirname, '..', '..', 'web', 'dist');
+app.use(express.static(webDist));
+app.get('/{*splat}', (_req, res) => {
+  const indexPath = join(webDist, 'index.html');
+  if (require('fs').existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Frontend not built. Run: npm run build');
+  }
 });
 
 let server: ReturnType<typeof app.listen> | null = null;

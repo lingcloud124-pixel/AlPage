@@ -794,7 +794,7 @@ router.post('/image', async (req, res) => {
   const imageLoginName = typeof (req as any).loginName === 'string' ? (req as any).loginName : `user-${imageUserId}`;
   const imageConversationId = typeof req.body?.conversationId === 'string' ? req.body.conversationId : '';
   const imageSecurityConfig = getSecurityConfig();
-  const imageCreditsPerGen = imageSecurityConfig?.credits_per_image ?? 50;
+  const imageCreditsPerGen = imageSecurityConfig?.credits_per_image ?? 1;
   const imageQuotaEnabled = imageSecurityConfig?.enabled_features?.quota !== false;
   const imageRawInput = typeof req.body?.prompt === 'string' ? req.body.prompt : '';
   let imageUsageLogId: string | null = null;

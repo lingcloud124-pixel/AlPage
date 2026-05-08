@@ -15,9 +15,9 @@ let creditsRefreshStarted = false;
 let creditsRefreshInFlight: Promise<void> | null = null;
 
 const DEFAULT_CREDITS_TOOLTIP_LINES = [
-  '1、每位用户每日可获得 10 次免费生成主题背景图的机会',
-  '2、每成功生成 1 次主题背景图，扣除 1 次机会',
-  '3、每日生成次数将在次日 06:00 自动清零并重新发放',
+  '1、每位用户每日可获得 10 积分',
+  '2、每成功生成 1 次主题背景图，扣除 1 积分',
+  '3、每日积分将在次日 06:00 自动清零并重新发放',
 ];
 
 export function setupCreditsTooltip(): void {
@@ -82,7 +82,7 @@ export async function fetchCredits(): Promise<CreditsInfo> {
     cache: 'no-store',
   });
   if (!res.ok) {
-    return { credits: 0, maxCredits: 100, nextResetAt: '', quotaEnabled: false, creditsTooltipContent: DEFAULT_CREDITS_TOOLTIP_LINES.join('\n') };
+    return { credits: 0, maxCredits: 10, nextResetAt: '', quotaEnabled: false, creditsTooltipContent: DEFAULT_CREDITS_TOOLTIP_LINES.join('\n') };
   }
   cachedCredits = await res.json();
   updateCostHints(cachedCredits!.costPerImage, cachedCredits!.quotaEnabled !== false);
@@ -94,7 +94,7 @@ export function getCachedCredits(): CreditsInfo | null {
 }
 
 export function updateCreditsDisplay(info?: CreditsInfo): void {
-  if (!info) info = cachedCredits || { credits: 0, maxCredits: 100, nextResetAt: '', quotaEnabled: false, creditsTooltipContent: DEFAULT_CREDITS_TOOLTIP_LINES.join('\n') };
+  if (!info) info = cachedCredits || { credits: 0, maxCredits: 10, nextResetAt: '', quotaEnabled: false, creditsTooltipContent: DEFAULT_CREDITS_TOOLTIP_LINES.join('\n') };
   cachedCredits = info;
   const quotaEnabled = info.quotaEnabled !== false;
 
@@ -188,7 +188,7 @@ export function formatNextReset(nextResetAt: string): string {
 }
 
 export function updateCostHints(costPerImage?: number, enabled = true): void {
-  const cost = costPerImage ?? cachedCredits?.costPerImage ?? 50;
+  const cost = costPerImage ?? cachedCredits?.costPerImage ?? 1;
   document.querySelectorAll('.chat-cost-hint').forEach(el => {
     (el as HTMLElement).style.display = enabled ? '' : 'none';
     el.textContent = `✦${cost}`;

@@ -265,7 +265,14 @@ export function getModelConfig(): {
     row = stmt.getAsObject() as Record<string, unknown>;
   }
   stmt.free();
-  return normalizeModelConfig(row);
+  const result = normalizeModelConfig(row);
+  logger.info('getModelConfig', {
+    hasRow: !!row,
+    imageProvider: result.imageProvider,
+    hasImageEndpoint: !!result.imageEndpoint,
+    hasImageApiKey: !!result.imageApiKey,
+  });
+  return result;
 }
 
 export { router as modelConfigRouter };

@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: theme-studio
+  namespace: theme-studio
+  labels:
+    app: theme-studio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: theme-studio
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: theme-studio
+    spec:
+      containers:
+        - name: theme-studio
+          image: theme-studio:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3001
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: theme-studio-config
+            - secretRef:
+                name: theme-studio-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: output
+              mountPath: /app/output/service-jobs
+            - name: logs
+              mountPath: /app/logs
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3001
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: theme-studio-data-pvc
+        - name: output
+          persistentVolumeClaim:
+            claimName: theme-studio-output-pvc
+        - name: logs
+          emptyDir: {}

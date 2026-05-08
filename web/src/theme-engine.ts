@@ -163,6 +163,7 @@ export async function loadDefaultTemplates() {
     if (sidebarTarget) await renderTemplate('sidebar', sidebarTarget);
 
     requestAnimationFrame(() => { (window as any).resizePreview?.(); });
+    setTimeout(() => { (window as any).resizePreview?.(); }, 600);
   } catch (e) {
     console.error('Failed to load templates:', (e as Error).message);
   }

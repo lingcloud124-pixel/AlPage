@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: theme-studio-config
+  namespace: theme-studio
+data:
+  NODE_ENV: "production"
+  PORT: "3001"
+  SCREENSHOT_BASE_URL: "http://theme-studio-svc:3001"
+  EKP_TOKEN_RESOLVE_PATH: "/sys/authentication/sso/loginService_rest/getTokenLoginName"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: theme-studio-secrets
+  namespace: theme-studio
+type: Opaque
+stringData:
+  ADMIN_PASSWORD: "CHANGE_ME_STRONG_PASSWORD"
+  # JIMENG_ACCESS_KEY: ""
+  # JIMENG_SECRET_KEY: ""
+  # EKP_BASE_URL: "https://myekp.landray.com.cn"
+  # EKP_SSO_USER: ""
+  # EKP_SSO_PASS: ""

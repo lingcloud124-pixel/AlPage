@@ -144,6 +144,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       avatarLetter.textContent = (currentUser.display_name || currentUser.name || 'U').charAt(0).toUpperCase();
     }
 
+    const avatarName = document.getElementById('userAvatarName');
+    if (avatarName && currentUser) {
+      avatarName.textContent = currentUser.display_name || currentUser.name || '';
+    }
+
     const avatarBtn = document.getElementById('userAvatarBtn');
     if (avatarBtn && currentUser) {
       avatarBtn.title = currentUser.display_name || currentUser.name;

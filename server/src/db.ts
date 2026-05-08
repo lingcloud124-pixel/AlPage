@@ -143,12 +143,12 @@ export async function initDb(): Promise<void> {
       enabled_features TEXT NOT NULL DEFAULT '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}',
       daily_image_gen_limit INTEGER NOT NULL DEFAULT 100,
       daily_chat_adjust_limit INTEGER NOT NULL DEFAULT 50,
-      credits_per_conversation INTEGER NOT NULL DEFAULT 25,
-      credits_per_image INTEGER NOT NULL DEFAULT 50,
-      daily_credits_limit INTEGER NOT NULL DEFAULT 100,
+      credits_per_conversation INTEGER NOT NULL DEFAULT 1,
+      credits_per_image INTEGER NOT NULL DEFAULT 1,
+      daily_credits_limit INTEGER NOT NULL DEFAULT 10,
       backup_retention_count INTEGER NOT NULL DEFAULT 8,
       export_retention_days INTEGER NOT NULL DEFAULT 7,
-      credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放',
+      credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 10 积分\n2、每成功生成 1 次主题背景图，扣除 1 积分\n3、每日积分将在次日 06:00 自动清零并重新发放',
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `);
@@ -163,7 +163,7 @@ export async function initDb(): Promise<void> {
     }
     cols.free();
     if (!colNames.includes('credits_per_image')) {
-      db.run('ALTER TABLE security_config ADD COLUMN credits_per_image INTEGER NOT NULL DEFAULT 50');
+      db.run('ALTER TABLE security_config ADD COLUMN credits_per_image INTEGER NOT NULL DEFAULT 1');
     }
     if (!colNames.includes('backup_retention_count')) {
       db.run(`ALTER TABLE security_config ADD COLUMN backup_retention_count INTEGER NOT NULL DEFAULT ${DEFAULT_BACKUP_RETENTION_COUNT}`);
@@ -172,10 +172,9 @@ export async function initDb(): Promise<void> {
       db.run(`ALTER TABLE security_config ADD COLUMN export_retention_days INTEGER NOT NULL DEFAULT ${DEFAULT_EXPORT_RETENTION_DAYS}`);
     }
     if (!colNames.includes('credits_tooltip_content')) {
-      db.run(`ALTER TABLE security_config ADD COLUMN credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 10 次免费生成主题背景图的机会
-2、每成功生成 1 次主题背景图，扣除 1 次机会
-3、每日生成次数将在次日 06:00 自动清零并重新发放
-4、当前仅支持「文字生成图片」，暂不支持「上传图片生成图片（图生图）」'`);
+      db.run(`ALTER TABLE security_config ADD COLUMN credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 10 积分
+2、每成功生成 1 次主题背景图，扣除 1 积分
+3、每日积分将在次日 06:00 自动清零并重新发放'`);
     }
   } catch {
     // Column may already exist, ignore
@@ -183,16 +182,20 @@ export async function initDb(): Promise<void> {
 
   db.run(`
     INSERT OR IGNORE INTO security_config (id, cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, credits_per_image, daily_credits_limit, backup_retention_count, export_retention_days, credits_tooltip_content)
-    VALUES (1, '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:4173","http://127.0.0.1:4173"]', '["*.byteimg.com"]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 50, 100, 8, 7, '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放')
+    VALUES (1, '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:4173","http://127.0.0.1:4173"]', '["*.byteimg.com"]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 1, 1, 10, 8, 7, '1、每位用户每日可获得 10 积分\n2、每成功生成 1 次主题背景图，扣除 1 积分\n3、每日积分将在次日 06:00 自动清零并重新发放')
   `);
 
-  db.run(`UPDATE security_config SET credits_tooltip_content = '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放' WHERE credits_tooltip_content LIKE '%100 免费积分%'`);
+  db.run(`UPDATE security_config SET credits_tooltip_content = '1、每位用户每日可获得 10 积分\n2、每成功生成 1 次主题背景图，扣除 1 积分\n3、每日积分将在次日 06:00 自动清零并重新发放' WHERE credits_tooltip_content LIKE '%100 免费积分%'`);
+
+  db.run(`UPDATE security_config SET daily_credits_limit = 10, credits_per_image = 1, credits_per_conversation = 1, credits_tooltip_content = '1、每位用户每日可获得 10 积分\n2、每成功生成 1 次主题背景图，扣除 1 积分\n3、每日积分将在次日 06:00 自动清零并重新发放' WHERE daily_credits_limit = 100 OR credits_per_image = 50`);
+
+  db.run(`UPDATE user_credits SET credits = 10 WHERE credits > 10`);
 
   // Create user_credits table
   db.run(`
     CREATE TABLE IF NOT EXISTS user_credits (
       user_id INTEGER NOT NULL,
-      credits INTEGER NOT NULL DEFAULT 100,
+      credits INTEGER NOT NULL DEFAULT 10,
       last_reset_at INTEGER NOT NULL,
       PRIMARY KEY (user_id),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -202,7 +205,7 @@ export async function initDb(): Promise<void> {
   // Seed credits for all users
   const creditNow = Math.floor(Date.now() / 1000);
   [1, 2, 3].forEach(uid => {
-    const cs = db.prepare('INSERT OR IGNORE INTO user_credits (user_id, credits, last_reset_at) VALUES (?, 100, ?)');
+    const cs = db.prepare('INSERT OR IGNORE INTO user_credits (user_id, credits, last_reset_at) VALUES (?, 10, ?)');
     cs.bind([uid, creditNow]);
     cs.step();
     cs.free();
@@ -464,7 +467,7 @@ export function checkAndResetCredits(userId: number): void {
   const resetPoint = getLastResetPoint();
   if (lastResetAt < resetPoint) {
     const config = getSecurityConfig();
-    const limit = config?.daily_credits_limit ?? 100;
+    const limit = config?.daily_credits_limit ?? 10;
     const updateStmt = db.prepare('UPDATE user_credits SET credits = ?, last_reset_at = ? WHERE user_id = ?');
     updateStmt.bind([limit, Math.floor(Date.now() / 1000), userId]);
     updateStmt.step();
@@ -477,7 +480,7 @@ export function getCredits(userId: number): { credits: number; lastResetAt: numb
   checkAndResetCredits(userId);
   const stmt = db.prepare('SELECT credits, last_reset_at FROM user_credits WHERE user_id = ?');
   stmt.bind([userId]);
-  let result = { credits: 100, lastResetAt: 0 };
+  let result = { credits: 10, lastResetAt: 0 };
   if (stmt.step()) {
     const row = stmt.getAsObject() as any;
     result = { credits: row.credits as number, lastResetAt: row.last_reset_at as number };
@@ -541,7 +544,7 @@ export function ensureUserByLoginName(loginName: string): number {
 
   const newUserId = row.id;
   const creditNow = Math.floor(Date.now() / 1000);
-  const cs = db.prepare('INSERT INTO user_credits (user_id, credits, last_reset_at) VALUES (?, 100, ?)');
+  const cs = db.prepare('INSERT INTO user_credits (user_id, credits, last_reset_at) VALUES (?, 10, ?)');
   cs.bind([newUserId, creditNow]);
   cs.step();
   cs.free();

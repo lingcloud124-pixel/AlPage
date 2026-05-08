@@ -389,6 +389,7 @@ function addPresetCardsMessage(cards: Array<{key: string; label: string; primary
           card.classList.add('selected');
           addMessage('ai', `✅ 已应用「${preset.label}」配色方案`);
           requestAnimationFrame(() => (window as any).resizePreview?.());
+          setTimeout(() => (window as any).resizePreview?.(), 600);
         }
       } catch {
         addMessage('ai', `⚠️ 加载「${preset.label}」失败，请重试`);

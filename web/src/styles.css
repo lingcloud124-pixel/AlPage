@@ -913,6 +913,13 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
   margin-top: 4px;
 }
 
+.user-avatar-group
+{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .user-avatar-btn
 {
   width: 32px;
@@ -926,6 +933,20 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
   justify-content: center;
   padding: 0;
   transition: border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.user-avatar-name
+{
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: none;
+  line-height: 1;
 }
 
 .user-avatar-btn:hover
@@ -2224,7 +2245,8 @@ body[data-ui-theme="light"] .chat-cost-hint
   opacity: 0;
   pointer-events: none;
   position: relative;
-  transition: max-width 0.4s ease, opacity 0.3s ease, min-width 0.4s ease;
+  transform: translateX(40px);
+  transition: max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease 0.1s, min-width 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .preview-panel.expanded
@@ -2234,6 +2256,29 @@ body[data-ui-theme="light"] .chat-cost-hint
   min-width: 400px;
   opacity: 1;
   pointer-events: auto;
+  transform: translateX(0);
+}
+
+.preview-panel .workspace-topbar,
+.preview-panel .preview-content
+{
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.preview-panel.expanded .workspace-topbar
+{
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.15s;
+}
+
+.preview-panel.expanded .preview-content
+{
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.25s;
 }
 
 .preview-header

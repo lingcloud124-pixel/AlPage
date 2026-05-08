@@ -56,6 +56,7 @@ export function expandPreview() {
     previewTemplatesLoaded = true;
   }
   requestAnimationFrame(() => (window as any).resizePreview?.());
+  setTimeout(() => (window as any).resizePreview?.(), 600);
 }
 
 export function collapsePreview() {
