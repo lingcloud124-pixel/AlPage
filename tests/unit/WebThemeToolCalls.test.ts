@@ -167,6 +167,101 @@ describe('web theme tool call color hints', () => {
     expect((enriched[0].args.colors as Record<string, string>)['primary-color']).not.toBe('#6A2500');
   });
 
+  test('keeps generate_theme_pipeline for image-generation requests that mention color mood', () => {
+    const toolCalls: ToolCall[] = [
+      {
+        tool: 'generate_theme_pipeline',
+        args: {
+          prompt: 'modern government poster style, blue and white cool tone, cinematic lighting',
+          templateType: 'light-ui',
+        },
+      },
+    ];
+
+    const enriched = enrichToolCallsWithColorHints(toolCalls, {
+      userMessage: '帮我做一个八一建军节主题，现代政务宣传海报风格，蓝白冷色调，电影级光影',
+      assistantMessage: '我会先生成主题背景图，再给您预览。',
+      templateType: 'light-ui',
+      currentColors: {
+        'primary-color': '#C90808',
+      },
+    });
+
+    expect(enriched[0].tool).toBe('generate_theme_pipeline');
+    expect(enriched.some((toolCall) => toolCall.tool === 'update_colors')).toBe(false);
+  });
+
+  test('keeps generate_theme_pipeline for generation requests that include explicit hex colors', () => {
+    const toolCalls: ToolCall[] = [
+      {
+        tool: 'generate_theme_pipeline',
+        args: {
+          prompt: 'festival landing page background',
+          templateType: 'light-ui',
+        },
+      },
+    ];
+
+    const enriched = enrichToolCallsWithColorHints(toolCalls, {
+      userMessage: '生成一个主色偏#123456的科技主题背景图',
+      assistantMessage: '我来为您生成。',
+      templateType: 'light-ui',
+      currentColors: {
+        'primary-color': '#61D1D1',
+      },
+    });
+
+    expect(enriched[0].tool).toBe('generate_theme_pipeline');
+    expect(enriched.some((toolCall) => toolCall.tool === 'update_colors')).toBe(false);
+  });
+
+  test('auto-synthesizes generate_theme_pipeline when assistant promises generation but omits tool json', () => {
+    const enriched = enrichToolCallsWithColorHints([], {
+      userMessage: '帮我做一个八一建军节主题，现代政务宣传海报风格，蓝白冷色调，电影级光影',
+      assistantMessage: '好的，我先为您整理一个方案：主视觉采用纵向中轴构图，上方蓝白渐变天空承载纪念文字“1927-2027 八一建军节”，画面中部以半透明军人侧脸剪影为核心主体，背景为层叠虚化的远山与翻涌云海，以深蓝、湖蓝、雾蓝色调营造深邃空间纵深感；下方战机编队由左下向右上飞行，尾迹化作光线拉出动势；底部以朱红书法书写“大国崛起 强军护航”，整体弥漫庄严崇高的史诗氛围，电影级光影质感。现在为您生成一张预览图。',
+      templateType: 'light-ui',
+      currentColors: {
+        'primary-color': '#61D1D1',
+      },
+    });
+
+    expect(enriched[0].tool).toBe('generate_theme_pipeline');
+    expect(String(enriched[0].args.prompt)).toContain('主视觉采用纵向中轴构图');
+    expect(enriched.some((toolCall) => toolCall.tool === 'update_colors')).toBe(false);
+  });
+
+  test('adds generate_theme_pipeline when promised generation is accompanied only by non-generation tools', () => {
+    const enriched = enrichToolCallsWithColorHints([
+      { tool: 'save_colors', args: { name: '数字信息可视化主题' } },
+    ], {
+      userMessage: '画面右侧是主画面，无文字。微软风格数字信息可视化，透明玻璃信息带，浅蓝背景，未来科技感',
+      assistantMessage: '好的，我先为您整理一个方案：画面右侧占据主导区域，展示微软 Fluent Design 风格的数字信息可视化界面，透明玻璃质感的卡片与信息带层层悬浮，浅蓝渐变背景营造未来科技氛围，整体无文字。现在为您生成一张预览图。',
+      templateType: 'light-ui',
+      currentColors: {
+        'primary-color': '#61D1D1',
+      },
+    });
+
+    expect(enriched[0].tool).toBe('generate_theme_pipeline');
+    expect(String(enriched[0].args.prompt)).toContain('画面右侧占据主导区域');
+    expect(enriched.some((toolCall) => toolCall.tool === 'save_colors')).toBe(true);
+  });
+
+  test('auto-synthesizes generate_theme_pipeline for regenerate phrasing', () => {
+    const enriched = enrichToolCallsWithColorHints([], {
+      userMessage: '画面右侧是主画面，无文字。微软风格数字信息可视化，透明玻璃信息带，浅蓝背景，未来科技感',
+      assistantMessage: '好的，我先为您整理一个方案：画面右侧占据主导区域，展示微软 Fluent Design 风格的数字信息可视化界面，透明玻璃质感的卡片与信息带层层悬浮，浅蓝渐变背景营造未来科技氛围，整体无文字。现在我为您重新生成一张预览图，保持相同的设计方向。',
+      priorAssistantMessage: '好的，我先为您整理一个方案：画面右侧占据主导区域，展示微软 Fluent Design 风格的数字信息可视化界面，透明玻璃质感的卡片与信息带层层悬浮，浅蓝渐变背景营造未来科技氛围，整体无文字。现在为您生成一张预览图。',
+      templateType: 'light-ui',
+      currentColors: {
+        'primary-color': '#61D1D1',
+      },
+    });
+
+    expect(enriched[0].tool).toBe('generate_theme_pipeline');
+    expect(String(enriched[0].args.prompt)).toContain('画面右侧占据主导区域');
+  });
+
   test('prefers update_colors over preview selection when user adjusts theme color on a single preview', () => {
     const enriched = enrichToolCallsWithColorHints([], {
       userMessage: '主题色改成深棕色，更稳重一点',

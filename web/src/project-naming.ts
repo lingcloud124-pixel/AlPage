@@ -33,6 +33,7 @@ const DIRECT_THEME_PATTERNS: Array<{ slug: string; patterns: RegExp[] }> = [
   { slug: '1024', patterns: [/1024/u, /程序员节/u] },
   { slug: 'qingming', patterns: [/清明/u, /\bqingming\b/i] },
   { slug: 'national-day', patterns: [/国庆/u, /\bnational day\b/i] },
+  { slug: 'army-day', patterns: [/八一/u, /建军节/u, /\barmy day\b/i] },
   { slug: 'dark-ui-spring', patterns: [/暗夜春/u, /春.*暗色/u, /暗色.*春/u, /\bdark\b.*\bspring\b/i, /\bspring\b.*\bdark\b/i] },
   { slug: 'corporate-blue', patterns: [/企业蓝/u, /\bcorporate blue\b/i] },
   { slug: 'overtime-worker', patterns: [/加班/u, /夜班/u, /深夜/u, /\bovertime\b/i, /\bnight shift\b/i] },
@@ -187,8 +188,19 @@ export function getProjectNameEnBase(project: ProjectIdentity): string {
   return deriveNameEnFromText(project.themeName || project.name || '');
 }
 
+function shouldIncludeProjectIdInExportSlug(projectId: string): boolean {
+  if (!projectId) return false;
+  if (/^\d+$/.test(projectId)) return false;
+  if (/^\d+-/.test(projectId)) return false;
+  return true;
+}
+
 export function buildProjectExportNameEn(project: ProjectIdentity): string {
   const base = getProjectNameEnBase(project);
-  const projectId = normalizeNameEn(project.id) || 'project';
-  return `${projectId}-${base}`;
+  const safeBase = base && !/^\d+$/.test(base) ? base : 'project';
+  const projectId = normalizeNameEn(project.id);
+  if (!shouldIncludeProjectIdInExportSlug(projectId)) {
+    return safeBase;
+  }
+  return `${projectId}-${safeBase}`;
 }

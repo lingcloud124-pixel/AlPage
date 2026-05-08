@@ -45,4 +45,15 @@ describe('web screenshot rules', () => {
       format: 'png',
     });
   });
+
+  test('keeps mk-oriented simple and tabs header cuts distinct from 60px ekp defaults', () => {
+    const rules = getScreenshotTargets('light-ui');
+    const headerSimple = rules.header.find((target) => target.outputName === 'header-simple');
+    const headerTabs = rules.header.find((target) => target.outputName === 'header-tabs');
+    const ekpDefaultHeader = rules.header.find((target) => target.outputName === 'header_tlayout_frame_bg');
+
+    expect(headerSimple).toMatchObject({ outputName: 'header-simple', width: 1920, height: 90, format: 'png' });
+    expect(headerTabs).toMatchObject({ outputName: 'header-tabs', width: 1920, height: 90, format: 'png' });
+    expect(ekpDefaultHeader).toMatchObject({ outputName: 'header_tlayout_frame_bg', width: 1920, height: 60, format: 'png' });
+  });
 });

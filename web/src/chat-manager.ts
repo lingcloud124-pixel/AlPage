@@ -13,7 +13,7 @@ import type { ChatMessage } from './types';
 import { deriveNameEnFromText, normalizeNameEn } from './project-naming';
 import { getCurrentProjectId, loadProject, saveProject, updateProjectNameDisplay, PRESET_DISPLAY, getAvailablePresets, createProject, setCurrentProjectId } from './project-manager';
 import type { Project } from './project-manager';
-import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, saveCurrentColorsToProject, getCurrentColors, applyPresetBackground, getThemeTarget } from './theme-engine';
+import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, saveCurrentColorsToProject, getCurrentColors, applyPresetBackground, getThemeTarget, resetThemeTargetStyles } from './theme-engine';
 import { PRESET_BACKGROUNDS } from './project-manager';
 import { syncColorEditorFromTheme } from './components/color-editor';
 import { parseThemeFeedback } from './tools/theme-feedback-refiner';
@@ -209,12 +209,19 @@ export function getConversationId(): string | null {
 export function startNewConversation(): void {
   conversationHistory.length = 0;
   _activeConversationId = null;
+  latestThemePreviews = null;
+  latestThemeAgentDebugState = null;
   const messagesContainer = document.getElementById('messagesContainer');
   if (messagesContainer) messagesContainer.innerHTML = '';
   showDefaultChatView();
   setCurrentProjectId(null);
+  resetThemeTargetStyles();
   _chatDeps?.collapsePreview?.();
   _chatDeps?.setChatPanelWidth(null);
+  const previewPanel = document.getElementById('previewPanel');
+  const appContainer = document.querySelector('.app-container');
+  previewPanel?.classList.remove('expanded');
+  appContainer?.classList.remove('preview-open');
   const chatProjectName = document.getElementById('chatProjectName');
   if (chatProjectName) chatProjectName.textContent = '开始新创作';
   setActiveConversationId(null);
@@ -1273,7 +1280,8 @@ export function setupChatInterface(deps: ChatDeps) {
 
     const cleanedResponse = fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '');
 
-    const toolCalls = enrichToolCallsWithColorHints(parseToolCallsFromContent(cleanedResponse), {
+    const parsedToolCalls = parseToolCallsFromContent(cleanedResponse);
+    const toolCalls = enrichToolCallsWithColorHints(parsedToolCalls, {
       userMessage,
       assistantMessage: fullResponse,
       priorAssistantMessage,
@@ -1283,8 +1291,13 @@ export function setupChatInterface(deps: ChatDeps) {
       latestThemePreviews,
       currentColors: getCurrentColors(),
     });
+    console.log('[chat-manager] tool calls', {
+      parsed: parsedToolCalls.map((toolCall) => toolCall.tool),
+      enriched: toolCalls.map((toolCall) => toolCall.tool),
+    });
     const TOOL_GLOBAL_TIMEOUT = 120_000;
     const toolStartTime = Date.now();
+    let shouldAbortRemainingTools = false;
 
     let loadingMsgEl: HTMLElement | null = null;
     function showToolLoading(text: string) {
@@ -1303,6 +1316,13 @@ export function setupChatInterface(deps: ChatDeps) {
     }
 
     for (const tc of toolCalls) {
+      if (shouldAbortRemainingTools) {
+        const skipMsg = `⚠️ 前序步骤失败，已跳过 ${tc.tool}`;
+        await addMessageToChat('ai', skipMsg);
+        pushToolResultToHistory(skipMsg);
+        await saveChatHistory();
+        continue;
+      }
       if (Date.now() - toolStartTime > TOOL_GLOBAL_TIMEOUT) {
         removeToolLoading();
         const timeoutMsg = '⚠️ 工具执行总时长超限，剩余工具已跳过';
@@ -1461,6 +1481,7 @@ export function setupChatInterface(deps: ChatDeps) {
             await saveChatHistory();
           }
         } else {
+          latestThemePreviews = null;
           if (tc.tool === 'generate_theme_previews') {
             const errMsg = `⚠️ ${result.error ?? '预览图生成失败，请重试。'}`;
             await addMessageToChat('ai', errMsg);
@@ -1470,13 +1491,16 @@ export function setupChatInterface(deps: ChatDeps) {
             await addMessageToChat('ai', errMsg);
             pushToolResultToHistory(errMsg);
           }
+          shouldAbortRemainingTools = true;
           await saveChatHistory();
         }
       } catch (e) {
         removeToolLoading();
+        latestThemePreviews = null;
         const errMsg = `❌ ${tc.tool} 执行失败：${(e as Error).message}`;
         await addMessageToChat('ai', errMsg);
         pushToolResultToHistory(errMsg);
+        shouldAbortRemainingTools = true;
         await saveChatHistory();
       }
     }

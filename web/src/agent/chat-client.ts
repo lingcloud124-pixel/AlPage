@@ -120,6 +120,27 @@ function normalizeImageGenerationError(message: string): string {
   return message;
 }
 
+function describeImageBaseRespError(data: any): string | null {
+  const baseStatusCode = data?.base_resp?.status_code;
+  const baseStatusMsg = data?.base_resp?.status_msg;
+  if (typeof baseStatusCode !== 'number' || baseStatusCode === 0) return null;
+  const errorMap: Record<number, string> = {
+    1002: '触发限流，请稍后再试',
+    1004: '账号鉴权失败，请检查 API Key 是否正确',
+    1008: '账号余额不足',
+    1026: '图片描述涉及敏感内容，请调整描述',
+    2013: '传入参数异常，请检查请求参数',
+    2049: '无效的 API Key',
+    50411: '输入图片审核未通过',
+    50412: '输入文本审核未通过，请调整描述',
+    50413: '输入文本含敏感词，请调整描述',
+    50429: '请求过快，请稍后再试',
+    50500: '服务内部错误，请重试',
+    50511: '生成结果未通过审核，请调整描述后重试',
+  };
+  return errorMap[baseStatusCode] ?? baseStatusMsg ?? `未知错误 (${baseStatusCode})`;
+}
+
 export async function generateImage(prompt: string): Promise<{ success: boolean; url?: string; error?: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 300_000);
@@ -175,29 +196,21 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
       }
       const errorBody = response ? await response.text() : 'no response';
       const statusCode = response?.status ?? 0;
+      try {
+        const errorData = JSON.parse(errorBody);
+        const detail = describeImageBaseRespError(errorData);
+        if (detail) {
+          return { success: false, error: normalizeImageGenerationError(`图像生成失败: ${detail}`) };
+        }
+      } catch { /* fall through */ }
       return { success: false, error: normalizeImageGenerationError(`图像生成失败 (${statusCode}): ${errorBody}`) };
     }
 
     const data = await response.json();
     fetchCredits().then(updateCreditsDisplay).catch(() => {});
 
-    const baseStatusCode = data.base_resp?.status_code;
-    const baseStatusMsg = data.base_resp?.status_msg;
-    if (typeof baseStatusCode === 'number' && baseStatusCode !== 0) {
-      const errorMap: Record<number, string> = {
-        1002: '触发限流，请稍后再试',
-        1004: '账号鉴权失败，请检查 API Key 是否正确',
-        1008: '账号余额不足',
-        1026: '图片描述涉及敏感内容，请调整描述',
-        2013: '传入参数异常，请检查请求参数',
-        2049: '无效的 API Key',
-        50411: '输入图片审核未通过',
-        50412: '输入文本审核未通过',
-        50413: '输入文本含敏感词，请调整描述',
-        50429: '请求过快，请稍后再试',
-        50500: '服务内部错误，请重试',
-      };
-      const detail = errorMap[baseStatusCode] ?? baseStatusMsg ?? `未知错误 (${baseStatusCode})`;
+    const detail = describeImageBaseRespError(data);
+    if (detail) {
       return { success: false, error: normalizeImageGenerationError(`图像生成失败: ${detail}`) };
     }
 
@@ -222,6 +235,9 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
       return { success: false, error: '图像生成超时（180秒）' };
+    }
+    if (e instanceof TypeError && /failed to fetch/i.test(e.message)) {
+      return { success: false, error: '无法连接到后端生图服务，请确认本地服务正在运行后重试' };
     }
     return { success: false, error: normalizeImageGenerationError(`图像生成失败: ${(e as Error).message}`) };
   } finally {
@@ -397,13 +413,26 @@ export function extractBalancedJson(text: string, startIdx: number): string | nu
   return null;
 }
 
+function parseWrappedToolArgs(rawArgs: string): Record<string, unknown> {
+  const args: Record<string, unknown> = {};
+  const tokenRegex = /--([a-zA-Z0-9_]+)\s+(?:"((?:\\.|[^"])*)"|'((?:\\.|[^'])*)'|([^\s][^\n]*?)(?=\s+--|$))/g;
+  let match;
+  while ((match = tokenRegex.exec(rawArgs)) !== null) {
+    const key = match[1];
+    const value = match[2] ?? match[3] ?? match[4] ?? '';
+    args[key] = value.trim();
+  }
+  return args;
+}
+
 export function parseToolCallsFromContent(content: string): Array<{ tool: string; args: Record<string, unknown> }> {
   const toolCalls: Array<{ tool: string; args: Record<string, unknown> }> = [];
   let invalidJsonBlockCount = 0;
   let invalidInlineToolCallCount = 0;
+  let invalidWrappedToolCallCount = 0;
   let invalidToolCallSample = '';
 
-  const jsonBlockRegex = /```json\s*\n([\s\S]*?)\n```/g;
+  const jsonBlockRegex = /```json\s*([\s\S]*?)```/g;
   let match;
   while ((match = jsonBlockRegex.exec(content)) !== null) {
     try {
@@ -436,10 +465,44 @@ export function parseToolCallsFromContent(content: string): Array<{ tool: string
     }
   }
 
-  if (invalidJsonBlockCount + invalidInlineToolCallCount > 0) {
+  if (toolCalls.length === 0 && /"tool"\s*:\s*"generate_theme_pipeline"/.test(content)) {
+    const toolIdx = content.search(/\{"tool"\s*:\s*"generate_theme_pipeline"/);
+    if (toolIdx >= 0) {
+      const payload = extractBalancedJson(content, toolIdx);
+      if (payload) {
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.tool && typeof parsed.tool === 'string') {
+            toolCalls.push({ tool: parsed.tool, args: parsed.args ?? {} });
+          }
+        } catch (error) {
+          invalidInlineToolCallCount += 1;
+          if (!invalidToolCallSample) invalidToolCallSample = payload.slice(0, 160);
+          void error;
+        }
+      }
+    }
+  }
+
+  if (toolCalls.length === 0) {
+    const wrappedRegex = /\[TOOL_CALL\]\s*\{tool\s*=>\s*"([^"]+)"\s*,\s*args\s*=>\s*\{([\s\S]*?)\}\s*\}\s*\[\/TOOL_CALL\]/g;
+    let wrappedMatch;
+    while ((wrappedMatch = wrappedRegex.exec(content)) !== null) {
+      try {
+        toolCalls.push({ tool: wrappedMatch[1], args: parseWrappedToolArgs(wrappedMatch[2]) });
+      } catch (error) {
+        invalidWrappedToolCallCount += 1;
+        if (!invalidToolCallSample) invalidToolCallSample = wrappedMatch[0].slice(0, 160);
+        void error;
+      }
+    }
+  }
+
+  if (invalidJsonBlockCount + invalidInlineToolCallCount + invalidWrappedToolCallCount > 0) {
     console.warn('[chat-client] Tool call JSON 解析失败，已跳过无效片段:', {
       jsonBlocks: invalidJsonBlockCount,
       inlineCalls: invalidInlineToolCallCount,
+      wrappedCalls: invalidWrappedToolCallCount,
       sample: invalidToolCallSample,
     });
   }

@@ -61,6 +61,25 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
+function extractPlanSummaryFromAssistantMessage(text: string | undefined): string {
+  if (!text) return '';
+  const withoutToolJson = text.replace(/```json[\s\S]*?```/g, ' ');
+  const normalized = stripMarkdown(withoutToolJson);
+  const planMatch = normalized.match(/好的，我先为您整理一个方案[：:，,]?\s*([\s\S]*?)(?:现在为您生成(?:一张)?预览图[。！!]?|我来为您生成[。！!]?|接下来为您生成[。！!]?)$/u);
+  if (!planMatch?.[1]) return '';
+  return planMatch[1].replace(/\s+/g, ' ').trim();
+}
+
+function shouldAutoGeneratePreview(text: string | undefined): boolean {
+  if (!text) return false;
+  return /(现在为您生成(?:一张)?预览图|我来为您生成|接下来为您生成|我为您重新生成(?:一张)?预览图|重新生成(?:一张)?预览图)/u.test(text);
+}
+
+function mentionsGenerateThemePipeline(text: string | undefined): boolean {
+  if (!text) return false;
+  return /generate_theme_pipeline/u.test(text);
+}
+
 export function isSimpleConfirmationMessage(text: string | undefined): boolean {
   if (!text) return false;
   const normalized = text.trim().toLowerCase();
@@ -89,17 +108,36 @@ function extractHexColor(text: string | undefined): string | null {
   return match ? normalizeHex(match[0]) : null;
 }
 
+function hasGenerationIntent(text: string | undefined): boolean {
+  if (!text) return false;
+  return /(生成|生图|做一个|做一张|帮我做|创建|设计|出图|海报|背景图|插画|封面|主题包|主题|风格|场景|光影|构图|氛围感|宣传图)/u.test(text);
+}
+
+function hasExplicitColorEditIntent(text: string | undefined): boolean {
+  if (!text) return false;
+  return /(改成|换成|调成|调整|改一下|换一下|改为|换为|调为|改改|换个|调一下|微调|优化一下|太暗|太亮|太深|太浅|亮一点|暗一点|深一点|浅一点|更亮|更暗|更深|更浅|鲜艳|柔和|暖一点|冷一点|偏暖|偏冷)/u.test(text);
+}
+
 function isColorAdjustmentMessage(text: string | undefined): boolean {
   if (!text) return false;
   const normalized = text.trim().toLowerCase();
   if (!normalized) return false;
 
-  if (extractHexColor(text)) return true;
-
+  const explicitHex = extractHexColor(text);
   const colorContext = /(主题色|主色|颜色|色调|配色|色彩)/u.test(text);
-  const colorAction = /(改成|换成|调成|调整|改一下|换一下|改为|换为|调为|偏|深一点|浅一点|亮一点|暗一点|鲜艳|柔和|暖一点|冷一点)/u.test(text);
+  const colorAction = hasExplicitColorEditIntent(text);
   const namedColor = /(红|蓝|绿|黄|金|橙|紫|粉|棕|咖|褐|灰|青|墨绿|酒红|卡其|米色|藏蓝|深棕|浅棕|暖白)/u.test(text);
   const brightnessOnly = /(亮一点|暗一点|深一点|浅一点|更亮|更暗|更深|更浅)/u.test(text);
+  const generationIntent = hasGenerationIntent(text);
+
+  if (explicitHex) {
+    if (colorAction) return true;
+    if (generationIntent) return false;
+    return colorContext;
+  }
+
+  if (generationIntent && !colorAction && !colorContext && !brightnessOnly) return false;
+  if (generationIntent && !colorAction && (namedColor || colorContext)) return false;
 
   return (colorContext && (colorAction || namedColor))
     || (colorAction && namedColor)
@@ -219,6 +257,26 @@ export function buildGenerationPromptFromPlan(context: {
   pushUnique(parts, 'no UI elements');
 
   return parts.join(', ');
+}
+
+function buildFallbackPromptFromAssistantPlan(context: {
+  userMessage: string;
+  assistantMessage: string;
+  priorAssistantMessage?: string;
+  priorUserMessage?: string;
+  templateType: 'light-ui' | 'dark-ui';
+  primaryHint?: string;
+}): string {
+  const planSummary = extractPlanSummaryFromAssistantMessage(context.assistantMessage)
+    || extractPlanSummaryFromAssistantMessage(context.priorAssistantMessage);
+  if (planSummary.length >= 40) return planSummary;
+  return buildGenerationPromptFromPlan({
+    userMessage: context.userMessage,
+    priorAssistantMessage: context.priorAssistantMessage ?? context.assistantMessage,
+    priorUserMessage: context.priorUserMessage,
+    templateType: context.templateType,
+    primaryHint: context.primaryHint,
+  });
 }
 
 export function inferPrimaryHintFromText(
@@ -408,6 +466,34 @@ export function enrichToolCallsWithColorHints(
             tool: 'generate_theme_pipeline',
             args: {
               prompt: finalPrompt,
+              templateType,
+              ...(primaryHint ? { primaryHint } : {}),
+            },
+          },
+          ...enriched,
+        ];
+      }
+    }
+
+    if (
+      (shouldAutoGeneratePreview(context.assistantMessage) || mentionsGenerateThemePipeline(context.assistantMessage))
+      && !isColorAdjustmentMessage(context.userMessage)
+    ) {
+      const fallbackPrompt = buildFallbackPromptFromAssistantPlan({
+        userMessage: context.userMessage,
+        assistantMessage: context.assistantMessage,
+        priorAssistantMessage: context.priorAssistantMessage,
+        priorUserMessage: context.priorUserMessage,
+        templateType,
+        primaryHint: typeof primaryHint === 'string' ? primaryHint : undefined,
+      });
+      if (fallbackPrompt) {
+        console.log('[enrichToolCalls] 回复承诺生图但缺少工具调用，自动补 generate_theme_pipeline');
+        return [
+          {
+            tool: 'generate_theme_pipeline',
+            args: {
+              prompt: fallbackPrompt,
               templateType,
               ...(primaryHint ? { primaryHint } : {}),
             },

@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -12,7 +13,7 @@ const proxy = {
 
 export default defineConfig({
   root: '.',
-    plugins: [tailwindcss()],
+  plugins: [tailwindcss()],
   server: {
     port: 5173,
     open: true,
@@ -27,6 +28,14 @@ export default defineConfig({
     proxy,
   },
   build: {
-    outdir: 'dist',
+    outDir: 'dist',
+    rollupOptions: {
+      input: {
+        index: resolve(__dirname, 'index.html'),
+        desktopPreview: resolve(__dirname, 'desktop-preview.html'),
+        landingPromptsAdmin: resolve(__dirname, 'landing-prompts-admin.html'),
+        loginPreview: resolve(__dirname, 'login-preview.html'),
+      },
+    },
   },
 });
