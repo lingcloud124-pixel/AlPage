@@ -1923,6 +1923,12 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
   font-family: inherit;
 }
 
+.chat-shell-composer-inner textarea.is-scrollable
+{
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .chat-input-wrapper input:focus,
 .chat-input-wrapper textarea:focus
 {

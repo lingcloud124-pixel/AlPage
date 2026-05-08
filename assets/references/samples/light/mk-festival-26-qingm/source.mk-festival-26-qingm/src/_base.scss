@@ -1,0 +1,1562 @@
+@import "./tab-style.scss";
+
+/**说明：各页眉$headerType
+简约页眉&多导航页眉：header-simple,多导航页眉:header-simple,
+经典页眉:header-classic,简洁多页签页眉: header-tabs,
+通栏页眉:header-banner,左页眉:header-sidebar
+可能包含的部件：
+  logo：@elem/logo；
+  门户切换：@elem/header-base.Portal；headerPortal；
+  门户页面列表：@elem/menu-portal；menuPortal；
+  多级导航：@elem/menu-app；menuLinkTree；
+  页面切换：menu:@elem/menu-tile；
+  页眉搜索：@elem/header-base.Search；headerSearch；
+  消息中心：@elem/header-base.Notify；headerNotify；
+  页眉头像：@elem/header-base.Avatar；headerAvatar；
+  快捷方式：@elem/menu-link；menuLink；
+  自定义门户导航：@elem/menu-apps；menuApp；
+  左导航：sidebar；
+*/
+
+/**----------------------颜色定义Starts----------------------*/
+$theme-color: $theme-color !default;
+
+/** 页眉字体色 */
+$header-color: #fff;
+
+/** 图标色 */
+$color: #fff;
+$icon-color: #fff;
+
+/** 页眉分割线颜色 */
+$split-color: rgba(255, 255, 255, 0.3);
+
+// 页眉字体黑色
+$header-black-color: #333;
+$icon-black-color: #999;
+
+// 增加颜色字体
+
+@mixin headerShadow {
+  // box-shadow: 0 1px 0 0 #eee;
+}
+
+@mixin appearanceShadow {
+  box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.05);
+}
+
+/**----------------------颜色定义Ends----------------------*/
+
+/** menu导航 - 页面切换，主题维护重点
+  深色模式：主色/深色背景、白色文字、高亮下划线橙色：FF5C01；
+  浅色模式：白色/浅色背景、黑色文字、高亮下划线橙色：FF5C01；
+  风格：亮色 light/暗色 dark；
+*/
+@mixin menuLinkTree($outline : "") {
+  $color: #fff;
+  $hoverColor: #fff;
+
+  @if $outline=="light" {
+    $color: #333;
+    $hoverColor: $secondray-color;
+  }
+
+  @if $outline=="dark" {
+    $color: #fff;
+    $hoverColor: #fff;
+  }
+
+  .ele-menu-linktree-item,
+  .ele-menu-linktree-submenu,
+  .ele-menu-linktree-submenu-title {
+    color: $color !important;
+    padding: 0 !important;
+    margin-right: 20px;
+    margin-left: 20px;
+
+    .submenu-title-wrapper {
+      color: $color !important;
+
+      .ele-icon {
+        color: $color !important;
+      }
+    }
+
+    // 激活状态-简洁多页签要多注意部分样式需要重置优先级提升
+    &-active,
+    &-open,
+    &-selected {
+      color: $hoverColor !important;
+      background: transparent !important;
+      position: relative;
+
+      &:before {
+        content: "";
+        height: 3px !important;
+        background: $secondray-color !important;
+
+        @if $outline=="dark" {
+          background: #fff !important;
+        }
+
+        position: absolute;
+        left: 0px;
+        right: 0px;
+        // 简洁多页签下定位有问题
+        bottom: 50% !important;
+        transform: translateY(20px);
+        border-radius: 2px;
+      }
+
+      // hover仅保留颜色值变化，无下划线
+      &:not(.ele-menu-linktree-item-selected):not(.ele-menu-linktree-submenu-selected):before {
+        display: none;
+      }
+
+      .submenu-title-wrapper {
+        color: $hoverColor !important;
+
+        .ele-menu-linktree-label {
+          color: $hoverColor !important;
+        }
+
+        .ele-icon {
+          color: $hoverColor !important;
+        }
+      }
+    }
+
+    &:hover {
+      color: $hoverColor !important;
+      background: transparent !important;
+    }
+  }
+
+  .ele-menu-linktree-submenu-title {
+    margin-right: 0;
+    margin-left: 0;
+  }
+}
+
+/** 页眉搜索框
+  风格：亮色 light/暗色 dark；
+*/
+@mixin headerSearch($outline : "") {
+  .ele-header-search {
+    @include headerSearchItem($outline);
+
+    &--dark {
+      @include headerSearchItem("dark");
+    }
+
+    &--light {
+      @include headerSearchItem("light");
+    }
+  }
+}
+
+/** 页眉搜索子内容，方便换色 默认深色，if判断处理浅色 */
+@mixin headerSearchItem($outline : "") {
+  .ele-icon-search {
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    vertical-align: middle;
+
+    &.ele-header-search-search {
+      color: #fff;
+
+      @if $outline=="light" {
+      color: #666;
+      }
+    }
+  }
+
+  &.ele-header-search-close {
+    color: #fff;
+
+    @if $outline=="light" {
+      color: #666;
+    }
+  }
+
+  &.ele-header-search--expand {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 34px;
+    line-height: 34px;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    text-align: center;
+    padding-left: 6px;
+
+    @if $outline=="light" {
+      background-color: rgba(#fff, .7) !important;
+      border: 1px solid #d6d6d6;
+    }
+
+    .ele-input {
+      color: #fff !important;
+      font-size: 14px;
+
+      &::-webkit-input-placeholder {
+        color: rgba(#fff, .6) !important;
+
+        @if $outline=="light" {
+          color: #999 !important;
+        }
+      }
+
+      // 搜索按钮
+      &-suffix {
+        display: flex;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        right: 0;
+        color: rgba(#fff, .5) !important;
+        background-color: transparent !important;
+        border-radius: 0px;
+
+        .ele-icon {
+          color: #fff !important;
+
+          @if $outline=="light" {
+          color: #838383 !important;
+        }
+        }
+
+        @if $outline=="light" {
+          color: rgba(#000, .2) !important;
+        }
+
+        &:hover {
+          .ele-icon {
+            color: currentColor !important;
+          }
+
+          color: #fff !important;
+          background-color: transparent !important;
+
+          @if $outline=="light" {
+            color: #363581 !important;
+            background-color: transparent;
+          }
+        }
+      }
+    }
+
+    &:hover {
+      .ele-input {
+        color: #fff !important;
+
+        &-suffix {
+          color: #fff;
+        }
+      }
+
+      @if $outline=="light" {
+
+        .ele-input {
+          color: #333 !important;
+
+          &-suffix {
+            color: #333;
+          }
+        }
+      }
+    }
+  }
+
+  // 通栏页眉
+  &.ele-header-search--banner {
+    width: 60%;
+    padding-right: 0;
+    height: 48px;
+    line-height: 48px;
+    background: rgba(255, 255, 255, 0.2) !important;
+    border: 0;
+    border-radius: 90px !important;
+
+    @if $outline=="light" {
+      background-color: rgba(#000, .1) !important;
+    }
+
+    .ele-input-affix-wrapper {
+      padding-right: 20px;
+    }
+
+    .ele-input {
+      &-suffix {
+        right: 20px;
+        background: transparent !important;
+      }
+    }
+  }
+
+  .ele-header-search-select {
+
+    .ele-select-selection-selected-value,
+    .ele-select-arrow,
+    .ele-select-arrow-icon,
+    .ele-select-arrow-icon svg {
+      color: $color;
+    }
+  }
+
+  .ele-icon {
+    &-search {
+      vertical-align: middle;
+    }
+  }
+}
+
+/** 页眉搜索框 ends*/
+
+/** 多级导航-应用 */
+@mixin menuApp($outline : "") {
+  $color: $header-color;
+  $iconColor: $header-color;
+
+  @if $outline=="light" {
+    $color: $header-black-color;
+    $iconColor: #999;
+  }
+
+  @if $outline=="dark" {
+    $color: $header-color;
+    $iconColor: $header-color;
+  }
+
+  .ele-menu-app-wrapper {
+    padding: 0 10px;
+
+    .ele-menu-app-wrapper-text {
+      color: $color !important;
+    }
+
+    .ele-icon {
+      color: $iconColor !important;
+    }
+
+    &:hover {
+
+      background-color: transparent !important;
+
+      &:before {
+        content: "";
+        height: 3px;
+        background: $theme-color;
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        bottom: 50% !important;
+        transform: translateY(20px);
+      }
+
+      @if $outline=="light" {
+
+        .ele-menu-app-wrapper-text,
+        .ele-icon {
+          color: $secondray-color !important;
+        }
+      }
+    }
+  }
+}
+
+/** menu门户 - 切换页面
+  风格：亮色 light/暗色 dark；
+ */
+@mixin menuPortal($outline : "") {
+  $color: $header-color;
+  $iconColor: $header-color;
+
+  @if $outline=="light" {
+    $color: $header-black-color;
+    $iconColor: #999;
+  }
+
+  @if $outline=="dark" {
+    $color: $header-color;
+    $iconColor: $header-color;
+  }
+
+  .ele-menu-portal {
+    position: relative;
+
+    .ele-menu-portal-title {
+      color: $color;
+    }
+
+    .ele-icon {
+      color: $iconColor;
+    }
+
+    &:hover {
+
+      &:before {
+        content: "";
+        height: 3px;
+        background: $secondray-color;
+
+        @if $outline=="dark" {
+          background: #fff;
+        }
+
+        position: absolute;
+        left: 0px;
+        right: 0px;
+        // 简洁多页签下定位有问题
+        bottom: 50% !important;
+        transform: translateY(20px);
+      }
+
+      // background-color: $hoverColor !important;
+      @if $outline=="dark" {
+        // 仅简单页眉适配有背景色，其余很诡异
+        // background-color: $secondray-color !important;
+        color: #fff !important;
+      }
+
+      @if $outline=="light" {
+        color: $secondray-color !important;
+        background-color: transparent !important;
+
+        .ele-icon {
+          color: $secondray-color !important;
+        }
+      }
+    }
+  }
+}
+
+/** 页眉门户切换 */
+@mixin headerPortal($outline : "") {
+  $color: $header-color;
+  $iconColor: $header-color;
+
+  @if $outline=="light" {
+    $color: $header-black-color;
+    $iconColor: #999;
+  }
+
+  @if $outline=="dark" {
+    $color: $header-color;
+    $iconColor: $header-color;
+  }
+
+  .ele-header-portal-wrapper {
+    position: relative;
+
+    .ele-header-portal {
+
+      .ele-header-portal-title {
+        color: $color !important;
+      }
+
+      .ele-icon {
+        color: $iconColor !important;
+      }
+    }
+
+    &:hover {
+      &:before {
+        content: "";
+        height: 3px;
+        background: $secondray-color;
+
+        @if $outline=="dark" {
+          background: #fff;
+        }
+
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        // 简洁多页签下定位有问题
+        // .ele-menu-tile-tabs.ele-menu-linktree-horizontal .ele-menu-linktree-item-selected:befor
+        bottom: 50% !important;
+        transform: translateY(20px);
+      }
+
+      @if $outline=="dark" {
+        // 仅简单页眉适配有背景色，其余很诡异
+        // background-color: $secondray-color !important;
+        color: #fff !important;
+
+        .ele-header-portal {
+          .ele-header-portal-title {
+            color: #fff !important;
+          }
+
+          .ele-icon {
+            color: #ffff !important;
+          }
+        }
+      }
+
+      @if $outline=="light" {
+        color: $secondray-color !important;
+        background-color: transparent !important;
+
+        .ele-header-portal {
+          .ele-header-portal-title {
+            color: $secondray-color !important;
+          }
+
+          .ele-icon {
+            color: $secondray-color !important;
+          }
+        }
+      }
+    }
+  }
+}
+
+/** 页眉待办、待阅模块
+  风格：亮色 light/暗色 dark；
+ */
+@mixin headerNotify($outline : "") {
+  $color: $header-color;
+
+  @if $outline=="light" {
+    $color: $header-black-color;
+  }
+
+  @if $outline=="dark" {
+    $color: $header-color;
+  }
+
+  .ele-header-notify-container {
+    .ele-header-notify-item {
+      color: $color;
+      position: relative;
+
+      .ele-icon {
+        color: $color;
+      }
+
+      &:hover {
+        @if $outline=="dark" {
+          color: #fff !important;
+        }
+
+        @if $outline=="light" {
+          color: $secondray-color !important;
+          background-color: transparent !important;
+
+          .ele-icon {
+            color: $secondray-color !important;
+          }
+        }
+
+      }
+    }
+  }
+}
+
+/** 页眉头像 */
+@mixin headerAvatar($outline : "") {
+  $color: $header-color;
+  $iconColor: $header-color;
+
+  @if $outline=="light" {
+    $color: $header-black-color;
+    $iconColor: #999;
+  }
+
+  @if $outline=="dark" {
+    $color: $header-color;
+    $iconColor: $header-color;
+  }
+
+  .ele-header-avatar-wrapper {
+    position: relative;
+
+    .ele-header-avatar {
+      .ele-avatar-label {
+        color: $color !important;
+      }
+
+      .ele-icon {
+        color: $iconColor !important;
+      }
+    }
+
+    @if $outline=="light" {
+      .ele-header-avatar {
+        &:hover {
+
+          .ele-avatar-label,
+          .ele-icon {
+            color: $secondray-color !important;
+          }
+        }
+
+      }
+    }
+
+  }
+}
+
+@mixin headerLogin($outline : "") {
+  $color: $header-color;
+  $iconColor: $header-color;
+  $hoverColor: $header-color;
+
+  @if $outline=="light" {
+    $color: $header-black-color;
+    $iconColor: #999;
+    $hoverColor: $theme-color;
+  }
+
+  @if $outline=="dark" {
+    $color: $header-color;
+    $iconColor: $header-color;
+    $hoverColor: $header-color;
+  }
+
+  .ele-header-login-wrapper {
+    .ele-header-login {
+      .ele-icon {
+        color: $iconColor !important;
+      }
+    }
+
+    &:hover {
+      background-color: $hoverColor;
+
+      @if $outline=="light" {
+        .ele-header-login {
+          .ele-icon {
+            color: $secondray-color !important;
+          }
+        }
+      }
+    }
+  }
+}
+
+/** 页眉快捷方式 */
+@mixin menuLink($outline : "") {
+  $color: $header-color;
+  $iconColor: $header-color;
+  $hoverColor: $header-color;
+
+  @if $outline=="light" {
+    $color: $header-black-color;
+    $iconColor: #999;
+    $hoverColor: $secondray-color;
+  }
+
+  @if $outline=="dark" {
+    $color: $header-color;
+    $iconColor: $header-color;
+    $hoverColor: $header-color;
+  }
+
+  .ele-menu-link {
+
+    &-link-item,
+    &-more {
+      position: relative;
+
+      .ele-menu-link-text {
+        color: $color !important;
+      }
+
+      .ele-icon {
+        color: $iconColor !important;
+      }
+
+      &:hover {
+        color: $hoverColor;
+      }
+    }
+
+    // &.ele-menu-link--none {
+    .ele-menu-link-link-item,
+    .ele-menu-link-more {
+      &:hover {
+
+        @if $outline=="light" {
+
+          .ele-menu-link-text,
+          .ele-icon {
+            color: $secondray-color !important;
+          }
+        }
+      }
+    }
+  }
+}
+
+@mixin splitLine($color) {
+  .split-line {
+    background-color: $color !important;
+  }
+}
+
+/** logo 颜色 */
+@mixin logo($outline) {
+  .logo-light {
+    display: block !important;
+  }
+
+  .logo-dark {
+    display: none !important;
+  }
+
+  // 深色背景，浅色logo显示、深色logo隐藏
+  @if $outline=="dark" {
+    .logo-light {
+      display: block !important;
+    }
+
+    .logo-dark {
+      display: none !important;
+    }
+  }
+
+  // 浅色背景，深色logo显示、浅色logo隐藏
+  @if $outline=="light" {
+    .logo-light {
+      display: none !important;
+    }
+
+    .logo-dark {
+      display: block !important;
+    }
+  }
+}
+
+/** 简单页眉&多导航页眉 */
+.header-simple {
+  $headerType: "header-simple";
+
+  .ele-layout-hf {
+    background-position: center;
+  }
+
+  &.use-theme {
+
+    .ele-layout-hf {
+      background: #FBFCF2 url(./static/header-simple.png) no-repeat center;
+      // background-size: cover;
+
+      $type: "light";
+      @include menuPortal($type);
+      @include menuLinkTree($type);
+      @include headerSearch($type);
+      @include headerNotify($type);
+      @include headerPortal($type);
+      @include headerAvatar($type);
+      @include headerLogin($type);
+      @include menuLink($type);
+      @include menuApp($type);
+      @include splitLine($split-color);
+
+      // 选中样式：待办待阅/门户切换
+      .ele-header-notify-container .ele-header-notify-item:hover,
+      .ele-header-portal-wrapper:hover,
+      .ele-header-avatar-wrapper:hover,
+      .ele-menu-portal:hover,
+      .ele-menu-link:hover,
+      .ele-menu-app-wrapper--none:hover {
+        background-color: transparent !important;
+      }
+    }
+
+    @include logo("light");
+  }
+}
+
+/** 简洁多页签页眉 */
+.header-tabs {
+  $headerType: "header-tabs";
+
+  .ele-layout-hf {
+    background-position: center;
+  }
+
+  &.use-theme {
+    background-color: #fff !important;
+    // @include headerShadow;
+
+    @include logo("light");
+
+    .ele-layout-hf {
+      background: #FBFCF2 url(./static/header-tabs.png) no-repeat top center;
+      // background-size: cover;
+      $type: "light";
+      // @include menuPortal($type);
+      @include menuLinkTree($type);
+      @include headerSearch($type);
+      @include logo($type);
+      @include headerNotify($type);
+      @include headerPortal($type);
+      @include headerAvatar($type);
+      @include headerLogin($type);
+      @include menuLink($type);
+      @include menuApp($type);
+      @include splitLine($split-color);
+
+      .split-line{
+        background-color: rgba(0,0,0,.2) !important;
+      }
+
+    }
+  }
+}
+
+/** 大图标页眉 */
+.header-icon {
+  $headerType: "header-icon";
+
+  &.use-theme {
+    background-color: $theme-color !important;
+    // @include headerShadow;
+
+    .ele-layout-hf {
+      background: #FBFCF2 url(./static/header-icon.png) no-repeat top center;
+      // background-size: cover;
+      $type: "dark";
+      @include menuLinkTree($type);
+      @include headerSearch($type);
+      @include headerNotify($type);
+      @include headerPortal($type);
+      @include headerAvatar($type);
+      @include headerLogin($type);
+      @include menuLink($type);
+      @include menuApp($type);
+      @include splitLine($split-color);
+    }
+
+    @include logo("dark");
+  }
+}
+
+/** 经典页眉 */
+.header-classic {
+  $headerType: "header-classic";
+  @include headerShadow;
+  $hoverColor: #fff;
+
+  .header-classic-top-part {
+    &.use-theme-top {
+      background: #FBFCF2 url(./static/header-classic.png) no-repeat top center;
+      // background-size: cover;
+      $type: "light";
+
+      @include logo($type);
+      @include headerPortal($type);
+      // @include menuPortal($type);
+      @include headerNotify($type);
+      @include headerAvatar($type);
+      @include headerLogin($type);
+      @include menuLink($type);
+      @include menuApp($type);
+      @include splitLine($split-color);
+
+      .ele-header-portal-wrapper,
+      .ele-header-notify-container .ele-header-notify-item,
+      .ele-menu-link-link-item,
+      .ele-header-avatar-wrapper,
+      .ele-menu-app-wrapper{
+        &:hover{
+          background-color: rgba(255, 255, 255, 0.2) !important;
+          border-radius: 4px;
+        }
+      }
+    }
+  }
+
+  .header-classic-bottom-part {
+
+    &.use-theme-bottom {
+      background-color: $theme-color !important;
+      $type: "light";
+      @include menuLinkTree($type);
+      // @include headerSearch($type);
+      @include headerSearch("dark");
+
+      // 页面切换字号加大
+
+      .ele-menu-linktree-item,
+      .ele-menu-linktree-submenu,
+      .ele-menu-linktree-submenu-title {
+
+        .submenu-title-wrapper{
+           color: #fff !important;
+        }
+        &-active,
+        &-open,
+        &-selected{
+           background: rgba(255, 255, 255, 0.2) !important;
+            &::before{
+              background: transparent !important;
+            }
+           .submenu-title-wrapper .ele-menu-linktree-label{
+            color: #ffffff !important;
+           }
+        }
+        font-size: 14px;
+        margin-right: 4px;
+        margin-left: 4px;
+
+        &:hover{
+          background-color: rgba(255, 255, 255, 0.2) !important;
+
+          .ele-menu-linktree-label{
+            color: #fff !important;
+          }
+        }
+
+        .ele-menu-linktree-label{
+          padding-left: 30px;
+          padding-right: 30px;
+          font-size: 16px;
+        }
+
+
+      }
+    }
+  }
+
+}
+
+/** 通栏页眉 */
+.header-banner {
+  $headerType: "header-banner";
+
+  // .ele-layout-hf>div>.ele-flex>.ele-flex-item:first-child {
+  //   padding-top: 10px;
+  // }
+
+  &.use-theme {
+    @include logo("light");
+
+    .ele-layout-hf {
+      background: #FBFCF2 url(./static/header-banner.png) no-repeat top center;
+      // background-size: cover;
+      position: relative;
+
+      $type: "light";
+      @include headerSearch($type);
+      @include headerNotify($type);
+      @include headerPortal($type);
+      @include headerAvatar($type);
+      @include headerLogin($type);
+      @include menuLink($type);
+      @include menuApp($type);
+      @include splitLine($split-color);
+
+      .ele-header-portal-wrapper{
+          .ele-header-portal{
+              .ele-header-portal-title{
+                color: #333 !important;
+              }
+              .ele-icon{
+                color: #666 !important;
+          }
+          }
+
+          &:hover{
+            .ele-header-portal .ele-header-portal-title,
+            .ele-header-portal .ele-icon{
+               color: $theme-color !important;
+            }
+          }
+      }
+
+      .ele-menu-app-wrapper{
+  
+          .ele-menu-app-wrapper-text{
+            color: #333 !important;
+          }
+
+          .ele-icon{
+                color: #666 !important;
+          }
+
+          &:hover{
+            .ele-menu-app-wrapper-text,
+            .ele-icon{
+              color: $theme-color !important;
+            }
+          }
+      }
+
+      .ele-header-notify-container .ele-header-notify-item,
+      .ele-menu-link-link-item .ele-menu-link-text,
+      .ele-menu-link-more .ele-menu-link-text{
+        color: #333 !important;
+
+        &:hover{
+            color: $theme-color !important;
+        }
+      }
+
+      .split-line{
+        background-color: rgba(0,0,0,.2) !important;
+      }
+
+      .ele-header-avatar-wrapper .ele-header-avatar{
+         .ele-avatar-label{
+           color: #333 !important;
+        }
+        .ele-icon{
+           color: #666 !important;
+        }
+
+        &:hover{
+          .ele-avatar-label,
+          .ele-icon{
+           color: $theme-color !important;
+        }
+        }
+
+      }
+
+      .ele-header-search.ele-header-search--banner{
+        background: rgba(255,255,255,.7) !important;
+        border: 1.5px solid $theme-color;
+
+        .ele-input{
+          color: #333 !important;
+
+           &::-webkit-input-placeholder {
+             color: #666 !important;
+           }
+        }
+
+        &:hover{
+          .ele-input{
+            color: #333 !important;
+          }
+        }
+
+        .ele-input-suffix{
+          .ele-icon{
+          color: rgba(0,0,0,.7) !important;
+          }
+
+          &:hover{
+            .ele-icon{
+              color: $theme-color !important;
+            }
+          }
+        }
+      }
+
+      .header-banner-menu-tile {
+        @include menuLinkTree("dark");
+
+        .ele-menu-linktree-item, 
+        .ele-menu-linktree-submenu, 
+        .ele-menu-linktree-submenu-title{
+            &-active,
+            &-open,
+            &-selected{
+              background-color: rgba(255, 255, 255, 0.2) !important;
+              &::before{
+                   background: transparent !important;
+            }
+            }
+            .ele-menu-linktree-label{
+
+              
+              padding-left: 30px;
+              padding-right: 30px;
+              font-size: 16px;
+            }
+
+            &:hover{
+               background-color: rgba(255, 255, 255, 0.2) !important;
+            }
+        } 
+      }
+    }
+  }
+}
+
+/** 全屏左导航 & 居中左导航 & 左页眉 */
+// 头像
+@mixin avatarSide($outline: "") {
+  $color: #666;
+
+  @if $outline=="dark" {
+    $color: #fff;
+  }
+
+  .ele-side-avatar {
+    border-bottom: 1px solid rgba($color, .1);
+    margin-bottom: 10px;
+
+    .text-regular {
+      color: $color !important;
+    }
+
+    .ele-avatar-label,
+    .ele-side-avatar-job,
+    .ele-avatar-label {
+      color: $color
+    }
+
+    .ele-side-avatar-job {
+      color: rgba($color, 0.8);
+    }
+  }
+}
+
+// 左导航多级菜单-居中左导航、全屏左导航、左页眉通用
+@mixin sidebarMenu($outline: "") {
+  /**  默认浅色背景
+  标题、图标、箭头默认黑色
+  鼠标经过主题色透明度.1左右，颜色保持黑色
+  选中背景色主色，标题、图标、箭头白色
+  子级选中，父级标题颜色保持主色高亮
+  */
+  $color: #333;
+  $hoverBg: rgba($theme-color, .1);
+  $arrowColor: #999;
+  $hoverColor: #333;
+  $selectedBg: $theme-color;
+  $selectedColor: #fff;
+  $selectedParentColor: $theme-color;
+
+  // 示例作用，根据实际情况调整
+  /**
+    深色背景：
+    标题、图标、箭头默认白色
+    鼠标经过主题色透明度.1左右，颜色保持黑色
+    选中背景色主色，标题、图标、箭头白色
+    子级选中，父级标题颜色保持**高亮
+  */
+  @if $outline=="dark" {
+    $color: #fff;
+    $hoverBg: rgba($theme-color, .1);
+    $arrowColor: #fff;
+    $hoverColor: #fff;
+    $selectedBg: #f00;
+    $selectedColor: #fff;
+    $selectedParentColor: #f00;
+  }
+
+  .menu-sidebar {
+    background: transparent;
+  }
+
+  // 多级导航选中效果
+  .menu-sidebar,
+  .menu-sidebar-primary {
+    .menu-sidebar-sub {
+      color: $color;
+    }
+
+    color: $color;
+
+    // 有子节点
+    .menu-sidebar-submenu {
+      .menu-sidebar-submenu-arrow {
+
+        &:before,
+        &:after {
+          background: $arrowColor !important;
+        }
+      }
+
+      &-open {
+        .menu-sidebar-label {
+          color: $color !important;
+        }
+
+        // 子节点选中，父级节点高亮
+        &.menu-sidebar-submenu-selected {
+          >.menu-sidebar-submenu-title {
+
+            .menu-sidebar-label,
+            .ele-icon {
+              color: $selectedParentColor !important;
+            }
+
+            .menu-sidebar-submenu-arrow {
+
+              &:before,
+              &:after {
+                background: $selectedParentColor !important;
+              }
+            }
+          }
+        }
+
+        // 选中高亮
+        .menu-sidebar-submenu-title-selected {
+          background: $selectedBg !important;
+          color: $selectedColor;
+
+          .menu-sidebar-label,
+          .ele-icon {
+            color: $selectedColor !important;
+          }
+
+          .menu-sidebar-submenu-arrow {
+
+            &:before,
+            &:after {
+              background: $selectedColor !important;
+            }
+          }
+        }
+      }
+
+      // 选中高亮
+      &-item-selected {
+        .menu-sidebar-submenu-title-selected {
+          background: $selectedBg;
+          color: $selectedColor;
+
+          .menu-sidebar-submenu-arrow {
+
+            &:before,
+            &:after {
+              background: $selectedColor !important;
+            }
+          }
+        }
+      }
+
+      // hover - 非选中、非open
+      &-active:not(.menu-sidebar-item-selected):not(.menu-sidebar-submenu-open) {
+        >.menu-sidebar-submenu-title:not(.menu-sidebar-item-selected) {
+          background: $hoverBg !important;
+        }
+      }
+    }
+
+    // 单节点
+    .menu-sidebar-item {
+      .menu-text-wrapper {
+
+        .ele-icon,
+        .menu-sidebar-label {
+          color: $color;
+        }
+      }
+
+      &-selected {
+        background: $selectedBg !important;
+        color: $selectedColor;
+
+        >.menu-sidebar-submenu-title {
+          background: $selectedBg !important;
+        }
+
+        .menu-sidebar-label,
+        .ele-icon {
+          color: $selectedColor !important;
+        }
+      }
+
+      &-active:not(.menu-sidebar-item-selected) {
+        >.menu-sidebar-submenu-title {
+          background: $hoverBg !important;
+        }
+      }
+
+      &:hover:not(.menu-sidebar-item-selected) {
+        background: $hoverBg !important;
+
+        .ele-icon,
+        .menu-sidebar-label {
+          color: $color !important;
+        }
+      }
+    }
+
+  }
+
+  .menu-sidebar-inline {
+    .ele-icon {
+      color: $color !important;
+    }
+
+    .menu-sidebar-submenu-active {
+      background: transparent;
+    }
+
+    .menu-sidebar-submenu-title:hover:not(.menu-sidebar-submenu-title-selected):not(.menu-sidebar-submenu-title-open) {
+      background: $hoverBg !important;
+      color: $hoverColor;
+
+      .menu-sidebar-label {
+        color: $hoverColor !important;
+      }
+    }
+
+    // 子级选中父级高亮，hover颜色变黑色
+    .menu-sidebar-submenu-open.menu-sidebar-submenu-selected>.menu-sidebar-submenu-title:hover .menu-text-wrapper .menu-sidebar-label {
+      color: $selectedParentColor !important;
+    }
+  }
+}
+
+.ele-scroll-listener-left-nav-fixed {
+  background: #fff;
+
+  .text-regular {
+    color: #666 !important;
+  }
+
+  // 头像部分
+  @include avatarSide("");
+
+  .ele-layout-hf {
+    background: #FBF9EB url(./static/header-sideheader.png) no-repeat top center !important;
+
+    @include sidebarMenu("")
+  }
+
+}
+
+/** 左页眉(全屏)导航样式 */
+.fullscreen-sideheader {
+  $headerType: "header-sidebar";
+  $header-top-right-height: 70px;
+
+  .use-theme {
+
+    .bgc-theme,
+    .bgc-theme-90 {
+      background: transparent !important;
+    }
+  }
+
+  .ele-flex-item {
+    &-none {
+      display: flex !important;
+      align-items: center;
+    }
+  }
+
+  .ele-scroll-listener-left-nav {
+    .menu-sidebar-submenu {
+      margin: 1px 0;
+    }
+
+    &-fixed {
+      .ele-layout-header {
+        &.use-theme {
+          background: #FFE4CF url(./static/header-sideheader.png) no-repeat top center !important;
+          // background-size: cover;
+
+          .ele-header-search {
+            .ele-input {
+              &-suffix {
+                color: $theme-color;
+              }
+            }
+          }
+        }
+
+        .header-sidebar-content {
+          @include logo("dark");
+        }
+
+        .ele-layout-hf {
+          @include logo("light");
+        }
+      }
+    }
+
+  }
+
+
+  /** 左页眉的顶部页眉 */
+  .ele-layout-sideheader-container-warpper {
+    .ele-scroll-listener-header {
+      .ele-scroll-listener-fixed {
+        .header-top-right {
+          &.use-theme {
+            .ele-layout-hf {
+              $type: "light";
+              height: $header-top-right-height !important;
+              @include headerNotify($type);
+              @include headerPortal($type);
+              @include headerAvatar($type);
+              @include headerSearch($type);
+              @include headerLogin($type);
+              @include menuLink($type);
+              @include menuApp($type);
+              @include splitLine($split-color);
+
+            }
+          }
+
+          height: $header-top-right-height !important;
+        }
+
+      }
+
+    }
+  }
+}
+
+//页脚风格
+@mixin footerStyle($type) {
+
+  .ele-footer-link-more-icon,
+  .ele-footer-link-icon {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .ele-footer-switch-langs,
+  .ele-footer-link-text {
+    color: #fff;
+  }
+
+  .ele-footer-copyright,
+  .ele-footer-switch-langs-langs {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .ele-select-selection {
+    &-selected-value {
+      color: #fff;
+    }
+  }
+
+  .ele-select-arrow {
+    &-icon svg {
+      color: #fff;
+    }
+  }
+
+  .ele-footer-switch-langs-separator {
+    border-color: rgba(#fff, 0.6);
+  }
+
+  @if $type=="light" {
+
+    .ele-footer-link-more-icon,
+    .ele-footer-link-icon {
+      color: #999999;
+    }
+
+    .ele-footer-link-text,
+    .ele-footer-switch-langs {
+      color: #333333;
+    }
+
+    .ele-footer-switch-langs-separator,
+    .ele-footer-switch-langs-langs,
+    .ele-footer-copyright {
+      color: #666666;
+    }
+
+    .ele-select-arrow {
+      &-icon svg {
+        color: #333;
+      }
+    }
+
+    .ele-select-arrow,
+    .ele-select-selection-selected-value {
+      color: #333;
+    }
+  }
+}
+
+/** 多功能页脚 */
+.footer-multiple {
+  $footerType: "footer-multiple";
+  $type: "light";
+
+  &.use-theme {
+    @include footerStyle($type);
+    @include logo($type);
+  }
+}
+
+/** 简洁页脚 */
+.footer-simple {
+  $type: "light";
+
+  &.use-theme {
+    @include footerStyle($type);
+  }
+}
+
+/** 单行页脚 */
+.footer-single {
+  $footerType: "footer-single";
+  $type: "light";
+
+  &.use-theme {
+    @include logo($type);
+    @include footerStyle($type);
+    @include splitLine(#999);
+
+    .ele-footer-single-base-item {
+      &::before {
+        background-color: #999;
+      }
+    }
+  }
+}
+
+/** 页眉背景色自定义
+DOM结构变化：页眉最外层不会有类名变化，每个子项会增加 --dark，-dark的类名标识
+*/
+.ele-layout-header {
+
+  // 页面切换 用户自定义背景色、背景图，系统设置的颜色模式
+  .ele-menu-tile {
+    &-dark {
+      @include menuLinkTree("dark");
+    }
+
+    &-light {
+      @include menuLinkTree("light");
+    }
+  }
+
+  @include headerSearch("");
+
+  &-dark {
+    @include menuLinkTree("dark");
+    @include headerSearch("dark");
+  }
+
+  &-light {
+    @include menuLinkTree("light");
+    @include headerSearch("light");
+  }
+
+}
+
+/** 页眉背景图片自定义
+DOM结构变化：页眉最外层会增加-dark、-light类名变化
+*/
+.ele-layout-hf {
+  &-dark {
+    @include menuLinkTree("dark");
+    @include headerSearch("dark");
+  }
+
+  &-light {
+    @include menuLinkTree("light");
+    @include headerSearch("light");
+  }
+}
+
+// 新版折叠左导航
+.menu-sidebar-collapsed-item .lui-icon {
+  font-size: 16px;
+}
+
+.ele-header-notify-count{
+  background-color: #ff4e32;
+}

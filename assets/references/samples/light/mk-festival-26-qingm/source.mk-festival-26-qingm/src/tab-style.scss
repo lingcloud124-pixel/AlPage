@@ -1,0 +1,394 @@
+$single-tab-bg: #fff;
+
+@mixin tabsStyle($tabName, $tabTitle, $tabContent) {
+  &.use-theme {
+    .#{$tabTitle} {
+      background: $single-tab-bg;
+    }
+
+    .#{$tabContent} {
+      background: $single-tab-bg;
+    }
+  }
+}
+
+@mixin tabsStyleTransparentize($tabName, $tabTitle, $tabContent) {
+  &.use-theme {
+    .#{$tabTitle} {
+      background-color: transparent;
+    }
+
+    .#{$tabContent} {
+      background-color: $single-tab-bg;
+    }
+  }
+}
+
+/** 单标签外观样式 */
+.ele-tabs-single {
+  @include tabsStyleTransparentize("ele-tabs-single", "ele-tabs-single-title", "ele-tabs-single-content");
+}
+
+/** 组合列表单标签 */
+.ele-tabs-combination-list {
+  &.use-theme {
+    .ele-tabs-combination-list-content {
+      background: $single-tab-bg;
+    }
+  }
+}
+
+/**图片单标签 */
+.ele-tabs-image {
+  @include tabsStyle("ele-tabs-image", "ele-tabs-image-title", "ele-tabs-image-content");
+}
+
+/** 公告样式*/
+.ele-tabs-bulletin {
+  @include tabsStyle("ele-tabs-bulletin", "ele-tabs-bulletin_header", "ele-tabs-bulletin_content");
+}
+
+/** 大标题单标签 */
+.ele-tabs-headline {
+  @include tabsStyleTransparentize("ele-tabs-headline", "ele-tabs-headline-img-box", "ele-tabs-headline-content");
+}
+
+.ele-tabs-multi-wrapper {
+  &.use-theme {
+    .ele-tabs-multi-title {
+      background: transparent;
+    }
+
+    .ele-tabs-bar,
+    .ele-tabs-multi-headline-bar {
+      background: transparent;
+    }
+
+    .ele-tabs-tabpane {
+      background: $single-tab-bg;
+    }
+  }
+}
+
+
+
+/** 单标签外观样式 */
+@mixin singleTabsStyle($tabName) {
+  &.use-theme {
+    background-color: #fff;
+
+    .#{$tabName}-title {
+      height: 50px !important;
+      .#{$tabName}-tab {
+        font-weight: bold;
+      }
+    }
+
+    .#{$tabName}-content {
+      background-color: #fff;
+      border-radius: 4px;
+      /** 玲玲童鞋解决阴影不出现的问题 */
+      margin: 5px;
+      // box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.05);
+      width: calc(100% - 10px);
+    }
+  }
+}
+
+.ele-tabs-headline {
+  $tabName: "ele-tabs-headline";
+  @include singleTabsStyle($tabName);
+
+  &.use-theme {
+    .#{$tabName}-tab {
+      font-weight: 500 !important;
+    }
+
+    .font-base {
+      font-size: 16px !important;
+    }
+  }
+}
+
+.ele-tabs-single {
+  @include singleTabsStyle("ele-tabs-single");
+}
+
+/** 无标题单标签 */
+
+/** 垂直单标签starts */
+.ele-tabs-single {
+  &.use-theme {
+    .ele-tabs-single {
+      &-title {
+        .ele-tabs-single-tab {
+          font-weight: 500;
+        }
+      }
+    }
+  }
+}
+
+/** 垂直单标签ends */
+
+.ele-tabs-single-hideTab {
+  &.ele-tabs-single.use-theme {
+    background: transparent;
+  }
+}
+
+/** 单标签特殊处理starts */
+.ele-tabs-bulletin {
+  &_title.text-theme {
+    color: #FB5345 !important;
+  }
+
+  &_header--line {
+
+    &:before,
+    &:after {
+      border-bottom-color: #FB5345 !important;
+    }
+
+  }
+}
+
+/** 单标签特殊处理ends */
+
+/** 多标签外观样式 starts*/
+@mixin multiTabsStyle($tabName) {
+  .ele-tabs-tab {
+    margin-left: 15px;
+    padding-left: 5px !important;
+    padding-right: 5px !important;
+  }
+
+  &.use-theme {
+    background-color: #fff;
+    border: none;
+
+    .ele-tabs-tab {
+      margin-left: 15px;
+      padding-left: 5px;
+      padding-left: 5px;
+    }
+
+    .ele-tabs-multi-title {
+      border-bottom: none !important;
+
+      &-tab {
+        font-weight: bold;
+      }
+    }
+
+    .ele-tabs-content {
+      /** 多标签的样式单独提取 tab-style*/
+      background-color: #fff;
+      border-radius: 4px;
+
+      .ele-tabs-tabpane {
+        position: relative;
+        background-color: #fff;
+        z-index: 2;
+
+        .ele-tabs-multi-panel-content-wrapper {
+          position: relative;
+          z-index: 2;
+        }
+      }
+    }
+  }
+}
+
+.ele-tabs-multi-pc.ele-tabs-multi-light_horizontal {
+  .ele-tabs-multi-top .ele-tabs-bar {
+    height: 50px !important;
+    overflow: hidden;
+  }
+}
+
+/** 边框线 */
+.ele-tabs-multi-pc .ele-tabs-multi-top .ele-tabs-bar[class]:after {
+  border-color: #E2DFD9;
+}
+
+/** 水平多标签、居中多标签 */
+.ele-tabs-multi-light_horizontal,
+.ele-tabs-multi-center {
+  @include multiTabsStyle("ele-tabs-multi-light_horizontal");
+  @include multiTabsStyle("ele-tabs-multi-center");
+
+  .ele-tabs-tab-active {
+    /*color: #333 !important;*/
+
+    &:after {
+      content: "";
+      width: 100%;
+      left: 0% !important;
+      margin-left: 0px;
+      bottom: 1px !important;
+      border-radius: 15px;
+      font-weight: 500;
+    }
+  }
+}
+
+/** 水平多标签特殊处理 */
+.ele-tabs-multi-light_horizontal {
+  &.use-theme {
+    .ele-tabs-multi-title {
+      margin-bottom: -18px;
+    }
+  }
+}
+
+/** 居中多标签特殊处理 */
+.ele-tabs-multi-center {
+  &.use-theme {
+    .ele-tabs-multi-title {
+      margin-bottom: -13px;
+    }
+  }
+}
+
+/** 大标题多标签、大标题居中多标签 */
+.ele-tabs-multi-headline,
+.ele-tabs-multi-headline_center {
+  @include multiTabsStyle("ele-tabs-multi-headline");
+  @include multiTabsStyle("ele-tabs-multi-headline_center");
+}
+
+/** 大标题居中多标签特殊处理 */
+.ele-tabs-multi-headline_center {
+  &.use-theme {
+    .ele-tabs-multi-title {
+      margin-bottom: -48px;
+    }
+
+    .ele-tabs-tab {
+
+      &:hover,
+      &-active,
+      &-open,
+      &-selected {
+        color: #333 !important;
+      }
+    }
+
+    .ele-tabs-bar {
+      margin-bottom: 16px !important;
+    }
+  }
+}
+
+/** 垂直多标签 */
+.ele-tabs-multi-light_vertical {
+  @include multiTabsStyle("ele-tabs-multi-headline");
+
+  &.use-theme {
+    .ele-tabs-multi-title {
+      border-bottom: 1px solid #EEEEEE !important;
+    }
+
+    .ele-tabs-tab {
+      margin: 0;
+      border-left: 2px transparent solid;
+    }
+  }
+
+  .ele-tabs-tab-active {
+    /*background-color: $secondray-color!important;*/
+    border-left: 2px $theme-color solid;
+    position: relative;
+
+    /*&:after {
+      content: "";
+      position: absolute;
+      width: 2px;
+      height: 100%;
+      left: 0;
+      top: 0;
+      background-color: $theme-color;
+      transform: translateY(-50%);
+    }*/
+  }
+
+  .ele-tabs-ink-bar {
+    display: none !important;
+  }
+
+
+}
+
+/** 多标签外观样式 ends*/
+/** 操作按钮样式starts */
+.ele-widget-operation {
+  &-item.desktop {
+    .ele-widget-operation {
+      &-item {
+        &-text {
+          display: inline-block;
+          // padding-right: 44px;
+          font-size: 0 !important;
+        }
+      }
+    }
+  }
+
+  .bd-split {
+    border: none !important;
+  }
+
+  &-link {
+    min-width: 40px;
+    background-repeat: no-repeat;
+    background-position: right center;
+    background-size: auto 24px;
+    height: 26px;
+    line-height: 26px;
+
+    &:hover {
+      color: $theme-color !important;
+    }
+
+    .ele-icon {
+      display: none;
+    }
+
+    &.hover-bd-theme {
+      &:hover {
+        border: none !important;
+        background-color: transparent !important;
+      }
+    }
+  }
+
+  &-more {
+    padding: 0;
+    background-image: url(./static/icon/more@2x.png);
+
+    &.hover-bd-theme {
+      &:hover {
+        background-image: url(./static/icon/more_cur@2x.png);
+      }
+    }
+  }
+
+  &-create {
+    padding: 0;
+    // min-width: 35px;
+    background-image: url(./static/icon/add@2x.png);
+
+    &.hover-bd-theme {
+      &:hover {
+        background-image: url(./static/icon/add_cur@2x.png);
+      }
+    }
+
+    .font-base {
+      font-size: 12px !important;
+    }
+  }
+}
+
+/** 操作按钮样式ends */

@@ -168,7 +168,7 @@ RGB_REPLACEMENTS = [
 ]
 
 MAX_PACKAGE_TITLE_LENGTH = 10
-MK_LOGIN_PART_CODE_MAX_LENGTH = 36
+MK_PACKAGE_PART_CODE_MAX_LENGTH = 5
 
 DIRECT_THEME_PATTERNS: List[Tuple[str, List[str]]] = [
     ("shenergy-enterprise", [r"申能", r"\bshenergy\b"]),
@@ -486,22 +486,20 @@ def rename_tree_entries(root: Path, replacements: List[Tuple[str, str]]) -> None
 
 
 def build_mk_theme_slug(template_name: str, name_en: str) -> str:
-    slug = normalize_name_en(name_en) or "project"
+    slug = (normalize_name_en(name_en) or "project")[:MK_PACKAGE_PART_CODE_MAX_LENGTH]
     if template_name.startswith("mk-festival-"):
         return f"mk-festival-{slug}"
     return f"mk-{slug}"
 
 
 def build_mk_login_slug(template_name: str, name_en: str) -> str:
-    slug = normalize_name_en(name_en) or "project"
+    slug = (normalize_name_en(name_en) or "project")[:MK_PACKAGE_PART_CODE_MAX_LENGTH]
     match = re.match(r"^(login\d+-festival-).+$", template_name)
     if match:
         prefix = match.group(1)
-        max_slug_length = max(1, MK_LOGIN_PART_CODE_MAX_LENGTH - len(prefix))
-        return f"{prefix}{slug[:max_slug_length]}"
+        return f"{prefix}{slug}"
     prefix = "login-"
-    max_slug_length = max(1, MK_LOGIN_PART_CODE_MAX_LENGTH - len(prefix))
-    return f"{prefix}{slug[:max_slug_length]}"
+    return f"{prefix}{slug}"
 
 
 # =============================================================================

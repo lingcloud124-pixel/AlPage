@@ -363,6 +363,16 @@ function resolveEffectivePreferredHueHint(
   return resolvePreferredHueHint(bgPrompt, templateType)?.label ?? '';
 }
 
+function buildSafeImagePrompt(prompt: string): string {
+  if (!/八一|建军节/u.test(prompt)) return prompt;
+  return [
+    '企业夏季纪念主题 OA 登录页背景，庄重现代宣传视觉，16:9 横版宽幅构图。',
+    '画面以蓝白渐变天空、抽象山河轮廓、金色光线、纪念飘带和几何装饰组成，整体干净通透，适合企业办公系统主题背景。',
+    '左侧为清晰的主题文字“8.1”，使用稳重大气的中文黑体，浅金与白色渐变文字，轻微浮雕光影，排版集中且留有呼吸感。',
+    '右侧以柔和光晕、虚化云层、几何线条和大气透视延展，形成电影级光影层次，整体为抽象纪念视觉，庄重、克制、明亮。',
+  ].join(' ');
+}
+
 export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
   if (!imageUrl || typeof imageUrl !== 'string') {
     return { success: false, error: 'analyze_image 需要 imageUrl 参数' };
@@ -910,6 +920,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         if (preferredHueHint) {
           finalPrompt = buildPromptWithPreferredHue(finalPrompt, preferredHueHint, templateType);
         }
+        finalPrompt = buildSafeImagePrompt(finalPrompt);
 
         if (!finalPrompt) return { success: false, error: 'generate_theme_pipeline 需要 prompt 参数' };
 

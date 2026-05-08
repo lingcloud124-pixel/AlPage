@@ -8,6 +8,7 @@ describe('web project naming', () => {
     expect(deriveNameEnFromText('帮我做一个 2026 清明节主题，偏国风')).toBe('qingming');
     expect(deriveNameEnFromText('申能企业蓝主题，要稳重一点')).toBe('shenergy-enterprise');
     expect(deriveNameEnFromText('国庆节暗色主题')).toBe('national-day-dark');
+    expect(deriveNameEnFromText('26年八一主题')).toBe('army-day');
   });
 
   test('reuses stored project slug without duplicating the project id prefix', () => {
@@ -19,5 +20,11 @@ describe('web project naming', () => {
   test('clamps package title to 10 characters without changing export slug generation', () => {
     expect(clampPackageTitle('这是一个超过十个字符的主题名称')).toBe('这是一个超过十个字符');
     expect(buildProjectExportNameEn({ id: 'project-123', nameEn: 'qingming' })).toBe('project-123-qingming');
+  });
+
+  test('does not leak timestamp-style project ids into export slugs', () => {
+    expect(buildProjectExportNameEn({ id: '1778134670075', name: '26年八一主题' })).toBe('army-day');
+    expect(buildProjectExportNameEn({ id: '1778134670075', nameEn: 'ba-yi-theme' })).toBe('ba-yi-theme');
+    expect(buildProjectExportNameEn({ id: '1778134670075', name: '26年八一主题', themeName: '26年八一主题' })).toBe('army-day');
   });
 });

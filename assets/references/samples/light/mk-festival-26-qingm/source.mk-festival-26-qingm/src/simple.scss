@@ -1,0 +1,14 @@
+:root {
+  --primary-color: #2C615C;
+  --secondray-color: #144E48;
+  --thirdray-color: #56817D;
+  --primary-color-rgb: 255, 134, 36;
+}
+
+$theme-color: #2C615C;
+$secondray-color: #144E48;
+$thirdray-color:#56817D;
+
+@import "~@elements-toolkit/scss/theme.scss";
+@import "mixins~@theme/scss/index.scss";
+@import "./_base.scss";

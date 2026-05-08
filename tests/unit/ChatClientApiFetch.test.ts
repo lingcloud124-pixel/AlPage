@@ -50,6 +50,36 @@ describe('chat client apiFetch integration', () => {
     expect(result).toEqual({ success: true, url: 'https://example.com/image.png' });
   });
 
+  test('generateImage surfaces base_resp errors from non-2xx backend responses', async () => {
+    apiFetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      error: 'Invalid status code: 50412',
+      base_resp: { status_code: 50412, status_msg: 'Input text audit failed' },
+    }), {
+      status: 422,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const mod = await import('../../web/src/agent/chat-client');
+    const result = await mod.generateImage('military poster prompt');
+
+    expect(result).toEqual({
+      success: false,
+      error: '图像生成失败: 输入文本审核未通过，请调整描述',
+    });
+  });
+
+  test('generateImage explains backend connection failures clearly', async () => {
+    apiFetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    const mod = await import('../../web/src/agent/chat-client');
+    const result = await mod.generateImage('enterprise poster prompt');
+
+    expect(result).toEqual({
+      success: false,
+      error: '无法连接到后端生图服务，请确认本地服务正在运行后重试',
+    });
+  });
+
   test('chatCompletion uses apiFetch for authenticated backend calls', async () => {
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {

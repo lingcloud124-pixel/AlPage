@@ -78,6 +78,33 @@ describe('web theme preview failures', () => {
     expect(result.error).toBe('当前仅支持文字生图，暂不支持基于上传图片继续生成');
   });
 
+  test('sanitizes army day prompts before calling image generation', async () => {
+    generateImageMock.mockResolvedValueOnce({ success: false, error: '输入文本审核未通过，请调整描述' });
+
+    await executeTool({
+      tool: 'generate_theme_pipeline',
+      args: {
+        prompt: '我要一个八一建军节主题，军人剪影，战机编队，现代军事宣传海报',
+        templateType: 'light-ui',
+      },
+    });
+
+    const finalPrompt = String(generateImageMock.mock.calls[0]?.[0] ?? '');
+    expect(finalPrompt).toContain('企业夏季纪念主题');
+    expect(finalPrompt).toContain('主题文字“8.1”');
+    expect(finalPrompt).toContain('现代宣传视觉');
+    expect(finalPrompt).toContain('整体为抽象纪念视觉');
+    expect(finalPrompt).not.toContain('八一');
+    expect(finalPrompt).not.toContain('建军节');
+    expect(finalPrompt).not.toContain('红色');
+    expect(finalPrompt).not.toContain('徽章');
+    expect(finalPrompt).not.toContain('军人剪影');
+    expect(finalPrompt).not.toContain('战机编队');
+    expect(finalPrompt).not.toContain('军事');
+    expect(finalPrompt).not.toContain('武器');
+    expect(finalPrompt).not.toContain('装备');
+  });
+
   test('skips image color analysis when a landing preset locks an exact primary hex', async () => {
     generateImageMock.mockResolvedValueOnce({ success: true, url: 'https://example.com/fixed-theme.png' });
 
@@ -111,5 +138,28 @@ describe('web theme preview failures', () => {
     expect(source).toContain("applyThemeImageAssignments('desktop', previews[0].url);");
     expect(source).toContain('deps.expandPreview();');
     expect(source).toContain('deps.setChatPanelWidth(372);');
+  });
+
+  test('tool failure in chat manager stops later preview-opening tools from running', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const source = fs.readFileSync(path.join(process.cwd(), 'web/src/chat-manager.ts'), 'utf8');
+
+    expect(source).toContain('let shouldAbortRemainingTools = false;');
+    expect(source).toContain('if (shouldAbortRemainingTools) {');
+    expect(source).toContain('shouldAbortRemainingTools = true;');
+    expect(source).toContain('const skipMsg = `⚠️ 前序步骤失败，已跳过 ${tc.tool}`;');
+  });
+
+  test('starting a new conversation hard-resets preview visibility and stale theme state', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const source = fs.readFileSync(path.join(process.cwd(), 'web/src/chat-manager.ts'), 'utf8');
+
+    expect(source).toContain('latestThemePreviews = null;');
+    expect(source).toContain('latestThemeAgentDebugState = null;');
+    expect(source).toContain('resetThemeTargetStyles();');
+    expect(source).toContain("previewPanel?.classList.remove('expanded');");
+    expect(source).toContain("appContainer?.classList.remove('preview-open');");
   });
 });

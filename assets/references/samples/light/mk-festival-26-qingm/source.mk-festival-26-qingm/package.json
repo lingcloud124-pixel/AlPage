@@ -1,0 +1,34 @@
+{
+  "name": "@user-theme/mk-festival-26-qingm",
+  "version": "0.0.1",
+  "mkVersion": "v5",
+  "title": {
+    "zh-cn": "26清明-主题"
+  },
+  "desc": {
+    "zh-cn": "26清明"
+  },
+  "constructor": "mkworks",
+  "structor": "complex_item",
+  "module": "sys-portal",
+  "element": {
+    "type": "theme",
+    "category": "theme",
+    "platform": "desktop",
+    "layout": [
+      "template.fullscreen.leftheader",
+      "template.fullscreen.sidenav",
+      "template.center"
+    ],
+    "variants": {
+      "simple": {
+        "title": {
+          "zh-cn": "26清明主题",
+          "en-us": "26 festival qingm"
+        },
+        "category": "skin"
+      }
+    }
+  },
+  "completed": true
+}

@@ -45,6 +45,16 @@ describe('export asset rules', () => {
     expect(studyBanner).toMatchObject({ width: 2560, height: 100 });
   });
 
+  test('mk header cuts keep sample-package dimensions instead of collapsing to ekp defaults', () => {
+    const headerSimple = outputMapping.headerSidebar.find((item) => item.output === 'header-simple.png');
+    const headerTabs = outputMapping.headerSidebar.find((item) => item.output === 'header-tabs.png');
+    const ekpDefaultHeader = outputMapping.headerSidebar.find((item) => item.output === 'header_tlayout_frame_bg.png');
+
+    expect(headerSimple).toMatchObject({ width: 1920, height: 90, recipe: 'header' });
+    expect(headerTabs).toMatchObject({ width: 1920, height: 90, recipe: 'header' });
+    expect(ekpDefaultHeader).toMatchObject({ width: 1920, height: 60, recipe: 'header' });
+  });
+
   test('light-ui sandwich rules use the PDF variable name first and keep compatibility fallback', () => {
     expect(sandwichRules['light-ui'].header.baseColorVar).toBe('tlayout-header-bg-extend-color');
     expect(sandwichRules['light-ui'].header.gradientColorVar).toBe('tlayout-header-bg-extend-color');

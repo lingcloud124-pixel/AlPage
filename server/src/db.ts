@@ -138,7 +138,7 @@ export async function initDb(): Promise<void> {
     CREATE TABLE IF NOT EXISTS security_config (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       cors_origins TEXT NOT NULL DEFAULT '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:4173","http://127.0.0.1:4173"]',
-      proxy_image_hosts TEXT NOT NULL DEFAULT '[]',
+      proxy_image_hosts TEXT NOT NULL DEFAULT '["*.byteimg.com"]',
       rate_limits TEXT NOT NULL DEFAULT '{}',
       enabled_features TEXT NOT NULL DEFAULT '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}',
       daily_image_gen_limit INTEGER NOT NULL DEFAULT 100,
@@ -183,7 +183,7 @@ export async function initDb(): Promise<void> {
 
   db.run(`
     INSERT OR IGNORE INTO security_config (id, cors_origins, proxy_image_hosts, rate_limits, enabled_features, daily_image_gen_limit, daily_chat_adjust_limit, credits_per_conversation, credits_per_image, daily_credits_limit, backup_retention_count, export_retention_days, credits_tooltip_content)
-    VALUES (1, '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:4173","http://127.0.0.1:4173"]', '[]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 50, 100, 8, 7, '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放')
+    VALUES (1, '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:4173","http://127.0.0.1:4173"]', '["*.byteimg.com"]', '{"chat":60,"image":20,"export":10,"proxyImage":60}', '{"cors":true,"proxyImage":true,"rateLimiting":true,"adminAuth":true,"quota":true,"export":true,"image":true,"chat":true}', 100, 50, 25, 50, 100, 8, 7, '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放')
   `);
 
   db.run(`UPDATE security_config SET credits_tooltip_content = '1、每位用户每日可获得 10 次免费生成主题背景图的机会\n2、每成功生成 1 次主题背景图，扣除 1 次机会\n3、每日生成次数将在次日 06:00 自动清零并重新发放' WHERE credits_tooltip_content LIKE '%100 免费积分%'`);

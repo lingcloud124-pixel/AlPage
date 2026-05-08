@@ -214,8 +214,8 @@
             <span class="setting-toggle-title">启用使用限制（积分制）</span>
             <span class="setting-toggle-note">关闭后，前台将隐藏积分与积分消耗提示</span>
           </div>
-          <label class="switch" aria-label="启用使用限制（积分制）">
-            <input type="checkbox" id="enableCreditsLimit" onchange="toggleCreditsSettings()">
+          <label class="switch" aria-label="启用使用限制（积分制）" onclick="event.preventDefault(); toggleCreditsSettings();">
+            <input type="checkbox" id="enableCreditsLimit">
             <span class="switch-slider" aria-hidden="true"></span>
           </label>
         </div>
@@ -576,9 +576,27 @@
       }
     }
 
-    function toggleCreditsSettings() {
-      const enabled = document.getElementById('enableCreditsLimit').checked;
-      document.getElementById('creditsSettingsSection').style.display = enabled ? 'block' : 'none';
+    function getCreditsLimitEnabled() {
+      const input = document.getElementById('enableCreditsLimit');
+      return Boolean(input && input.checked);
+    }
+
+    function syncCreditsToggleUi(enabled) {
+      const input = document.getElementById('enableCreditsLimit');
+      const section = document.getElementById('creditsSettingsSection');
+      if (input) {
+        input.checked = enabled;
+      }
+      if (section) {
+        section.style.display = enabled ? 'block' : 'none';
+      }
+    }
+
+    function toggleCreditsSettings(forceValue) {
+      const enabled = typeof forceValue === 'boolean'
+        ? forceValue
+        : !getCreditsLimitEnabled();
+      syncCreditsToggleUi(enabled);
     }
 
     const IMAGE_PROVIDER_DEFAULTS = {
@@ -705,8 +723,7 @@
         document.getElementById('creditsTooltipContent').value = securityData.creditsTooltipContent || '';
 
         const creditsEnabled = securityData.enabledFeatures?.quota !== false;
-        document.getElementById('enableCreditsLimit').checked = creditsEnabled;
-        document.getElementById('creditsSettingsSection').style.display = creditsEnabled ? 'block' : 'none';
+        syncCreditsToggleUi(creditsEnabled);
       } catch (e) {
         console.error("Error loading configuration:", e);
         toast('加载配置失败: ' + e.message, 'error');
@@ -720,6 +737,15 @@
       }
 
       try {
+        const readErrorMessage = async (response, fallbackMessage) => {
+          try {
+            const data = await response.json();
+            return data?.error || fallbackMessage;
+          } catch {
+            return fallbackMessage;
+          }
+        };
+
         const body = {
           chatEndpoint: document.getElementById('chatEndpoint').value,
           chatApiKey: document.getElementById('chatApiKey').value,
@@ -745,7 +771,7 @@
             image: true,
             chat: true,
             cors: true,
-            quota: document.getElementById('enableCreditsLimit').checked,
+            quota: getCreditsLimitEnabled(),
             adminAuth: true,
             rateLimiting: true
           },
@@ -801,6 +827,13 @@
           } else {
             toast(modelData.error || '模型配置保存失败', 'error');
           }
+        } else if (modelRes.status === 'fulfilled') {
+          if (modelRes.value.status === 401) {
+            showLoginSection();
+            toast('登录已过期，请重新登录', 'error');
+            return;
+          }
+          toast(await readErrorMessage(modelRes.value, `模型配置保存失败 (${modelRes.value.status})`), 'error');
         } else if (modelRes.reason) {
           toast('模型配置保存失败: ' + modelRes.reason.message, 'error');
         }
@@ -812,11 +845,20 @@
           } else {
             toast(securityData.error || '安全配置保存失败', 'error');
           }
+        } else if (securityRes.status === 'fulfilled') {
+          if (securityRes.value.status === 401) {
+            showLoginSection();
+            toast('登录已过期，请重新登录', 'error');
+            return;
+          }
+          toast(await readErrorMessage(securityRes.value, `安全配置保存失败 (${securityRes.value.status})`), 'error');
         } else if (securityRes.reason) {
           toast('安全配置保存失败: ' + securityRes.reason.message, 'error');
         }
 
-        if (successCount > 0) {
+        if (successCount === 2) {
+          toast('配置已保存');
+        } else if (successCount > 0) {
           toast(`配置已保存 (${successCount}/2 成功)`);
         }
       } catch (e) {

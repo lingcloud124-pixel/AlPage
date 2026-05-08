@@ -13,6 +13,7 @@ const router = Router();
 const VOLCENGINE_ARK_IMAGE_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/images/generations';
 const VOLCENGINE_ARK_GET_API_KEY_ENDPOINT = 'https://ark.cn-beijing.volcengineapi.com/?Action=GetApiKey&Version=2024-01-01';
 const VOLCENGINE_ARK_IMAGE_MODEL = 'doubao-seedream-3-0-t2i-250415';
+const DEFAULT_PROXY_IMAGE_HOSTS = ['*.byteimg.com'];
 const VOLCENGINE_SERVICE = 'ark';
 const tempApiKeyCache = new Map<string, { apiKey: string; expiresAt: number }>();
 
@@ -422,6 +423,14 @@ function buildVolcengineArkImageBody(body: any, fallbackModel: string) {
   };
 }
 
+function normalizeJimengFailureStatusCode(businessCode: number, rawStatus: unknown): number {
+  const status = typeof rawStatus === 'number' ? rawStatus : Number(rawStatus);
+  if (Number.isInteger(status) && status >= 400 && status <= 599) return status;
+  if ([1026, 50411, 50412, 50413].includes(businessCode)) return 422;
+  if (businessCode === 1002 || businessCode === 50429) return 429;
+  return 502;
+}
+
 async function handleJimengImageRequest(
   auth: VolcAuth,
   reqBody: Record<string, unknown>,
@@ -467,7 +476,7 @@ async function handleJimengImageRequest(
   const jimengCode = typeof submitParsed.code === 'number' ? submitParsed.code : 0;
   if (jimengCode !== 10000) {
     return {
-      statusCode: typeof submitParsed.status === 'number' ? submitParsed.status as number : 502,
+      statusCode: normalizeJimengFailureStatusCode(jimengCode, submitParsed.status),
       body: { ...submitParsed, base_resp: { status_code: jimengCode, status_msg: submitParsed.message } },
     };
   }
@@ -515,7 +524,7 @@ async function handleJimengImageRequest(
     const pollCode = typeof pollParsed.code === 'number' ? pollParsed.code : 0;
     if (pollCode !== 10000) {
       return {
-        statusCode: typeof pollParsed.status === 'number' ? pollParsed.status as number : 502,
+        statusCode: normalizeJimengFailureStatusCode(pollCode, pollParsed.status),
         body: { ...pollParsed, base_resp: { status_code: pollCode, status_msg: pollParsed.message } },
       };
     }
@@ -596,7 +605,8 @@ function validateProxyImageHost(url: string): boolean {
       return false;
     }
 
-    const allowedHosts = securityConfig?.proxy_image_hosts || [];
+    const configuredHosts = securityConfig?.proxy_image_hosts || [];
+    const allowedHosts = configuredHosts.length > 0 ? configuredHosts : DEFAULT_PROXY_IMAGE_HOSTS;
     if (allowedHosts.length === 0) {
       return false;
     }
@@ -830,6 +840,7 @@ router.post('/image', async (req, res) => {
     const config = getModelConfig();
     const securityConfig = getSecurityConfig();
     const selectedProvider = config.imageProvider || 'minimax';
+    const shouldStopAfterJimengFailure = selectedProvider === 'jimeng';
     if (securityConfig?.enabled_features?.image === false) {
       return res.status(403).json({ error: '生图功能已关闭' });
     }
@@ -850,8 +861,14 @@ router.post('/image', async (req, res) => {
           });
           return res.status(result.statusCode).json(result.body);
         }
+        if (shouldStopAfterJimengFailure) {
+          return res.status(result.statusCode).json(result.body);
+        }
         logger.warn('Jimeng failed, falling back to next provider', { statusCode: result.statusCode });
       } catch (error) {
+        if (shouldStopAfterJimengFailure) {
+          throw error;
+        }
         logger.warn('Jimeng error, falling back to next provider', { error: error instanceof Error ? error.message : String(error) });
       }
     }

@@ -20,7 +20,7 @@ import {
 } from './ui-setup';
 import { loadDefaultTemplates } from './theme-engine';
 import { checkAuth, getUser, redirectToLogin } from './auth';
-import { fetchCredits, setupCreditsTooltip, updateCreditsDisplay } from './credits';
+import { fetchCredits, setupCreditsTooltip, startCreditsAutoRefresh, updateCreditsDisplay } from './credits';
 import { initSidebar } from './components/sidebar';
 import { registerPreviewResize, resizePreviewPages } from './preview/resize-preview';
 
@@ -133,6 +133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (workspaceView) workspaceView.classList.remove('view-hidden');
     showWorkspaceLandingState();
     setupCreditsTooltip();
+    startCreditsAutoRefresh();
 
     const creditsInfo = await fetchCredits();
     updateCreditsDisplay(creditsInfo);

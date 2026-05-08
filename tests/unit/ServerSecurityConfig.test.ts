@@ -49,6 +49,15 @@ describe('proxy-image validation', () => {
     const source = readFileSync(join(process.cwd(), 'server/src/routes/ai-proxy.ts'), 'utf8');
     expect(source).toContain('validateProxyImageHost');
   });
+
+  test('defaults allow generated Volcengine CDN images to be proxied for color analysis', () => {
+    const dbSource = readFileSync(join(process.cwd(), 'server/src/db.ts'), 'utf8');
+    const proxySource = readFileSync(join(process.cwd(), 'server/src/routes/ai-proxy.ts'), 'utf8');
+
+    expect(dbSource).toContain('*.byteimg.com');
+    expect(proxySource).toContain('DEFAULT_PROXY_IMAGE_HOSTS');
+    expect(proxySource).toContain('*.byteimg.com');
+  });
 });
 
 
@@ -88,5 +97,8 @@ describe('storage retention admin configuration', () => {
     expect(source).toContain("document.getElementById('exportRetentionDays').value = securityData.exportRetentionDays ?? '7';");
     expect(source).toContain("backupRetentionCount: parseInt(document.getElementById('backupRetentionCount').value) || 8");
     expect(source).toContain("exportRetentionDays: parseInt(document.getElementById('exportRetentionDays').value) || 7");
+    expect(source).toContain("} else if (securityRes.status === 'fulfilled') {");
+    expect(source).toContain("toast(await readErrorMessage(securityRes.value, `安全配置保存失败 (${securityRes.value.status})`), 'error');");
+    expect(source).toContain("if (successCount === 2) {");
   });
 });

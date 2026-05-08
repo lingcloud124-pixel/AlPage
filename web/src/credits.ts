@@ -11,6 +11,8 @@ export interface CreditsInfo {
 }
 
 let cachedCredits: CreditsInfo | null = null;
+let creditsRefreshStarted = false;
+let creditsRefreshInFlight: Promise<void> | null = null;
 
 const DEFAULT_CREDITS_TOOLTIP_LINES = [
   '1、每位用户每日可获得 10 次免费生成主题背景图的机会',
@@ -76,7 +78,9 @@ function updateCreditsTooltipContent(content?: string): void {
 }
 
 export async function fetchCredits(): Promise<CreditsInfo> {
-  const res = await apiFetch('/api/theme/credits');
+  const res = await apiFetch('/api/theme/credits', {
+    cache: 'no-store',
+  });
   if (!res.ok) {
     return { credits: 0, maxCredits: 100, nextResetAt: '', quotaEnabled: false, creditsTooltipContent: DEFAULT_CREDITS_TOOLTIP_LINES.join('\n') };
   }
@@ -136,6 +140,45 @@ export function updateCreditsDisplay(info?: CreditsInfo): void {
       creditsFill.classList.add('credits-ok');
     }
   }
+}
+
+async function refreshCreditsDisplay(): Promise<void> {
+  if (creditsRefreshInFlight) {
+    return creditsRefreshInFlight;
+  }
+
+  creditsRefreshInFlight = fetchCredits()
+    .then(updateCreditsDisplay)
+    .catch(() => {})
+    .finally(() => {
+      creditsRefreshInFlight = null;
+    });
+
+  return creditsRefreshInFlight;
+}
+
+export function startCreditsAutoRefresh(intervalMs = 30_000): void {
+  if (creditsRefreshStarted || typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  creditsRefreshStarted = true;
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      void refreshCreditsDisplay();
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    void refreshCreditsDisplay();
+  });
+
+  window.setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      void refreshCreditsDisplay();
+    }
+  }, intervalMs);
 }
 
 export function formatNextReset(nextResetAt: string): string {
