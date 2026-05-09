@@ -214,8 +214,9 @@ async function start() {
 
   startExportJobRunner();
 
-  server = app.listen(PORT, () => {
-    logger.info(`Theme Studio API running on port ${PORT}`);
+  const HOST = process.env.HOST || '0.0.0.0';
+  server = app.listen(PORT, HOST, () => {
+    logger.info(`Theme Studio API running on ${HOST}:${PORT}`);
   });
   server.timeout = 5 * 60 * 1000;
   server.headersTimeout = 5 * 60 * 1000 + 1000;
