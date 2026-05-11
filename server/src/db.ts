@@ -195,7 +195,23 @@ export async function initDb(): Promise<void> {
 
   db.run(`UPDATE security_config SET daily_credits_limit = 10, credits_per_image = 1, credits_per_conversation = 1, credits_tooltip_content = '1、每位用户每日可获得 10 积分\n2、每成功生成 1 次主题背景图，扣除 1 积分\n3、每日积分将在次日 06:00 自动清零并重新发放' WHERE daily_credits_limit = 100 OR credits_per_image = 50`);
 
-  db.run(`UPDATE user_credits SET credits = 10 WHERE credits > 10`);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS landing_prompts_config (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      enabled INTEGER NOT NULL DEFAULT 1,
+      entries_json TEXT NOT NULL DEFAULT '[]',
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+  `);
+
+  try {
+    db.run('ALTER TABLE landing_prompts_config ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1');
+  } catch { /* column already exists */ }
+
+  db.run(`
+    INSERT OR IGNORE INTO landing_prompts_config (id, enabled, entries_json)
+    VALUES (1, 1, '[]')
+  `);
 
   // Create user_credits table
   db.run(`
@@ -207,6 +223,8 @@ export async function initDb(): Promise<void> {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+
+  db.run(`UPDATE user_credits SET credits = 10 WHERE credits > 10`);
 
   // Seed credits for all users
   const creditNow = Math.floor(Date.now() / 1000);
@@ -378,6 +396,39 @@ function vacuumDb(): void {
 }
 
 export { db };
+
+export function getLandingPromptsConfig(): any {
+  const stmt = db.prepare('SELECT * FROM landing_prompts_config WHERE id = 1');
+  let row: Record<string, unknown> | null = null;
+  if (stmt.step()) {
+    row = stmt.getAsObject() as Record<string, unknown>;
+  }
+  stmt.free();
+
+  if (!row) return null;
+
+  let entries: any[] = [];
+  try {
+    entries = JSON.parse(String(row.entries_json || '[]'));
+    if (!Array.isArray(entries)) entries = [];
+  } catch { entries = []; }
+
+  return { enabled: row.enabled ? true : false, entries, updated_at: row.updated_at };
+}
+
+export function updateLandingPromptsConfig(entries: any[], enabled?: boolean): void {
+  const json = JSON.stringify(entries);
+  const enabledValue = typeof enabled === 'boolean' ? (enabled ? 1 : 0) : 1;
+  const stmt = db.prepare(`
+    INSERT INTO landing_prompts_config (id, enabled, entries_json, updated_at)
+    VALUES (1, ?, ?, unixepoch())
+    ON CONFLICT (id) DO UPDATE SET enabled = excluded.enabled, entries_json = excluded.entries_json, updated_at = unixepoch()
+  `);
+  stmt.bind([enabledValue, json]);
+  stmt.step();
+  stmt.free();
+  saveDb();
+}
 
 export function getSecurityConfig(): any {
   const stmt = db.prepare('SELECT * FROM security_config WHERE id = 1');

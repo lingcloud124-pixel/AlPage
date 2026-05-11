@@ -33,7 +33,6 @@ export default defineConfig({
       input: {
         index: resolve(__dirname, 'index.html'),
         desktopPreview: resolve(__dirname, 'desktop-preview.html'),
-        landingPromptsAdmin: resolve(__dirname, 'landing-prompts-admin.html'),
         loginPreview: resolve(__dirname, 'login-preview.html'),
       },
     },

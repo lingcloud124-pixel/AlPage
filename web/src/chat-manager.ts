@@ -24,7 +24,7 @@ import type { ThemePreview } from './tools/executor';
 import { classifyImageIntent } from './image-intent';
 import { applyPrimaryImageToProject } from './primary-image-flow';
 import { showNotificationWithOptions } from './package-manager';
-import { renderLandingPromptButtons, resolveLegacyLandingPreset } from './landing-prompts';
+import { renderLandingPromptButtonsAsync, resolveLegacyLandingPreset } from './landing-prompts';
 import { createConversation, updateConversation } from './api/conversations';
 import type { ConversationCreatePayload, ConversationUpdatePayload, ConversationImageData } from './types';
 import { setActiveConversation, getActiveConversationId, refreshSidebar } from './components/sidebar';
@@ -578,10 +578,10 @@ export function setupChatInterface(deps: ChatDeps) {
     if (composerInner) composerInner.style.minHeight = `${resolvedHeight + 56}px`;
   };
 
-  const refreshLandingPromptButtons = () => {
+  const refreshLandingPromptButtons = async () => {
     const landingPromptContainer = document.querySelector<HTMLElement>('.landing-starter-pills.theme-suggestions');
     if (!landingPromptContainer) return;
-    renderLandingPromptButtons(landingPromptContainer);
+    await renderLandingPromptButtonsAsync(landingPromptContainer);
 
     landingPromptContainer.onclick = (event) => {
       const target = event.target as HTMLElement | null;
@@ -660,11 +660,11 @@ export function setupChatInterface(deps: ChatDeps) {
   const defaultImagePreviewBar = document.getElementById('imagePreviewBar') as HTMLElement | null;
   const conversationImagePreviewBar = document.getElementById('conversationImagePreviewBar') as HTMLElement | null;
 
-  const openImagePicker = () => {
+  const openImagePicker = (autoSend = false) => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
-      input.onchange = () => {
+      input.onchange = async () => {
         const files = input.files;
         if (!files) return;
         const file = files[0];
@@ -683,19 +683,28 @@ export function setupChatInterface(deps: ChatDeps) {
           return;
         }
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           const dataUrl = e.target?.result as string;
           if (!dataUrl) return;
           pendingImages.splice(0, pendingImages.length, dataUrl);
           renderImagePreviewBar();
+          if (autoSend) {
+            try {
+              await ensureActiveProjectForImageUpload();
+              showConversationChatView();
+              await sendUserMessage('default');
+            } catch (error) {
+              console.warn('[chat-manager] 图片上传自动发送失败:', error);
+            }
+          }
         };
         reader.readAsDataURL(file);
       };
       input.click();
   };
 
-  document.getElementById('plusBtn')?.addEventListener('click', openImagePicker);
-  document.getElementById('conversationPlusBtn')?.addEventListener('click', openImagePicker);
+  document.getElementById('plusBtn')?.addEventListener('click', () => openImagePicker(true));
+  document.getElementById('conversationPlusBtn')?.addEventListener('click', () => openImagePicker(false));
 
   function renderImagePreviewBar() {
     const previewBars = [defaultImagePreviewBar, conversationImagePreviewBar].filter(Boolean) as HTMLElement[];

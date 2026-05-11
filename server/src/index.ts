@@ -129,6 +129,42 @@ app.use('/api/model-config', adminAuthMiddleware, modelConfigRouter);
 app.use('/api/security-config', adminAuthMiddleware, securityConfigRouter);
 app.use('/api/admin-password', adminAuthMiddleware, adminPasswordRouter);
 app.use('/api/admin/usage-logs', adminAuthMiddleware, usageLogsRouter);
+app.get('/api/landing-prompts-config', async (_req, res) => {
+  try {
+    const { getLandingPromptsConfig } = await import('./db.js');
+    const config = getLandingPromptsConfig();
+    res.json({ enabled: config?.enabled ?? true, entries: config?.entries ?? [], updated_at: config?.updated_at });
+  } catch {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+app.put('/api/landing-prompts-config', adminAuthMiddleware, async (req, res) => {
+  try {
+    const enabled = typeof req.body?.enabled === 'boolean' ? req.body.enabled : undefined;
+    const raw = req.body?.entries;
+    if (!Array.isArray(raw)) {
+      return res.status(400).json({ error: 'entries must be an array' });
+    }
+    const entries = raw.map((item: any, index: number) => {
+      if (!item || typeof item !== 'object') return { label: `主题 ${index + 1}`, prompt: '', primaryHint: '' };
+      return {
+        label: typeof item.label === 'string' ? item.label.trim() : `主题 ${index + 1}`,
+        prompt: typeof item.prompt === 'string' ? item.prompt.trim() : '',
+        primaryHint: typeof item.primaryHint === 'string' ? item.primaryHint.trim() : '',
+      };
+    }).filter((entry: any) => entry.label && entry.prompt);
+    if (entries.length === 0) {
+      return res.status(400).json({ error: 'At least one entry with label and prompt is required' });
+    }
+    const { updateLandingPromptsConfig, getLandingPromptsConfig } = await import('./db.js');
+    updateLandingPromptsConfig(entries, enabled);
+    const updated = getLandingPromptsConfig();
+    res.json({ success: true, enabled: updated.enabled, entries: updated.entries, updated_at: updated.updated_at });
+  } catch (error) {
+    logger.error('Error updating landing prompts config', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 app.use('/api/admin-auth', adminAuthRouter);
 app.use('/api/theme', authMiddleware);
 app.use('/api/theme', whitelistMiddleware);
