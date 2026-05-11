@@ -52,6 +52,9 @@ export interface UserImageUsageListItem {
   name: string;
   displayName: string;
   lastLoginAt: number | null;
+  credits: number;
+  imageCalls: number;
+  downloads: number;
   trend: DailyImageTrendPoint[];
 }
 
@@ -354,14 +357,18 @@ export function getUsageOverview(days: number = 7): UsageOverviewSummary {
       (
         SELECT COUNT(*) AS total_download_count
         FROM usage_logs
-        WHERE scene = 'export'
+        WHERE scene = 'export' AND started_at >= ?
       ) AS total_download_count
     FROM usage_logs
     WHERE scene = 'image' AND started_at >= ?
   `);
-  summaryStmt.bind([startAt]);
+  summaryStmt.bind([startAt, startAt]);
   const summaryRow = summaryStmt.step()
-    ? (summaryStmt.getAsObject() as { total_image_calls?: number; active_user_count?: number })
+    ? (summaryStmt.getAsObject() as {
+        total_image_calls?: number;
+        active_user_count?: number;
+        total_download_count?: number;
+      })
     : null;
   summaryStmt.free();
 
@@ -375,16 +382,40 @@ export function getUsageOverview(days: number = 7): UsageOverviewSummary {
 
 export function listUsersWithImageUsage(days: number = 7): UserImageUsageListItem[] {
   const { startAt } = getTrendWindow(days);
-  const stmt = db.prepare('SELECT id, name, display_name, last_login_at FROM users ORDER BY last_login_at DESC, id ASC');
+  const stmt = db.prepare(`
+    SELECT
+      users.id,
+      users.name,
+      users.display_name,
+      users.last_login_at,
+      COALESCE(user_credits.credits, 0) AS credits,
+      COALESCE(SUM(CASE WHEN logs.scene = 'image' THEN 1 ELSE 0 END), 0) AS image_calls,
+      COALESCE(SUM(CASE WHEN logs.scene = 'export' THEN 1 ELSE 0 END), 0) AS downloads
+    FROM users
+    LEFT JOIN user_credits ON user_credits.user_id = users.id
+    LEFT JOIN usage_logs logs
+      ON logs.user_id = users.id
+      AND logs.started_at >= ?
+    GROUP BY users.id, users.name, users.display_name, users.last_login_at, user_credits.credits
+    ORDER BY users.last_login_at DESC, users.id ASC
+  `);
+  stmt.bind([startAt]);
   const users: UserImageUsageListItem[] = [];
 
   while (stmt.step()) {
-    const row = stmt.getAsObject() as UserRow;
+    const row = stmt.getAsObject() as UserRow & {
+      credits?: number;
+      image_calls?: number;
+      downloads?: number;
+    };
     users.push({
       id: Number(row.id),
       name: String(row.name ?? ''),
       displayName: String(row.display_name ?? ''),
       lastLoginAt: row.last_login_at == null ? null : Number(row.last_login_at),
+      credits: Number(row.credits ?? 0),
+      imageCalls: Number(row.image_calls ?? 0),
+      downloads: Number(row.downloads ?? 0),
       trend: buildDailyImageTrend(listImageLogTimestamps({ userId: Number(row.id), fromTimestamp: startAt }), days),
     });
   }

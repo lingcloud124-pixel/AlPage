@@ -32,6 +32,7 @@
     input { width: 100%; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; }
     input:focus { border-color: var(--accent); }
     input::placeholder { color: var(--muted); }
+    input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 1000px var(--input-bg) inset; -webkit-text-fill-color: var(--text); }
     textarea { width: 100%; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; resize: vertical; }
     textarea:focus { border-color: var(--accent); }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -75,6 +76,10 @@
     .tab-btn.active { color: #fff; background: var(--accent); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
+    .range-bar { display: flex; gap: 6px; margin-bottom: 16px; }
+    .range-btn { padding: 4px 14px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--muted); cursor: pointer; transition: all .15s; }
+    .range-btn:hover { color: var(--text); border-color: var(--accent); }
+    .range-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
     .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
     .header-row h1 { margin: 0; }
     .menu-btn { position: relative; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
@@ -156,7 +161,7 @@
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="config" onclick="switchTab('config')">产品配置</button>
         <button class="tab-btn" data-tab="users" onclick="switchTab('users')">用户列表</button>
-        <button class="tab-btn" data-tab="userdata" onclick="switchTab('userdata')">用户数据</button>
+        <button class="tab-btn" data-tab="userdata" onclick="switchTab('userdata')" id="tabBtnWhitelist" style="display:none">白名单用户</button>
       </div>
 
       <div class="tab-panel active" id="tab-config">
@@ -208,6 +213,24 @@
       </div>
 
       <div class="card">
+        <h2>白名单模式 <span class="badge">内测管控</span></h2>
+
+        <div class="setting-toggle-row">
+          <div class="setting-toggle-copy">
+            <span class="setting-toggle-title">开启白名单模式</span>
+            <span class="setting-toggle-note">开启后仅白名单内用户可使用系统，其余用户看到内测提示页</span>
+          </div>
+          <label class="switch" aria-label="白名单模式" onclick="event.preventDefault(); toggleWhitelistSwitch();">
+            <input type="checkbox" id="enableWhitelist">
+            <span class="switch-slider" aria-hidden="true"></span>
+          </label>
+        </div>
+        <div id="whitelistManageBtn" style="display:none; margin-top: 12px;">
+          <button class="btn-secondary" onclick="showWhitelistModal()" style="width:100%">管理白名单用户</button>
+        </div>
+      </div>
+
+      <div class="card">
         <h2>用户使用限制的设置 <span class="badge">限制</span></h2>
         
         <div class="setting-toggle-row">
@@ -237,36 +260,6 @@
             <textarea id="creditsTooltipContent" rows="6" placeholder="每行一条，将展示在首页积分说明气泡中"></textarea>
           </div>
           <p class="subtitle" style="margin-top: 6px; font-size: 12px;">积分每日 06:00 自动重置为上限值，每次生成图片扣除对应积分；对话不消耗积分</p>
-        </div>
-
-        <div class="setting-toggle-row" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
-          <div class="setting-toggle-copy">
-            <span class="setting-toggle-title">白名单模式（内测管控）</span>
-            <span class="setting-toggle-note">开启后仅白名单内用户可使用系统，其余用户看到内测提示页</span>
-          </div>
-          <label class="switch" aria-label="白名单模式" onclick="event.preventDefault(); toggleWhitelistSwitch();">
-            <input type="checkbox" id="enableWhitelist">
-            <span class="switch-slider" aria-hidden="true"></span>
-          </label>
-        </div>
-        <div id="whitelistSettingsSection" style="display:none; margin-top: 12px;">
-          <div class="row" style="gap:8px;align-items:flex-end">
-            <div style="flex:1">
-              <label>添加用户（loginName）</label>
-              <input type="text" id="whitelistAddInput" placeholder="输入 loginName 后回车" onkeydown="if(event.key==='Enter')addWhitelistUser()">
-            </div>
-            <button class="btn-secondary" onclick="addWhitelistUser()" style="min-width:60px">添加</button>
-          </div>
-          <div style="margin-top:12px">
-            <label>已注册用户（点击快捷添加）</label>
-            <div id="registeredUsersList" style="max-height:120px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;padding:6px;font-size:13px">
-              加载中...
-            </div>
-          </div>
-          <label style="margin-top:12px;display:block">白名单用户列表</label>
-          <div id="whitelistUsersList" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px;min-height:36px">
-            加载中...
-          </div>
         </div>
 
         <details style="margin-top: 16px;">
@@ -301,17 +294,22 @@
       <div class="tab-panel" id="tab-users">
       <div class="card">
         <h2>用户列表 <span class="badge">SSO 自动创建</span></h2>
+        <div class="range-bar">
+          <button class="range-btn active" data-days="7" onclick="setOverviewDays(7)">近 7 天</button>
+          <button class="range-btn" data-days="15" onclick="setOverviewDays(15)">近 15 天</button>
+          <button class="range-btn" data-days="30" onclick="setOverviewDays(30)">近 30 天</button>
+        </div>
         <div class="overview-grid" id="usageOverviewPanel">
           <div class="summary-card">
-            <div class="summary-card-label">近 7 天总生图次数</div>
+            <div class="summary-card-label" data-dynamic-label="{d}总生图次数">近 7 天总生图次数</div>
             <div class="summary-card-value" id="usageOverviewTotalCalls">-</div>
           </div>
           <div class="summary-card">
-            <div class="summary-card-label">近 7 天活跃用户数</div>
+            <div class="summary-card-label" data-dynamic-label="{d}活跃用户数">近 7 天活跃用户数</div>
             <div class="summary-card-value" id="usageOverviewActiveUsers">-</div>
           </div>
           <div class="summary-card">
-            <div class="summary-card-label">累计主题下载次数</div>
+            <div class="summary-card-label" data-dynamic-label="{d}主题下载次数">近 7 天主题下载次数</div>
             <div class="summary-card-value" id="usageOverviewDownloadCount">-</div>
           </div>
         </div>
@@ -327,31 +325,32 @@
 
       <div class="tab-panel" id="tab-userdata">
         <div class="card">
-          <h2>用户数据</h2>
-          <label>选择用户</label>
-          <select id="userdataUserSelect" onchange="loadUserData()" style="width:100%;padding:8px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:16px">
-            <option value="">-- 请选择 --</option>
-          </select>
-          <div id="userdataStats" style="display:none">
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
-              <div style="background:#f9fafb;padding:12px;border-radius:8px;text-align:center">
-                <div style="font-size:12px;color:#6b7280">剩余积分</div>
-                <div id="udCredits" style="font-size:20px;font-weight:700">-</div>
-              </div>
-              <div style="background:#f9fafb;padding:12px;border-radius:8px;text-align:center">
-                <div style="font-size:12px;color:#6b7280">对话数</div>
-                <div id="udConvos" style="font-size:20px;font-weight:700">-</div>
-              </div>
-              <div style="background:#f9fafb;padding:12px;border-radius:8px;text-align:center">
-                <div style="font-size:12px;color:#6b7280">最后活跃</div>
-                <div id="udLastActive" style="font-size:14px;font-weight:700">-</div>
-              </div>
+          <h2>白名单用户使用概览</h2>
+          <div class="range-bar">
+            <button class="range-btn active" data-days="7" onclick="setOverviewDays(7)">近 7 天</button>
+            <button class="range-btn" data-days="15" onclick="setOverviewDays(15)">近 15 天</button>
+            <button class="range-btn" data-days="30" onclick="setOverviewDays(30)">近 30 天</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+            <div class="summary-card">
+              <div class="summary-card-label">白名单总人数</div>
+              <div class="summary-card-value" id="wlTotalCount">-</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card-label" data-dynamic-label="{d}活跃人数">近 7 天活跃人数</div>
+              <div class="summary-card-value" id="wlActiveCount">-</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card-label" data-dynamic-label="{d}总生图次数">近 7 天总生图次数</div>
+              <div class="summary-card-value" id="wlTotalCalls">-</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card-label" data-dynamic-label="{d}主题下载次数">近 7 天主题下载次数</div>
+              <div class="summary-card-value" id="wlTotalDownloads">-</div>
             </div>
           </div>
-          <div id="userdataConversations" style="display:none">
-            <label>对话列表（点击查看内容）</label>
-            <div id="udConvoList" style="max-height:200px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:16px"></div>
-            <div id="udConvoMessages" style="display:none;max-height:400px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;padding:12px"></div>
+          <div id="whitelistUserCards" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+            <div style="color:var(--muted);text-align:center;padding:32px;grid-column:1/-1">加载中...</div>
           </div>
         </div>
       </div>
@@ -390,6 +389,26 @@
     </div>
   </aside>
 
+  <div class="modal-overlay" id="whitelistModal">
+    <div class="modal-box" style="width:520px;max-height:80vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h2 style="margin-bottom:0">管理白名单用户</h2>
+        <button onclick="hideWhitelistModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1">&times;</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="whitelistAddInput" placeholder="输入 loginName 添加到白名单" style="flex:1" onkeydown="if(event.key==='Enter')addWhitelistUser()">
+        <button class="btn-primary" onclick="addWhitelistUser()" style="white-space:nowrap;padding:8px 16px">添加</button>
+      </div>
+      <div style="margin-top:16px;flex:1;overflow:hidden;display:flex;flex-direction:column">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:6px">白名单用户</div>
+          <div id="whitelistUsersList" style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:4px;min-height:60px;max-height:320px">
+            加载中...
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="changePasswordModal">
     <div class="modal-box">
       <h2>修改管理密码</h2>
@@ -409,7 +428,18 @@
   <script>
     let _authenticated = false;
     let _activeUsageUserId = null;
-    const USAGE_TREND_DAYS = 7;
+    let _overviewDays = 7;
+
+    function setOverviewDays(days) {
+      _overviewDays = days;
+      document.querySelectorAll('.range-btn').forEach(b => {
+        b.classList.toggle('active', Number(b.dataset.days) === days);
+      });
+      const label = `近 ${days} 天`;
+      document.querySelectorAll('[data-dynamic-label]').forEach(el => { el.textContent = el.dataset.dynamicLabel.replace('{d}', label); });
+      if (document.getElementById('tab-users').classList.contains('active')) loadUsers();
+      if (document.getElementById('tab-userdata').classList.contains('active')) loadWhitelistUserData();
+    }
 
     function switchTab(name) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -417,6 +447,7 @@
       document.querySelector(`.tab-btn[data-tab="${name}"]`).classList.add('active');
       document.getElementById(`tab-${name}`).classList.add('active');
       if (name === 'users') loadUsers();
+      if (name === 'userdata') loadWhitelistUserData();
     }
 
     function toggleMenu() {
@@ -498,7 +529,7 @@
     function renderSparkline(points, options = {}) {
       const safePoints = Array.isArray(points) && points.length > 0
         ? points
-        : Array.from({ length: USAGE_TREND_DAYS }, (_value, index) => ({
+        : Array.from({ length: _overviewDays }, (_value, index) => ({
             label: `${index + 1}`,
             count: 0,
           }));
@@ -627,7 +658,7 @@
       document.getElementById('userUsageDrawerOverlay').classList.add('open');
 
       try {
-        const res = await fetch(`/api/admin/usage-logs/users/${userId}?limit=20&days=${USAGE_TREND_DAYS}`, { credentials: 'same-origin' });
+        const res = await fetch(`/api/admin/usage-logs/users/${userId}?limit=20&days=${_overviewDays}`, { credentials: 'same-origin' });
         if (res.status === 401) { closeUserUsageDrawer(); showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
         const data = await res.json();
         if (_activeUsageUserId !== userId) return;
@@ -791,7 +822,6 @@
         _whitelistConfig.enabled = securityData.whitelistEnabled || false;
         _whitelistConfig.users = securityData.whitelistUsers || [];
         renderWhitelist();
-        loadRegisteredUsers();
       } catch (e) {
         console.error("Error loading configuration:", e);
         toast('加载配置失败: ' + e.message, 'error');
@@ -957,7 +987,7 @@
       }
 
       try {
-        const res = await fetch(`/api/admin/usage-logs/overview?days=${USAGE_TREND_DAYS}`, { credentials: 'same-origin' });
+        const res = await fetch(`/api/admin/usage-logs/overview?days=${_overviewDays}`, { credentials: 'same-origin' });
         if (res.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
         const data = await res.json();
         const users = Array.isArray(data.users) ? data.users : [];
@@ -1001,28 +1031,48 @@
     let _whitelistConfig = { enabled: false, users: [] };
 
     function toggleWhitelistSwitch() {
-      setTimeout(() => {
-        const cb = document.getElementById('enableWhitelist');
-        _whitelistConfig.enabled = cb.checked;
-        document.getElementById('whitelistSettingsSection').style.display = cb.checked ? 'block' : 'none';
-        saveWhitelist();
-      }, 0);
+      const enabled = !_whitelistConfig.enabled;
+      _whitelistConfig.enabled = enabled;
+      const cb = document.getElementById('enableWhitelist');
+      if (cb) cb.checked = enabled;
+      const btn = document.getElementById('whitelistManageBtn');
+      if (btn) btn.style.display = enabled ? 'block' : 'none';
+      const tabBtn = document.getElementById('tabBtnWhitelist');
+      if (tabBtn) tabBtn.style.display = enabled ? '' : 'none';
+      saveWhitelist();
     }
+
+    function showWhitelistModal() {
+      document.getElementById('whitelistModal').classList.add('open');
+    }
+
+    function hideWhitelistModal() {
+      document.getElementById('whitelistModal').classList.remove('open');
+    }
+
+    document.getElementById('whitelistModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) hideWhitelistModal();
+    });
 
     function renderWhitelist() {
       const cb = document.getElementById('enableWhitelist');
       if (cb) cb.checked = _whitelistConfig.enabled;
-      const section = document.getElementById('whitelistSettingsSection');
-      if (section) section.style.display = _whitelistConfig.enabled ? 'block' : 'none';
+      const btn = document.getElementById('whitelistManageBtn');
+      if (btn) btn.style.display = _whitelistConfig.enabled ? 'block' : 'none';
+      const tabBtn = document.getElementById('tabBtnWhitelist');
+      if (tabBtn) tabBtn.style.display = _whitelistConfig.enabled ? '' : 'none';
+      if (!_whitelistConfig.enabled && tabBtn && tabBtn.classList.contains('active')) {
+        switchTab('config');
+      }
       const list = document.getElementById('whitelistUsersList');
       if (list) {
         if (_whitelistConfig.users.length === 0) {
-          list.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:8px;font-size:13px">暂无白名单用户</div>';
+          list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px 8px;font-size:13px">暂无白名单用户</div>';
         } else {
           list.innerHTML = _whitelistConfig.users.map(u =>
-            `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;border-bottom:1px solid #f3f4f6">
-              <span style="font-size:13px">${esc(u)}</span>
-              <button onclick="removeWhitelistUser('${esc(u)}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px">移除</button>
+            `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--border)">
+              <span style="font-size:14px">${esc(u)}</span>
+              <button onclick="removeWhitelistUser('${esc(u)}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;padding:2px 6px">移除</button>
             </div>`
           ).join('');
         }
@@ -1041,12 +1091,6 @@
       await saveWhitelist();
     }
 
-    async function addWhitelistFromRegistered(name) {
-      if (!name || _whitelistConfig.users.includes(name)) return;
-      _whitelistConfig.users.push(name);
-      await saveWhitelist();
-    }
-
     async function removeWhitelistUser(name) {
       _whitelistConfig.users = _whitelistConfig.users.filter(u => u !== name);
       await saveWhitelist();
@@ -1054,89 +1098,93 @@
 
     async function saveWhitelist() {
       try {
-        await authedFetch('/api/security-config', {
+        const res = await fetch('/api/security-config', {
           method: 'PUT',
+          credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ whitelistEnabled: _whitelistConfig.enabled, whitelistUsers: _whitelistConfig.users }),
         });
+        if (res.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || '白名单配置保存失败');
+        }
         renderWhitelist();
-        loadRegisteredUsers();
-      } catch (e) { console.error('saveWhitelist error', e); }
+        if (document.getElementById('tab-userdata').classList.contains('active')) {
+          await loadWhitelistUserData();
+        }
+      } catch (e) {
+        console.error('saveWhitelist error', e);
+        toast('保存白名单失败: ' + e.message, 'error');
+      }
     }
 
-    async function loadRegisteredUsers() {
-      try {
-        const res = await authedFetch('/api/auth/users');
-        const users = await res.json();
-        const list = document.getElementById('registeredUsersList');
-        if (list) {
-          if (users.length === 0) { list.innerHTML = '<div style="color:#9ca3af;text-align:center">暂无注册用户</div>'; return; }
-          list.innerHTML = users.map(u =>
-            `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px">
-              <span>${esc(u.name || u.display_name || 'user-'+u.id)}</span>
-              <button onclick="addWhitelistFromRegistered('${esc(u.name||'')}')" style="background:none;border:none;color:#2C615C;cursor:pointer;font-size:12px">${_whitelistConfig.users.includes(u.name)?'✓ 已添加':'+ 添加'}</button>
-            </div>`
-          ).join('');
-        }
-        const sel = document.getElementById('userdataUserSelect');
-        if (sel) {
-          sel.innerHTML = '<option value="">-- 请选择 --</option>' + users.map(u =>
-            `<option value="${u.id}">${esc(u.name||u.display_name||'user-'+u.id)}</option>`
-          ).join('');
-        }
-      } catch (e) { console.error('loadRegisteredUsers error', e); }
-    }
+    async function loadWhitelistUserData() {
+      if (!_whitelistConfig.enabled || _whitelistConfig.users.length === 0) {
+        document.getElementById('wlTotalCount').textContent = _whitelistConfig.users.length || '0';
+        document.getElementById('wlActiveCount').textContent = '0';
+        document.getElementById('wlTotalCalls').textContent = '0';
+        document.getElementById('wlTotalDownloads').textContent = '0';
+        document.getElementById('whitelistUserCards').innerHTML =
+          '<div style="color:var(--muted);text-align:center;padding:32px;grid-column:1/-1">暂无白名单用户</div>';
+        return;
+      }
 
-    async function loadUserData() {
-      const sel = document.getElementById('userdataUserSelect');
-      const userId = sel.value;
-      if (!userId) { document.getElementById('userdataStats').style.display='none'; document.getElementById('userdataConversations').style.display='none'; return; }
       try {
-        const [creditsRes, convosRes] = await Promise.all([
-          authedFetch('/api/admin/usage-logs/users/' + userId + '?limit=1&days=30'),
-          authedFetch('/api/admin/users/' + userId + '/conversations'),
-        ]);
-        document.getElementById('userdataStats').style.display = 'block';
-        document.getElementById('userdataConversations').style.display = 'block';
-        const usage = await creditsRes.json();
-        document.getElementById('udCredits').textContent = usage.credits?.remaining ?? '-';
-        document.getElementById('udConvos').textContent = '-';
-        document.getElementById('udLastActive').textContent = usage.user?.last_login_at ? new Date(usage.user.last_login_at*1000).toLocaleDateString() : '-';
-        const convos = await convosRes.json();
-        document.getElementById('udConvos').textContent = convos.length;
-        const convoList = document.getElementById('udConvoList');
-        if (convos.length === 0) {
-          convoList.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:12px">暂无对话</div>';
-          document.getElementById('udConvoMessages').style.display = 'none';
-        } else {
-          convoList.innerHTML = convos.map(c =>
-            `<div onclick="loadConvoMessages('${c.id}')" style="padding:8px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;justify-content:space-between">
-              <span style="font-size:13px">${esc(c.title||'未命名')}</span>
-              <span style="font-size:11px;color:#9ca3af">${c.updated_at ? new Date(c.updated_at*1000||c.updated_at).toLocaleDateString() : ''}</span>
-            </div>`
-          ).join('');
+        const overviewRes = await fetch(`/api/admin/usage-logs/overview?days=${_overviewDays}`, { credentials: 'same-origin' });
+        if (overviewRes.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
+        if (!overviewRes.ok) {
+          const data = await overviewRes.json().catch(() => ({}));
+          throw new Error(data.error || '加载白名单用户概览失败');
         }
-      } catch (e) { console.error('loadUserData error', e); }
-    }
+        const overviewData = await overviewRes.json();
+        const allUsers = Array.isArray(overviewData.users) ? overviewData.users : [];
 
-    async function loadConvoMessages(convoId) {
-      try {
-        const res = await authedFetch('/api/admin/conversations/' + convoId + '/messages');
-        const data = await res.json();
-        const container = document.getElementById('udConvoMessages');
-        container.style.display = 'block';
-        const msgs = data.messages || [];
-        if (msgs.length === 0) { container.innerHTML = '<div style="color:#9ca3af">无消息</div>'; return; }
-        container.innerHTML = msgs.map(m => {
-          const isUser = m.role === 'user';
-          return `<div style="margin-bottom:8px;display:flex;justify-content:${isUser?'flex-end':'flex-start'}">
-            <div style="max-width:80%;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.5;background:${isUser?'#2C615C':'#f3f4f6'};color:${isUser?'#fff':'#1a1a1a'}">
-              <div style="font-size:11px;opacity:0.7;margin-bottom:4px">${isUser?'用户':'AI'}</div>
-              ${esc(m.content||'').substring(0,500)}
+        const whitelistSet = new Set(_whitelistConfig.users);
+        const wlUsers = allUsers.filter(u => whitelistSet.has(u.name));
+
+        let totalCalls = 0;
+        let totalDownloads = 0;
+        let activeCount = 0;
+        wlUsers.forEach(u => {
+          const calls = Number(u.imageCalls || 0);
+          const dls = Number(u.downloads || 0);
+          totalCalls += calls;
+          totalDownloads += dls;
+          if (calls > 0 || dls > 0) activeCount++;
+        });
+
+        document.getElementById('wlTotalCount').textContent = _whitelistConfig.users.length;
+        document.getElementById('wlActiveCount').textContent = activeCount;
+        document.getElementById('wlTotalCalls').textContent = totalCalls;
+        document.getElementById('wlTotalDownloads').textContent = totalDownloads;
+
+        const container = document.getElementById('whitelistUserCards');
+        if (wlUsers.length === 0) {
+          container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:32px;grid-column:1/-1">白名单中的用户尚无使用记录</div>';
+          return;
+        }
+
+        container.innerHTML = wlUsers.map(u => `
+          <div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s"
+               onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)'"
+               onmouseleave="this.style.boxShadow='none'"
+               onclick='openUserUsageDrawer(${Number(u.id)}, ${JSON.stringify(String(u.name ?? ''))}, ${JSON.stringify(String(u.displayName ?? ''))})'>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-weight:600;font-size:14px">${esc(u.displayName || u.name || 'user-'+u.id)}</span>
+              <span style="font-size:11px;color:var(--muted)">${u.lastLoginAt ? new Date(u.lastLoginAt*1000).toLocaleDateString('zh-CN') : '-'}</span>
             </div>
-          </div>`;
-        }).join('');
-      } catch (e) { console.error('loadConvoMessages error', e); }
+            <div style="display:flex;gap:16px;font-size:13px;color:var(--muted)">
+              <span>积分: <b style="color:var(--text)">${u.credits ?? 0}</b></span>
+              <span>生图: <b style="color:var(--text)">${u.imageCalls ?? 0}</b></span>
+              <span>下载: <b style="color:var(--text)">${u.downloads ?? 0}</b></span>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('loadWhitelistUserData error', e);
+        toast('加载白名单用户失败: ' + e.message, 'error');
+      }
     }
 
     const _origLoadConfig = typeof loadConfig === 'function' ? loadConfig : null;
@@ -1144,8 +1192,6 @@
       const _orig = _origLoadConfig;
       window.loadConfig = async function() {
         await _orig();
-        await loadWhitelistConfig();
-        await loadRegisteredUsers();
       };
     }
   </script>

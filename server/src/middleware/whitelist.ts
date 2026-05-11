@@ -26,6 +26,9 @@ export function whitelistMiddleware(req: Request, res: Response, next: NextFunct
     });
   } catch {
     logger.error('Failed to parse whitelist_users');
-    return next();
+    res.status(503).json({
+      error: 'WHITELIST_CONFIG_ERROR',
+      message: '白名单配置异常，请联系管理员',
+    });
   }
 }
