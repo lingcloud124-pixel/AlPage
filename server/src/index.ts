@@ -64,6 +64,8 @@ const [
   import('./routes/usage-logs.js'),
 ]);
 
+const { migratePlaintextKeys } = await import('./routes/model-config.js');
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -213,6 +215,8 @@ async function start() {
   app.use('/api/auth', adminAuthMiddleware, authRouter);
 
   startExportJobRunner();
+
+  migratePlaintextKeys();
 
   const HOST = process.env.HOST || '0.0.0.0';
   server = app.listen(PORT, HOST, () => {

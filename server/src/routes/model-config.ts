@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db, saveDb } from '../db.js';
 import { logger } from '../logger.js';
+import { decryptIfNeeded, encryptIfNeeded, hasEncryptionKey, isEncrypted } from '../crypto.js';
 
 const router = Router();
 
@@ -152,10 +153,10 @@ function normalizeModelConfig(row?: Record<string, unknown> | null) {
     rawImageModel,
     envConfig.imageProvider,
   );
-  const storedChatApiKey = String(row?.chat_api_key ?? '');
-  const storedImageApiKey = String(row?.image_api_key ?? '');
-  const storedImageAccessKeyId = String(row?.image_access_key_id ?? '');
-  const storedImageSecretAccessKey = String(row?.image_secret_access_key ?? '');
+  const storedChatApiKey = decryptIfNeeded(String(row?.chat_api_key ?? ''));
+  const storedImageApiKey = decryptIfNeeded(String(row?.image_api_key ?? ''));
+  const storedImageAccessKeyId = decryptIfNeeded(String(row?.image_access_key_id ?? ''));
+  const storedImageSecretAccessKey = decryptIfNeeded(String(row?.image_secret_access_key ?? ''));
   const normalizedStoredChatApiKey = isMaskedApiKeyCandidate(storedChatApiKey) ? '' : storedChatApiKey;
   const normalizedStoredImageApiKey = isMaskedApiKeyCandidate(storedImageApiKey) ? '' : storedImageApiKey;
   const normalizedStoredImageAccessKeyId = isMaskedApiKeyCandidate(storedImageAccessKeyId) ? '' : storedImageAccessKeyId;
@@ -239,8 +240,8 @@ router.put('/', async (req, res) => {
       WHERE id = 1
     `);
     stmt.bind([
-      chatEndpoint ?? '', resolvedChatApiKey, chatModel ?? '',
-      imageProvider ?? 'minimax', imageEndpoint ?? '', resolvedImageApiKey, resolvedImageAccessKeyId, resolvedImageSecretAccessKey, imageModel ?? '',
+      chatEndpoint ?? '', encryptIfNeeded(resolvedChatApiKey), chatModel ?? '',
+      imageProvider ?? 'minimax', imageEndpoint ?? '', encryptIfNeeded(resolvedImageApiKey), encryptIfNeeded(resolvedImageAccessKeyId), encryptIfNeeded(resolvedImageSecretAccessKey), imageModel ?? '',
     ]);
     stmt.step();
     stmt.free();
@@ -252,6 +253,34 @@ router.put('/', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+export function migratePlaintextKeys(): void {
+  if (!hasEncryptionKey()) return;
+  const stmt = db.prepare('SELECT chat_api_key, image_api_key, image_access_key_id, image_secret_access_key FROM model_config WHERE id = 1');
+  let row: Record<string, unknown> | null = null;
+  if (stmt.step()) {
+    row = stmt.getAsObject() as Record<string, unknown>;
+  }
+  stmt.free();
+  if (!row) return;
+
+  const fields: Array<{ col: string; val: string }> = [];
+  for (const [col, val] of Object.entries(row)) {
+    const str = String(val ?? '');
+    if (str && !isEncrypted(str) && str.length > 4 && !/^\*{4,}/.test(str)) {
+      fields.push({ col, val: encryptIfNeeded(str) });
+    }
+  }
+  if (fields.length === 0) return;
+
+  const setClauses = fields.map(f => `${f.col} = ?`).join(', ');
+  const updateStmt = db.prepare(`UPDATE model_config SET ${setClauses} WHERE id = 1`);
+  updateStmt.bind(fields.map(f => f.val));
+  updateStmt.step();
+  updateStmt.free();
+  saveDb();
+  logger.info('Migrated plaintext API keys to encrypted storage', { count: fields.length });
+}
 
 export function getModelConfig(): {
   chatEndpoint: string; chatApiKey: string; chatModel: string;
@@ -266,12 +295,6 @@ export function getModelConfig(): {
   }
   stmt.free();
   const result = normalizeModelConfig(row);
-  logger.info('getModelConfig', {
-    hasRow: !!row,
-    imageProvider: result.imageProvider,
-    hasImageEndpoint: !!result.imageEndpoint,
-    hasImageApiKey: !!result.imageApiKey,
-  });
   return result;
 }
 

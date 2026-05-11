@@ -17,6 +17,7 @@ metadata:
 type: Opaque
 stringData:
   ADMIN_PASSWORD: "CHANGE_ME_STRONG_PASSWORD"
+  SECRET_ENCRYPTION_KEY: "CHANGE_ME_RANDOM_32_CHARS"
   # JIMENG_ACCESS_KEY: ""
   # JIMENG_SECRET_KEY: ""
   # EKP_BASE_URL: "https://myekp.landray.com.cn"

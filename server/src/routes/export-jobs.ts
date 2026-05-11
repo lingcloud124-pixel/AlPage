@@ -219,8 +219,16 @@ router.get('/export-jobs/:id/download', async (req, res) => {
       return res.json({ id, status: 'completed', files, result });
     }
 
-    const filePath = path.join(packagesDir, requestedFile);
-    if (!filePath.startsWith(packagesDir) || !fs.existsSync(filePath)) {
+    const normalizedFile = path.basename(requestedFile);
+    if (normalizedFile !== requestedFile || normalizedFile.includes('..') || normalizedFile.includes('/') || normalizedFile.includes('\\')) {
+      return res.status(400).json({ error: 'Invalid file name' });
+    }
+    const resolvedPackagesDir = path.resolve(packagesDir);
+    const filePath = path.resolve(packagesDir, normalizedFile);
+    if (!filePath.startsWith(resolvedPackagesDir + path.sep) && filePath !== resolvedPackagesDir) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
 
