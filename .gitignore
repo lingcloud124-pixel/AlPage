@@ -19,6 +19,8 @@ web/test-results/
 !assets/references/samples/**/.gitkeep
 .playwright-cli/
 .ruff_cache/
+__pycache__/
+*.pyc
 designs/backgrounds/generated-*.png
 designs/generated/
 assets/images/generated-*.png
