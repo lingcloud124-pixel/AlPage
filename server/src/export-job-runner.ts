@@ -13,11 +13,24 @@ const PROJECT_ROOT = path.resolve(import.meta.dirname, '../..');
 const SERVICE_EXPORT_ROOT = path.join(PROJECT_ROOT, 'output', 'service-jobs');
 const EXPORT_DIRECTORY_README_NAME = '使用说明.txt';
 const EXPORT_DIRECTORY_README_CONTENT = `主题包使用说明
-
 1. 本目录下每个 zip 对应一个产品版本的主题包或登录包，请按实际环境选择导入。
 2. 单个产品 zip 内附带 readme.txt，可在导入前提供给实施或运维同事参考。
 3. 导入前建议备份现网主题、登录页与相关静态资源。
 4. 如需重新调整文案、配色或图片，请基于本次导出素材重新生成，不建议直接修改 zip 内文件。
+⚠ 注意事项：
+● 请勿解压 zip 文件
+
+● 建议先在测试环境验证
+
+● 当前仅支持蓝凌标准产品主题结构
+上传主题包
+进入标准产品后台：
+【门户管理】→【素材库/页面组件/自定义组件】→【主题】
+点击右上角「导入」，选择当前下载的 ZIP 压缩包进行上传。
+上传成功后：
+1. 在门户配置列表中找到对应门户
+2. 点击「编辑」→设置→主题→选择上传的主题包，点击「保存」
+3. 刷新前台门户页面即可查看效果
 `;
 let pollTimer: NodeJS.Timeout | null = null;
 let isProcessing = false;

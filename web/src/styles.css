@@ -815,7 +815,7 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
 .landing-brand-logo-image
 {
   display: block;
-  width: 158px;
+  width: auto;
   height: 20px;
   object-fit: contain;
 }
@@ -1813,8 +1813,27 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
 
 .chat-default-view .chat-shell-composer-inner .chat-shell-plus
 {
-  left: 10px;
-  bottom: 8px;
+  position: static;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  top: auto;
+}
+
+.chat-default-view .chat-shell-upload-group
+{
+  position: absolute;
+  left: 14px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-default-view .chat-shell-upload-hint
+{
+  font-size: 13px;
+  color: var(--auxiliary-gray);
 }
 
 #plusBtn > svg,
@@ -4679,6 +4698,18 @@ body[data-ui-theme="light"] .chat-cost-hint
   border-radius: 0 0 16px 16px;
 }
 
+.export-doc-link
+{
+  color: #2f6ee5;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.export-step--doc-link
+{
+  justify-content: center;
+}
+
 .btn-primary
 {
   padding: 10px 32px;
@@ -5744,13 +5775,29 @@ body,
   color: #CCCCCC;
 }
 
+.chat-shell-upload-hint
+{
+  font-size: 13px;
+  color: var(--auxiliary-gray);
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .chat-shell-toolbar
 {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   margin-top: 0;
+}
+
+.chat-shell-upload-group
+{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .chat-shell-toolbar .chat-cost-hint
@@ -6700,6 +6747,20 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
   text-transform: none;
   letter-spacing: 0;
   padding: 8px 10px 6px;
+}
+
+.sidebar-section-title--history {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-section-note {
+  font-size: 11px;
+  font-weight: 400;
+  color: #b0b7c3;
+  white-space: nowrap;
 }
 
 .sidebar-item {

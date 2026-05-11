@@ -684,7 +684,11 @@ function validateToolArgs(tool: string, args: Record<string, unknown>): string |
 
 export type ProgressCallback = (event: { type: string; data?: unknown }) => void;
 
-export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallback): Promise<ToolResult> {
+export async function executeTool(
+  toolCall: ToolCall,
+  onProgress?: ProgressCallback,
+  abortSignal?: AbortSignal,
+): Promise<ToolResult> {
   const { tool, args } = toolCall;
 
   const validationError = validateToolArgs(tool, args);
@@ -719,6 +723,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         return loadColors(args as { nameEn: string });
 
       case 'generate_theme_previews': {
+        if (abortSignal?.aborted) return { success: false, error: '用户已停止当前操作' };
         const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
         const feedbackRegenerated = Boolean(args.themeFeedbackRegenerated);
         const preferredHueHint = resolveEffectivePreferredHueHint(
@@ -739,7 +744,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         const directions = rawDirections.slice(0, 3);
 
         const total = directions.length;
-        onProgress?.({ type: 'image_generating', data: { current: 0, total } });
+        onProgress?.({ type: 'task_submitted', data: { total } });
 
         const results: Array<{
           url: string; style: string; prompt: string;
@@ -748,6 +753,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
         const failures: ThemePreviewFailure[] = [];
 
         for (let i = 0; i < directions.length; i++) {
+          if (abortSignal?.aborted) return { success: false, error: '用户已停止当前操作' };
           const dir = directions[i];
           let finalPrompt = dir.prompt ?? '';
 
@@ -759,9 +765,14 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
             finalPrompt = buildPromptWithPreferredHue(finalPrompt, preferredHueHint, templateType);
           }
 
+          onProgress?.({ type: 'queueing', data: { current: i + 1, total, label: dir.label } });
           onProgress?.({ type: 'image_generating', data: { current: i + 1, total, label: dir.label } });
 
-          const result = await generateImage(finalPrompt);
+          const result = await generateImage(finalPrompt, abortSignal);
+
+          if (abortSignal?.aborted || result.error === '用户已停止当前操作') {
+            return { success: false, error: '用户已停止当前操作' };
+          }
 
           if (!result.success) {
             failures.push({
@@ -781,7 +792,15 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
           onProgress?.({ type: 'image_generated', data: { current: i + 1, total } });
 
           if (i < directions.length - 1) {
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise((resolve, reject) => {
+              const timer = setTimeout(resolve, 2000);
+              if (abortSignal) {
+                abortSignal.addEventListener('abort', () => {
+                  clearTimeout(timer);
+                  reject(new DOMException('Aborted', 'AbortError'));
+                }, { once: true });
+              }
+            });
           }
         }
 
@@ -906,6 +925,7 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
       }
 
       case 'generate_theme_pipeline': {
+        if (abortSignal?.aborted) return { success: false, error: '用户已停止当前操作' };
         const rawBgPrompt = (args.prompt ?? args.description ?? '') as string;
         const templateType = (args.templateType ?? 'light-ui') as 'light-ui' | 'dark-ui';
         const feedbackRegenerated = Boolean(args.themeFeedbackRegenerated);
@@ -924,9 +944,14 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
 
         if (!finalPrompt) return { success: false, error: 'generate_theme_pipeline 需要 prompt 参数' };
 
+        onProgress?.({ type: 'task_submitted' });
+        onProgress?.({ type: 'queueing' });
         onProgress?.({ type: 'image_generating' });
 
-        const imgResult = await generateImage(finalPrompt);
+        const imgResult = await generateImage(finalPrompt, abortSignal);
+        if (abortSignal?.aborted || imgResult.error === '用户已停止当前操作') {
+          return { success: false, error: '用户已停止当前操作' };
+        }
         if (!imgResult.success || !imgResult.url) {
           return {
             success: false,

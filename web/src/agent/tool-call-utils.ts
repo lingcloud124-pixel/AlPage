@@ -129,6 +129,7 @@ function isColorAdjustmentMessage(text: string | undefined): boolean {
   const namedColor = /(红|蓝|绿|黄|金|橙|紫|粉|棕|咖|褐|灰|青|墨绿|酒红|卡其|米色|藏蓝|深棕|浅棕|暖白)/u.test(text);
   const brightnessOnly = /(亮一点|暗一点|深一点|浅一点|更亮|更暗|更深|更浅)/u.test(text);
   const generationIntent = hasGenerationIntent(text);
+  const shortColorRequest = !generationIntent && colorContext && namedColor;
 
   if (explicitHex) {
     if (colorAction) return true;
@@ -136,6 +137,9 @@ function isColorAdjustmentMessage(text: string | undefined): boolean {
     return colorContext;
   }
 
+  if (shortColorRequest) return true;
+  if (colorAction && namedColor) return true;
+  if (colorAction && colorContext) return true;
   if (generationIntent && !colorAction && !colorContext && !brightnessOnly) return false;
   if (generationIntent && !colorAction && (namedColor || colorContext)) return false;
 

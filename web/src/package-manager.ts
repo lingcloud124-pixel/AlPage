@@ -384,8 +384,7 @@ async function trackExportJobStatus(projectId: string, batchId: string, productC
           `<div class="export-steps">
           <div class="export-step"><span class="export-step-num">1</span><span class="export-step-text">点击 <b>下载文件</b> 按钮，保存 zip 包到本地</span></div>
           <div class="export-step"><span class="export-step-num">2</span><span class="export-step-text">解压 zip 包，获得各产品的主题包文件</span></div>
-          <div class="export-step"><span class="export-step-num">3</span><span class="export-step-text">前往 MK 系统门户管理板块导入主题包</span></div>
-          <div class="export-step"><span class="export-step-num">4</span><span class="export-step-text">在系统中选择新主题，即可切换使用</span></div>
+          <div class="export-step export-step--doc-link"><a class="export-doc-link" href="https://myekp.landray.com.cn/sys/attachment/sys_att_main/sysAttMain.do?method=view&amp;fdId=19d70b3013bb311a5b5b3ff4f719d02d" target="_blank" rel="noreferrer">使用主题包说明文档</a></div>
         </div>`,
           dlUrl,
           filename,

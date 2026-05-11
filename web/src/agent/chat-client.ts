@@ -141,10 +141,18 @@ function describeImageBaseRespError(data: any): string | null {
   return errorMap[baseStatusCode] ?? baseStatusMsg ?? `未知错误 (${baseStatusCode})`;
 }
 
-export async function generateImage(prompt: string): Promise<{ success: boolean; url?: string; error?: string }> {
+export async function generateImage(
+  prompt: string,
+  externalSignal?: AbortSignal,
+): Promise<{ success: boolean; url?: string; error?: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 300_000);
   const imageSettings = getImageSettings();
+
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    externalSignal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
 
   try {
     const MAX_PROMPT_LENGTH = 1500;
@@ -235,7 +243,7 @@ export async function generateImage(prompt: string): Promise<{ success: boolean;
     return { success: false, error: '图像生成返回为空，请检查 API Key 是否有图像生成权限。' };
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
-      return { success: false, error: '图像生成超时（180秒）' };
+      return { success: false, error: externalSignal?.aborted ? '用户已停止当前操作' : '图像生成超时（180秒）' };
     }
     if (e instanceof TypeError && /failed to fetch/i.test(e.message)) {
       return { success: false, error: '无法连接到后端生图服务，请确认本地服务正在运行后重试' };

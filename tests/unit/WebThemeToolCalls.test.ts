@@ -153,6 +153,21 @@ describe('web theme tool call color hints', () => {
     expect(String((enriched[0].args.colors as Record<string, string>)['primary-color'])).toMatch(/^#[0-9A-Fa-f]{6}$/);
   });
 
+  test('routes short theme color requests to update_colors instead of image generation', () => {
+    const enriched = enrichToolCallsWithColorHints([], {
+      userMessage: '主题色要红色',
+      assistantMessage: '好的，我来帮您调整。',
+      templateType: 'light-ui',
+      currentColors: {
+        'primary-color': '#61D1D1',
+      },
+    });
+
+    expect(enriched.length).toBeGreaterThan(0);
+    expect(enriched[0].tool).toBe('update_colors');
+    expect(enriched.some((toolCall) => toolCall.tool === 'generate_theme_pipeline')).toBe(false);
+  });
+
   test('routes brightness-only color adjustments to update_colors using current primary color', () => {
     const enriched = enrichToolCallsWithColorHints([], {
       userMessage: '这个颜色太暗了，亮一点',

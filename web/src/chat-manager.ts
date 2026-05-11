@@ -54,6 +54,11 @@ let latestThemePreviews: Array<{
   directionDescription?: string;
 }> | null = null;
 
+const TASK_SUBMITTED_TEXT = '1️⃣ 任务提交成功：已提交生成任务';
+const TASK_QUEUEING_TEXT = '排队中：当前任务较多，正在排队处理中';
+const TASK_GENERATING_TEXT = '生成中：正在生成主题画面…';
+const TASK_STOPPED_TEXT = '当前操作已停止，可重新发起对话';
+
 interface SendUserMessageOptions {
   displayMessage?: string;
   directPreviewPrompt?: string;
@@ -549,6 +554,16 @@ export function setupChatInterface(deps: ChatDeps) {
     return;
   }
 
+  const setConversationSendBtnStop = (isStop: boolean) => {
+    if (isStop) {
+      conversationSendBtn.classList.add('stop-mode');
+      conversationSendBtn.title = '停止生成';
+    } else {
+      conversationSendBtn.classList.remove('stop-mode');
+      conversationSendBtn.title = '发送';
+    }
+  };
+
   defaultSendBtn.addEventListener('click', () => sendUserMessage('default'));
   conversationSendBtn.addEventListener('click', () => sendUserMessage('conversation'));
   const resizeMessageInput = (input: HTMLTextAreaElement, composerInner: HTMLElement | null) => {
@@ -994,16 +1009,62 @@ export function setupChatInterface(deps: ChatDeps) {
     }
 
     if (directPreviewPrompt) {
-      const toolLoadingEl = addStatusMessage('正在根据快捷指令生成预览...');
-      const toolResult = await executeTool({
-        tool: 'generate_theme_pipeline',
-        args: {
-          prompt: directPreviewPrompt,
-          templateType: 'light-ui',
-          ...(directPreviewPrimaryHint ? { primaryHint: directPreviewPrimaryHint } : {}),
-        },
-      });
+      const toolLoadingEl = addStatusMessage(TASK_SUBMITTED_TEXT);
+      const toolLoadingContentEl = toolLoadingEl.querySelector('.message-content') as HTMLElement | null;
+      if (toolLoadingContentEl) {
+        toolLoadingContentEl.innerHTML = `<span class="tool-loading-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span> ${TASK_SUBMITTED_TEXT}</span>`;
+      }
+
+      activeAbortController = new AbortController();
+      setConversationSendBtnStop(true);
+      const stopHandler = () => {
+        activeAbortController?.abort();
+        setConversationSendBtnStop(false);
+      };
+      conversationSendBtn?.addEventListener('click', stopHandler);
+
+      const updateDirectPreviewLoading = (text: string) => {
+        if (toolLoadingContentEl) {
+          toolLoadingContentEl.innerHTML = `<span class="tool-loading-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span> ${text}</span>`;
+        }
+      };
+
+      let toolResult;
+      try {
+        toolResult = await executeTool({
+          tool: 'generate_theme_pipeline',
+          args: {
+            prompt: directPreviewPrompt,
+            templateType: 'light-ui',
+            ...(directPreviewPrimaryHint ? { primaryHint: directPreviewPrimaryHint } : {}),
+          },
+        }, (event) => {
+          if (event.type === 'task_submitted') {
+            updateDirectPreviewLoading(TASK_SUBMITTED_TEXT);
+          } else if (event.type === 'queueing') {
+            updateDirectPreviewLoading(TASK_QUEUEING_TEXT);
+          } else if (event.type === 'image_generating') {
+            updateDirectPreviewLoading(TASK_GENERATING_TEXT);
+          }
+        }, activeAbortController.signal);
+      } catch (error) {
+        toolResult = {
+          success: false,
+          error: (error as Error).name === 'AbortError' ? '用户已停止当前操作' : (error as Error).message,
+        };
+      }
+
+      conversationSendBtn?.removeEventListener('click', stopHandler);
+      setConversationSendBtnStop(false);
+      activeAbortController = null;
       toolLoadingEl.remove();
+
+      if (!toolResult.success && toolResult.error === '用户已停止当前操作') {
+        await addMessageToChat('ai', TASK_STOPPED_TEXT);
+        pushToolResultToHistory(TASK_STOPPED_TEXT);
+        await saveChatHistory();
+        return;
+      }
 
       if (toolResult.success) {
         const data = toolResult.data as {
@@ -1012,14 +1073,15 @@ export function setupChatInterface(deps: ChatDeps) {
           dominantColors?: string[];
           contrastValidation?: { passed?: boolean };
           enforcementReason?: string;
+          derivedColors?: Record<string, string>;
         };
-        const colorTag = data?.primaryColor
-          ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${data.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
+        const appliedPrimaryColor = data?.derivedColors?.['primary-color'] ?? data?.primaryColor;
+        const colorTag = appliedPrimaryColor
+          ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${appliedPrimaryColor};vertical-align:middle;margin:0 2px;"></span>`
           : '';
         const toolResultMsg = [
           `🎨 主题已应用！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
           data?.dominantColors?.length ? `识别到的候选主色 ${data.dominantColors.slice(0, 3).join(' / ')}。` : '',
-          `对比度校验：${data?.contrastValidation?.passed ? '通过' : '存在风险'}。`,
         ].filter(Boolean).join(' ');
         await addMessageToChat('ai', toolResultMsg);
         pushToolResultToHistory(toolResultMsg);
@@ -1145,19 +1207,13 @@ export function setupChatInterface(deps: ChatDeps) {
 
     if (contentEl) {
       contentEl.classList.add('typing');
-      contentEl.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+      contentEl.innerHTML = `<span class="tool-loading-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span> ${TASK_SUBMITTED_TEXT}</span>`;
     }
 
-    const setSendBtnStop = (isStop: boolean) => {
-      if (!conversationSendBtn) return;
-      if (isStop) { conversationSendBtn.classList.add('stop-mode'); conversationSendBtn.title = '停止生成'; }
-      else { conversationSendBtn.classList.remove('stop-mode'); conversationSendBtn.title = '发送'; }
-    };
-
     activeAbortController = new AbortController();
-    setSendBtnStop(true);
+    setConversationSendBtnStop(true);
 
-    const stopHandler = () => { activeAbortController?.abort(); setSendBtnStop(false); };
+    const stopHandler = () => { activeAbortController?.abort(); setConversationSendBtnStop(false); };
     conversationSendBtn?.addEventListener('click', stopHandler);
 
     let thinkingText = '';
@@ -1173,13 +1229,13 @@ export function setupChatInterface(deps: ChatDeps) {
             if (firstToken) {
               contentEl.classList.remove('typing');
               contentEl.classList.add('streaming');
-              contentEl.innerHTML = '<span class="thinking-indicator">🤔 思考中...</span>';
+              contentEl.innerHTML = `<span class="tool-loading-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span> ${TASK_QUEUEING_TEXT}</span>`;
               firstToken = false;
             }
             if (token) {
               if (token.startsWith('\u200B')) {
                 thinkingText += token.slice(1);
-                const indicator = contentEl.querySelector('.thinking-indicator');
+                const indicator = contentEl.querySelector('.tool-loading-indicator');
                 if (indicator) indicator.remove();
                 const thinkEl = contentEl.querySelector('.thinking-content') as HTMLElement ?? (() => {
                   const el = document.createElement('span');
@@ -1213,7 +1269,7 @@ export function setupChatInterface(deps: ChatDeps) {
                   displayBuffer = '';
                 }
                 if (displayText) {
-                  const indicator = contentEl.querySelector('.thinking-indicator');
+                  const indicator = contentEl.querySelector('.tool-loading-indicator');
                   if (indicator) indicator.remove();
                   const thinkEl = contentEl.querySelector('.thinking-content');
                   if (thinkEl) thinkEl.remove();
@@ -1229,22 +1285,12 @@ export function setupChatInterface(deps: ChatDeps) {
     } catch (e) {
       conversationSendBtn?.removeEventListener('click', stopHandler);
       activeAbortController = null;
-      setSendBtnStop(false);
+      setConversationSendBtnStop(false);
       if (contentEl) {
         contentEl.classList.remove('typing', 'streaming');
         if ((e as Error).name === 'AbortError' || (e as Error).message?.includes('aborted')) {
-          const partial = contentEl.textContent || '';
           contentEl.innerHTML = '';
-          if (thinkingText) contentEl.appendChild(buildThinkingToggle(thinkingText));
-          if (partial) {
-            const span = document.createElement('span');
-            span.textContent = partial;
-            contentEl.appendChild(span);
-          }
-          contentEl.appendChild(Object.assign(document.createElement('div'), {
-            textContent: '⏹ 生成已停止',
-            style: 'color:var(--auxiliary-gray);font-size:12px;margin-top:6px;',
-          }));
+          contentEl.textContent = TASK_STOPPED_TEXT;
         } else {
           contentEl.textContent = `❌ 请求失败: ${(e as Error).message}`;
         }
@@ -1282,7 +1328,7 @@ export function setupChatInterface(deps: ChatDeps) {
     const cleanedResponse = fullResponse.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '');
 
     const parsedToolCalls = parseToolCallsFromContent(cleanedResponse);
-    const toolCalls = enrichToolCallsWithColorHints(parsedToolCalls, {
+    let toolCalls = enrichToolCallsWithColorHints(parsedToolCalls, {
       userMessage,
       assistantMessage: fullResponse,
       priorAssistantMessage,
@@ -1292,6 +1338,26 @@ export function setupChatInterface(deps: ChatDeps) {
       latestThemePreviews,
       currentColors: getCurrentColors(),
     });
+    if (
+      toolCalls.length === 0
+      && /现在为您生成(?:一张)?预览图|我来为您生成|接下来为您生成/u.test(cleanedResponse)
+    ) {
+      const normalizedPlan = cleanedResponse
+        .replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const planMatch = normalizedPlan.match(/好的，我先为您整理一个方案[：:，,]?\s*([\s\S]*?)(?:现在为您生成(?:一张)?预览图|我来为您生成|接下来为您生成)/u);
+      const fallbackPrompt = planMatch?.[1]?.trim() || userMessage.trim();
+      if (fallbackPrompt) {
+        toolCalls = [{
+          tool: 'generate_theme_pipeline',
+          args: {
+            prompt: fallbackPrompt,
+            templateType,
+          },
+        }];
+      }
+    }
     console.log('[chat-manager] tool calls', {
       parsed: parsedToolCalls.map((toolCall) => toolCall.tool),
       enriched: toolCalls.map((toolCall) => toolCall.tool),
@@ -1302,8 +1368,9 @@ export function setupChatInterface(deps: ChatDeps) {
 
     let loadingMsgEl: HTMLElement | null = null;
     function showToolLoading(text: string) {
-      removeToolLoading();
-      loadingMsgEl = addMessageToChat('ai', '');
+      if (!loadingMsgEl) {
+        loadingMsgEl = addMessageToChat('ai', '');
+      }
       const c = loadingMsgEl.querySelector('.message-content') as HTMLElement;
       if (c) {
         c.innerHTML = `<span class="tool-loading-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span> ${text}</span>`;
@@ -1334,23 +1401,28 @@ export function setupChatInterface(deps: ChatDeps) {
       }
       try {
         showToolLoading(tc.tool === 'generate_theme_pipeline' || tc.tool === 'generate_theme_previews'
-          ? '主题正在生成中，请稍后'
+          ? TASK_SUBMITTED_TEXT
           : `⚙️ 正在执行 ${tc.tool}...`);
 
         const result = await executeTool(tc, (event) => {
           if (tc.tool === 'generate_theme_pipeline' || tc.tool === 'generate_theme_previews') {
-            if (event.type === 'image_generating') {
+            if (event.type === 'task_submitted') {
+              showToolLoading(TASK_SUBMITTED_TEXT);
+            } else if (event.type === 'queueing') {
+              showToolLoading(TASK_QUEUEING_TEXT);
+            } else if (event.type === 'image_generating') {
               const d = event.data as { current?: number; total?: number; label?: string } | undefined;
-              const cur = d?.current ?? 1;
-              const tot = d?.total ?? 1;
+              const cur = d?.current;
+              const tot = d?.total;
               const label = d?.label ?? '';
-              showToolLoading(`🎨 正在生成预览图 ${cur}/${tot}${label ? ` · ${label}` : ''}，请稍候...`);
+              const suffix = cur && tot && tot > 1 ? ` ${cur}/${tot}${label ? ` · ${label}` : ''}` : '';
+              showToolLoading(`${TASK_GENERATING_TEXT}${suffix}`);
             } else if (event.type === 'image_generated') {
               const d = event.data as { current?: number; total?: number } | undefined;
               const cur = d?.current ?? 1;
               const tot = d?.total ?? 1;
               if (cur < tot) {
-                showToolLoading(`✅ 第 ${cur} 张完成，正在生成第 ${cur + 1} 张...`);
+                showToolLoading(`${TASK_GENERATING_TEXT} ${cur + 1}/${tot}`);
               } else {
                 removeToolLoading();
                 addMessageToChat('ai', `🖼️ 预览图已生成，正在准备展示...`);
@@ -1359,8 +1431,14 @@ export function setupChatInterface(deps: ChatDeps) {
               }
             }
           }
-        });
+        }, activeAbortController?.signal);
         removeToolLoading();
+        if (!result.success && result.error === '用户已停止当前操作') {
+          await addMessageToChat('ai', TASK_STOPPED_TEXT);
+          pushToolResultToHistory(TASK_STOPPED_TEXT);
+          await saveChatHistory();
+          break;
+        }
         if (result.success) {
           if (tc.tool === 'generate_theme_previews') {
             const prevData = result.data as {
@@ -1406,16 +1484,16 @@ export function setupChatInterface(deps: ChatDeps) {
               generationReport?: { checks?: Array<{ label: string; passed: boolean }> };
               contrastValidation?: { passed?: boolean; failures?: string[] };
               enforcementReason?: string;
+              derivedColors?: Record<string, string>;
             };
-            const colorTag = appliedData?.primaryColor
-              ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${appliedData.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
+            const appliedPrimaryColor = appliedData?.derivedColors?.['primary-color'] ?? appliedData?.primaryColor;
+            const colorTag = appliedPrimaryColor
+              ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${appliedPrimaryColor};vertical-align:middle;margin:0 2px;"></span>`
               : '';
-            const contrastPassed = appliedData?.contrastValidation?.passed ?? false;
             const appliedMsg = [
               `🎨 主题已应用！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
               appliedData?.dominantColors?.length ? `识别到的候选主色 ${appliedData.dominantColors.slice(0, 3).join(' / ')}。` : '',
               appliedData?.fallbackUsed ? '本次提色未稳定完成，已回退应用默认主色。' : '',
-              `对比度校验：${contrastPassed ? '通过' : '存在风险'}。`,
             ].filter(Boolean).join(' ');
             await addMessageToChat('ai', appliedMsg);
             pushToolResultToHistory(appliedMsg);
@@ -1521,6 +1599,6 @@ export function setupChatInterface(deps: ChatDeps) {
     if (guideOptions.length > 0) addGuideCardsMessage(guideOptions, sendUserMessage);
 
     activeAbortController = null;
-    setSendBtnStop(false);
+    setConversationSendBtnStop(false);
   }
 }
