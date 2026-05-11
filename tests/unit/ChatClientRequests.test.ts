@@ -111,4 +111,5 @@ describe('chat client requests', async () => {
       headers: { 'Content-Type': 'application/json' },
     }));
   });
+
 });

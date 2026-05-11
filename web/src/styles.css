@@ -7081,3 +7081,49 @@ body.landing-admin-page
   font-size: 13px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
 }
+
+.whitelist-block-page
+{
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f0fdfa 100%);
+}
+
+.whitelist-block-card
+{
+  text-align: center;
+  padding: 48px 40px;
+  max-width: 420px;
+}
+
+.whitelist-block-icon
+{
+  margin-bottom: 24px;
+}
+
+.whitelist-block-title
+{
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 12px;
+}
+
+.whitelist-block-desc
+{
+  font-size: 15px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
+
+.whitelist-block-sub
+{
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}

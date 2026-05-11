@@ -156,6 +156,7 @@
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="config" onclick="switchTab('config')">产品配置</button>
         <button class="tab-btn" data-tab="users" onclick="switchTab('users')">用户列表</button>
+        <button class="tab-btn" data-tab="userdata" onclick="switchTab('userdata')">用户数据</button>
       </div>
 
       <div class="tab-panel active" id="tab-config">
@@ -238,6 +239,36 @@
           <p class="subtitle" style="margin-top: 6px; font-size: 12px;">积分每日 06:00 自动重置为上限值，每次生成图片扣除对应积分；对话不消耗积分</p>
         </div>
 
+        <div class="setting-toggle-row" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+          <div class="setting-toggle-copy">
+            <span class="setting-toggle-title">白名单模式（内测管控）</span>
+            <span class="setting-toggle-note">开启后仅白名单内用户可使用系统，其余用户看到内测提示页</span>
+          </div>
+          <label class="switch" aria-label="白名单模式" onclick="event.preventDefault(); toggleWhitelistSwitch();">
+            <input type="checkbox" id="enableWhitelist">
+            <span class="switch-slider" aria-hidden="true"></span>
+          </label>
+        </div>
+        <div id="whitelistSettingsSection" style="display:none; margin-top: 12px;">
+          <div class="row" style="gap:8px;align-items:flex-end">
+            <div style="flex:1">
+              <label>添加用户（loginName）</label>
+              <input type="text" id="whitelistAddInput" placeholder="输入 loginName 后回车" onkeydown="if(event.key==='Enter')addWhitelistUser()">
+            </div>
+            <button class="btn-secondary" onclick="addWhitelistUser()" style="min-width:60px">添加</button>
+          </div>
+          <div style="margin-top:12px">
+            <label>已注册用户（点击快捷添加）</label>
+            <div id="registeredUsersList" style="max-height:120px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;padding:6px;font-size:13px">
+              加载中...
+            </div>
+          </div>
+          <label style="margin-top:12px;display:block">白名单用户列表</label>
+          <div id="whitelistUsersList" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px;min-height:36px">
+            加载中...
+          </div>
+        </div>
+
         <details style="margin-top: 16px;">
           <summary style="cursor: pointer; color: var(--muted); font-size: 13px; user-select: none;">高级设置（存储、跨域、代理等，通常无需修改）</summary>
           <div style="margin-top: 12px;">
@@ -291,8 +322,40 @@
           <tbody id="userTableBody"></tbody>
         </table>
       </div>
-      </div>
     </div>
+
+
+      <div class="tab-panel" id="tab-userdata">
+        <div class="card">
+          <h2>用户数据</h2>
+          <label>选择用户</label>
+          <select id="userdataUserSelect" onchange="loadUserData()" style="width:100%;padding:8px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:16px">
+            <option value="">-- 请选择 --</option>
+          </select>
+          <div id="userdataStats" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+              <div style="background:#f9fafb;padding:12px;border-radius:8px;text-align:center">
+                <div style="font-size:12px;color:#6b7280">剩余积分</div>
+                <div id="udCredits" style="font-size:20px;font-weight:700">-</div>
+              </div>
+              <div style="background:#f9fafb;padding:12px;border-radius:8px;text-align:center">
+                <div style="font-size:12px;color:#6b7280">对话数</div>
+                <div id="udConvos" style="font-size:20px;font-weight:700">-</div>
+              </div>
+              <div style="background:#f9fafb;padding:12px;border-radius:8px;text-align:center">
+                <div style="font-size:12px;color:#6b7280">最后活跃</div>
+                <div id="udLastActive" style="font-size:14px;font-weight:700">-</div>
+              </div>
+            </div>
+          </div>
+          <div id="userdataConversations" style="display:none">
+            <label>对话列表（点击查看内容）</label>
+            <div id="udConvoList" style="max-height:200px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:16px"></div>
+            <div id="udConvoMessages" style="display:none;max-height:400px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;padding:12px"></div>
+          </div>
+        </div>
+      </div>
+  </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -724,6 +787,11 @@
 
         const creditsEnabled = securityData.enabledFeatures?.quota !== false;
         syncCreditsToggleUi(creditsEnabled);
+
+        _whitelistConfig.enabled = securityData.whitelistEnabled || false;
+        _whitelistConfig.users = securityData.whitelistUsers || [];
+        renderWhitelist();
+        loadRegisteredUsers();
       } catch (e) {
         console.error("Error loading configuration:", e);
         toast('加载配置失败: ' + e.message, 'error');
@@ -929,6 +997,157 @@
         }
       } catch (_e) { /* show login */ }
     });
+
+    let _whitelistConfig = { enabled: false, users: [] };
+
+    function toggleWhitelistSwitch() {
+      setTimeout(() => {
+        const cb = document.getElementById('enableWhitelist');
+        _whitelistConfig.enabled = cb.checked;
+        document.getElementById('whitelistSettingsSection').style.display = cb.checked ? 'block' : 'none';
+        saveWhitelist();
+      }, 0);
+    }
+
+    function renderWhitelist() {
+      const cb = document.getElementById('enableWhitelist');
+      if (cb) cb.checked = _whitelistConfig.enabled;
+      const section = document.getElementById('whitelistSettingsSection');
+      if (section) section.style.display = _whitelistConfig.enabled ? 'block' : 'none';
+      const list = document.getElementById('whitelistUsersList');
+      if (list) {
+        if (_whitelistConfig.users.length === 0) {
+          list.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:8px;font-size:13px">暂无白名单用户</div>';
+        } else {
+          list.innerHTML = _whitelistConfig.users.map(u =>
+            `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;border-bottom:1px solid #f3f4f6">
+              <span style="font-size:13px">${esc(u)}</span>
+              <button onclick="removeWhitelistUser('${esc(u)}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px">移除</button>
+            </div>`
+          ).join('');
+        }
+      }
+    }
+
+    function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+    async function addWhitelistUser() {
+      const input = document.getElementById('whitelistAddInput');
+      const name = input.value.trim();
+      if (!name) return;
+      if (_whitelistConfig.users.includes(name)) { input.value = ''; return; }
+      _whitelistConfig.users.push(name);
+      input.value = '';
+      await saveWhitelist();
+    }
+
+    async function addWhitelistFromRegistered(name) {
+      if (!name || _whitelistConfig.users.includes(name)) return;
+      _whitelistConfig.users.push(name);
+      await saveWhitelist();
+    }
+
+    async function removeWhitelistUser(name) {
+      _whitelistConfig.users = _whitelistConfig.users.filter(u => u !== name);
+      await saveWhitelist();
+    }
+
+    async function saveWhitelist() {
+      try {
+        await authedFetch('/api/security-config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ whitelistEnabled: _whitelistConfig.enabled, whitelistUsers: _whitelistConfig.users }),
+        });
+        renderWhitelist();
+        loadRegisteredUsers();
+      } catch (e) { console.error('saveWhitelist error', e); }
+    }
+
+    async function loadRegisteredUsers() {
+      try {
+        const res = await authedFetch('/api/auth/users');
+        const users = await res.json();
+        const list = document.getElementById('registeredUsersList');
+        if (list) {
+          if (users.length === 0) { list.innerHTML = '<div style="color:#9ca3af;text-align:center">暂无注册用户</div>'; return; }
+          list.innerHTML = users.map(u =>
+            `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px">
+              <span>${esc(u.name || u.display_name || 'user-'+u.id)}</span>
+              <button onclick="addWhitelistFromRegistered('${esc(u.name||'')}')" style="background:none;border:none;color:#2C615C;cursor:pointer;font-size:12px">${_whitelistConfig.users.includes(u.name)?'✓ 已添加':'+ 添加'}</button>
+            </div>`
+          ).join('');
+        }
+        const sel = document.getElementById('userdataUserSelect');
+        if (sel) {
+          sel.innerHTML = '<option value="">-- 请选择 --</option>' + users.map(u =>
+            `<option value="${u.id}">${esc(u.name||u.display_name||'user-'+u.id)}</option>`
+          ).join('');
+        }
+      } catch (e) { console.error('loadRegisteredUsers error', e); }
+    }
+
+    async function loadUserData() {
+      const sel = document.getElementById('userdataUserSelect');
+      const userId = sel.value;
+      if (!userId) { document.getElementById('userdataStats').style.display='none'; document.getElementById('userdataConversations').style.display='none'; return; }
+      try {
+        const [creditsRes, convosRes] = await Promise.all([
+          authedFetch('/api/admin/usage-logs/users/' + userId + '?limit=1&days=30'),
+          authedFetch('/api/admin/users/' + userId + '/conversations'),
+        ]);
+        document.getElementById('userdataStats').style.display = 'block';
+        document.getElementById('userdataConversations').style.display = 'block';
+        const usage = await creditsRes.json();
+        document.getElementById('udCredits').textContent = usage.credits?.remaining ?? '-';
+        document.getElementById('udConvos').textContent = '-';
+        document.getElementById('udLastActive').textContent = usage.user?.last_login_at ? new Date(usage.user.last_login_at*1000).toLocaleDateString() : '-';
+        const convos = await convosRes.json();
+        document.getElementById('udConvos').textContent = convos.length;
+        const convoList = document.getElementById('udConvoList');
+        if (convos.length === 0) {
+          convoList.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:12px">暂无对话</div>';
+          document.getElementById('udConvoMessages').style.display = 'none';
+        } else {
+          convoList.innerHTML = convos.map(c =>
+            `<div onclick="loadConvoMessages('${c.id}')" style="padding:8px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;justify-content:space-between">
+              <span style="font-size:13px">${esc(c.title||'未命名')}</span>
+              <span style="font-size:11px;color:#9ca3af">${c.updated_at ? new Date(c.updated_at*1000||c.updated_at).toLocaleDateString() : ''}</span>
+            </div>`
+          ).join('');
+        }
+      } catch (e) { console.error('loadUserData error', e); }
+    }
+
+    async function loadConvoMessages(convoId) {
+      try {
+        const res = await authedFetch('/api/admin/conversations/' + convoId + '/messages');
+        const data = await res.json();
+        const container = document.getElementById('udConvoMessages');
+        container.style.display = 'block';
+        const msgs = data.messages || [];
+        if (msgs.length === 0) { container.innerHTML = '<div style="color:#9ca3af">无消息</div>'; return; }
+        container.innerHTML = msgs.map(m => {
+          const isUser = m.role === 'user';
+          return `<div style="margin-bottom:8px;display:flex;justify-content:${isUser?'flex-end':'flex-start'}">
+            <div style="max-width:80%;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.5;background:${isUser?'#2C615C':'#f3f4f6'};color:${isUser?'#fff':'#1a1a1a'}">
+              <div style="font-size:11px;opacity:0.7;margin-bottom:4px">${isUser?'用户':'AI'}</div>
+              ${esc(m.content||'').substring(0,500)}
+            </div>
+          </div>`;
+        }).join('');
+      } catch (e) { console.error('loadConvoMessages error', e); }
+    }
+
+    const _origLoadConfig = typeof loadConfig === 'function' ? loadConfig : null;
+    if (_origLoadConfig) {
+      const _orig = _origLoadConfig;
+      window.loadConfig = async function() {
+        await _orig();
+        await loadWhitelistConfig();
+        await loadRegisteredUsers();
+      };
+    }
   </script>
 </body>
 </html>

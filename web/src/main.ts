@@ -122,6 +122,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
+    const whitelistCheck = await fetch('/api/theme/credits', { credentials: 'include' });
+    if (whitelistCheck.status === 403) {
+      const data = await whitelistCheck.json().catch(() => ({}));
+      if (data.error === 'WHITELIST_BLOCKED') {
+        const blockPage = document.getElementById('whitelistBlockPage');
+        const appContainer = document.querySelector('.app-container') as HTMLElement | null;
+        if (blockPage) blockPage.style.display = 'flex';
+        if (appContainer) appContainer.style.display = 'none';
+        return;
+      }
+    }
+
     runHealthCheck();
     applyUiTheme('light');
     hydrateHeaderSelectOptions();

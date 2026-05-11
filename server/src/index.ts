@@ -33,6 +33,7 @@ const [
   { startExportJobRunner },
   { aiProxyRouter },
   { authMiddleware, adminAuthMiddleware },
+  { whitelistMiddleware },
   { default: securityConfigRouter },
   { dynamicCors },
   { rateLimitMiddleware },
@@ -52,6 +53,7 @@ const [
   import('./export-job-runner.js'),
   import('./routes/ai-proxy.js'),
   import('./middleware/auth.js'),
+  import('./middleware/whitelist.js'),
   import('./routes/security-config.js'),
   import('./middleware/cors.js'),
   import('./middleware/rate-limit.js'),
@@ -129,6 +131,7 @@ app.use('/api/admin-password', adminAuthMiddleware, adminPasswordRouter);
 app.use('/api/admin/usage-logs', adminAuthMiddleware, usageLogsRouter);
 app.use('/api/admin-auth', adminAuthRouter);
 app.use('/api/theme', authMiddleware);
+app.use('/api/theme', whitelistMiddleware);
 app.use('/api/theme', (req: any, _res: any, next: any) => {
   const loginName = req.loginName as string | undefined;
   if (loginName) {
@@ -213,6 +216,49 @@ async function start() {
   });
 
   app.use('/api/auth', adminAuthMiddleware, authRouter);
+
+  app.get('/api/admin/users/:userId/conversations', adminAuthMiddleware, (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      if (!Number.isInteger(userId) || userId <= 0) {
+        return res.status(400).json({ error: 'Invalid user id' });
+      }
+      const stmt = db.prepare('SELECT id, title, created_at, updated_at FROM conversations WHERE user_id = ? ORDER BY updated_at DESC');
+      stmt.bind([userId]);
+      const convos: any[] = [];
+      while (stmt.step()) {
+        convos.push(stmt.getAsObject());
+      }
+      stmt.free();
+      res.json(convos);
+    } catch (error) {
+      logger.error('Get user conversations error', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/admin/conversations/:id/messages', adminAuthMiddleware, (req, res) => {
+    try {
+      const stmt = db.prepare('SELECT id, messages, title FROM conversations WHERE id = ?');
+      stmt.bind([req.params.id]);
+      let row: any = null;
+      if (stmt.step()) {
+        row = stmt.getAsObject();
+      }
+      stmt.free();
+      if (!row) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      let messages: any[] = [];
+      try {
+        messages = JSON.parse(String(row.messages || '[]'));
+      } catch {}
+      res.json({ id: row.id, title: row.title, messages });
+    } catch (error) {
+      logger.error('Get conversation messages error', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
 
   startExportJobRunner();
 

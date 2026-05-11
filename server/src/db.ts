@@ -176,6 +176,12 @@ export async function initDb(): Promise<void> {
 2、每成功生成 1 次主题背景图，扣除 1 积分
 3、每日积分将在次日 06:00 自动清零并重新发放'`);
     }
+    if (!colNames.includes('whitelist_enabled')) {
+      db.run('ALTER TABLE security_config ADD COLUMN whitelist_enabled INTEGER NOT NULL DEFAULT 0');
+    }
+    if (!colNames.includes('whitelist_users')) {
+      db.run("ALTER TABLE security_config ADD COLUMN whitelist_users TEXT NOT NULL DEFAULT '[]'");
+    }
   } catch {
     // Column may already exist, ignore
   }
@@ -411,7 +417,9 @@ credits_per_image?: number,
 daily_credits_limit?: number,
 backup_retention_count?: number,
 export_retention_days?: number,
-credits_tooltip_content?: string
+credits_tooltip_content?: string,
+whitelist_enabled?: boolean,
+whitelist_users?: string[]
 ): Promise<void> {
   const updateFields: Record<string, any> = {};
   if (cors_origins !== undefined) updateFields.cors_origins = JSON.stringify(cors_origins);
@@ -426,6 +434,8 @@ if (daily_credits_limit !== undefined) updateFields.daily_credits_limit = daily_
 if (backup_retention_count !== undefined) updateFields.backup_retention_count = backup_retention_count;
 if (export_retention_days !== undefined) updateFields.export_retention_days = export_retention_days;
 if (credits_tooltip_content !== undefined) updateFields.credits_tooltip_content = credits_tooltip_content;
+if (whitelist_enabled !== undefined) updateFields.whitelist_enabled = whitelist_enabled ? 1 : 0;
+if (whitelist_users !== undefined) updateFields.whitelist_users = JSON.stringify(whitelist_users);
   
   if (Object.keys(updateFields).length === 0) {
     return;
