@@ -127,9 +127,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const data = await whitelistCheck.json().catch(() => ({}));
       if (data.error === 'WHITELIST_BLOCKED') {
         const blockPage = document.getElementById('whitelistBlockPage');
-        const appContainer = document.querySelector('.app-container') as HTMLElement | null;
         if (blockPage) blockPage.style.display = 'flex';
-        if (appContainer) appContainer.style.display = 'none';
+        document.body.classList.add('whitelist-blocked');
         return;
       }
     }

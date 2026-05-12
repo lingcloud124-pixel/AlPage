@@ -7170,19 +7170,33 @@ body.landing-admin-page
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f0fdfa 100%);
+  padding: 24px;
+  background: rgba(236, 245, 252, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .whitelist-block-card
 {
+  width: min(460px, calc(100vw - 48px));
   text-align: center;
-  padding: 48px 40px;
-  max-width: 420px;
+  padding: 40px 36px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 28px 80px rgba(44, 97, 92, 0.18);
 }
 
 .whitelist-block-icon
 {
-  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  background: #ECF5FC;
 }
 
 .whitelist-block-title
@@ -7206,4 +7220,15 @@ body.landing-admin-page
   font-size: 13px;
   color: #9ca3af;
   margin: 0;
+}
+
+body.whitelist-blocked #workspaceView
+{
+  filter: saturate(0.92);
+}
+
+body.whitelist-blocked .app-container
+{
+  pointer-events: none;
+  user-select: none;
 }
