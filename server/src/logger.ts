@@ -1,7 +1,7 @@
 import { createWriteStream, mkdirSync, existsSync, readdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 
-const LOG_DIR = join(process.cwd(), 'logs');
+const LOG_DIR = join(process.cwd(), 'data', 'logs');
 const MAX_LOG_FILES = 7;
 
 let stream: ReturnType<typeof createWriteStream> | null = null;

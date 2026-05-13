@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import archiver from 'archiver';
@@ -52,9 +51,8 @@ function finalizeExportUsageLog(usageLogId: string | null, status: 'success' | '
 
 router.post('/pick-directory', async (_req, res) => {
   try {
-    const home = os.homedir();
-    const desktop = path.join(home, 'Desktop', 'ThemeStudio-Exports');
-    res.json({ path: desktop });
+    const exportRoot = path.join(process.cwd(), 'data', 'exports', 'ThemeStudio-Exports');
+    res.json({ path: exportRoot });
   } catch (error) {
     logger.error('Pick directory error', error);
     res.status(500).json({ error: 'Internal server error' });

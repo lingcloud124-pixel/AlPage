@@ -10,7 +10,7 @@ import { logger } from './logger.js';
 const STEP_DELAY_MS = 50;
 const execFileAsync = promisify(execFile);
 const PROJECT_ROOT = path.resolve(import.meta.dirname, '../..');
-const SERVICE_EXPORT_ROOT = path.join(PROJECT_ROOT, 'output', 'service-jobs');
+const SERVICE_EXPORT_ROOT = path.join(PROJECT_ROOT, 'server', 'data', 'output', 'service-jobs');
 const EXPORT_DIRECTORY_README_NAME = '使用说明.txt';
 const EXPORT_DIRECTORY_README_CONTENT = `主题包使用说明
 1. 本目录下每个 zip 对应一个产品版本的主题包或登录包，请按实际环境选择导入。

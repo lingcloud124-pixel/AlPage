@@ -360,7 +360,7 @@ function startBackupScheduler(): void {
   }, 10000);
 }
 
-const EXPORT_OUTPUT_DIR = join(process.cwd(), 'output', 'service-jobs');
+const EXPORT_OUTPUT_DIR = join(process.cwd(), 'data', 'output', 'service-jobs');
 
 function cleanupOldExportFiles(): void {
   try {
