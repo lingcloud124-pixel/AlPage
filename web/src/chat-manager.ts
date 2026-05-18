@@ -7,14 +7,22 @@ import {
 import { redirectToLogin } from './auth';
 import { enrichToolCallsWithColorHints } from './agent/tool-call-utils';
 import { getSystemPrompt } from './agent/system-prompt';
-import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences, trackPresetUsage } from './agent/user-preferences';
+import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences } from './agent/user-preferences';
 import { analyzeImageAsync, executeTool } from './tools/executor';
 import type { ChatMessage } from './types';
+import type { PortalCustomerProfile } from './types';
 import { deriveNameEnFromText, normalizeNameEn } from './project-naming';
-import { getCurrentProjectId, loadProject, saveProject, updateProjectNameDisplay, PRESET_DISPLAY, getAvailablePresets, createProject, setCurrentProjectId } from './project-manager';
+import {
+  applyPortalDraftToProject,
+  createProject,
+  getCurrentProjectId,
+  loadProject,
+  saveProject,
+  setCurrentProjectId,
+  updateProjectNameDisplay,
+} from './project-manager';
 import type { Project } from './project-manager';
-import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, saveCurrentColorsToProject, getCurrentColors, applyPresetBackground, getThemeTarget } from './theme-engine';
-import { PRESET_BACKGROUNDS } from './project-manager';
+import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, saveCurrentColorsToProject, getCurrentColors, getThemeTarget } from './theme-engine';
 import { syncColorEditorFromTheme } from './components/color-editor';
 import { parseThemeFeedback } from './tools/theme-feedback-refiner';
 import { decidePreferenceUpdate } from './tools/theme-preference-updater';
@@ -24,10 +32,23 @@ import type { ThemePreview } from './tools/executor';
 import { classifyImageIntent } from './image-intent';
 import { applyPrimaryImageToProject } from './primary-image-flow';
 import { showNotificationWithOptions } from './package-manager';
-import { renderLandingPromptButtons, resolveLegacyLandingPreset } from './landing-prompts';
 import { createConversation, updateConversation } from './api/conversations';
 import type { ConversationCreatePayload, ConversationUpdatePayload, ConversationImageData } from './types';
 import { setActiveConversation, getActiveConversationId, refreshSidebar } from './components/sidebar';
+import {
+  buildPortalCollectionPrompt,
+  buildPortalDraft,
+  buildPortalSummary,
+  buildPortalSummaryPrompt,
+  createPortalGenerationPrompt,
+  didPortalProfileChange,
+  extractPortalProfileFromMessage,
+  getPortalWorkflowState,
+  isPortalSummaryConfirmationMessage,
+  mergePortalProfile,
+} from './portal-agent';
+import { renderWorkspaceEditorShell } from './workspace/runtime';
+import { persistWorkspaceToLocal, syncWorkspaceToServer } from './workspace/store';
 
 const conversationHistory: ChatMessage[] = [];
 let activeAbortController: AbortController | null = null;
@@ -56,8 +77,6 @@ let latestThemePreviews: Array<{
 
 interface SendUserMessageOptions {
   displayMessage?: string;
-  directPreviewPrompt?: string;
-  directPreviewPrimaryHint?: string;
 }
 
 export function getConversationHistory() { return conversationHistory; }
@@ -272,6 +291,110 @@ export function startNewConversation(): void {
   return true;
 }
 
+function hasPortalProfilePatch(patch: Partial<PortalCustomerProfile>): boolean {
+  return Object.values(patch).some((value) => Array.isArray(value) ? value.length > 0 : Boolean(value));
+}
+
+async function syncProjectWorkspaceSnapshot(project: Project): Promise<void> {
+  if (!project.workspace) return;
+  persistWorkspaceToLocal(project.id, project.workspace);
+  await syncWorkspaceToServer(project.id, project.workspace);
+}
+
+async function resolvePortalWorkflowForMessage(project: Project, userMessage: string): Promise<{
+  blocked: boolean;
+  aiReply?: string;
+  generationPrompt?: string;
+  project: Project;
+}> {
+  const extracted = extractPortalProfileFromMessage(userMessage);
+  const previousProfile = project.portalProfile;
+  const nextProfile = hasPortalProfilePatch(extracted)
+    ? mergePortalProfile(previousProfile, extracted, 'chat')
+    : previousProfile;
+  const profileChanged = didPortalProfileChange(previousProfile, nextProfile);
+
+  if (nextProfile) {
+    project.portalProfile = nextProfile;
+    if (project.name === '未命名项目' && nextProfile.customerName) {
+      project.name = `${nextProfile.customerName}门户`;
+      project.themeName = project.name;
+      updateProjectNameDisplay(project);
+    }
+  }
+
+  if (profileChanged && project.portalSummary?.confirmedAt) {
+    project.portalSummary = undefined;
+    project.portalDraft = undefined;
+  }
+
+  const workflow = getPortalWorkflowState(project.portalProfile, project.portalSummary);
+  if (workflow.status === 'collecting') {
+    await saveProject(project);
+    return {
+      blocked: true,
+      aiReply: buildPortalCollectionPrompt(workflow.missingFields),
+      project,
+    };
+  }
+
+  if (!project.portalSummary && project.portalProfile) {
+    project.portalSummary = buildPortalSummary(project.portalProfile);
+    await saveProject(project);
+    return {
+      blocked: true,
+      aiReply: buildPortalSummaryPrompt(project.portalSummary),
+      project,
+    };
+  }
+
+  if (workflow.status === 'summary_pending') {
+    if (userMessage && isPortalSummaryConfirmationMessage(userMessage) && project.portalSummary) {
+      project.portalSummary = {
+        ...project.portalSummary,
+        confirmedAt: Date.now(),
+      };
+      const portalDraft = buildPortalDraft(project.portalSummary);
+      Object.assign(project, applyPortalDraftToProject(project, portalDraft));
+      await saveProject(project);
+      await syncProjectWorkspaceSnapshot(project);
+      renderWorkspaceEditorShell(project.workspace ?? null);
+      return {
+        blocked: false,
+        generationPrompt: createPortalGenerationPrompt(project.portalSummary),
+        project,
+      };
+    }
+
+    if (profileChanged && project.portalProfile) {
+      project.portalSummary = buildPortalSummary(project.portalProfile);
+      await saveProject(project);
+    }
+
+    return {
+      blocked: true,
+      aiReply: buildPortalSummaryPrompt(project.portalSummary!),
+      project,
+    };
+  }
+
+  if (profileChanged && project.portalProfile) {
+    project.portalSummary = buildPortalSummary(project.portalProfile);
+    project.portalDraft = undefined;
+    await saveProject(project);
+    return {
+      blocked: true,
+      aiReply: buildPortalSummaryPrompt(project.portalSummary),
+      project,
+    };
+  }
+
+  return {
+    blocked: false,
+    project,
+  };
+}
+
 function pushToolResultToHistory(content: string): void {
   conversationHistory.push({
     id: crypto.randomUUID(),
@@ -289,196 +412,6 @@ function stripToolCallsFromDisplay(content: string): string {
   cleaned = cleaned.replace(/\{"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{[\s\S]*?\}\s*\}/g, '');
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   return cleaned.trim();
-}
-
-function parsePresetRecommendations(content: string): string[] {
-  const keys: string[] = [];
-  const regex = /\[preset:(\w[\w-]*)\]/g;
-  let match;
-  while ((match = regex.exec(content)) !== null) keys.push(match[1]);
-  return keys;
-}
-
-function parseBackgroundRecommendations(content: string): string[] {
-  const keys: string[] = [];
-  const regex = /\[background:(\w[\w-]*)\]/g;
-  let match;
-  while ((match = regex.exec(content)) !== null) keys.push(match[1]);
-  return keys;
-}
-
-function parseGuideOptions(content: string): string[] {
-  const regex = /\[guide:(.+?)\]/;
-  const match = regex.exec(content);
-  if (!match) return [];
-  return match[1].split('|').map(s => s.trim()).filter(Boolean);
-}
-
-function addPresetCardsMessage(cards: Array<{key: string; label: string; primary: string; type: string}>, addMessage: (role: 'user' | 'ai', content: string) => HTMLElement, expandPreview: () => void): HTMLElement {
-  const messagesContainer = getConversationMessagesContainer();
-  if (!messagesContainer) return document.createElement('div');
-
-  const messageDiv = document.createElement('div');
-  messageDiv.className = 'message ai-message';
-  const avatarDiv = document.createElement('div');
-  avatarDiv.className = 'avatar';
-  avatarDiv.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/><line x1="9" y1="19" x2="9" y2="19"/><line x1="15" y1="19" x2="15" y2="19"/></svg>';
-  const contentDiv = document.createElement('div');
-  contentDiv.className = 'message-content';
-  contentDiv.textContent = '为您推荐以下主题方案，点击即可应用：';
-  const cardsContainer = document.createElement('div');
-  cardsContainer.className = 'preset-cards-container';
-
-  cards.forEach(preset => {
-    const card = document.createElement('div');
-    card.className = 'preset-card-chat';
-    card.innerHTML = `
-      <div class="preset-card-swatch" style="background: ${preset.primary};"></div>
-      <div class="preset-card-info">
-        <span class="preset-card-label">${preset.label}</span>
-        <span class="preset-card-type">${preset.type === 'dark-ui' ? '暗色' : '亮色'}</span>
-      </div>
-      <button class="preset-card-view-btn" title="查看预览">查看</button>
-    `;
-    const viewBtn = card.querySelector('.preset-card-view-btn');
-    if (viewBtn) {
-      viewBtn.addEventListener('click', (e) => { e.stopPropagation(); expandPreview(); });
-    }
-    card.addEventListener('click', async () => {
-      try {
-        const response = await fetch(`/colors/${preset.key}.json`);
-        if (response.ok) {
-          const presetColors = await response.json();
-          const mappedColors: Record<string, string> = {};
-          if (presetColors.colors) {
-            const c = presetColors.colors;
-            if (c.primary) mappedColors['primary-color'] = c.primary;
-            if (c.primaryHover) mappedColors['primary-color-hover'] = c.primaryHover;
-            if (c.alterColor) mappedColors['alter-color'] = c.alterColor;
-            if (c.alterColorHoverOn) mappedColors['alter-color-hover-on'] = c.alterColorHoverOn;
-            if (c.primaryOpacity10) mappedColors['primary-color-opacity-10'] = c.primaryOpacity10;
-            if (c.primaryOpacity20) mappedColors['primary-color-opacity-20'] = c.primaryOpacity20;
-            if (c.primaryOpacity30) mappedColors['primary-color-opacity-30'] = c.primaryOpacity30;
-            if (c.headerFont) mappedColors['header-font-color'] = c.headerFont;
-            if (c.sidebarPanelBg) mappedColors['sidebar-panel-bg'] = c.sidebarPanelBg;
-            if (c.loginBg) mappedColors['login-bg-color'] = c.loginBg;
-          }
-          for (const [k, v] of Object.entries(mappedColors)) setThemeVar(`--${k}`, v);
-          const pid = getCurrentProjectId();
-          if (pid) {
-            const project = await loadProject(pid);
-            if (project) {
-              project.colors = { ...project.colors, ...mappedColors };
-              project.templateType = preset.type === 'dark-ui' ? 'dark-ui' : 'light-ui';
-              await saveProject(project);
-              applyTemplateSpecificThemeVars(project.templateType);
-            }
-          }
-          syncColorEditorFromTheme();
-          trackPresetUsage(preset.key);
-          applyPresetBackground(preset.key, PRESET_BACKGROUNDS);
-          expandPreview();
-          cardsContainer.querySelectorAll('.preset-card-chat').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          addMessage('ai', `✅ 已应用「${preset.label}」配色方案`);
-          requestAnimationFrame(() => (window as any).resizePreview?.());
-        }
-      } catch {
-        addMessage('ai', `⚠️ 加载「${preset.label}」失败，请重试`);
-      }
-    });
-    cardsContainer.appendChild(card);
-  });
-
-  contentDiv.appendChild(cardsContainer);
-  messageDiv.appendChild(avatarDiv);
-  messageDiv.appendChild(contentDiv);
-  messagesContainer.appendChild(messageDiv);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  return messageDiv;
-}
-
-function addBackgroundCardsMessage(bgKeys: string[], addMessage: (role: 'user' | 'ai', content: string) => HTMLElement, expandPreview: () => void): HTMLElement {
-  const messagesContainer = getConversationMessagesContainer();
-  if (!messagesContainer) return document.createElement('div');
-
-  const messageDiv = document.createElement('div');
-  messageDiv.className = 'message ai-message';
-  const avatarDiv = document.createElement('div');
-  avatarDiv.className = 'avatar';
-  avatarDiv.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/><line x1="9" y1="19" x2="9" y2="19"/><line x1="15" y1="19" x2="15" y2="19"/></svg>';
-  const contentDiv = document.createElement('div');
-  contentDiv.className = 'message-content';
-  contentDiv.textContent = '为您推荐以下背景图，点击即可应用：';
-  const cardsContainer = document.createElement('div');
-  cardsContainer.className = 'background-cards-container';
-
-  bgKeys.forEach(bgKey => {
-    const card = document.createElement('div');
-    card.className = 'background-card-chat';
-    const ext = (bgKey === 'winter-solstice' || bgKey === 'work-hard') ? 'jpg' : 'png';
-    const imgSrc = `/backgrounds/${bgKey}-bg.${ext}`;
-    card.innerHTML = `
-      <img class="background-card-img" src="${imgSrc}" alt="${bgKey}" loading="lazy" />
-      <div class="background-card-info">
-        <span class="background-card-name">${bgKey.replace(/-/g, ' ')}</span>
-        <button class="preset-card-view-btn" title="查看预览">查看</button>
-      </div>
-    `;
-    const viewBtn = card.querySelector('.preset-card-view-btn');
-    if (viewBtn) viewBtn.addEventListener('click', (e) => { e.stopPropagation(); expandPreview(); });
-    card.addEventListener('click', () => {
-      const bgUrl = `/backgrounds/${bgKey}-bg.${ext}`;
-      applyThemeImageAssignments('login', bgUrl);
-      applyThemeImageAssignments('desktop', bgUrl);
-      expandPreview();
-      cardsContainer.querySelectorAll('.background-card-chat').forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      addMessage('ai', '✅ 已应用背景图');
-    });
-    cardsContainer.appendChild(card);
-  });
-
-  contentDiv.appendChild(cardsContainer);
-  messageDiv.appendChild(avatarDiv);
-  messageDiv.appendChild(contentDiv);
-  messagesContainer.appendChild(messageDiv);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  return messageDiv;
-}
-
-function addGuideCardsMessage(options: string[], sendUserMessage: () => void): HTMLElement {
-  const messagesContainer = getConversationMessagesContainer();
-  if (!messagesContainer) return document.createElement('div');
-
-  const messageDiv = document.createElement('div');
-  messageDiv.className = 'message ai-message';
-  const avatarDiv = document.createElement('div');
-  avatarDiv.className = 'avatar';
-  avatarDiv.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/><line x1="9" y1="19" x2="9" y2="19"/><line x1="15" y1="19" x2="15" y2="19"/></svg>';
-  const contentDiv = document.createElement('div');
-  contentDiv.className = 'message-content';
-  contentDiv.textContent = '请选择您想要的主题风格方向：';
-  const cardsContainer = document.createElement('div');
-  cardsContainer.className = 'guide-cards-container';
-
-  options.forEach(option => {
-    const card = document.createElement('div');
-    card.className = 'guide-card-chat';
-    card.textContent = option;
-    card.addEventListener('click', () => {
-      const input = document.getElementById('conversationMessageInput') as HTMLTextAreaElement;
-      if (input) { input.value = `我想做一个${option}`; sendUserMessage(); }
-    });
-    cardsContainer.appendChild(card);
-  });
-
-  contentDiv.appendChild(cardsContainer);
-  messageDiv.appendChild(avatarDiv);
-  messageDiv.appendChild(contentDiv);
-  messagesContainer.appendChild(messageDiv);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  return messageDiv;
 }
 
 function buildThinkingToggle(text: string): HTMLElement {
@@ -549,28 +482,6 @@ export function setupChatInterface(deps: ChatDeps) {
     const resolvedHeight = Math.max(40, nextHeight);
     input.style.height = `${resolvedHeight}px`;
     if (composerInner) composerInner.style.minHeight = `${resolvedHeight + 56}px`;
-  };
-
-  const refreshLandingPromptButtons = () => {
-    const landingPromptContainer = document.querySelector<HTMLElement>('.landing-starter-pills.theme-suggestions');
-    if (!landingPromptContainer) return;
-    renderLandingPromptButtons(landingPromptContainer);
-
-    landingPromptContainer.onclick = (event) => {
-      const target = event.target as HTMLElement | null;
-      const button = target?.closest<HTMLElement>('.landing-prompt-trigger[data-prompt]');
-      const displayPrompt = button?.dataset.prompt?.trim();
-      if (!displayPrompt || !defaultMessageInput) return;
-
-      const preset = resolveLegacyLandingPreset(displayPrompt);
-      defaultMessageInput.value = displayPrompt;
-      resizeMessageInput(defaultMessageInput, defaultComposerInner);
-      void sendUserMessage('default', {
-        displayMessage: displayPrompt,
-        directPreviewPrompt: preset.prompt,
-        directPreviewPrimaryHint: preset.primaryHint,
-      });
-    };
   };
 
   resizeMessageInput(defaultMessageInput, defaultComposerInner);
@@ -696,48 +607,6 @@ export function setupChatInterface(deps: ChatDeps) {
     });
   }
 
-  async function setLandingGalleryImage(imageSrc: string, themeName: string, primaryHint?: string) {
-    if (!defaultMessageInput) return;
-    try {
-      const response = await fetch(imageSrc);
-      if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
-      const blob = await response.blob();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string | null;
-          if (!result) {
-            reject(new Error('Failed to read image as data URL'));
-            return;
-          }
-          resolve(result);
-        };
-        reader.onerror = () => reject(reader.error ?? new Error('Failed to read image file'));
-        reader.readAsDataURL(blob);
-      });
-
-      pendingImages.splice(0, pendingImages.length, dataUrl);
-      renderImagePreviewBar();
-      defaultMessageInput.value = `用这张图，生成一个${themeName}主题包`;
-      resizeMessageInput(defaultMessageInput, defaultComposerInner);
-      if (primaryHint) {
-        defaultMessageInput.dataset.primaryHint = primaryHint;
-      } else {
-        delete defaultMessageInput.dataset.primaryHint;
-      }
-      await ensureActiveProjectForImageUpload();
-      showConversationChatView();
-      await sendUserMessage('default');
-    } catch (error) {
-      console.warn('[chat-manager] 推荐图加载失败:', error);
-      showNotificationWithOptions('推荐图加载失败，请稍后重试', {
-        variant: 'critical',
-        position: 'top-center',
-        durationMs: 2400,
-      });
-    }
-  }
-
   function addMessageToChat(role: 'user' | 'ai', content: string): HTMLElement {
     const messageEl = renderMessage(role, content);
     return messageEl;
@@ -793,8 +662,6 @@ export function setupChatInterface(deps: ChatDeps) {
     const activeInput = source === 'default' ? defaultMessageInput : conversationMessageInput;
     const fallbackInput = source === 'default' ? conversationMessageInput : defaultMessageInput;
     const displayMessage = options?.displayMessage?.trim() ?? '';
-    const directPreviewPrompt = options?.directPreviewPrompt?.trim() ?? '';
-    const directPreviewPrimaryHint = options?.directPreviewPrimaryHint?.trim() ?? '';
     const inputContent = activeInput ? activeInput.value.trim() : '';
     const content = displayMessage || inputContent;
     const hasText = Boolean(content);
@@ -808,7 +675,7 @@ export function setupChatInterface(deps: ChatDeps) {
 
     const userMessageTimestamp = Date.now();
     const userMessageId = userMessageTimestamp.toString();
-    const currentProjectId = hasImages || directPreviewPrompt
+    const currentProjectId = hasImages
       ? await ensureActiveProjectForImageUpload()
       : getCurrentProjectId();
     showConversationChatView();
@@ -842,8 +709,8 @@ export function setupChatInterface(deps: ChatDeps) {
         appendImageRoleBadge(
           contentEl,
           finalRole === 'primary'
-            ? '已识别为主图，将直接用于生成主题预览'
-            : '已识别为参考图，将作为风格参考',
+            ? '已识别为主图，将直接用于生成门户预览'
+            : '已识别为参考图，将作为门户风格参考',
         );
       }
       await saveChatHistory();
@@ -960,7 +827,7 @@ export function setupChatInterface(deps: ChatDeps) {
       statusEl.remove();
       addMessageToChat('ai', primaryResult.success
         ? [
-            '已将当前参考图升级为主图并生成主题预览。',
+            '已将当前参考图升级为主图并生成门户预览。',
           ].filter(Boolean).join(' ')
         : `⚠️ ${primaryResult.message}`);
       if (primaryResult.success) {
@@ -969,56 +836,35 @@ export function setupChatInterface(deps: ChatDeps) {
       }
     }
 
-    if (directPreviewPrompt) {
-      const toolLoadingEl = addStatusMessage('正在根据快捷指令生成预览...');
-      const toolResult = await executeTool({
-        tool: 'generate_theme_pipeline',
-        args: {
-          prompt: directPreviewPrompt,
-          templateType: 'light-ui',
-          ...(directPreviewPrimaryHint ? { primaryHint: directPreviewPrimaryHint } : {}),
-        },
-      });
-      toolLoadingEl.remove();
+    let portalGenerationPrompt: string | undefined;
+    let activeProjectId = getCurrentProjectId();
+    if (!activeProjectId && content) {
+      const newProject = await createProject('未命名项目', 'light-ui');
+      if (newProject) {
+        setCurrentProjectId(newProject.id);
+        (globalThis as any).__themeStudioCurrentProjectId = newProject.id;
+        activeProjectId = newProject.id;
+      }
+    }
 
-      if (toolResult.success) {
-        const data = toolResult.data as {
-          primaryColor?: string;
-          imageUrl?: string;
-          dominantColors?: string[];
-          contrastValidation?: { passed?: boolean };
-          enforcementReason?: string;
-        };
-        const colorTag = data?.primaryColor
-          ? ` <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${data.primaryColor};vertical-align:middle;margin:0 2px;"></span>`
-          : '';
-        const toolResultMsg = [
-          `🎨 主题已应用！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
-          data?.dominantColors?.length ? `识别到的候选主色 ${data.dominantColors.slice(0, 3).join(' / ')}。` : '',
-          `对比度校验：${data?.contrastValidation?.passed ? '通过' : '存在风险'}。`,
-        ].filter(Boolean).join(' ');
-        await addMessageToChat('ai', toolResultMsg);
-        pushToolResultToHistory(toolResultMsg);
-        await saveCurrentColorsToProject();
-        syncColorEditorFromTheme();
-        deps.expandPreview();
-        deps.setChatPanelWidth(372);
-        await saveChatHistory();
-      } else {
-        const errMsg = `⚠️ ${toolResult.error ?? '预览图生成失败，请重试。'}`;
-        await addMessageToChat('ai', errMsg);
-        pushToolResultToHistory(errMsg);
-        await saveChatHistory();
-      }
-    } else if (content && !shouldSkipAiForPrimaryImage && !shouldUpgradeExistingReference) {
-      if (!getCurrentProjectId()) {
-        const newProject = await createProject('未命名项目', 'light-ui');
-        if (newProject) {
-          setCurrentProjectId(newProject.id);
-          (globalThis as any).__themeStudioCurrentProjectId = newProject.id;
+    if (activeProjectId) {
+      const activeProject = await loadProject(activeProjectId);
+      if (activeProject) {
+        const portalFlow = await resolvePortalWorkflowForMessage(activeProject, content);
+        if (portalFlow.aiReply) {
+          addMessageToChat('ai', portalFlow.aiReply);
+          pushToolResultToHistory(portalFlow.aiReply);
+          await saveChatHistory();
         }
+        if (portalFlow.blocked) {
+          return;
+        }
+        portalGenerationPrompt = portalFlow.generationPrompt;
       }
-      await callAI(content);
+    }
+
+    if ((content || portalGenerationPrompt) && !shouldSkipAiForPrimaryImage && !shouldUpgradeExistingReference) {
+      await callAI(portalGenerationPrompt ?? content);
     }
     if (!content && hasImages && currentImageRole !== 'primary') {
       addMessageToChat('ai', '已收到这张参考图。继续输入一句描述，比如“参考这张图做一个春日主题”，我就会开始生成。');
@@ -1057,29 +903,6 @@ export function setupChatInterface(deps: ChatDeps) {
     }
   }
 
-  const landingPromptContainer = document.querySelector<HTMLElement>('.landing-starter-pills.theme-suggestions');
-  if (landingPromptContainer) {
-    refreshLandingPromptButtons();
-  }
-
-  const landingGalleryCards = document.querySelectorAll<HTMLElement>('.landing-gallery-trigger[data-image-src][data-theme-name]');
-  landingGalleryCards.forEach((card) => {
-    const triggerSelection = () => {
-      const imageSrc = card.dataset.imageSrc?.trim();
-      const themeName = card.dataset.themeName?.trim();
-      const primaryHint = card.dataset.primaryHint?.trim();
-      if (!imageSrc || !themeName) return;
-      setLandingGalleryImage(imageSrc, themeName, primaryHint);
-    };
-
-    card.addEventListener('click', triggerSelection);
-    card.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      event.preventDefault();
-      triggerSelection();
-    });
-  });
-
   async function callAI(userMessage: string) {
     const priorAssistantMessage = [...conversationHistory]
       .reverse()
@@ -1091,14 +914,13 @@ export function setupChatInterface(deps: ChatDeps) {
     const settings = loadSettings();
     // API key check removed - server holds the key now
 
-    const availablePresets = getAvailablePresets();
     const prefs = loadUserPreferences();
     const currentProject = getCurrentProjectId() ? await loadProject(getCurrentProjectId()!) : null;
     const templateType = currentProject?.templateType || 'light-ui';
     const systemPrompt = getSystemPrompt({
       templateType,
       currentColors: getCurrentColors(),
-      availablePresets,
+      availablePresets: [],
       userPreferences: prefs,
       userMessage,
     });
@@ -1369,7 +1191,7 @@ export function setupChatInterface(deps: ChatDeps) {
               : '';
             const contrastPassed = appliedData?.contrastValidation?.passed ?? false;
             const appliedMsg = [
-              `🎨 主题已应用！主色调${colorTag}已应用到预览，您可以在右侧查看效果。`,
+          `🎨 门户预览已更新！主色调${colorTag}已应用到当前门户，您可以在右侧查看效果。`,
               appliedData?.dominantColors?.length ? `识别到的候选主色 ${appliedData.dominantColors.slice(0, 3).join(' / ')}。` : '',
               appliedData?.fallbackUsed ? '本次提色未稳定完成，已回退应用默认主色。' : '',
               `对比度校验：${contrastPassed ? '通过' : '存在风险'}。`,
@@ -1458,20 +1280,6 @@ export function setupChatInterface(deps: ChatDeps) {
         await saveChatHistory();
       }
     }
-
-    const presetKeys = parsePresetRecommendations(fullResponse);
-    if (presetKeys.length > 0) {
-      const cards = presetKeys
-        .filter(k => PRESET_DISPLAY[k])
-        .map(k => ({ key: k, ...PRESET_DISPLAY[k] }));
-      if (cards.length > 0) addPresetCardsMessage(cards, addMessageToChat, deps.expandPreview);
-    }
-
-    const bgKeys = parseBackgroundRecommendations(fullResponse);
-    if (bgKeys.length > 0) addBackgroundCardsMessage(bgKeys, addMessageToChat, deps.expandPreview);
-
-    const guideOptions = parseGuideOptions(fullResponse);
-    if (guideOptions.length > 0) addGuideCardsMessage(guideOptions, sendUserMessage);
 
     activeAbortController = null;
     setSendBtnStop(false);

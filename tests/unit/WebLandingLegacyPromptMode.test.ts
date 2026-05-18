@@ -39,27 +39,19 @@ describe('web landing legacy prompt mode', () => {
     expect(entries[7].prompt).toContain('科技感背景设计，矢量风格，数字化');
   });
 
-  test('landing prompt clicks pass the fixed primary hint into generation', () => {
+  test('chat-manager passes primaryHint from input dataset to image generation', () => {
     const chatManager = fs.readFileSync(path.join(projectRoot, 'web/src/chat-manager.ts'), 'utf8');
 
-    expect(chatManager).toContain('directPreviewPrimaryHint?: string;');
-    expect(chatManager).toContain("...(directPreviewPrimaryHint ? { primaryHint: directPreviewPrimaryHint } : {}),");
-    expect(chatManager).toContain('const preset = resolveLegacyLandingPreset(displayPrompt);');
-    expect(chatManager).toContain('directPreviewPrimaryHint: preset.primaryHint,');
-    expect(chatManager).toContain('renderLandingPromptButtons(landingPromptContainer);');
-    expect(chatManager).toContain("landingPromptContainer.onclick = (event) => {");
-    expect(chatManager).toContain("const button = target?.closest<HTMLElement>('.landing-prompt-trigger[data-prompt]');");
-    expect(chatManager).toContain("void sendUserMessage('default', {");
+    expect(chatManager).toContain("const lockedPrimaryHint = activeInput?.dataset.primaryHint?.trim() ?? '';");
+    expect(chatManager).toContain('primaryHint: lockedPrimaryHint,');
   });
 
-  test('landing prompt clicks force single-image generation pipeline', () => {
+  test('landing gallery triggers primary image flow with applyPrimaryImageToProject', () => {
     const chatManager = fs.readFileSync(path.join(projectRoot, 'web/src/chat-manager.ts'), 'utf8');
     const toolUtils = fs.readFileSync(path.join(projectRoot, 'web/src/tools/executor.ts'), 'utf8');
 
-    expect(chatManager).toContain('directPreviewPrompt?: string;');
-    expect(chatManager).toContain('const preset = resolveLegacyLandingPreset(displayPrompt);');
-    expect(chatManager).toContain("tool: 'generate_theme_pipeline'");
-    expect(chatManager).toContain("prompt: directPreviewPrompt");
+    expect(chatManager).toContain('applyPrimaryImageToProject({');
+    expect(chatManager).toContain('primaryHint: lockedPrimaryHint,');
     expect(toolUtils).toContain("case 'generate_theme_pipeline':");
   });
 });
