@@ -1,7 +1,6 @@
 import { initializeColorEditor, syncColorEditorFromTheme } from './components/color-editor';
 import {
   setCurrentProjectId,
-  getProjectThemeLabel,
   restoreFromSnapshot,
 } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, hydrateHeaderSelectOptions, setupQualityCheck, resetThemeTargetStyles } from './theme-engine';
@@ -17,12 +16,14 @@ import {
   setupPreviewPanel,
   setupBackToHome,
   setupCollapsibleColorPanel,
+  setupResultActions,
 } from './ui-setup';
-import { loadDefaultTemplates } from './theme-engine';
 import { checkAuth, getUser, redirectToLogin } from './auth';
 import { fetchCredits, setupCreditsTooltip, updateCreditsDisplay } from './credits';
 import { initSidebar } from './components/sidebar';
 import { registerPreviewResize, resizePreviewPages } from './preview/resize-preview';
+import { ensureProjectWorkspaceReady } from './workspace/store';
+import { renderWorkspaceEditorShell, setupWorkspaceEditorShell } from './workspace/runtime';
 
 declare global {
   interface Window {
@@ -44,7 +45,6 @@ export function showWorkspaceLandingState(): void {
   syncColorEditorFromTheme();
   chatPanel?.classList.add('landing-mode');
   collapsePreview();
-  setChatPanelWidth(null);
   showDefaultChatView();
   const messagesContainer = document.getElementById('messagesContainer') as HTMLElement | null;
   if (messagesContainer) {
@@ -53,7 +53,8 @@ export function showWorkspaceLandingState(): void {
   const chatProjectName = document.getElementById('chatProjectName');
   if (chatProjectName) chatProjectName.textContent = '开始新创作';
   const projectNameElement = document.getElementById('projectName');
-  if (projectNameElement) projectNameElement.textContent = 'AI主题';
+  if (projectNameElement) projectNameElement.textContent = '未命名门户';
+  renderWorkspaceEditorShell(null);
 }
 
 function runHealthCheck() {
@@ -61,7 +62,7 @@ function runHealthCheck() {
   checks.push({ name: 'CSS 变量', ok: !!getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(), detail: '主题色 CSS 变量未加载' });
   checks.push({ name: '聊天输入框', ok: !!document.getElementById('messageInput'), detail: 'messageInput 元素缺失' });
   checks.push({ name: '预览面板', ok: !!document.getElementById('previewPanel'), detail: 'previewPanel 元素缺失' });
-  checks.push({ name: '打包弹窗', ok: !!document.getElementById('packageModal'), detail: 'packageModal 元素缺失' });
+  checks.push({ name: '导出弹窗', ok: !!document.getElementById('packageModal'), detail: 'packageModal 元素缺失' });
   const failed = checks.filter(c => !c.ok);
   if (failed.length > 0) console.warn('[Health Check] Failed:', failed.map(c => `${c.name}: ${c.detail}`).join('; '));
   else console.log('[Health Check] All passed');
@@ -80,34 +81,41 @@ async function initializeFeatureModules() {
   setupQualityCheck();
   setupPreviewPanel();
   setupBackToHome();
+  setupResultActions();
+  setupWorkspaceEditorShell();
   initSidebar();
   window.__themeStudioTest = {
     expandPreview,
     collapsePreview,
   };
 
-  window.addEventListener('sidebar:restore-project', ((e: CustomEvent) => {
-    const snapshot = e.detail as Record<string, unknown>;
-    if (!snapshot || !snapshot.id) return;
-    restoreFromSnapshot(snapshot);
-    const project = snapshot as any;
-    if (project.colors) {
-      for (const [k, v] of Object.entries(project.colors)) {
-        setThemeVar(`--${k}`, v as string);
+  window.addEventListener('sidebar:restore-project', (evt: Event) => {
+    const e = evt as CustomEvent;
+    void (async () => {
+      const snapshot = e.detail as Record<string, unknown>;
+      if (!snapshot || !snapshot.id) return;
+      restoreFromSnapshot(snapshot);
+      const project = snapshot as any;
+      project.workspace = await ensureProjectWorkspaceReady(project.id, project.workspace);
+      renderWorkspaceEditorShell(project.workspace ?? null);
+      if (project.colors) {
+        for (const [k, v] of Object.entries(project.colors)) {
+          setThemeVar(`--${k}`, v as string);
+        }
       }
-    }
-    if (project.bgImageUrl) {
-      applyThemeImageAssignments('login', project.bgImageUrl);
-      applyThemeImageAssignments('desktop', project.bgImageUrl);
-    }
-    if (project.headerBgImageUrl) {
-      applyThemeImageAssignments('desktop', project.headerBgImageUrl);
-    }
-    applyTemplateSpecificThemeVars(project.templateType);
-    syncColorEditorFromTheme();
-    expandPreview();
-    setChatPanelWidth(378);
-  }) as EventListener);
+      if (project.bgImageUrl) {
+        applyThemeImageAssignments('login', project.bgImageUrl);
+        applyThemeImageAssignments('desktop', project.bgImageUrl);
+      }
+      if (project.headerBgImageUrl) {
+        applyThemeImageAssignments('desktop', project.headerBgImageUrl);
+      }
+      applyTemplateSpecificThemeVars(project.templateType);
+      syncColorEditorFromTheme();
+      expandPreview();
+      setChatPanelWidth(378);
+    })();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
