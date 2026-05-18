@@ -301,6 +301,85 @@
         <script type="module" src="/src/main.ts"></script>
     </div> <!-- end workspaceView -->
 
+        <div class="modal-overlay" id="portalConfirmModal">
+            <div class="modal-content portal-confirm-modal">
+                <header class="package-modal-header">
+                    <div>
+                        <h2 class="package-modal-title">确认门户信息</h2>
+                        <p class="package-modal-subtitle">请确认以下信息无误后开始生成</p>
+                    </div>
+                    <button class="package-modal-close-btn" id="portalConfirmCloseBtn" aria-label="关闭">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </header>
+                <div class="portal-confirm-form" id="portalConfirmFormBody">
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmCustomerName">客户名称</label>
+                        <input type="text" id="portalConfirmCustomerName" class="portal-confirm-input" placeholder="请输入客户名称" />
+                    </div>
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmIndustry">客户行业</label>
+                        <select id="portalConfirmIndustry" class="portal-confirm-input">
+                            <option value="">请选择</option>
+                            <option value="能源">能源</option>
+                            <option value="医疗">医疗</option>
+                            <option value="教育">教育</option>
+                            <option value="金融">金融</option>
+                            <option value="制造">制造</option>
+                            <option value="零售">零售</option>
+                            <option value="物流">物流</option>
+                            <option value="科技">科技</option>
+                            <option value="政务">政务</option>
+                            <option value="文旅">文旅</option>
+                            <option value="交通">交通</option>
+                            <option value="化工">化工</option>
+                            <option value="__custom__">其他（自定义）</option>
+                        </select>
+                        <input type="text" id="portalConfirmIndustryCustom" class="portal-confirm-input portal-confirm-custom-input" placeholder="自定义行业" style="display:none;" />
+                    </div>
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmFunctions">核心职能/业务特征</label>
+                        <input type="text" id="portalConfirmFunctions" class="portal-confirm-input" placeholder="如：电力调度、设备巡检" />
+                    </div>
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmPurpose">本次门户用途</label>
+                        <select id="portalConfirmPurpose" class="portal-confirm-input">
+                            <option value="">请选择</option>
+                            <option value="客户演示门户">客户演示门户</option>
+                            <option value="运营管理门户">运营管理门户</option>
+                            <option value="调度指挥门户">调度指挥门户</option>
+                            <option value="方案汇报门户">方案汇报门户</option>
+                            <option value="活动专题门户">活动专题门户</option>
+                            <option value="__custom__">其他（自定义）</option>
+                        </select>
+                        <input type="text" id="portalConfirmPurposeCustom" class="portal-confirm-input portal-confirm-custom-input" placeholder="自定义用途" style="display:none;" />
+                    </div>
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmCards">重点卡片/重点信息</label>
+                        <input type="text" id="portalConfirmCards" class="portal-confirm-input" placeholder="如：调度看板、工单流转、设备台账" />
+                    </div>
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmVisual">品牌/视觉倾向</label>
+                        <select id="portalConfirmVisual" class="portal-confirm-input">
+                            <option value="">请选择</option>
+                            <option value="科技蓝白，稳重企业风">科技蓝白，稳重企业风</option>
+                            <option value="蓝白简洁，现代商务">蓝白简洁，现代商务</option>
+                            <option value="喜庆红金，热闹氛围">喜庆红金，热闹氛围</option>
+                            <option value="深色科技风，未来感">深色科技风，未来感</option>
+                            <option value="轻盈明亮，清新自然">轻盈明亮，清新自然</option>
+                            <option value="绿蓝生态，环保清新">绿蓝生态，环保清新</option>
+                            <option value="__custom__">其他（自定义）</option>
+                        </select>
+                        <input type="text" id="portalConfirmVisualCustom" class="portal-confirm-input portal-confirm-custom-input" placeholder="自定义视觉倾向" style="display:none;" />
+                    </div>
+                </div>
+                <footer class="package-modal-footer">
+                    <button id="portalConfirmSubmitBtn" class="btn-primary">确认并生成</button>
+                    <button id="portalConfirmCancelBtn" class="btn-secondary">取消</button>
+                </footer>
+            </div>
+        </div>
+
 </body>
 
 </html>
