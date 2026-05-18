@@ -667,6 +667,8 @@ function validateToolArgs(tool: string, args: Record<string, unknown>): string |
     case 'apply_selected_theme':
       if (!args.imageUrl && !args.selectedImageUrl && !args.url) return 'apply_selected_theme 需要 imageUrl 参数';
       return null;
+    case 'update_portal_profile':
+      return null;
     default:
       return null;
   }
@@ -1047,6 +1049,44 @@ export async function executeTool(toolCall: ToolCall, onProgress?: ProgressCallb
       case 'build':
       case 'verify':
         return runExportJobTool(tool, args, onProgress);
+
+      case 'update_portal_profile': {
+        const profileArgs = args as {
+          customerName?: string;
+          customerIndustry?: string;
+          customerFunctions?: string[];
+          portalPurpose?: string;
+          highlightedCards?: string[];
+          visualPreference?: string;
+        };
+        const partial: Record<string, unknown> = {};
+        if (typeof profileArgs.customerName === 'string' && profileArgs.customerName.trim()) {
+          partial.customerName = profileArgs.customerName.trim();
+        }
+        if (typeof profileArgs.customerIndustry === 'string' && profileArgs.customerIndustry.trim()) {
+          partial.customerIndustry = profileArgs.customerIndustry.trim();
+        }
+        if (Array.isArray(profileArgs.customerFunctions)) {
+          partial.customerFunctions = profileArgs.customerFunctions.filter(
+            (f) => typeof f === 'string' && f.trim(),
+          );
+        }
+        if (typeof profileArgs.portalPurpose === 'string' && profileArgs.portalPurpose.trim()) {
+          partial.portalPurpose = profileArgs.portalPurpose.trim();
+        }
+        if (Array.isArray(profileArgs.highlightedCards)) {
+          partial.highlightedCards = profileArgs.highlightedCards.filter(
+            (c) => typeof c === 'string' && c.trim(),
+          );
+        }
+        if (typeof profileArgs.visualPreference === 'string' && profileArgs.visualPreference.trim()) {
+          partial.visualPreference = profileArgs.visualPreference.trim();
+        }
+        return {
+          success: true,
+          data: { profile: partial },
+        };
+      }
 
       default:
         return { success: false, error: `未知工具: ${tool}` };
