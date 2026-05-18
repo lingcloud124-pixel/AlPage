@@ -1,4 +1,4 @@
-import type { Project } from '../types';
+import type { Project } from '../project-manager';
 
 type PortalConfirmCallback = (project: Project) => void;
 

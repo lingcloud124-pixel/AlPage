@@ -5,6 +5,7 @@ import {
 } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, hydrateHeaderSelectOptions, setupQualityCheck, resetThemeTargetStyles } from './theme-engine';
 import { setupChatInterface, showDefaultChatView } from './chat-manager';
+import { initPortalConfirmForm } from './components/portal-confirm-form';
 import {
   expandPreview,
   collapsePreview,
@@ -75,6 +76,7 @@ async function initializeFeatureModules() {
     setChatPanelWidth,
   });
   setupCollapsibleColorPanel();
+  initPortalConfirmForm();
   setupQualityCheck();
   setupPreviewPanel();
   setupBackToHome();

@@ -49,6 +49,10 @@ import {
 } from './portal-agent';
 import { renderWorkspaceEditorShell } from './workspace/runtime';
 import { persistWorkspaceToLocal, syncWorkspaceToServer } from './workspace/store';
+import {
+  showPortalConfirmForm,
+  onPortalConfirmSubmit,
+} from './components/portal-confirm-form';
 
 const conversationHistory: ChatMessage[] = [];
 let activeAbortController: AbortController | null = null;
@@ -302,9 +306,6 @@ async function syncProjectWorkspaceSnapshot(project: Project): Promise<void> {
 }
 
 async function resolvePortalWorkflowForMessage(project: Project, userMessage: string): Promise<{
-  blocked: boolean;
-  aiReply?: string;
-  generationPrompt?: string;
   project: Project;
 }> {
   const extracted = extractPortalProfileFromMessage(userMessage);
@@ -328,71 +329,13 @@ async function resolvePortalWorkflowForMessage(project: Project, userMessage: st
     project.portalDraft = undefined;
   }
 
-  const workflow = getPortalWorkflowState(project.portalProfile, project.portalSummary);
-  if (workflow.status === 'collecting') {
-    await saveProject(project);
-    return {
-      blocked: true,
-      aiReply: buildPortalCollectionPrompt(workflow.missingFields),
-      project,
-    };
+  if (profileChanged && nextProfile) {
+    project.portalSummary = buildPortalSummary(nextProfile);
   }
 
-  if (!project.portalSummary && project.portalProfile) {
-    project.portalSummary = buildPortalSummary(project.portalProfile);
-    await saveProject(project);
-    return {
-      blocked: true,
-      aiReply: buildPortalSummaryPrompt(project.portalSummary),
-      project,
-    };
-  }
+  await saveProject(project);
 
-  if (workflow.status === 'summary_pending') {
-    if (userMessage && isPortalSummaryConfirmationMessage(userMessage) && project.portalSummary) {
-      project.portalSummary = {
-        ...project.portalSummary,
-        confirmedAt: Date.now(),
-      };
-      const portalDraft = buildPortalDraft(project.portalSummary);
-      Object.assign(project, applyPortalDraftToProject(project, portalDraft));
-      await saveProject(project);
-      await syncProjectWorkspaceSnapshot(project);
-      renderWorkspaceEditorShell(project.workspace ?? null);
-      return {
-        blocked: false,
-        generationPrompt: createPortalGenerationPrompt(project.portalSummary),
-        project,
-      };
-    }
-
-    if (profileChanged && project.portalProfile) {
-      project.portalSummary = buildPortalSummary(project.portalProfile);
-      await saveProject(project);
-    }
-
-    return {
-      blocked: true,
-      aiReply: buildPortalSummaryPrompt(project.portalSummary!),
-      project,
-    };
-  }
-
-  if (profileChanged && project.portalProfile) {
-    project.portalSummary = buildPortalSummary(project.portalProfile);
-    project.portalDraft = undefined;
-    await saveProject(project);
-    return {
-      blocked: true,
-      aiReply: buildPortalSummaryPrompt(project.portalSummary),
-      project,
-    };
-  }
-
-  return {
-    blocked: false,
-    project,
-  };
+  return { project };
 }
 
 function pushToolResultToHistory(content: string): void {
@@ -444,6 +387,21 @@ export interface ChatDeps {
 
 export function setupChatInterface(deps: ChatDeps) {
   _chatDeps = deps;
+  onPortalConfirmSubmit(async (project) => {
+    if (!project.portalProfile) return;
+    const portalSummary = project.portalSummary ?? buildPortalSummary(project.portalProfile);
+    const portalDraft = buildPortalDraft(portalSummary);
+    Object.assign(project, applyPortalDraftToProject(project, portalDraft));
+    project.portalSummary = {
+      ...portalSummary,
+      confirmedAt: Date.now(),
+    };
+    await saveProject(project);
+    await syncProjectWorkspaceSnapshot(project);
+    renderWorkspaceEditorShell(project.workspace ?? null);
+    const prompt = createPortalGenerationPrompt(project.portalSummary);
+    await callAI(prompt);
+  });
   (globalThis as any).__selectThemePreview = (index: number) => {
     if (!latestThemePreviews || index < 0 || index >= latestThemePreviews.length) return;
     const selected = latestThemePreviews[index];
@@ -836,7 +794,6 @@ export function setupChatInterface(deps: ChatDeps) {
       }
     }
 
-    let portalGenerationPrompt: string | undefined;
     let activeProjectId = getCurrentProjectId();
     if (!activeProjectId && content) {
       const newProject = await createProject('未命名项目', 'light-ui');
@@ -850,21 +807,12 @@ export function setupChatInterface(deps: ChatDeps) {
     if (activeProjectId) {
       const activeProject = await loadProject(activeProjectId);
       if (activeProject) {
-        const portalFlow = await resolvePortalWorkflowForMessage(activeProject, content);
-        if (portalFlow.aiReply) {
-          addMessageToChat('ai', portalFlow.aiReply);
-          pushToolResultToHistory(portalFlow.aiReply);
-          await saveChatHistory();
-        }
-        if (portalFlow.blocked) {
-          return;
-        }
-        portalGenerationPrompt = portalFlow.generationPrompt;
+        await resolvePortalWorkflowForMessage(activeProject, content);
       }
     }
 
-    if ((content || portalGenerationPrompt) && !shouldSkipAiForPrimaryImage && !shouldUpgradeExistingReference) {
-      await callAI(portalGenerationPrompt ?? content);
+    if ((content) && !shouldSkipAiForPrimaryImage && !shouldUpgradeExistingReference) {
+      await callAI(content);
     }
     if (!content && hasImages && currentImageRole !== 'primary') {
       addMessageToChat('ai', '已收到这张参考图。继续输入一句描述，比如“参考这张图做一个春日主题”，我就会开始生成。');
@@ -1258,6 +1206,35 @@ export function setupChatInterface(deps: ChatDeps) {
             await saveCurrentColorsToProject();
             syncColorEditorFromTheme();
             deps.expandPreview();
+            await saveChatHistory();
+          } else if (tc.tool === 'update_portal_profile') {
+            const toolProfile = (result.data as { profile?: Partial<import('./types').PortalCustomerProfile> }).profile;
+            if (toolProfile) {
+              const pid = getCurrentProjectId();
+              if (pid) {
+                const proj = await loadProject(pid);
+                if (proj) {
+                  const previousProfile = proj.portalProfile;
+                  const nextProfile = mergePortalProfile(previousProfile, toolProfile, 'chat');
+                  proj.portalProfile = nextProfile;
+                  if (proj.name === '未命名项目' && nextProfile.customerName) {
+                    proj.name = `${nextProfile.customerName}门户`;
+                    proj.themeName = proj.name;
+                    updateProjectNameDisplay(proj);
+                  }
+                  await saveProject(proj);
+                  const workflow = getPortalWorkflowState(proj.portalProfile, proj.portalSummary);
+                  if (workflow.status === 'ready_to_generate' && !proj.portalSummary) {
+                    proj.portalSummary = buildPortalSummary(proj.portalProfile);
+                    await saveProject(proj);
+                    const confirmMsg = '📋 已完整收集客户信息，请确认后开始生成门户。';
+                    await addMessageToChat('ai', confirmMsg);
+                    pushToolResultToHistory(confirmMsg);
+                    showPortalConfirmForm(proj);
+                  }
+                }
+              }
+            }
             await saveChatHistory();
           }
         } else {
