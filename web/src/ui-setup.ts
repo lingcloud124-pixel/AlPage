@@ -1,11 +1,14 @@
 import { renderTemplate } from './templates/loader';
-import { getCurrentProjectId } from './project-manager';
 import {
-  getDefaultLandingPromptEntries,
-} from './landing-prompts';
+  getCurrentProjectId,
+  loadProject,
+  markPortalResultFullscreenViewed,
+  markPortalResultSaved,
+  markPortalResultShared,
+  saveProject,
+} from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, loadDefaultTemplates } from './theme-engine';
 import { setupChatInterface } from './chat-manager';
-import { setupMainActions } from './package-manager';
 import { initializeColorEditor } from './components/color-editor';
 import { showWorkspaceLandingState } from './main';
 import { toggleSidebar } from './components/sidebar';
@@ -123,6 +126,82 @@ export function setupBackToHome() {
   homeTriggers.forEach((trigger) => {
     trigger.addEventListener('click', () => showWorkspaceLandingState());
   });
+}
+
+async function withCurrentProject(
+  updater: (project: NonNullable<Awaited<ReturnType<typeof loadProject>>>) => Promise<void> | void,
+): Promise<void> {
+  const projectId = getCurrentProjectId();
+  if (!projectId) return;
+  const project = await loadProject(projectId);
+  if (!project) return;
+  await updater(project);
+}
+
+async function handleResultFullscreen(): Promise<void> {
+  const previewPanel = document.getElementById('previewPanel') as HTMLElement | null;
+  if (!previewPanel) return;
+  if (document.fullscreenElement !== previewPanel) {
+    await previewPanel.requestFullscreen?.();
+  }
+  await withCurrentProject(async (project) => {
+    await saveProject(markPortalResultFullscreenViewed(project));
+  });
+}
+
+async function handleResultSave(): Promise<void> {
+  await withCurrentProject(async (project) => {
+    await saveProject(markPortalResultSaved(project));
+  });
+  const saveBtn = document.getElementById('resultSaveBtn') as HTMLButtonElement | null;
+  if (saveBtn) {
+    const original = saveBtn.textContent;
+    saveBtn.textContent = '已保存';
+    window.setTimeout(() => {
+      saveBtn.textContent = original ?? '保存门户';
+    }, 1600);
+  }
+}
+
+async function handleResultShare(): Promise<void> {
+  const projectId = getCurrentProjectId();
+  if (!projectId) return;
+  const shareUrl = `${window.location.origin}${window.location.pathname}#project=${projectId}`;
+  const shareData = {
+    title: '客户门户方案',
+    text: '我刚整理了一份客户门户方案，可以直接查看并继续迭代。',
+    url: shareUrl,
+  };
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData);
+    } catch {
+      // Fall back to clipboard when native share is canceled or unavailable.
+    }
+  }
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(shareUrl);
+  }
+  await withCurrentProject(async (project) => {
+    await saveProject(markPortalResultShared(project));
+  });
+}
+
+function handleResultEdit(): void {
+  const designModeBtn = document.getElementById('workspaceDesignModeBtn') as HTMLButtonElement | null;
+  designModeBtn?.click();
+}
+
+export function setupResultActions() {
+  const fullscreenBtn = document.getElementById('resultFullscreenBtn') as HTMLButtonElement | null;
+  const saveBtn = document.getElementById('resultSaveBtn') as HTMLButtonElement | null;
+  const shareBtn = document.getElementById('resultShareBtn') as HTMLButtonElement | null;
+  const editBtn = document.getElementById('resultEditBtn') as HTMLButtonElement | null;
+
+  fullscreenBtn?.addEventListener('click', () => { void handleResultFullscreen(); });
+  saveBtn?.addEventListener('click', () => { void handleResultSave(); });
+  shareBtn?.addEventListener('click', () => { void handleResultShare(); });
+  editBtn?.addEventListener('click', handleResultEdit);
 }
 
 async function loadHeaderIntoMainPage(headerId: string) {

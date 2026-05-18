@@ -31,7 +31,7 @@ import { updateCustomerVisualProfile, loadCustomerVisualProfile } from './tools/
 import type { ThemePreview } from './tools/executor';
 import { classifyImageIntent } from './image-intent';
 import { applyPrimaryImageToProject } from './primary-image-flow';
-import { showNotificationWithOptions } from './package-manager';
+import { showNotificationWithOptions } from './utils/notification';
 import { createConversation, updateConversation } from './api/conversations';
 import type { ConversationCreatePayload, ConversationUpdatePayload, ConversationImageData } from './types';
 import { setActiveConversation, getActiveConversationId, refreshSidebar } from './components/sidebar';

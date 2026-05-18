@@ -7,6 +7,7 @@ import type { ExportBatchStatus, ExportJobQueueEntry } from './types';
 import { loadSettings, saveSettings, getEffectiveExportRoot } from './agent/chat-client';
 import { apiFetch, resolveApiUrl } from './api-base';
 import { normalizeExportRoot } from './export/export-paths';
+import { showNotificationWithOptions } from './utils/notification';
 
 const EXPORT_JOB_QUEUE_KEY = 'theme-studio-export-jobs';
 
@@ -53,35 +54,14 @@ async function ensureProjectForPackaging(): Promise<Awaited<ReturnType<typeof lo
     return null;
   }
 
-  createdProject.themeName = projectTitle === '开始新创作' ? 'AI主题' : projectTitle;
+  createdProject.themeName = projectTitle === '开始新创作' ? '未命名门户' : projectTitle;
   createdProject.lifecycle = 'active';
   setCurrentProjectId(createdProject.id);
   await saveProject(createdProject);
   return createdProject;
 }
 
-export function showNotificationWithOptions(
-  message: string,
-  options: {
-    variant?: 'default' | 'critical';
-    position?: 'bottom-right' | 'top-center';
-    durationMs?: number;
-  } = {},
-) {
-  const toast = document.createElement('div');
-  toast.className = 'theme-studio-toast';
-  toast.dataset.variant = options.variant ?? 'default';
-  toast.dataset.position = options.position ?? 'bottom-right';
-  toast.textContent = message;
-  toast.style.opacity = '0';
-  toast.style.transition = 'opacity 0.3s';
-  document.body.appendChild(toast);
-  setTimeout(() => { toast.style.opacity = '1'; }, 10);
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    setTimeout(() => { if (document.body.contains(toast)) document.body.removeChild(toast); }, 300);
-  }, options.durationMs ?? 3000);
-}
+export { showNotificationWithOptions };
 
 export function setupMainActions() {
   const packageBtn = document.getElementById('packageBtn');
@@ -96,7 +76,7 @@ function showPackageModal() {
   if (!modal) { console.error('Package modal not found'); return; }
   generateProductList();
   const startBtn = document.getElementById('packageStartBtn') as HTMLButtonElement;
-  if (startBtn) { startBtn.textContent = '开始打包'; startBtn.disabled = false; }
+  if (startBtn) { startBtn.textContent = '开始导出'; startBtn.disabled = false; }
   modal.classList.add('active');
 }
 
@@ -194,7 +174,7 @@ function renderProgressWithDownload(step: string, detail?: string, dlUrl?: strin
 
   const isLoading = step !== 'completed' && step !== 'failed';
   const iconChar = isLoading ? '⚙️' : step === 'completed' ? '✅' : '❌';
-  const title = isLoading ? step : step === 'completed' ? '打包完成' : '打包失败';
+  const title = isLoading ? step : step === 'completed' ? '导出完成' : '导出失败';
   notice?.classList.toggle('is-visible', isLoading);
 
   content.innerHTML = `
@@ -245,7 +225,7 @@ async function resolveExportRoot(): Promise<string> {
     const settings = loadSettings();
     const fallback = settings.exportRoot?.trim() ? getEffectiveExportRoot(settings) : '';
     if (fallback) return fallback;
-    throw new Error('请选择导出目录后再执行打包');
+    throw new Error('请选择导出目录后再执行导出');
   }
 }
 
@@ -262,7 +242,7 @@ async function startPackagingProcess() {
     console.log('[Packaging] selectedProducts:', selectedProducts);
 
     if (selectedProducts.length === 0) {
-      showNotification('请至少选择一个产品进行打包');
+      showNotification('请至少选择一个产品进行导出');
       if (startBtn) startBtn.disabled = false;
       return;
     }
@@ -270,7 +250,7 @@ async function startPackagingProcess() {
     const project = await ensureProjectForPackaging();
     console.log('[Packaging] project:', project ? project.id : 'null');
     if (!project) {
-      showNotification('请先创建或打开一个项目，再执行打包');
+      showNotification('请先创建或打开一个项目，再执行导出');
       if (startBtn) startBtn.disabled = false;
       return;
     }
@@ -288,7 +268,7 @@ async function startPackagingProcess() {
       return;
     }
 
-    renderProgress('正在提交打包任务...');
+    renderProgress('正在提交导出任务...');
     console.log('[Packaging] submitting export job...');
 
     const vars = getAllCSSVariables();
@@ -307,7 +287,7 @@ async function startPackagingProcess() {
         'failed',
         saveError?.code === 'PROJECT_LIMIT_EXCEEDED'
           ? `当前项目数已达上限，无法记录新的打包任务。${saveError.message}`
-          : `保存打包任务失败：${saveError?.message ?? '请稍后重试'}`,
+          : `保存导出任务失败：${saveError?.message ?? '请稍后重试'}`,
       );
       return;
     }
@@ -327,7 +307,7 @@ async function startPackagingProcess() {
       return;
     }
 
-    renderProgress('打包任务已提交...');
+    renderProgress('导出任务已提交...');
     const backendJobId = dispatchResult.jobId ?? request.batch.id;
     trackExportJobStatus(updatedProject.id, backendJobId, selectedProducts.length);
   } catch (e) {
@@ -354,7 +334,7 @@ async function trackExportJobStatus(projectId: string, batchId: string, productC
       const status = await fetchExportJobStatus(fetch, batchId).catch(() => null);
       if (!status) {
         if (attempts >= MAX_STATUS_POLL_ATTEMPTS) {
-          renderProgress('failed', '导出任务状态查询超时，请稍后刷新项目列表或重试打包');
+          renderProgress('failed', '导出任务状态查询超时，请稍后刷新项目列表或重试导出');
           return;
         }
         window.setTimeout(poll, 2000);
@@ -383,8 +363,8 @@ async function trackExportJobStatus(projectId: string, batchId: string, productC
           'completed',
           `<div class="export-steps">
           <div class="export-step"><span class="export-step-num">1</span><span class="export-step-text">点击 <b>下载文件</b> 按钮，保存 zip 包到本地</span></div>
-          <div class="export-step"><span class="export-step-num">2</span><span class="export-step-text">解压 zip 包，获得各产品的主题包文件</span></div>
-          <div class="export-step"><span class="export-step-num">3</span><span class="export-step-text">前往 MK 系统门户管理板块导入主题包</span></div>
+          <div class="export-step"><span class="export-step-num">2</span><span class="export-step-text">解压 zip 包，获得各产品的兼容交付文件</span></div>
+          <div class="export-step"><span class="export-step-num">3</span><span class="export-step-text">按历史系统导入规范继续处理兼容交付文件</span></div>
           <div class="export-step"><span class="export-step-num">4</span><span class="export-step-text">在系统中选择新主题，即可切换使用</span></div>
         </div>`,
           dlUrl,
@@ -402,7 +382,7 @@ async function trackExportJobStatus(projectId: string, batchId: string, productC
         queued: '排队中...',
         preparing: '正在准备素材...',
         capturing: '正在截图...',
-        packaging: '正在打包...',
+        packaging: '正在导出兼容包...',
         verifying: '正在验证...',
       };
       renderProgress(statusLabels[statusStr] ?? '处理中...');

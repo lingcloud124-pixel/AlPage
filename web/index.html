@@ -183,10 +183,9 @@
                         <div class="workspace-result-actions" id="workspaceResultActions">
                             <button class="topbar-action-btn" id="resultFullscreenBtn" type="button">全屏查看</button>
                             <button class="topbar-action-btn" id="resultSaveBtn" type="button">保存门户</button>
-                            <button class="topbar-action-btn" id="resultShareBtn" type="button">分享方案</button>
-                            <button class="topbar-action-btn" id="resultEditBtn" type="button">继续编辑</button>
-                            <button class="topbar-action-btn topbar-action-btn--secondary" id="packageBtn" type="button">导出兼容包</button>
-                        </div>
+                             <button class="topbar-action-btn" id="resultShareBtn" type="button">分享方案</button>
+                             <button class="topbar-action-btn" id="resultEditBtn" type="button">继续编辑</button>
+                         </div>
                     </div>
                 </div>
                 
@@ -227,42 +226,6 @@
                 <h3 class="qc-title">质检报告</h3>
                 <button class="qc-run-btn" id="qcRunBtn">运行检查</button>
                 <div id="qcResults" class="qc-results"></div>
-            </div>
-        </div>
-
-        <!-- 打包选择弹窗 -->
-        <div class="modal-overlay" id="packageModal">
-            <div class="modal-content package-modal">
-                <header class="package-modal-header">
-                    <div>
-                        <h2 class="package-modal-title">导出兼容包</h2>
-                        <p class="package-modal-subtitle">为当前门户结果导出兼容历史系统的交付包</p>
-                    </div>
-                    <button class="package-modal-close-btn" id="packageModalClose" aria-label="关闭">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                </header>
-                <div class="package-modal-body">
-                    <section class="package-section">
-                        <div class="section-heading">
-                            <span class="section-accent"></span>
-                            <h3>产品选择</h3>
-                        </div>
-                        <div id="packageProductList" class="package-product-list"></div>
-                    </section>
-                </div>
-                <footer class="package-modal-footer">
-                    <button id="packageStartBtn" class="btn-primary">开始导出</button>
-                    <button id="packageCancelBtn" class="btn-secondary">取消</button>
-                </footer>
-            </div>
-        </div>
-
-        <!-- 打包进度弹窗（独立） -->
-        <div class="modal-overlay" id="packageProgressModal">
-            <div class="modal-content package-progress-modal">
-                <div id="packageProgressContent" class="package-progress-content"></div>
-                <div id="packageProgressNotice" class="package-progress-notice">兼容包导出中（约需1分钟），过程中不支持中断，请耐心等待</div>
             </div>
         </div>
 

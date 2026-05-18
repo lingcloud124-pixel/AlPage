@@ -5,7 +5,6 @@ import {
 } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, hydrateHeaderSelectOptions, setupQualityCheck, resetThemeTargetStyles } from './theme-engine';
 import { setupChatInterface, showDefaultChatView } from './chat-manager';
-import { setupMainActions } from './package-manager';
 import {
   expandPreview,
   collapsePreview,
@@ -62,7 +61,6 @@ function runHealthCheck() {
   checks.push({ name: 'CSS 变量', ok: !!getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(), detail: '主题色 CSS 变量未加载' });
   checks.push({ name: '聊天输入框', ok: !!document.getElementById('messageInput'), detail: 'messageInput 元素缺失' });
   checks.push({ name: '预览面板', ok: !!document.getElementById('previewPanel'), detail: 'previewPanel 元素缺失' });
-  checks.push({ name: '导出弹窗', ok: !!document.getElementById('packageModal'), detail: 'packageModal 元素缺失' });
   const failed = checks.filter(c => !c.ok);
   if (failed.length > 0) console.warn('[Health Check] Failed:', failed.map(c => `${c.name}: ${c.detail}`).join('; '));
   else console.log('[Health Check] All passed');
@@ -77,7 +75,6 @@ async function initializeFeatureModules() {
     setChatPanelWidth,
   });
   setupCollapsibleColorPanel();
-  setupMainActions();
   setupQualityCheck();
   setupPreviewPanel();
   setupBackToHome();
