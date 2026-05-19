@@ -99,6 +99,13 @@ function setChatViewMode(mode: 'default' | 'conversation'): void {
   conversationView.classList.toggle('is-hidden', mode !== 'conversation');
 }
 
+function highlightResultActions(): void {
+  const actions = document.getElementById('workspaceResultActions');
+  if (!actions) return;
+  actions.classList.add('result-actions-highlight');
+  setTimeout(() => { actions.classList.remove('result-actions-highlight'); }, 4000);
+}
+
 export function showDefaultChatView(): void {
   setChatViewMode('default');
 }
@@ -1178,6 +1185,9 @@ export function setupChatInterface(deps: ChatDeps) {
               const pipelineMsg = `🎨 我先给您生成了 1 个方案，请先看这张图：${previewHtml}`;
               await addMessageToChat('ai', pipelineMsg);
               pushToolResultToHistory(pipelineMsg);
+              deps.expandPreview();
+              deps.setChatPanelWidth(372);
+              highlightResultActions();
               await saveChatHistory();
             } else {
               const failMsg = '⚠️ 预览图生成失败，请重试。';
