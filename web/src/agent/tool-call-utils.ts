@@ -96,7 +96,7 @@ function isColorAdjustmentMessage(text: string | undefined): boolean {
 
   if (extractHexColor(text)) return true;
 
-  const colorContext = /(主题色|主色|颜色|色调|配色|色彩)/u.test(text);
+  const colorContext = /(门户主色|主色|颜色|色调|配色|色彩)/u.test(text);
   const colorAction = /(改成|换成|调成|调整|改一下|换一下|改为|换为|调为|偏|深一点|浅一点|亮一点|暗一点|鲜艳|柔和|暖一点|冷一点)/u.test(text);
   const namedColor = /(红|蓝|绿|黄|金|橙|紫|粉|棕|咖|褐|灰|青|墨绿|酒红|卡其|米色|藏蓝|深棕|浅棕|暖白)/u.test(text);
   const brightnessOnly = /(亮一点|暗一点|深一点|浅一点|更亮|更暗|更深|更浅)/u.test(text);

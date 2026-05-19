@@ -12,14 +12,14 @@ export interface ColorSetting {
 const defaultLightUiTheme = toCssVarRecord(deriveColorsFromPrimary(DEFAULT_LIGHT_UI_PRIMARY, 'light-ui'));
 
 const colorSettings: ColorSetting[] = [
-  { name: 'primary', property: '--primary-color', label: '主题色', group: 'theme', defaultValue: defaultLightUiTheme['--primary-color'] },
-  { name: 'primary-hover', property: '--primary-color-hover', label: '主题色悬停', group: 'theme', defaultValue: defaultLightUiTheme['--primary-color-hover'] },
+  { name: 'primary', property: '--primary-color', label: '门户主色', group: 'theme', defaultValue: defaultLightUiTheme['--primary-color'] },
+  { name: 'primary-hover', property: '--primary-color-hover', label: '门户主色悬停', group: 'theme', defaultValue: defaultLightUiTheme['--primary-color-hover'] },
   { name: 'alter', property: '--alter-color', label: '辅助色', group: 'theme', defaultValue: defaultLightUiTheme['--alter-color'] },
   { name: 'alter-hover', property: '--alter-color-hover-on', label: '辅助色悬停激活', group: 'theme', defaultValue: defaultLightUiTheme['--alter-color-hover-on'] },
 
-  { name: 'opacity-10', property: '--primary-color-opacity-10', label: '主题色透明度10%', group: 'opacity', defaultValue: defaultLightUiTheme['--primary-color-opacity-10'] },
-  { name: 'opacity-20', property: '--primary-color-opacity-20', label: '主题色透明度20%', group: 'opacity', defaultValue: defaultLightUiTheme['--primary-color-opacity-20'] },
-  { name: 'opacity-30', property: '--primary-color-opacity-30', label: '主题色透明度30%', group: 'opacity', defaultValue: defaultLightUiTheme['--primary-color-opacity-30'] },
+  { name: 'opacity-10', property: '--primary-color-opacity-10', label: '门户主色透明度10%', group: 'opacity', defaultValue: defaultLightUiTheme['--primary-color-opacity-10'] },
+  { name: 'opacity-20', property: '--primary-color-opacity-20', label: '门户主色透明度20%', group: 'opacity', defaultValue: defaultLightUiTheme['--primary-color-opacity-20'] },
+  { name: 'opacity-30', property: '--primary-color-opacity-30', label: '门户主色透明度30%', group: 'opacity', defaultValue: defaultLightUiTheme['--primary-color-opacity-30'] },
 
   { name: 'header-font', property: '--header-font-color', label: '标题字体色', group: 'text', defaultValue: defaultLightUiTheme['--header-font-color'] },
   { name: 'auxiliary-gray', property: '--auxiliary-gray', label: '辅助灰色', group: 'text', defaultValue: defaultLightUiTheme['--auxiliary-gray'] },
@@ -158,7 +158,7 @@ export function initializeColorEditor(): void {
   }
   
   const resetButton = document.createElement('button');
-  resetButton.textContent = '恢复生成主题';
+  resetButton.textContent = '恢复生成配色';
   resetButton.style.width = '100%';
   resetButton.style.marginTop = '20px';
   resetButton.classList.add('reset-button');

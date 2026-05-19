@@ -38,7 +38,7 @@ function renderPromptList(entries: LandingPromptEntry[]): void {
           <input class="landing-prompt-config-input" id="landingPromptLabel${index}" type="text" value="${escapeHtml(entry.label)}">
         </div>
         <div class="landing-prompt-config-field">
-          <label class="landing-prompt-config-label" for="landingPromptColor${index}">固定主题色</label>
+          <label class="landing-prompt-config-label" for="landingPromptColor${index}">固定门户主色</label>
           <input class="landing-prompt-config-input" id="landingPromptColor${index}" type="text" value="${escapeHtml(entry.primaryHint || '')}" placeholder="#RRGGBB">
         </div>
         <div class="landing-prompt-config-field landing-prompt-config-field--full">

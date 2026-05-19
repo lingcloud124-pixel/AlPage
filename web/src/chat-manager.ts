@@ -254,11 +254,11 @@ export function startNewConversation(): void {
     let name = '';
     let m: RegExpMatchArray | null;
 
-    m = text.match(/生成(?:一个|一款)?[「"「]?(\S{1,12}?)[」"」]?(?:主题|风格|界面)/);
+    m = text.match(/生成(?:一个|一款)?[「"「]?(\S{1,12}?)[」"」]?(?:门户|主题|风格|界面)/);
     if (m) name = m[1].replace(/[的啊吧呢呀哦嘛]+$/, '');
 
     if (!name) {
-      m = text.match(/(?:做一个|做个|设计一个|创建一个|弄一个|来一个|来个)[「"「]?(\S{1,12}?)[」"」]?(?:主题|风格|界面)/);
+      m = text.match(/(?:做一个|做个|设计一个|创建一个|弄一个|来一个|来个)[「"「]?(\S{1,12}?)[」"」]?(?:门户|主题|风格|界面)/);
       if (m) name = m[1].replace(/[的啊吧呢呀哦嘛]+$/, '');
     }
 
@@ -268,7 +268,7 @@ export function startNewConversation(): void {
     }
 
     if (!name) {
-      m = text.match(/以[「"「]?(\S{1,12}?)[」"」]?为(?:主题|基调|风格|背景|核心)/);
+      m = text.match(/以[「"「]?(\S{1,12}?)[」"」]?为(?:门户|主题|基调|风格|背景|核心)/);
       if (m) name = m[1].replace(/[的啊吧呢呀哦嘛]+$/, '');
     }
 
@@ -278,7 +278,7 @@ export function startNewConversation(): void {
     }
 
     if (!name) {
-      m = text.match(/主题[是叫为：:]\s*[「"「]?(\S{1,12}?)[」"」]?\s*$/);
+      m = text.match(/门户[是叫为：:]\s*[「"「]?(\S{1,12}?)[」"」]?\s*$/);
       if (m) name = m[1];
     }
 
@@ -287,7 +287,7 @@ export function startNewConversation(): void {
       name = cleaned.length > 10 ? cleaned.substring(0, 10) + '...' : cleaned;
     }
 
-    return /主题$/.test(name) ? name : `${name}主题`;
+    return /门户$/.test(name) ? name : `${name}门户`;
   }
 
   function ensureProjectNameEn(project: Project, sourceText: string): boolean {
@@ -681,7 +681,7 @@ export function setupChatInterface(deps: ChatDeps) {
       await saveChatHistory();
 
       if (finalRole === 'primary' && currentProjectId) {
-        const statusEl = addStatusMessage('正在根据主图提取主题色并生成预览...');
+        const statusEl = addStatusMessage('正在根据主图提取门户主色并生成预览...');
         const imageDataUrl = imagesToSend[0];
         const lockedPrimaryHint = activeInput?.dataset.primaryHint?.trim() ?? '';
         updateProjectVisualContext(currentProjectId, {
@@ -822,7 +822,7 @@ export function setupChatInterface(deps: ChatDeps) {
       await callAI(content);
     }
     if (!content && hasImages && currentImageRole !== 'primary') {
-      addMessageToChat('ai', '已收到这张参考图。继续输入一句描述，比如“参考这张图做一个春日主题”，我就会开始生成。');
+      addMessageToChat('ai', '已收到这张参考图。继续输入一句描述，比如“参考这张图做一个春日门户”，我就会开始生成。');
       await saveChatHistory();
     }
 
@@ -1074,7 +1074,7 @@ export function setupChatInterface(deps: ChatDeps) {
       }
       try {
         showToolLoading(tc.tool === 'generate_theme_pipeline' || tc.tool === 'generate_theme_previews'
-          ? '主题正在生成中，请稍后'
+          ? '门户正在生成中，请稍后'
           : `⚙️ 正在执行 ${tc.tool}...`);
 
         const result = await executeTool(tc, (event) => {

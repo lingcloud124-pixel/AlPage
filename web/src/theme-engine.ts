@@ -201,7 +201,7 @@ function runQualityCheck() {
   resultsContainer.innerHTML = '';
   const root = getComputedStyle(document.documentElement);
   const checks = [
-    { label: '主题文字对比 (primary on white)', fg: root.getPropertyValue('--primary-color').trim(), bg: '#FFFFFF' },
+    { label: '门户文字对比 (primary on white)', fg: root.getPropertyValue('--primary-color').trim(), bg: '#FFFFFF' },
     { label: '标题文字对比 (header-font on body-bg)', fg: root.getPropertyValue('--header-font-color').trim(), bg: root.getPropertyValue('--body-bg-color').trim() },
     { label: '标题文字对比 (header-font on panel)', fg: root.getPropertyValue('--header-font-color').trim(), bg: root.getPropertyValue('--panel-bg-color').trim() || '#FFFFFF' },
     { label: '辅助灰文字对比 (aux-gray on white)', fg: root.getPropertyValue('--auxiliary-gray').trim(), bg: '#FFFFFF' },
