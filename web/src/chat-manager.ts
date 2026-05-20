@@ -647,7 +647,11 @@ export function setupChatInterface(deps: ChatDeps) {
         }
       }
       if (detail.hasGeneratedTheme && detail.projectSnapshot && Object.keys(detail.projectSnapshot).length > 0) {
-        window.dispatchEvent(new CustomEvent('sidebar:restore-project', { detail: detail.projectSnapshot }));
+        const snapshot = detail.projectSnapshot as any;
+        if (!snapshot.bgImageUrl && restoredImageUrl) {
+          snapshot.bgImageUrl = restoredImageUrl;
+        }
+        window.dispatchEvent(new CustomEvent('sidebar:restore-project', { detail: snapshot }));
         const proj = detail.projectSnapshot as any;
         const chatProjectName = document.getElementById('chatProjectName');
         if (chatProjectName && proj.themeName) chatProjectName.textContent = proj.themeName;

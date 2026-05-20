@@ -49,6 +49,8 @@ export function expandPreview() {
   previewPanel.classList.add('expanded');
   appContainer?.classList.add('preview-open');
   toggleSidebar(false);
+  const avatarName = document.getElementById('userAvatarName');
+  if (avatarName) avatarName.style.display = 'none';
   syncWorkbenchLayoutForActiveTab(true, 'loginTab');
 
   if (!previewTemplatesLoaded) {
@@ -64,6 +66,8 @@ export function collapsePreview() {
   const appContainer = document.querySelector('.app-container');
   if (previewPanel) previewPanel.classList.remove('expanded');
   appContainer?.classList.remove('preview-open');
+  const avatarName = document.getElementById('userAvatarName');
+  if (avatarName) avatarName.style.display = '';
   syncWorkbenchLayoutForActiveTab(false, 'loginTab');
 }
 

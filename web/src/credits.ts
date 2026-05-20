@@ -25,9 +25,27 @@ export function setupCreditsTooltip(): void {
   const tooltip = document.getElementById('landingCreditsTooltip') as HTMLElement | null;
   if (!chip || !tooltip) return;
 
+  const positionTooltip = () => {
+    const chipRect = chip.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const gap = 10;
+    let top = chipRect.bottom + gap;
+    let left = chipRect.left + chipRect.width / 2 - tooltipRect.width / 2;
+    if (left < 8) left = 8;
+    if (left + tooltipRect.width > window.innerWidth - 8) {
+      left = window.innerWidth - 8 - tooltipRect.width;
+    }
+    if (top + tooltipRect.height > window.innerHeight - 8) {
+      top = chipRect.top - gap - tooltipRect.height;
+    }
+    tooltip.style.top = `${top}px`;
+    tooltip.style.left = `${left}px`;
+  };
+
   const show = () => {
     tooltip.classList.add('is-visible');
     tooltip.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => positionTooltip());
   };
 
   const hide = () => {
@@ -56,6 +74,13 @@ export function setupCreditsTooltip(): void {
     if (!target) return;
     if (chip.contains(target) || tooltip.contains(target)) return;
     hide();
+  });
+
+  window.addEventListener('scroll', () => {
+    if (tooltip.classList.contains('is-visible')) positionTooltip();
+  }, true);
+  window.addEventListener('resize', () => {
+    if (tooltip.classList.contains('is-visible')) positionTooltip();
   });
 }
 
