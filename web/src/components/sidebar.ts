@@ -5,16 +5,16 @@ let activeConversationId: string | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function initSidebar(): void {
-  const container = document.getElementById('sidebarContainer');
-  const headerRow = container?.querySelector('.sidebar-header');
   const toggleBtn = document.getElementById('sidebarToggleBtn');
-  const collapseBtn = document.getElementById('sidebarCollapseBtn');
   const newChatBtn = document.getElementById('sidebarNewChatBtn');
   const newChatFullBtn = document.getElementById('sidebarNewChatFullBtn');
 
-  toggleBtn?.addEventListener('click', () => toggleSidebar(true));
-  collapseBtn?.addEventListener('click', () => toggleSidebar(false));
-  headerRow?.addEventListener('click', () => toggleSidebar(false));
+  toggleBtn?.addEventListener('click', () => {
+    const container = document.getElementById('sidebarContainer');
+    if (!container) return;
+    const isExpanded = container.classList.contains('expanded');
+    toggleSidebar(!isExpanded);
+  });
   newChatBtn?.addEventListener('click', () => dispatchNewConversation());
   newChatFullBtn?.addEventListener('click', () => dispatchNewConversation());
 

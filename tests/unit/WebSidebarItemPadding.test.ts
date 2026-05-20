@@ -5,10 +5,10 @@ import { describe, expect, test } from 'vitest';
 const projectRoot = process.cwd();
 
 describe('web sidebar item padding', () => {
-  test('uses a 24px left padding for conversation rows', () => {
+  test('uses padding for conversation rows', () => {
     const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
     const block = [...styles.matchAll(/\.sidebar-item\s*\{([^}]*)\}/g)].at(-1)?.[1] || '';
 
-    expect(block).toContain('padding: 6px 10px 6px 24px;');
+    expect(block).toContain('padding: 6px 10px;');
   });
 });

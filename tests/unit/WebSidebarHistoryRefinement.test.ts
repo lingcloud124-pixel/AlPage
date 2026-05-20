@@ -8,7 +8,7 @@ describe('web sidebar history refinement', () => {
   test('hides the sidebar list scrollbar, keeps collapsed rail white, and uses stable white active history items', () => {
     const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
 
-    expect(styles).toContain('.sidebar:not(.expanded) {');
+    expect(styles).toContain('.sidebar {');
     expect(styles).toContain('background-color: #ffffff;');
     expect(styles).toContain('.sidebar-list {');
     expect(styles).toContain('padding-right: 0;');
