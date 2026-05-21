@@ -8,6 +8,10 @@ import { loadSettings, saveSettings, getEffectiveExportRoot } from './agent/chat
 import { apiFetch, resolveApiUrl } from './api-base';
 import { normalizeExportRoot } from './export/export-paths';
 
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 const EXPORT_JOB_QUEUE_KEY = 'theme-studio-export-jobs';
 
 const PACKAGE_PRODUCTS = [
@@ -107,7 +111,7 @@ function generateProductList() {
   PACKAGE_PRODUCTS.forEach(product => {
     const label = document.createElement('label');
     label.className = 'product-item';
-    label.innerHTML = `<input type="checkbox" id="${product.id}_cb" value="${product.id}"><span>${product.label}</span>`;
+    label.innerHTML = `<input type="checkbox" id="${escapeHtml(product.id)}_cb" value="${escapeHtml(product.id)}"><span>${escapeHtml(product.label)}</span>`;
     productList.appendChild(label);
   });
   bindSelectAllButtons();
@@ -203,7 +207,7 @@ function renderProgressWithDownload(step: string, detail?: string, dlUrl?: strin
     ${detail ? `<div class="package-progress-detail">${detail}</div>` : ''}
     ${step === 'completed' ? `
       <div style="display:flex;gap:12px;justify-content:center;margin-top:8px;">
-        ${dlUrl ? `<button class="package-progress-btn success" id="progressDownloadBtn" data-dl-url="${dlUrl}" data-filename="${filename ?? ''}">下载文件</button>` : ''}
+        ${dlUrl ? `<button class="package-progress-btn success" id="progressDownloadBtn" data-dl-url="${escapeHtml(dlUrl)}" data-filename="${escapeHtml(filename ?? '')}">下载文件</button>` : ''}
         <button class="package-progress-btn error" id="progressDismissBtn" style="background:var(--surface-2,#e5e5e5);color:#000;">关闭</button>
       </div>
     ` : ''}
@@ -384,7 +388,6 @@ async function trackExportJobStatus(projectId: string, batchId: string, productC
           `<div class="export-steps">
           <div class="export-step"><span class="export-step-num">1</span><span class="export-step-text">点击 <b>下载文件</b> 按钮，保存 zip 包到本地</span></div>
           <div class="export-step"><span class="export-step-num">2</span><span class="export-step-text">解压 zip 包，获得各产品的主题包文件</span></div>
-          <div class="export-step export-step--doc-link"><a class="export-doc-link" href="https://myekp.landray.com.cn/sys/attachment/sys_att_main/sysAttMain.do?method=view&amp;fdId=19d70b3013bb311a5b5b3ff4f719d02d" target="_blank" rel="noreferrer">使用主题包说明文档</a></div>
         </div>`,
           dlUrl,
           filename,

@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import {
   chatCompletion,
   loadSettings,
@@ -27,6 +28,10 @@ import { renderLandingPromptButtonsAsync, resolveLegacyLandingPreset } from './l
 import { createConversation, updateConversation } from './api/conversations';
 import type { ConversationCreatePayload, ConversationUpdatePayload, ConversationImageData } from './types';
 import { setActiveConversation, getActiveConversationId, refreshSidebar } from './components/sidebar';
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
 const conversationHistory: ChatMessage[] = [];
 let activeAbortController: AbortController | null = null;
@@ -107,7 +112,7 @@ export function renderMessage(role: 'user' | 'ai', content: string): HTMLElement
   contentDiv.className = 'message-content';
   if (content) {
     if (role === 'ai') {
-      contentDiv.innerHTML = marked.parse(content) as string;
+      contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(content) as string) as string;
     } else {
       contentDiv.textContent = content;
     }
@@ -344,9 +349,9 @@ function addPresetCardsMessage(cards: Array<{key: string; label: string; primary
     const card = document.createElement('div');
     card.className = 'preset-card-chat';
     card.innerHTML = `
-      <div class="preset-card-swatch" style="background: ${preset.primary};"></div>
+      <div class="preset-card-swatch" style="background: ${escapeHtml(preset.primary)};"></div>
       <div class="preset-card-info">
-        <span class="preset-card-label">${preset.label}</span>
+        <span class="preset-card-label">${escapeHtml(preset.label)}</span>
         <span class="preset-card-type">${preset.type === 'dark-ui' ? '暗色' : '亮色'}</span>
       </div>
       <button class="preset-card-view-btn" title="查看预览">查看</button>

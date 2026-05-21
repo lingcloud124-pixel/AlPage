@@ -12,6 +12,7 @@
     "screenshot:single": "npx tsx scripts/screenshot.ts"
   },
   "dependencies": {
+    "dompurify": "^3.4.5",
     "file-saver": "^2.0.5",
     "jszip": "^3.10.1",
     "marked": "^18.0.0",
@@ -21,6 +22,7 @@
     "@playwright/test": "^1.59.1",
     "@tailwindcss/cli": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
+    "@types/dompurify": "^3.0.5",
     "@types/file-saver": "^2.0.7",
     "@types/node": "^25.6.0",
     "https-proxy-agent": "^9.0.0",

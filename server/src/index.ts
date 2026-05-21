@@ -106,6 +106,22 @@ app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self'",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; '),
+  );
   res.removeHeader('X-Powered-By');
   next();
 });
@@ -188,6 +204,10 @@ app.get('/admin/{*splat}', (_req, res) => {
 });
 
 const webDist = join(__dirname, '..', '..', 'web', 'dist');
+app.use('/assets', express.static(join(webDist, 'assets'), {
+  maxAge: '365d',
+  immutable: true,
+}));
 app.use(express.static(webDist));
 app.get('/{*splat}', (_req, res) => {
   const indexPath = join(webDist, 'index.html');

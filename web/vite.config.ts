@@ -48,6 +48,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    target: 'es2020',
+    cssMinify: true,
     rollupOptions: {
       input: {
         index: resolve(__dirname, 'index.html'),
@@ -55,5 +57,8 @@ export default defineConfig({
         loginPreview: resolve(__dirname, 'login-preview.html'),
       },
     },
+  },
+  esbuild: {
+    drop: ['console', 'debugger'],
   },
 });

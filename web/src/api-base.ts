@@ -27,13 +27,14 @@ export function resolveApiUrl(path: string): string {
     return normalizedPath;
   }
 
-  const { protocol, hostname, port } = window.location;
-  if (port === '5173' || port === '4173') {
-    return normalizedPath;
-  }
-
-  if (LOCALHOST_HOSTS.has(hostname) && port !== '3001') {
-    return `${protocol}//${hostname}:3001${normalizedPath}`;
+  if (import.meta.env.DEV) {
+    const { protocol, hostname, port } = window.location;
+    if (port === '5173' || port === '4173') {
+      return normalizedPath;
+    }
+    if (LOCALHOST_HOSTS.has(hostname) && port !== '3001') {
+      return `${protocol}//${hostname}:3001${normalizedPath}`;
+    }
   }
 
   return normalizedPath;
