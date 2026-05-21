@@ -1,5 +1,4 @@
 import type { ChatRequest, ChatResponse, AISettings } from '../types';
-import { redirectToLogin } from '../auth';
 import { fetchCredits, updateCreditsDisplay, formatNextReset, getCachedCredits } from '../credits';
 import { getCurrentProjectId } from '../project-manager';
 import { apiFetch } from '../api-base';
@@ -298,7 +297,6 @@ export async function chatCompletion(
       refreshTimeout();
 
       if (response.status === 401) {
-        redirectToLogin();
         throw new Error('未授权，请重新登录');
       }
 

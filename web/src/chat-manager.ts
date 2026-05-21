@@ -4,7 +4,6 @@ import {
   loadSettings,
   parseToolCallsFromContent,
 } from './agent/chat-client';
-import { redirectToLogin } from './auth';
 import { enrichToolCallsWithColorHints } from './agent/tool-call-utils';
 import { getSystemPrompt } from './agent/system-prompt';
 import { loadUserPreferences, extractPreferencesFromMessage, saveUserPreferences, trackPresetUsage } from './agent/user-preferences';

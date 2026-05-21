@@ -19,7 +19,7 @@ import {
   setupCollapsibleColorPanel,
 } from './ui-setup';
 import { loadDefaultTemplates } from './theme-engine';
-import { checkAuth, getUser, redirectToLogin } from './auth';
+import { checkAuth, getUser } from './auth';
 import { fetchCredits, setupCreditsTooltip, startCreditsAutoRefresh, updateCreditsDisplay } from './credits';
 import { initSidebar } from './components/sidebar';
 import { registerPreviewResize, resizePreviewPages } from './preview/resize-preview';
@@ -117,7 +117,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         console.warn('Local dev: auth skipped (no EKP cookie)');
       } else {
-        redirectToLogin();
         return;
       }
     }
@@ -169,6 +168,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.setTimeout(resizePreviewPages, 1000);
   } catch (error) {
     console.error('Initialization failed:', error);
-    redirectToLogin();
   }
 });

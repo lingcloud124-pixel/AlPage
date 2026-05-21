@@ -2,8 +2,6 @@ import { apiFetch } from './api-base';
 
 const USER_KEY = 'theme-studio-user';
 
-const EKP_LOGIN_URL = '/sys/authentication/sso/login_auto.jsp';
-
 export interface AuthUser {
   id: number;
   name: string;
@@ -34,9 +32,4 @@ export async function checkAuth(): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-export function redirectToLogin(): void {
-  const target = encodeURIComponent(window.location.href);
-  window.location.href = `${EKP_LOGIN_URL}?target=${target}`;
 }
