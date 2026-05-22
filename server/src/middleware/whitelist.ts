@@ -14,7 +14,8 @@ export function whitelistMiddleware(req: Request, res: Response, next: NextFunct
   }
 
   try {
-    const users: string[] = JSON.parse(config.whitelist_users as string || '[]');
+    const raw = config.whitelist_users;
+    const users: string[] = typeof raw === 'string' ? JSON.parse(raw) : Array.isArray(raw) ? raw : [];
     if (users.includes(loginName)) {
       return next();
     }
@@ -25,7 +26,7 @@ export function whitelistMiddleware(req: Request, res: Response, next: NextFunct
       message: '系统正在内测中，暂未对您开放，请联系管理员',
     });
   } catch {
-    logger.error('Failed to parse whitelist_users');
+    logger.error('Failed to parse whitelist_users', { rawValue: String(config.whitelist_users).slice(0, 200) });
     res.status(503).json({
       error: 'WHITELIST_CONFIG_ERROR',
       message: '白名单配置异常，请联系管理员',

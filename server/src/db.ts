@@ -14,6 +14,15 @@ let backupTimer: ReturnType<typeof setInterval> | null = null;
 let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
+function safeJsonParse<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
 /** Schedule a debounced write to disk (500ms). Multiple rapid saves coalesce into one. */
 export function saveDb(): void {
   if (saveTimer) clearTimeout(saveTimer);
@@ -442,18 +451,13 @@ export function getSecurityConfig(): any {
     return null;
   }
   
-  try {
-    return {
-      ...row,
-      cors_origins: JSON.parse(row.cors_origins as string),
-      proxy_image_hosts: JSON.parse(row.proxy_image_hosts as string),
-      rate_limits: JSON.parse(row.rate_limits as string),
-      enabled_features: JSON.parse(row.enabled_features as string)
-    };
-  } catch (e) {
-    logger.error('Error parsing security config JSON', e);
-    return null;
-  }
+  return {
+    ...row,
+    cors_origins: safeJsonParse(row.cors_origins as string, []),
+    proxy_image_hosts: safeJsonParse(row.proxy_image_hosts as string, []),
+    rate_limits: safeJsonParse(row.rate_limits as string, {}),
+    enabled_features: safeJsonParse(row.enabled_features as string, {}),
+  };
 }
 
 export async function updateSecurityConfig(
