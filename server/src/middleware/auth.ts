@@ -11,6 +11,9 @@ const SSO_COOKIE_NAME = 'LR_myekp';
 const DEV_MODE = process.env.NODE_ENV !== 'production' && process.env.ENABLE_DEV_AUTH === 'true';
 const DEV_LOGIN_NAME = process.env.DEV_LOGIN_NAME || 'dev_user';
 
+const TOKEN_CACHE_TTL_MS = 5 * 60 * 1000;
+const tokenCache = new Map<string, { loginName: string; expiresAt: number }>();
+
 interface EkpTokenResponse {
   result: boolean;
   errorMsg?: string;
@@ -23,7 +26,36 @@ function buildTokenResolveUrl(token: string): string {
   return `${base}${path}?token=${encodeURIComponent(token)}`;
 }
 
-export async function resolveLoginName(token: string): Promise<string | null> {
+function getCachedLoginName(token: string): string | null {
+  const entry = tokenCache.get(token);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    tokenCache.delete(token);
+    return null;
+  }
+  return entry.loginName;
+}
+
+function setTokenCache(token: string, loginName: string): void {
+  if (tokenCache.size > 10000) {
+    const now = Date.now();
+    for (const [key, val] of tokenCache) {
+      if (now > val.expiresAt) tokenCache.delete(key);
+    }
+    if (tokenCache.size > 10000) {
+      const firstKey = tokenCache.keys().next().value;
+      if (firstKey) tokenCache.delete(firstKey);
+    }
+  }
+  tokenCache.set(token, { loginName, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
+}
+
+export async function resolveLoginName(token: string, useCache = true): Promise<string | null> {
+  if (useCache) {
+    const cached = getCachedLoginName(token);
+    if (cached) return cached;
+  }
+
   if (!EKP_BASE_URL) {
     logger.error('EKP_BASE_URL not configured');
     return null;
@@ -51,6 +83,7 @@ export async function resolveLoginName(token: string): Promise<string | null> {
       return null;
     }
 
+    setTokenCache(token, data.loginName);
     return data.loginName;
   } catch (err) {
     logger.error('EKP token validation request failed', err);
