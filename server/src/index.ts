@@ -44,6 +44,7 @@ const [
   { default: adminPasswordRouter },
   { default: adminAuthRouter },
   { usageLogsRouter },
+  { ssoRouter },
 ] = await Promise.all([
   import('express'),
   import('./db.js'),
@@ -64,6 +65,7 @@ const [
   import('./routes/admin-password.js'),
   import('./routes/admin-auth.js'),
   import('./routes/usage-logs.js'),
+  import('./routes/sso.js'),
 ]);
 
 const { migratePlaintextKeys } = await import('./routes/model-config.js');
@@ -182,6 +184,7 @@ app.put('/api/landing-prompts-config', adminAuthMiddleware, async (req, res) => 
   }
 });
 app.use('/api/admin-auth', adminAuthRouter);
+app.use('/api/auth/sso', ssoRouter);
 app.use('/api/theme', authMiddleware);
 app.use('/api/theme', whitelistMiddleware);
 app.use('/api/theme', (req: any, _res: any, next: any) => {

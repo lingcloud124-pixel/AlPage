@@ -117,8 +117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         console.warn('Local dev: auth skipped (no EKP cookie)');
       } else {
-        const workspaceView = document.getElementById('workspaceView');
-        if (workspaceView) workspaceView.style.display = 'none';
+        window.location.href = '/api/auth/sso/login';
         return;
       }
     }

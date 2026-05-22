@@ -23,7 +23,7 @@ function buildTokenResolveUrl(token: string): string {
   return `${base}${path}?token=${encodeURIComponent(token)}`;
 }
 
-async function resolveLoginName(token: string): Promise<string | null> {
+export async function resolveLoginName(token: string): Promise<string | null> {
   if (!EKP_BASE_URL) {
     logger.error('EKP_BASE_URL not configured');
     return null;
@@ -98,3 +98,5 @@ export function adminAuthMiddleware(req: Request, res: Response, next: NextFunct
 
   res.status(401).json({ error: 'Unauthorized' });
 }
+
+export { EKP_BASE_URL, SSO_COOKIE_NAME };
