@@ -132,6 +132,7 @@
     .status-pill.failed { color: #fecaca; background: rgba(239, 68, 68, .14); }
     .status-pill.pending { color: #fde68a; background: rgba(245, 158, 11, .14); }
     .empty-state { color: var(--muted); font-size: 13px; padding: 18px 0; }
+    .wl-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
   </style>
 </head>
 <body>
@@ -141,7 +142,7 @@
       <div class="login-form">
         <label>管理员密码</label>
         <input type="password" id="adminPassword" placeholder="输入管理员密码">
-        <button class="btn-primary" onclick="authenticateAdmin()" style="margin-top: 16px;">进入管理面板</button>
+        <button class="btn-primary" id="loginBtn" style="margin-top: 16px;">进入管理面板</button>
       </div>
     </div>
     
@@ -149,19 +150,19 @@
       <div class="header-row">
         <h1>Theme Studio 后台管理</h1>
         <div style="position: relative;">
-          <button class="menu-btn" onclick="toggleMenu()">⋯</button>
+          <button class="menu-btn" id="menuBtn">⋯</button>
           <div class="menu-dropdown" id="menuDropdown">
-            <button onclick="showChangePassword()">修改密码</button>
-            <button onclick="logoutAdmin()">退出管理账户</button>
+            <button data-action="change-password">修改密码</button>
+            <button data-action="logout">退出管理账户</button>
           </div>
         </div>
       </div>
       <p class="subtitle">配置 AI 模型和查看用户，配置保存后立即生效</p>
 
       <div class="tab-bar">
-        <button class="tab-btn active" data-tab="config" onclick="switchTab('config')">产品配置</button>
-        <button class="tab-btn" data-tab="users" onclick="switchTab('users')">用户列表</button>
-        <button class="tab-btn" data-tab="userdata" onclick="switchTab('userdata')" id="tabBtnWhitelist" style="display:none">白名单用户</button>
+        <button class="tab-btn active" data-tab="config">产品配置</button>
+        <button class="tab-btn" data-tab="users">用户列表</button>
+        <button class="tab-btn" data-tab="userdata" id="tabBtnWhitelist" style="display:none">白名单用户</button>
       </div>
 
       <div class="tab-panel active" id="tab-config">
@@ -185,7 +186,7 @@
       <div class="card">
         <h2>生图模型 <span class="badge">Image</span></h2>
         <label>Provider</label>
-        <select id="imageProvider" onchange="toggleImageProviderFields()">
+        <select id="imageProvider">
           <option value="minimax">MiniMax</option>
           <option value="jimeng">Jimeng</option>
           <option value="ark">Volcengine Ark</option>
@@ -220,13 +221,13 @@
             <span class="setting-toggle-title">开启首页快捷主题</span>
             <span class="setting-toggle-note">开启后首页显示快捷主题按钮，关闭则隐藏整个板块</span>
           </div>
-          <label class="switch" aria-label="首页快捷主题" onclick="event.preventDefault(); toggleLandingPromptsSwitch();">
+          <label class="switch" id="landingPromptsSwitchLabel" aria-label="首页快捷主题">
             <input type="checkbox" id="enableLandingPrompts">
             <span class="switch-slider" aria-hidden="true"></span>
           </label>
         </div>
         <div id="landingPromptsManageBtn" style="display:none; margin-top: 12px;">
-          <button class="btn-secondary" onclick="showLandingPromptsModal()" style="width:100%">管理快捷主题内容</button>
+          <button class="btn-secondary" id="lpManageBtn" style="width:100%">管理快捷主题内容</button>
         </div>
       </div>
 
@@ -238,13 +239,13 @@
             <span class="setting-toggle-title">开启白名单模式</span>
             <span class="setting-toggle-note">开启后仅白名单内用户可使用系统，其余用户看到内测提示页</span>
           </div>
-          <label class="switch" aria-label="白名单模式" onclick="event.preventDefault(); toggleWhitelistSwitch();">
+          <label class="switch" id="whitelistSwitchLabel" aria-label="白名单模式">
             <input type="checkbox" id="enableWhitelist">
             <span class="switch-slider" aria-hidden="true"></span>
           </label>
         </div>
         <div id="whitelistManageBtn" style="display:none; margin-top: 12px;">
-          <button class="btn-secondary" onclick="showWhitelistModal()" style="width:100%">管理白名单用户</button>
+          <button class="btn-secondary" id="wlManageBtn" style="width:100%">管理白名单用户</button>
         </div>
       </div>
 
@@ -256,7 +257,7 @@
             <span class="setting-toggle-title">启用使用限制（积分制）</span>
             <span class="setting-toggle-note">关闭后，前台将隐藏积分与积分消耗提示</span>
           </div>
-          <label class="switch" aria-label="启用使用限制（积分制）" onclick="event.preventDefault(); toggleCreditsSettings();">
+          <label class="switch" id="creditsSwitchLabel" aria-label="启用使用限制（积分制）">
             <input type="checkbox" id="enableCreditsLimit">
             <span class="switch-slider" aria-hidden="true"></span>
           </label>
@@ -303,8 +304,8 @@
       </div>
 
       <div class="actions">
-        <button class="btn-primary" onclick="saveConfig()">保存配置</button>
-          <button class="btn-primary" onclick="testConnection()" style="background: transparent; border: 1px solid var(--accent); color: var(--accent);">测试连接</button>
+        <button class="btn-primary" id="saveConfigBtn">保存配置</button>
+          <button class="btn-primary" id="testConnectionBtn" style="background: transparent; border: 1px solid var(--accent); color: var(--accent);">测试连接</button>
       </div>
       <p id="connectionStatus" style="margin-top: 12px; font-size: 13px;"></p>
       </div>
@@ -313,9 +314,9 @@
       <div class="card">
         <h2>用户列表 <span class="badge">SSO 自动创建</span></h2>
         <div class="range-bar">
-          <button class="range-btn active" data-days="7" onclick="setOverviewDays(7)">近 7 天</button>
-          <button class="range-btn" data-days="15" onclick="setOverviewDays(15)">近 15 天</button>
-          <button class="range-btn" data-days="30" onclick="setOverviewDays(30)">近 30 天</button>
+          <button class="range-btn active" data-days="7">近 7 天</button>
+          <button class="range-btn" data-days="15">近 15 天</button>
+          <button class="range-btn" data-days="30">近 30 天</button>
         </div>
         <div class="overview-grid" id="usageOverviewPanel">
           <div class="summary-card">
@@ -345,9 +346,9 @@
         <div class="card">
           <h2>白名单用户使用概览</h2>
           <div class="range-bar">
-            <button class="range-btn active" data-days="7" onclick="setOverviewDays(7)">近 7 天</button>
-            <button class="range-btn" data-days="15" onclick="setOverviewDays(15)">近 15 天</button>
-            <button class="range-btn" data-days="30" onclick="setOverviewDays(30)">近 30 天</button>
+            <button class="range-btn active" data-days="7">近 7 天</button>
+            <button class="range-btn" data-days="15">近 15 天</button>
+            <button class="range-btn" data-days="30">近 30 天</button>
           </div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
             <div class="summary-card">
@@ -376,14 +377,14 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <div class="drawer-overlay" id="userUsageDrawerOverlay" onclick="closeUserUsageDrawer()"></div>
+  <div class="drawer-overlay" id="userUsageDrawerOverlay"></div>
   <aside class="drawer" id="userUsageDrawer" aria-hidden="true">
     <div class="drawer-header">
       <div>
         <div class="drawer-title" id="userUsageDrawerTitle">用户使用情况</div>
         <div class="drawer-subtitle" id="userUsageDrawerSubtitle">选择一个用户后查看统计概览与最近记录</div>
       </div>
-      <button class="close-btn" type="button" onclick="closeUserUsageDrawer()" aria-label="关闭">×</button>
+      <button class="close-btn" type="button" id="drawerCloseBtn" aria-label="关闭">×</button>
     </div>
     <div class="drawer-body">
       <div class="summary-grid" id="userUsageSummary">
@@ -411,11 +412,11 @@
     <div class="modal-box" style="width:520px;max-height:80vh;display:flex;flex-direction:column">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <h2 style="margin-bottom:0">管理白名单用户</h2>
-        <button onclick="hideWhitelistModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1">&times;</button>
+        <button id="wlModalCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1">&times;</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" id="whitelistAddInput" placeholder="输入 loginName 添加到白名单" style="flex:1" onkeydown="if(event.key==='Enter')addWhitelistUser()">
-        <button class="btn-primary" onclick="addWhitelistUser()" style="white-space:nowrap;padding:8px 16px">添加</button>
+        <input type="text" id="whitelistAddInput" placeholder="输入 loginName 添加到白名单" style="flex:1">
+        <button class="btn-primary" id="wlAddBtn" style="white-space:nowrap;padding:8px 16px">添加</button>
       </div>
       <div style="margin-top:16px;flex:1;overflow:hidden;display:flex;flex-direction:column">
           <div style="font-size:13px;color:var(--muted);margin-bottom:6px">白名单用户</div>
@@ -437,8 +438,8 @@
       <label>确认新密码</label>
       <input type="password" id="cpConfirmPassword" placeholder="再次输入新密码">
       <div class="actions">
-        <button class="btn-secondary" onclick="hideChangePassword()">取消</button>
-        <button class="btn-primary" onclick="submitChangePassword()">确认修改</button>
+        <button class="btn-secondary" id="cpCancelBtn">取消</button>
+        <button class="btn-primary" id="cpSubmitBtn">确认修改</button>
       </div>
     </div>
   </div>
@@ -447,966 +448,19 @@
     <div class="modal-box" style="width:640px;max-height:85vh;display:flex;flex-direction:column">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <h2 style="margin-bottom:0">管理快捷主题</h2>
-        <button onclick="hideLandingPromptsModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1">&times;</button>
+        <button id="lpModalCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1">&times;</button>
       </div>
       <div id="landingPromptsModalList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-height:60px;max-height:60vh;padding-right:4px;"></div>
       <div style="display:flex;gap:8px;margin-top:16px;justify-content:space-between;">
-        <button class="btn-secondary btn-sm" onclick="addLandingPromptEntry()">+ 添加一条</button>
+        <button class="btn-secondary btn-sm" id="lpAddEntryBtn">+ 添加一条</button>
         <div style="display:flex;gap:8px;">
-          <button class="btn-secondary" onclick="resetLandingPromptsToDefault()">恢复默认</button>
-          <button class="btn-primary" onclick="saveLandingPromptsFromModal()">保存</button>
+          <button class="btn-secondary" id="lpResetBtn">恢复默认</button>
+          <button class="btn-primary" id="lpSaveBtn">保存</button>
         </div>
       </div>
     </div>
   </div>
 
-  <script>
-    let _authenticated = false;
-    let _activeUsageUserId = null;
-    let _overviewDays = 7;
-
-    function setOverviewDays(days) {
-      _overviewDays = days;
-      document.querySelectorAll('.range-btn').forEach(b => {
-        b.classList.toggle('active', Number(b.dataset.days) === days);
-      });
-      const label = `近 ${days} 天`;
-      document.querySelectorAll('[data-dynamic-label]').forEach(el => { el.textContent = el.dataset.dynamicLabel.replace('{d}', label); });
-      if (document.getElementById('tab-users').classList.contains('active')) loadUsers();
-      if (document.getElementById('tab-userdata').classList.contains('active')) loadWhitelistUserData();
-    }
-
-    function switchTab(name) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      document.querySelector(`.tab-btn[data-tab="${name}"]`).classList.add('active');
-      document.getElementById(`tab-${name}`).classList.add('active');
-      if (name === 'users') loadUsers();
-      if (name === 'userdata') loadWhitelistUserData();
-    }
-
-    function toggleMenu() {
-      document.getElementById('menuDropdown').classList.toggle('open');
-    }
-    document.addEventListener('click', e => {
-      const dd = document.getElementById('menuDropdown');
-      if (dd && !e.target.closest('.menu-btn') && !e.target.closest('.menu-dropdown')) dd.classList.remove('open');
-    });
-
-    function showChangePassword() {
-      document.getElementById('menuDropdown').classList.remove('open');
-      document.getElementById('cpOldPassword').value = '';
-      document.getElementById('cpNewPassword').value = '';
-      document.getElementById('cpConfirmPassword').value = '';
-      document.getElementById('changePasswordModal').classList.add('open');
-    }
-
-    function hideChangePassword() {
-      document.getElementById('changePasswordModal').classList.remove('open');
-    }
-
-    document.getElementById('changePasswordModal').addEventListener('click', e => {
-      if (e.target === e.currentTarget) hideChangePassword();
-    });
-    document.getElementById('landingPromptsModal').addEventListener('click', e => {
-      if (e.target === e.currentTarget) hideLandingPromptsModal();
-    });
-
-    async function submitChangePassword() {
-      const oldPassword = document.getElementById('cpOldPassword').value;
-      const newPassword = document.getElementById('cpNewPassword').value;
-      const confirmPassword = document.getElementById('cpConfirmPassword').value;
-
-      if (!newPassword) { toast('请输入新密码', 'error'); return; }
-      if (newPassword.length < 4) { toast('新密码长度至少为4位', 'error'); return; }
-      if (newPassword !== confirmPassword) { toast('两次输入的新密码不一致', 'error'); return; }
-
-      try {
-        const res = await fetch('/api/admin-password', {
-          method: 'PUT',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ oldPassword, newPassword }),
-        });
-        const data = await res.json();
-        if (!res.ok) { toast(data.error || '修改失败', 'error'); return; }
-
-        toast('密码修改成功，请重新登录');
-        hideChangePassword();
-        logoutAdmin();
-      } catch (e) {
-        toast('修改失败: ' + e.message, 'error');
-      }
-    }
-
-    function toast(msg, type = 'success') {
-      const el = document.getElementById('toast');
-      el.textContent = msg;
-      el.className = `toast ${type} show`;
-      setTimeout(() => el.classList.remove('show'), 3000);
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-
-    function formatTime(value) {
-      if (!value) return '-';
-      try {
-        return new Date(Number(value)).toLocaleString('zh-CN');
-      } catch (_e) {
-        return '-';
-      }
-    }
-
-    function renderSparkline(points, options = {}) {
-      const safePoints = Array.isArray(points) && points.length > 0
-        ? points
-        : Array.from({ length: _overviewDays }, (_value, index) => ({
-            label: `${index + 1}`,
-            count: 0,
-          }));
-      const maxCount = Math.max(...safePoints.map(point => Number(point?.count ?? 0)), 1);
-      const sparklineClass = options.compact ? 'sparkline' : 'sparkline large';
-      const emptyClass = safePoints.every(point => Number(point?.count ?? 0) === 0) ? ' empty' : '';
-      const bars = safePoints.map(point => {
-        const count = Math.max(0, Number(point?.count ?? 0));
-        const height = count === 0 ? 8 : Math.max(12, Math.round((count / maxCount) * 100));
-        return `
-          <div class="sparkline-slot" title="${escapeHtml(`${point.label}: ${count}`)}">
-            <div class="sparkline-bar" style="height: ${height}%"></div>
-          </div>
-        `;
-      }).join('');
-      const labels = safePoints.map(point => `<span>${escapeHtml(point.label ?? '')}</span>`).join('');
-      return `
-        <div class="${sparklineClass}${emptyClass}">
-          ${bars}
-        </div>
-        <div class="sparkline-labels">${labels}</div>
-      `;
-    }
-
-    function renderUsageOverview(data) {
-      const summary = data?.summary || {};
-      document.getElementById('usageOverviewTotalCalls').textContent = String(summary.totalImageCalls ?? 0);
-      document.getElementById('usageOverviewActiveUsers').textContent = String(summary.activeUserCount ?? 0);
-      document.getElementById('usageOverviewDownloadCount').textContent = String(summary.totalDownloadCount ?? 0);
-    }
-
-    function setUserUsageSummary(data) {
-      document.getElementById('userUsageCountValue').textContent = String(data?.summary?.totalImageCalls ?? 0);
-      document.getElementById('userDownloadCountValue').textContent = String(data?.summary?.totalDownloadCount ?? 0);
-      document.getElementById('userUsageTrend').innerHTML = renderSparkline(data?.trend, { compact: false });
-    }
-
-    function formatUsageStatus(status) {
-      if (status === 'success') return '成功';
-      if (status === 'failed') return '失败';
-      return '处理中';
-    }
-
-    function buildRecordTooltip(item) {
-      const segments = [
-        `时间: ${formatTime(item.startedAt)}`,
-        `模型: ${item.modelProvider || '-'} / ${item.modelName || '-'}`,
-        `输入: ${item.rawInput || item.finalPrompt || '-'}`,
-      ];
-      if (item.status === 'failed' && item.errorMessage) {
-        segments.push(`失败原因: ${item.errorMessage}`);
-      }
-      return segments.join('\n');
-    }
-
-    function renderUserUsageRecords(items) {
-      const container = document.getElementById('userUsageRecordList');
-      if (!Array.isArray(items) || items.length === 0) {
-        container.innerHTML = '<div class="empty-state">近 7 天暂无生图记录</div>';
-        return;
-      }
-      container.innerHTML = items.map(item => {
-        const modelText = `${item.modelProvider || '-'} / ${item.modelName || '-'}`;
-        const inputText = item.rawInput || item.finalPrompt || '-';
-        const tooltip = buildRecordTooltip(item);
-        return `
-          <div class="record-item">
-            <div class="record-time">${escapeHtml(formatTime(item.startedAt))}</div>
-            <div class="record-cell" title="${escapeHtml(modelText)}">${escapeHtml(modelText)}</div>
-            <div class="record-cell" title="${escapeHtml(tooltip)}">${escapeHtml(inputText)}</div>
-            <div class="record-status">
-              <span class="status-pill ${escapeHtml(item.status || 'pending')}">${escapeHtml(formatUsageStatus(item.status))}</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderUserDownloadRecords(items) {
-      const container = document.getElementById('userDownloadRecordList');
-      if (!Array.isArray(items) || items.length === 0) {
-        container.innerHTML = '<div class="empty-state">暂无主题下载记录</div>';
-        return;
-      }
-      container.innerHTML = items.map(item => {
-        const downloadText = item.finalPrompt || item.rawInput || item.jobId || '-';
-        const tooltip = [
-          `时间: ${formatTime(item.startedAt)}`,
-          `下载内容: ${downloadText}`,
-          item.status === 'failed' && item.errorMessage ? `失败原因: ${item.errorMessage}` : '',
-        ].filter(Boolean).join('\n');
-        return `
-          <div class="record-item">
-            <div class="record-time">${escapeHtml(formatTime(item.startedAt))}</div>
-            <div class="record-cell" title="${escapeHtml(item.jobId || '-')}">${escapeHtml(item.jobId || '-')}</div>
-            <div class="record-cell" title="${escapeHtml(tooltip)}">${escapeHtml(downloadText)}</div>
-            <div class="record-status">
-              <span class="status-pill ${escapeHtml(item.status || 'pending')}">${escapeHtml(formatUsageStatus(item.status))}</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function closeUserUsageDrawer() {
-      _activeUsageUserId = null;
-      document.getElementById('userUsageDrawer').classList.remove('open');
-      document.getElementById('userUsageDrawer').setAttribute('aria-hidden', 'true');
-      document.getElementById('userUsageDrawerOverlay').classList.remove('open');
-    }
-
-    async function openUserUsageDrawer(userId, loginName, displayName) {
-      if (!_authenticated) {
-        toast('请先进行管理员身份验证', 'error');
-        return;
-      }
-
-      _activeUsageUserId = userId;
-      document.getElementById('userUsageDrawerTitle').textContent = displayName || loginName || `用户 #${userId}`;
-      document.getElementById('userUsageDrawerSubtitle').textContent = `${loginName || `用户 #${userId}`} 的生图趋势与最近记录`;
-      setUserUsageSummary({ summary: { totalImageCalls: '-' }, trend: [] });
-      renderUserUsageRecords([]);
-      renderUserDownloadRecords([]);
-      document.getElementById('userUsageDrawer').classList.add('open');
-      document.getElementById('userUsageDrawer').setAttribute('aria-hidden', 'false');
-      document.getElementById('userUsageDrawerOverlay').classList.add('open');
-
-      try {
-        const res = await fetch(`/api/admin/usage-logs/users/${userId}?limit=20&days=${_overviewDays}`, { credentials: 'same-origin' });
-        if (res.status === 401) { closeUserUsageDrawer(); showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
-        const data = await res.json();
-        if (_activeUsageUserId !== userId) return;
-        setUserUsageSummary(data || {});
-        renderUserUsageRecords(Array.isArray(data.items) ? data.items : []);
-        renderUserDownloadRecords(Array.isArray(data.downloadItems) ? data.downloadItems : []);
-      } catch (e) {
-        toast('加载用户使用情况失败: ' + e.message, 'error');
-      }
-    }
-
-    function getCreditsLimitEnabled() {
-      const input = document.getElementById('enableCreditsLimit');
-      return Boolean(input && input.checked);
-    }
-
-    function syncCreditsToggleUi(enabled) {
-      const input = document.getElementById('enableCreditsLimit');
-      const section = document.getElementById('creditsSettingsSection');
-      if (input) {
-        input.checked = enabled;
-      }
-      if (section) {
-        section.style.display = enabled ? 'block' : 'none';
-      }
-    }
-
-    function toggleCreditsSettings(forceValue) {
-      const enabled = typeof forceValue === 'boolean'
-        ? forceValue
-        : !getCreditsLimitEnabled();
-      syncCreditsToggleUi(enabled);
-    }
-
-    const IMAGE_PROVIDER_DEFAULTS = {
-      minimax: {
-        endpoint: 'https://api.minimax.chat/v1/image_generation',
-        model: 'image-01',
-      },
-      jimeng: {
-        endpoint: 'https://visual.volcengineapi.com',
-        model: 'jimeng_t2i_v40',
-      },
-      ark: {
-        endpoint: 'https://ark.cn-beijing.volces.com/api/v3/images/generations',
-        model: 'doubao-seedream-3-0-t2i-250415',
-      },
-    };
-
-    function toggleImageProviderFields() {
-      const provider = document.getElementById('imageProvider').value;
-      const useApiKey = provider === 'minimax';
-
-      document.getElementById('imageApiKeyBlock').style.display = useApiKey ? 'block' : 'none';
-      document.getElementById('imageAccessKeyIdBlock').style.display = useApiKey ? 'none' : 'block';
-      document.getElementById('imageSecretAccessKeyBlock').style.display = useApiKey ? 'none' : 'block';
-
-      const defaults = IMAGE_PROVIDER_DEFAULTS[provider];
-      if (defaults) {
-        document.getElementById('imageEndpoint').value = defaults.endpoint;
-        document.getElementById('imageModel').value = defaults.model;
-      }
-    }
-
-    function showAdminPanel() {
-      _authenticated = true;
-      document.getElementById('loginSection').style.display = 'none';
-      document.getElementById('adminPanel').style.display = 'block';
-    }
-
-    function showLoginSection() {
-      _authenticated = false;
-      document.getElementById('adminPanel').style.display = 'none';
-      document.getElementById('loginSection').style.display = 'block';
-      document.getElementById('adminPassword').value = '';
-    }
-
-    toggleImageProviderFields();
-
-    async function authenticateAdmin() {
-      const password = document.getElementById('adminPassword').value;
-      if (!password) {
-        toast('请输入管理员密码', 'error');
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/admin-auth/login', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password }),
-        });
-        const data = await res.json();
-
-        if (res.status === 429) {
-          toast(data.error || '登录失败次数过多，请稍后再试', 'error');
-          return;
-        }
-
-        if (!res.ok) {
-          toast(data.error || '密码不正确', 'error');
-          return;
-        }
-
-        showAdminPanel();
-        toast('认证成功，欢迎使用管理面板');
-        loadConfig();
-        loadUsers();
-      } catch (e) {
-        toast(e.message || '认证失败，请检查网络', 'error');
-      }
-    }
-
-    async function logoutAdmin() {
-      if (!confirm('确认退出登录？')) return;
-      try {
-        await fetch('/api/admin-auth/logout', {
-          method: 'POST',
-          credentials: 'same-origin',
-        });
-      } catch (_e) { /* ignore */ }
-      showLoginSection();
-    }
-
-    async function loadConfig() {
-      if (!_authenticated) {
-        toast('请先进行管理员身份验证', 'error');
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/model-config', { credentials: 'same-origin' });
-        if (res.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
-        const data = await res.json();
-        document.getElementById('chatEndpoint').value = data.chatEndpoint || '';
-        document.getElementById('chatApiKey').value = data.chatApiKey || '';
-        document.getElementById('chatModel').value = data.chatModel || '';
-        document.getElementById('imageProvider').value = data.imageProvider || 'minimax';
-        document.getElementById('imageEndpoint').value = data.imageEndpoint || '';
-        document.getElementById('imageApiKey').value = data.imageApiKey || '';
-        document.getElementById('imageAccessKeyId').value = data.imageAccessKeyId || '';
-        document.getElementById('imageSecretAccessKey').value = data.imageSecretAccessKey || '';
-        document.getElementById('imageModel').value = data.imageModel || '';
-        toggleImageProviderFields();
-
-        const securityRes = await fetch('/api/security-config', { credentials: 'same-origin' });
-        if (securityRes.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
-        const securityData = await securityRes.json();
-        document.getElementById('corsAllowlist').value = securityData.corsOrigins?.join('\n') || '';
-        document.getElementById('proxyImageAllowlist').value = securityData.proxyImageHosts?.join('\n') || '';
-        document.getElementById('dailyCreditsLimit').value = securityData.dailyCreditsLimit ?? '100';
-        document.getElementById('creditsPerImage').value = securityData.creditsPerImage ?? '50';
-        document.getElementById('backupRetentionCount').value = securityData.backupRetentionCount ?? '8';
-        document.getElementById('exportRetentionDays').value = securityData.exportRetentionDays ?? '7';
-        document.getElementById('creditsTooltipContent').value = securityData.creditsTooltipContent || '';
-
-        const creditsEnabled = securityData.enabledFeatures?.quota !== false;
-        syncCreditsToggleUi(creditsEnabled);
-
-        _whitelistConfig.enabled = securityData.whitelistEnabled || false;
-        _whitelistConfig.users = securityData.whitelistUsers || [];
-        renderWhitelist();
-
-        loadLandingPromptsConfig();
-      } catch (e) {
-        console.error("Error loading configuration:", e);
-        toast('加载配置失败: ' + e.message, 'error');
-      }
-    }
-
-    async function saveConfig() {
-      if (!_authenticated) {
-        toast('请先进行管理员身份验证', 'error');
-        return;
-      }
-
-      try {
-        const readErrorMessage = async (response, fallbackMessage) => {
-          try {
-            const data = await response.json();
-            return data?.error || fallbackMessage;
-          } catch {
-            return fallbackMessage;
-          }
-        };
-
-        const body = {
-          chatEndpoint: document.getElementById('chatEndpoint').value,
-          chatApiKey: document.getElementById('chatApiKey').value,
-          chatModel: document.getElementById('chatModel').value,
-          imageProvider: document.getElementById('imageProvider').value,
-          imageEndpoint: document.getElementById('imageEndpoint').value,
-          imageApiKey: document.getElementById('imageApiKey').value,
-          imageAccessKeyId: document.getElementById('imageAccessKeyId').value,
-          imageSecretAccessKey: document.getElementById('imageSecretAccessKey').value,
-          imageModel: document.getElementById('imageModel').value,
-          corsAllowlist: document.getElementById('corsAllowlist').value
-            .split('\n')
-            .map(item => item.trim())
-            .filter(item => item.length > 0),
-          proxyImageHosts: document.getElementById('proxyImageAllowlist').value
-            .split('\n')
-            .map(item => item.trim())
-            .filter(item => item.length > 0),
-          rateLimits: undefined,
-          enabledFeatures: {
-            export: true,
-            proxyImage: true,
-            image: true,
-            chat: true,
-            cors: true,
-            quota: getCreditsLimitEnabled(),
-            adminAuth: true,
-            rateLimiting: true
-          },
-          dailyCreditsLimit: parseInt(document.getElementById('dailyCreditsLimit').value) || 100,
-          creditsPerImage: parseInt(document.getElementById('creditsPerImage').value) || 50,
-          backupRetentionCount: parseInt(document.getElementById('backupRetentionCount').value) || 8,
-          exportRetentionDays: parseInt(document.getElementById('exportRetentionDays').value) || 7,
-          creditsTooltipContent: document.getElementById('creditsTooltipContent').value
-        };
-
-        const fetchOpts = {
-          method: 'PUT',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-        };
-
-        const [modelRes, securityRes] = await Promise.allSettled([
-          fetch('/api/model-config', {
-            ...fetchOpts,
-            body: JSON.stringify({
-              chatEndpoint: body.chatEndpoint,
-              chatApiKey: body.chatApiKey,
-              chatModel: body.chatModel,
-              imageProvider: body.imageProvider,
-              imageEndpoint: body.imageEndpoint,
-              imageApiKey: body.imageApiKey,
-              imageAccessKeyId: body.imageAccessKeyId,
-              imageSecretAccessKey: body.imageSecretAccessKey,
-              imageModel: body.imageModel,
-            }),
-          }),
-          fetch('/api/security-config', {
-            ...fetchOpts,
-            body: JSON.stringify({
-              corsOrigins: body.corsAllowlist,
-              proxyImageHosts: body.proxyImageHosts,
-              ...(body.rateLimits ? { rateLimits: body.rateLimits } : {}),
-              enabledFeatures: body.enabledFeatures,
-              dailyCreditsLimit: body.dailyCreditsLimit,
-              creditsPerImage: body.creditsPerImage,
-              backupRetentionCount: body.backupRetentionCount,
-              exportRetentionDays: body.exportRetentionDays,
-              creditsTooltipContent: body.creditsTooltipContent,
-            })
-          })
-        ]);
-
-        let successCount = 0;
-        if (modelRes.status === 'fulfilled' && modelRes.value.ok) {
-          const modelData = await modelRes.value.json();
-          if (modelData.success) {
-            successCount++;
-          } else {
-            toast(modelData.error || '模型配置保存失败', 'error');
-          }
-        } else if (modelRes.status === 'fulfilled') {
-          if (modelRes.value.status === 401) {
-            showLoginSection();
-            toast('登录已过期，请重新登录', 'error');
-            return;
-          }
-          toast(await readErrorMessage(modelRes.value, `模型配置保存失败 (${modelRes.value.status})`), 'error');
-        } else if (modelRes.reason) {
-          toast('模型配置保存失败: ' + modelRes.reason.message, 'error');
-        }
-
-        if (securityRes.status === 'fulfilled' && securityRes.value.ok) {
-          const securityData = await securityRes.value.json();
-          if (securityData.success) {
-            successCount++;
-          } else {
-            toast(securityData.error || '安全配置保存失败', 'error');
-          }
-        } else if (securityRes.status === 'fulfilled') {
-          if (securityRes.value.status === 401) {
-            showLoginSection();
-            toast('登录已过期，请重新登录', 'error');
-            return;
-          }
-          toast(await readErrorMessage(securityRes.value, `安全配置保存失败 (${securityRes.value.status})`), 'error');
-        } else if (securityRes.reason) {
-          toast('安全配置保存失败: ' + securityRes.reason.message, 'error');
-        }
-
-        if (successCount === 2) {
-          toast('配置已保存');
-        } else if (successCount > 0) {
-          toast(`配置已保存 (${successCount}/2 成功)`);
-        }
-
-        saveLandingPromptsConfig();
-      } catch (e) {
-        toast('保存失败: ' + e.message, 'error');
-      }
-    }
-
-    let _landingPromptsEntries = [];
-    let _landingPromptsEnabled = true;
-
-    function getDefaultLandingPromptEntries() {
-      return [
-        { label: '做一套春节氛围主题，热闹一点', prompt: '萌系3D卡通风格，营造新年喜庆且温馨的视觉氛围。大透视构图，极低的仰视角度，超广角镜头拍摄的人物，呈现狮子头与镜头互动，画面以巨大狮子头主导视觉，主体是一个穿着华丽的传统服装的舞狮福娃一跃而起，将狮子头抛向镜头，表情开心。以正红色为背景，人物周围悬浮着金币和金元宝和红包，3D渲染风格，类似皮克斯动画质感。16:9，1080P。', primaryHint: '#C90808' },
-        { label: '生成一套科技感企业门户皮肤', prompt: '主色神空蓝，未来感 流动彩带光束带 由远到近环绕 背景模糊的光晕 4K超高清细节。16:9，1080P。', primaryHint: '#0E50D6' },
-        { label: '想要一个高级蓝色商务主题', prompt: '流畅极少蓝白色渐变小笔刷发光在变换、空间感，光线追踪，浩渺感，孤独感，全景视角，透白渐变背景，流光溢彩，C4d建模。16:9，1080P。', primaryHint: '#138AEB' },
-        { label: '来一套国风政务风格主题包', prompt: '创作一幅大气简约的国风国庆主题海报，采用纵向构图，背景为红橙渐变的暖色调，带有细腻的光影层次以营造喜庆氛围。画面中景呈现被暖光笼罩的古代风格古典宫殿建筑；背景是朦胧的金色山水轮廓，天空点缀着绽放的烟花；整体风格融合国风意境与现代光影设计。16:9，1080P。', primaryHint: '#DA0404' },
-      ];
-    }
-
-    function syncLandingPromptsToggleUi(enabled) {
-      const input = document.getElementById('enableLandingPrompts');
-      const manageBtn = document.getElementById('landingPromptsManageBtn');
-      if (input) input.checked = enabled;
-      if (manageBtn) manageBtn.style.display = enabled ? 'block' : 'none';
-    }
-
-    function toggleLandingPromptsSwitch(forceValue) {
-      const enabled = typeof forceValue === 'boolean'
-        ? forceValue
-        : !document.getElementById('enableLandingPrompts')?.checked;
-      _landingPromptsEnabled = enabled;
-      syncLandingPromptsToggleUi(enabled);
-      saveLandingPromptsToggle(enabled);
-    }
-
-    async function saveLandingPromptsToggle(enabled) {
-      try {
-        await fetch('/api/landing-prompts-config', {
-          method: 'PUT',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entries: _landingPromptsEntries, enabled }),
-        });
-        toast(enabled ? '快捷主题已开启' : '快捷主题已关闭');
-      } catch (e) {
-        toast('保存失败: ' + e.message, 'error');
-      }
-    }
-
-    function renderLandingPromptsEditor(entries) {
-      const container = document.getElementById('landingPromptsModalList');
-      if (!container) return;
-      container.innerHTML = '';
-      entries.forEach((entry, index) => {
-        const item = document.createElement('div');
-        item.style.cssText = 'background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;';
-        item.innerHTML = `
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <span style="font-size:13px;color:var(--muted);">#${index + 1}</span>
-            <button class="btn-danger btn-sm" onclick="removeLandingPromptEntry(${index})" style="font-size:11px;padding:2px 8px;">删除</button>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 120px;gap:8px;margin-bottom:8px;">
-            <div>
-              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">标题文案</label>
-              <input style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;" id="lp_label_${index}" type="text" value="${escapeHtml(entry.label)}" placeholder="按钮显示文字">
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">主题色</label>
-              <input style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;" id="lp_color_${index}" type="text" value="${escapeHtml(entry.primaryHint || '')}" placeholder="#RRGGBB">
-            </div>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Prompt 咒语</label>
-            <textarea style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;resize:vertical;min-height:60px;" id="lp_prompt_${index}" placeholder="图片生成 Prompt">${escapeHtml(entry.prompt)}</textarea>
-          </div>
-        `;
-        container.appendChild(item);
-      });
-    }
-
-    function readLandingPromptsEditor() {
-      return _landingPromptsEntries.map((_entry, index) => {
-        const labelEl = document.getElementById(`lp_label_${index}`);
-        const promptEl = document.getElementById(`lp_prompt_${index}`);
-        const colorEl = document.getElementById(`lp_color_${index}`);
-        return {
-          label: (labelEl?.value || '').trim(),
-          prompt: (promptEl?.value || '').trim(),
-          primaryHint: (colorEl?.value || '').trim(),
-        };
-      }).filter(e => e.label || e.prompt);
-    }
-
-    async function loadLandingPromptsConfig() {
-      try {
-        const res = await fetch('/api/landing-prompts-config', { credentials: 'same-origin' });
-        if (res.status === 401) return;
-        const data = await res.json();
-        _landingPromptsEnabled = data.enabled !== false;
-        _landingPromptsEntries = Array.isArray(data.entries) && data.entries.length > 0
-          ? data.entries
-          : getDefaultLandingPromptEntries();
-      } catch {
-        _landingPromptsEnabled = true;
-        _landingPromptsEntries = getDefaultLandingPromptEntries();
-      }
-      syncLandingPromptsToggleUi(_landingPromptsEnabled);
-    }
-
-    function addLandingPromptEntry() {
-      const current = readLandingPromptsEditor();
-      current.push({ label: '', prompt: '', primaryHint: '' });
-      _landingPromptsEntries = current;
-      renderLandingPromptsEditor(current);
-    }
-
-    function removeLandingPromptEntry(index) {
-      const current = readLandingPromptsEditor();
-      current.splice(index, 1);
-      _landingPromptsEntries = current;
-      renderLandingPromptsEditor(current);
-    }
-
-    function showLandingPromptsModal() {
-      renderLandingPromptsEditor(_landingPromptsEntries);
-      document.getElementById('landingPromptsModal').classList.add('open');
-    }
-
-    function hideLandingPromptsModal() {
-      _landingPromptsEntries = readLandingPromptsEditor();
-      document.getElementById('landingPromptsModal').classList.remove('open');
-    }
-
-    async function saveLandingPromptsFromModal() {
-      const entries = readLandingPromptsEditor().filter(e => e.label && e.prompt);
-      if (entries.length === 0) {
-        toast('至少需要一条有效条目（标题和咒语不能为空）', 'error');
-        return;
-      }
-      _landingPromptsEntries = entries;
-      try {
-        const res = await fetch('/api/landing-prompts-config', {
-          method: 'PUT',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entries, enabled: _landingPromptsEnabled }),
-        });
-        if (res.ok) {
-          toast('快捷主题内容已保存');
-          hideLandingPromptsModal();
-        } else {
-          const data = await res.json();
-          toast(data.error || '保存失败', 'error');
-        }
-      } catch (e) {
-        toast('保存失败: ' + e.message, 'error');
-      }
-    }
-
-    function resetLandingPromptsToDefault() {
-      _landingPromptsEntries = getDefaultLandingPromptEntries();
-      renderLandingPromptsEditor(_landingPromptsEntries);
-      toast('已恢复默认配置（点击「保存」生效）');
-    }
-
-    async function saveLandingPromptsConfig() {
-      const entries = _landingPromptsEntries.filter(e => e.label && e.prompt);
-      if (entries.length === 0) return;
-      try {
-        await fetch('/api/landing-prompts-config', {
-          method: 'PUT',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entries, enabled: _landingPromptsEnabled }),
-        });
-      } catch { /* non-critical */ }
-    }
-
-    async function testConnection() {
-      if (!_authenticated) {
-        toast('请先进行管理员身份验证', 'error');
-        return;
-      }
-
-      const statusEl = document.getElementById('connectionStatus');
-      statusEl.innerHTML = '测试中...';
-      try {
-        await fetch('/api/health', { credentials: 'same-origin' }).then(r => r.json());
-        statusEl.innerHTML = '<span class="status-dot ok"></span>服务正常运行';
-      } catch (e) {
-        statusEl.innerHTML = '<span class="status-dot err"></span>连接失败: ' + e.message;
-      }
-    }
-
-    async function loadUsers() {
-      if (!_authenticated) {
-        toast('请先进行管理员身份验证', 'error');
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/admin/usage-logs/overview?days=${_overviewDays}`, { credentials: 'same-origin' });
-        if (res.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
-        const data = await res.json();
-        const users = Array.isArray(data.users) ? data.users : [];
-        renderUsageOverview(data);
-        const tbody = document.getElementById('userTableBody');
-        if (users.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" style="color: var(--muted);">暂无用户记录</td></tr>';
-          return;
-        }
-        tbody.innerHTML = users.map(u => `
-          <tr>
-            <td>${escapeHtml(u.name)}</td>
-            <td>${escapeHtml(u.displayName)}</td>
-            <td>${u.lastLoginAt ? new Date(u.lastLoginAt * 1000).toLocaleString('zh-CN') : '-'}</td>
-            <td>
-              <button
-                type="button"
-                class="btn-primary btn-sm user-action-btn"
-                onclick='openUserUsageDrawer(${Number(u.id)}, ${JSON.stringify(String(u.name ?? ''))}, ${JSON.stringify(String(u.displayName ?? ''))})'
-              >查看使用情况</button>
-            </td>
-          </tr>
-        `).join('');
-      } catch (e) {
-        toast('加载用户失败: ' + e.message, 'error');
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', async function() {
-      try {
-        const res = await fetch('/api/admin-auth/check', { credentials: 'same-origin' });
-        const data = await res.json();
-        if (data.authenticated) {
-          showAdminPanel();
-          loadConfig();
-          loadUsers();
-        }
-      } catch (_e) { /* show login */ }
-    });
-
-    let _whitelistConfig = { enabled: false, users: [] };
-
-    function toggleWhitelistSwitch() {
-      const enabled = !_whitelistConfig.enabled;
-      _whitelistConfig.enabled = enabled;
-      const cb = document.getElementById('enableWhitelist');
-      if (cb) cb.checked = enabled;
-      const btn = document.getElementById('whitelistManageBtn');
-      if (btn) btn.style.display = enabled ? 'block' : 'none';
-      const tabBtn = document.getElementById('tabBtnWhitelist');
-      if (tabBtn) tabBtn.style.display = enabled ? '' : 'none';
-      saveWhitelist();
-    }
-
-    function showWhitelistModal() {
-      document.getElementById('whitelistModal').classList.add('open');
-    }
-
-    function hideWhitelistModal() {
-      document.getElementById('whitelistModal').classList.remove('open');
-    }
-
-    document.getElementById('whitelistModal').addEventListener('click', e => {
-      if (e.target === e.currentTarget) hideWhitelistModal();
-    });
-
-    function renderWhitelist() {
-      const cb = document.getElementById('enableWhitelist');
-      if (cb) cb.checked = _whitelistConfig.enabled;
-      const btn = document.getElementById('whitelistManageBtn');
-      if (btn) btn.style.display = _whitelistConfig.enabled ? 'block' : 'none';
-      const tabBtn = document.getElementById('tabBtnWhitelist');
-      if (tabBtn) tabBtn.style.display = _whitelistConfig.enabled ? '' : 'none';
-      if (!_whitelistConfig.enabled && tabBtn && tabBtn.classList.contains('active')) {
-        switchTab('config');
-      }
-      const list = document.getElementById('whitelistUsersList');
-      if (list) {
-        if (_whitelistConfig.users.length === 0) {
-          list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px 8px;font-size:13px">暂无白名单用户</div>';
-        } else {
-          list.innerHTML = _whitelistConfig.users.map(u =>
-            `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--border)">
-              <span style="font-size:14px">${esc(u)}</span>
-              <button onclick="removeWhitelistUser('${esc(u)}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;padding:2px 6px">移除</button>
-            </div>`
-          ).join('');
-        }
-      }
-    }
-
-    function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-
-    async function addWhitelistUser() {
-      const input = document.getElementById('whitelistAddInput');
-      const name = input.value.trim();
-      if (!name) return;
-      if (_whitelistConfig.users.includes(name)) { input.value = ''; return; }
-      _whitelistConfig.users.push(name);
-      input.value = '';
-      await saveWhitelist();
-    }
-
-    async function removeWhitelistUser(name) {
-      _whitelistConfig.users = _whitelistConfig.users.filter(u => u !== name);
-      await saveWhitelist();
-    }
-
-    async function saveWhitelist() {
-      try {
-        const res = await fetch('/api/security-config', {
-          method: 'PUT',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ whitelistEnabled: _whitelistConfig.enabled, whitelistUsers: _whitelistConfig.users }),
-        });
-        if (res.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || '白名单配置保存失败');
-        }
-        renderWhitelist();
-        if (document.getElementById('tab-userdata').classList.contains('active')) {
-          await loadWhitelistUserData();
-        }
-      } catch (e) {
-        console.error('saveWhitelist error', e);
-        toast('保存白名单失败: ' + e.message, 'error');
-      }
-    }
-
-    async function loadWhitelistUserData() {
-      if (!_whitelistConfig.enabled || _whitelistConfig.users.length === 0) {
-        document.getElementById('wlTotalCount').textContent = _whitelistConfig.users.length || '0';
-        document.getElementById('wlActiveCount').textContent = '0';
-        document.getElementById('wlTotalCalls').textContent = '0';
-        document.getElementById('wlTotalDownloads').textContent = '0';
-        document.getElementById('whitelistUserCards').innerHTML =
-          '<div style="color:var(--muted);text-align:center;padding:32px;grid-column:1/-1">暂无白名单用户</div>';
-        return;
-      }
-
-      try {
-        const overviewRes = await fetch(`/api/admin/usage-logs/overview?days=${_overviewDays}`, { credentials: 'same-origin' });
-        if (overviewRes.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
-        if (!overviewRes.ok) {
-          const data = await overviewRes.json().catch(() => ({}));
-          throw new Error(data.error || '加载白名单用户概览失败');
-        }
-        const overviewData = await overviewRes.json();
-        const allUsers = Array.isArray(overviewData.users) ? overviewData.users : [];
-
-        const whitelistSet = new Set(_whitelistConfig.users);
-        const wlUsers = allUsers.filter(u => whitelistSet.has(u.name));
-
-        let totalCalls = 0;
-        let totalDownloads = 0;
-        let activeCount = 0;
-        wlUsers.forEach(u => {
-          const calls = Number(u.imageCalls || 0);
-          const dls = Number(u.downloads || 0);
-          totalCalls += calls;
-          totalDownloads += dls;
-          if (calls > 0 || dls > 0) activeCount++;
-        });
-
-        document.getElementById('wlTotalCount').textContent = _whitelistConfig.users.length;
-        document.getElementById('wlActiveCount').textContent = activeCount;
-        document.getElementById('wlTotalCalls').textContent = totalCalls;
-        document.getElementById('wlTotalDownloads').textContent = totalDownloads;
-
-        const container = document.getElementById('whitelistUserCards');
-        if (wlUsers.length === 0) {
-          container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:32px;grid-column:1/-1">白名单中的用户尚无使用记录</div>';
-          return;
-        }
-
-        container.innerHTML = wlUsers.map(u => `
-          <div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s"
-               onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)'"
-               onmouseleave="this.style.boxShadow='none'"
-               onclick='openUserUsageDrawer(${Number(u.id)}, ${JSON.stringify(String(u.name ?? ''))}, ${JSON.stringify(String(u.displayName ?? ''))})'>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <span style="font-weight:600;font-size:14px">${esc(u.displayName || u.name || 'user-'+u.id)}</span>
-              <span style="font-size:11px;color:var(--muted)">${u.lastLoginAt ? new Date(u.lastLoginAt*1000).toLocaleDateString('zh-CN') : '-'}</span>
-            </div>
-            <div style="display:flex;gap:16px;font-size:13px;color:var(--muted)">
-              <span>积分: <b style="color:var(--text)">${u.credits ?? 0}</b></span>
-              <span>生图: <b style="color:var(--text)">${u.imageCalls ?? 0}</b></span>
-              <span>下载: <b style="color:var(--text)">${u.downloads ?? 0}</b></span>
-            </div>
-          </div>
-        `).join('');
-      } catch (e) {
-        console.error('loadWhitelistUserData error', e);
-        toast('加载白名单用户失败: ' + e.message, 'error');
-      }
-    }
-
-    const _origLoadConfig = typeof loadConfig === 'function' ? loadConfig : null;
-    if (_origLoadConfig) {
-      const _orig = _origLoadConfig;
-      window.loadConfig = async function() {
-        await _orig();
-      };
-    }
-  </script>
+  <script src="admin.js"></script>
 </body>
 </html>
