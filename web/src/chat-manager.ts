@@ -41,6 +41,44 @@ let _activeConversationId: string | null = null;
 let _saveQueue: Promise<void> = Promise.resolve();
 let _chatDeps: ChatDeps | null = null;
 
+const _httpImageToDataUrlCache = new Map<string, string>();
+
+async function persistImageUrls(content: string): Promise<string> {
+  const httpImgRegex = /(<img[^>]+src=")(https?:\/\/[^"]+)("[^>]*>)/g;
+  let match: RegExpExecArray | null;
+  const urls: string[] = [];
+  while ((match = httpImgRegex.exec(content)) !== null) {
+    urls.push(match[2]);
+  }
+  if (urls.length === 0) return content;
+
+  for (const url of urls) {
+    if (_httpImageToDataUrlCache.has(url)) continue;
+    try {
+      const resp = await fetch(url, { mode: 'cors' });
+      if (!resp.ok) continue;
+      const blob = await resp.blob();
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(url);
+        reader.readAsDataURL(blob);
+      });
+      if (dataUrl.startsWith('data:')) {
+        _httpImageToDataUrlCache.set(url, dataUrl);
+      }
+    } catch { /* keep original URL */ }
+  }
+
+  return content.replace(
+    /(<img[^>]+src=")(https?:\/\/[^"]+)("[^>]*>)/g,
+    (full, prefix, url, suffix) => {
+      const cached = _httpImageToDataUrlCache.get(url);
+      return cached ? `${prefix}${cached}${suffix}` : full;
+    },
+  );
+}
+
 export interface ThemeAgentDebugState {
   toolCallPrompt?: string;
   feedbackRegenerated?: boolean;
@@ -154,19 +192,16 @@ async function doSaveConversation(): Promise<void> {
       if (Object.keys(images).length > 0) imageData = images;
     }
   }
-  const messages = conversationHistory.map(m => {
+  const messages = await Promise.all(conversationHistory.map(async m => {
     let content = m.content;
-    if (content && imageData?.primaryImage) {
-      content = content.replace(
-        /(<img[^>]+src=")(https?:\/\/[^"]+)("[^>]*>)/g,
-        (match, prefix, url, suffix) => url.startsWith('data:') ? match : `${prefix}${imageData!.primaryImage}${suffix}`,
-      );
+    if (content) {
+      content = await persistImageUrls(content);
     }
     return {
       id: m.id, role: m.role, content, timestamp: m.timestamp,
       toolCalls: m.toolCalls, toolResults: m.toolResults, attachments: m.attachments,
     };
-  });
+  }));
 
   try {
     if (!_activeConversationId) {
@@ -629,15 +664,9 @@ export function setupChatInterface(deps: ChatDeps) {
       const messagesContainer = document.getElementById('messagesContainer');
       if (messagesContainer) messagesContainer.innerHTML = '';
       for (const msg of conversationHistory) {
-        let displayContent = msg.role === 'assistant'
+        const displayContent = msg.role === 'assistant'
           ? stripToolCallsFromDisplay(msg.content)
           : msg.content;
-        if (restoredImageUrl && displayContent) {
-          displayContent = displayContent.replace(
-            /(<img[^>]+src=")(https?:\/\/[^"]+)("[^>]*>)/g,
-            (_match: string, prefix: string, url: string, suffix: string) => url.startsWith('data:') ? _match : `${prefix}${restoredImageUrl}${suffix}`,
-          );
-        }
         renderMessage(msg.role === 'assistant' ? 'ai' : msg.role, displayContent);
       }
       showConversationChatView();

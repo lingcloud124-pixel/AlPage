@@ -222,15 +222,15 @@ export async function generateImage(
       return { success: false, error: normalizeImageGenerationError(`图像生成失败: ${detail}`) };
     }
 
-    const imageUrlFromUrls = data.data?.image_urls?.[0];
-    if (imageUrlFromUrls) {
-      return { success: true, url: imageUrlFromUrls };
-    }
-
     const base64Array = data.data?.image_base64;
     if (base64Array && base64Array.length > 0) {
       const dataUrl = `data:image/jpeg;base64,${base64Array[0]}`;
       return { success: true, url: dataUrl };
+    }
+
+    const imageUrlFromUrls = data.data?.image_urls?.[0];
+    if (imageUrlFromUrls) {
+      return { success: true, url: imageUrlFromUrls };
     }
 
     const imageUrlFromArr = data.data?.[0]?.url;
