@@ -1,7 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { resolveLoginName, EKP_BASE_URL, SSO_COOKIE_NAME } from '../middleware/auth.js';
+import { resolveLoginName, EKP_BASE_URL } from '../middleware/auth.js';
 import { ensureUserByLoginName } from '../db.js';
 import { logger } from '../logger.js';
+
+const SSO_COOKIE_CANDIDATES = ['LRToken', 'LtpaToken', 'LR_myekp'];
+const APP_COOKIE_NAME = 'LRToken';
 
 const EKP_SSO_LOGIN_PATH = process.env.EKP_SSO_LOGIN_PATH || '/sys/authentication/sso/login_auto.jsp';
 
@@ -20,7 +23,14 @@ router.get('/login', (req: Request, res: Response) => {
     return;
   }
 
-  const ssoCookie = req.cookies?.[SSO_COOKIE_NAME];
+  let ssoCookie: string | undefined;
+  for (const name of SSO_COOKIE_CANDIDATES) {
+    const val = req.cookies?.[name];
+    if (typeof val === 'string' && val.length > 0) {
+      ssoCookie = val;
+      break;
+    }
+  }
   if (ssoCookie) {
     resolveLoginName(ssoCookie)
       .then((loginName) => {
@@ -82,7 +92,7 @@ router.get('/callback', async (req: Request, res: Response) => {
       cookieOptions.domain = '.landray.com.cn';
     }
 
-    res.cookie(SSO_COOKIE_NAME, token, cookieOptions);
+    res.cookie(APP_COOKIE_NAME, token, cookieOptions);
 
     const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
     if (wantsJson) {

@@ -7,7 +7,7 @@ data:
   NODE_ENV: "production"
   PORT: "3001"
   SCREENSHOT_BASE_URL: "http://theme-studio-svc:3001"
-  EKP_TOKEN_RESOLVE_PATH: "/sys/authentication/sso/loginService_rest/getTokenLoginName"
+  EKP_TOKEN_RESOLVE_PATH: "/api/sys-authentication/loginService/getTokenLoginName"
 ---
 apiVersion: v1
 kind: Secret
