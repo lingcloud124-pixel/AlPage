@@ -5,7 +5,7 @@ import { ADMIN_SESSION_COOKIE, validateSession } from '../admin-session.js';
 const EKP_BASE_URL = process.env.EKP_BASE_URL || '';
 const EKP_SSO_USER = process.env.EKP_SSO_USER || '';
 const EKP_SSO_PASS = process.env.EKP_SSO_PASS || '';
-const EKP_TOKEN_RESOLVE_PATH = process.env.EKP_TOKEN_RESOLVE_PATH || '/sys/authentication/sso/loginService_rest/getTokenLoginName';
+const EKP_TOKEN_RESOLVE_PATH = process.env.EKP_TOKEN_RESOLVE_PATH || '/api/sys-authentication/loginService/getTokenLoginName';
 const SSO_COOKIE_CANDIDATES = ['LRToken', 'LtpaToken', 'LR_myekp'];
 
 const DEV_MODE = process.env.ENABLE_DEV_AUTH === 'true' && process.env.NODE_ENV !== 'production';
@@ -20,10 +20,10 @@ interface EkpTokenResponse {
   loginName?: string;
 }
 
-function buildTokenResolveUrl(token: string): string {
+function buildTokenResolveUrl(): string {
   const base = EKP_BASE_URL.replace(/\/+$/, '');
   const path = EKP_TOKEN_RESOLVE_PATH.startsWith('/') ? EKP_TOKEN_RESOLVE_PATH : `/${EKP_TOKEN_RESOLVE_PATH}`;
-  return `${base}${path}?token=${encodeURIComponent(token)}`;
+  return `${base}${path}`;
 }
 
 function getCachedLoginName(token: string): string | null {
@@ -62,14 +62,18 @@ export async function resolveLoginName(token: string, useCache = true): Promise<
   }
 
   try {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
     if (EKP_SSO_USER && EKP_SSO_PASS) {
       headers.Authorization = `Basic ${Buffer.from(`${EKP_SSO_USER}:${EKP_SSO_PASS}`).toString('base64')}`;
     }
 
-    const resolveUrl = buildTokenResolveUrl(token);
+    const resolveUrl = buildTokenResolveUrl();
     const res = await fetch(resolveUrl, {
+      method: 'POST',
       headers,
+      body: `token=${encodeURIComponent(token)}`,
       signal: AbortSignal.timeout(5000),
       redirect: 'manual',
     });
