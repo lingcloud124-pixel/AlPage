@@ -23,6 +23,16 @@ router.get('/login', (req: Request, res: Response) => {
     return;
   }
 
+  const allCookies = req.cookies ? Object.keys(req.cookies) : [];
+  logger.info('SSO login initiated', {
+    host: req.headers.host,
+    allCookieNames: allCookies,
+    ssoCookieCandidates: SSO_COOKIE_CANDIDATES.map(name => ({
+      name,
+      found: !!(req.cookies?.[name]),
+    })),
+  });
+
   let ssoCookie: string | undefined;
   for (const name of SSO_COOKIE_CANDIDATES) {
     const val = req.cookies?.[name];
@@ -32,18 +42,25 @@ router.get('/login', (req: Request, res: Response) => {
     }
   }
   if (ssoCookie) {
+    logger.info('SSO login: found existing SSO cookie, attempting token validation');
     resolveLoginName(ssoCookie)
       .then((loginName) => {
         if (loginName) {
+          logger.info('SSO login: token validation succeeded, redirecting to /', { loginName });
           res.redirect('/');
           return;
         }
+        logger.warn('SSO login: SSO cookie found but token validation failed, redirecting to EKP SSO');
         redirectToEkpSso(req, res);
       })
-      .catch(() => redirectToEkpSso(req, res));
+      .catch((err) => {
+        logger.error('SSO login: token validation error, redirecting to EKP SSO', err);
+        redirectToEkpSso(req, res);
+      });
     return;
   }
 
+  logger.info('SSO login: no SSO cookie found, redirecting to EKP SSO');
   redirectToEkpSso(req, res);
 });
 
@@ -53,14 +70,21 @@ function redirectToEkpSso(req: Request, res: Response) {
   const base = EKP_BASE_URL.replace(/\/+$/, '');
   const ssoPath = EKP_SSO_LOGIN_PATH.startsWith('/') ? EKP_SSO_LOGIN_PATH : `/${EKP_SSO_LOGIN_PATH}`;
   const ekpLoginUrl = `${base}${ssoPath}?RedirectURL=${redirectParam}`;
-  logger.info('SSO redirect to EKP', { callbackUrl });
+  logger.info('SSO redirect to EKP', { ekpLoginUrl: ekpLoginUrl.replace(/RedirectURL=([^&]+)/, 'RedirectURL=***') });
   res.redirect(ekpLoginUrl);
 }
 
 router.get('/callback', async (req: Request, res: Response) => {
   const token = (req.query.token || req.query.ticket || req.query.sso_token) as string | undefined;
+  const queryKeys = Object.keys(req.query);
+  logger.info('SSO callback received', {
+    hasToken: !!token,
+    tokenPrefix: token ? token.substring(0, 8) + '...' : null,
+    queryKeys,
+  });
+
   if (!token) {
-    logger.warn('SSO callback missing token');
+    logger.warn('SSO callback missing token', { queryKeys });
     res.status(400).json({ error: 'Missing token parameter' });
     return;
   }
@@ -68,7 +92,7 @@ router.get('/callback', async (req: Request, res: Response) => {
   try {
     const loginName = await resolveLoginName(token);
     if (!loginName) {
-      logger.warn('SSO callback token validation failed');
+      logger.warn('SSO callback token validation failed', { tokenPrefix: token.substring(0, 8) + '...' });
       res.status(401).json({ error: 'Token validation failed' });
       return;
     }
@@ -91,6 +115,13 @@ router.get('/callback', async (req: Request, res: Response) => {
     if (isLandrayDomain) {
       cookieOptions.domain = '.landray.com.cn';
     }
+
+    logger.info('SSO callback: setting cookie', {
+      cookieName: APP_COOKIE_NAME,
+      domain: cookieOptions.domain || '(default)',
+      secure: cookieOptions.secure,
+      hostname,
+    });
 
     res.cookie(APP_COOKIE_NAME, token, cookieOptions);
 

@@ -259,6 +259,30 @@ async function start() {
     res.json({ id: userId, name: loginName, display_name: loginName });
   });
 
+  app.get('/api/auth/diagnose', (req, res) => {
+    const allCookies = req.cookies ? Object.keys(req.cookies) : [];
+    const ssoCookies: Record<string, { found: boolean; length?: number; prefix?: string }> = {};
+    for (const name of ['LRToken', 'LtpaToken', 'LR_myekp']) {
+      const val = req.cookies?.[name];
+      ssoCookies[name] = val
+        ? { found: true, length: val.length, prefix: val.substring(0, 8) + '...' }
+        : { found: false };
+    }
+    const ekpConfigured = !!(process.env.EKP_BASE_URL);
+    const tokenPath = process.env.EKP_TOKEN_RESOLVE_PATH || '/sys/authentication/sso/loginService_rest/getTokenLoginName';
+    res.json({
+      host: req.headers.host,
+      origin: req.headers.origin || null,
+      xForwardedFor: req.headers['x-forwarded-for'] || null,
+      xForwardedProto: req.headers['x-forwarded-proto'] || null,
+      allCookieNames: allCookies,
+      ssoCookies,
+      ekpConfigured,
+      tokenResolvePath: tokenPath,
+      devMode: process.env.ENABLE_DEV_AUTH === 'true' && process.env.NODE_ENV !== 'production',
+    });
+  });
+
   app.get('/api/auth/users', adminAuthMiddleware, async (_req, res) => {
     try {
       const stmt = db.prepare('SELECT id, name, display_name, last_login_at FROM users ORDER BY last_login_at DESC, id ASC');

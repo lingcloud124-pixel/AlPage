@@ -5,7 +5,7 @@ import { ADMIN_SESSION_COOKIE, validateSession } from '../admin-session.js';
 const EKP_BASE_URL = process.env.EKP_BASE_URL || '';
 const EKP_SSO_USER = process.env.EKP_SSO_USER || '';
 const EKP_SSO_PASS = process.env.EKP_SSO_PASS || '';
-const EKP_TOKEN_RESOLVE_PATH = process.env.EKP_TOKEN_RESOLVE_PATH || '/api/sys-authentication/loginService/getTokenLoginName';
+const EKP_TOKEN_RESOLVE_PATH = process.env.EKP_TOKEN_RESOLVE_PATH || '/sys/authentication/sso/loginService_rest/getTokenLoginName';
 const SSO_COOKIE_CANDIDATES = ['LRToken', 'LtpaToken', 'LR_myekp'];
 
 const DEV_MODE = process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_AUTH === 'true';
@@ -67,13 +67,18 @@ export async function resolveLoginName(token: string, useCache = true): Promise<
       headers.Authorization = `Basic ${Buffer.from(`${EKP_SSO_USER}:${EKP_SSO_PASS}`).toString('base64')}`;
     }
 
-    const res = await fetch(buildTokenResolveUrl(token), {
+    const resolveUrl = buildTokenResolveUrl(token);
+    const res = await fetch(resolveUrl, {
       headers,
       signal: AbortSignal.timeout(5000),
     });
 
     if (!res.ok) {
-      logger.error('EKP token validation HTTP error', { status: res.status });
+      logger.error('EKP token validation HTTP error', {
+        status: res.status,
+        resolveUrl: resolveUrl.replace(/token=[^&]+/, 'token=***'),
+        path: EKP_TOKEN_RESOLVE_PATH,
+      });
       return null;
     }
 
@@ -92,16 +97,25 @@ export async function resolveLoginName(token: string, useCache = true): Promise<
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  const receivedCookies = req.cookies ? Object.keys(req.cookies) : [];
+  const ssoCookieFound: Record<string, boolean> = {};
   let token: string | undefined;
   for (const name of SSO_COOKIE_CANDIDATES) {
     const val = req.cookies?.[name];
-    if (typeof val === 'string' && val.length > 0) {
+    ssoCookieFound[name] = typeof val === 'string' && val.length > 0;
+    if (ssoCookieFound[name]) {
       token = val;
       break;
     }
   }
 
   if (!token) {
+    logger.info('Auth: no SSO cookie found', {
+      path: req.path,
+      receivedCookies,
+      ssoCookieFound,
+      host: req.headers.host,
+    });
     if (DEV_MODE) {
       (req as any).loginName = DEV_LOGIN_NAME;
       return next();
