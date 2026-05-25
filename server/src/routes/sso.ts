@@ -8,12 +8,31 @@ const APP_COOKIE_NAME = 'LRToken';
 
 const EKP_SSO_LOGIN_PATH = process.env.EKP_SSO_LOGIN_PATH || '/sys/authentication/sso/login_auto.jsp';
 
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || '';
+
 const router = Router();
 
 function parsePublicHost(req: Request): string {
+  if (PUBLIC_BASE_URL) {
+    return PUBLIC_BASE_URL.replace(/\/+$/, '');
+  }
+
   const forwarded = req.headers['x-forwarded-host'];
   const host = typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : req.headers.host || '';
-  const proto = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http');
+
+  let proto = (req.headers['x-forwarded-proto'] as string) || '';
+  if (!proto) {
+    proto = req.secure ? 'https' : 'http';
+  }
+  if (proto !== 'https' && host.endsWith('.landray.com.cn')) {
+    logger.warn('SSO: detected http protocol for landray domain, forcing https', {
+      originalProto: req.headers['x-forwarded-proto'],
+      secure: req.secure,
+      host,
+    });
+    proto = 'https';
+  }
+
   return `${proto}://${host}`;
 }
 
@@ -65,12 +84,13 @@ router.get('/login', (req: Request, res: Response) => {
 });
 
 function redirectToEkpSso(req: Request, res: Response) {
-  const callbackUrl = `${parsePublicHost(req)}/api/auth/sso/callback`;
+  const publicHost = parsePublicHost(req);
+  const callbackUrl = `${publicHost}/api/auth/sso/callback`;
   const redirectParam = encodeURIComponent(callbackUrl);
   const base = EKP_BASE_URL.replace(/\/+$/, '');
   const ssoPath = EKP_SSO_LOGIN_PATH.startsWith('/') ? EKP_SSO_LOGIN_PATH : `/${EKP_SSO_LOGIN_PATH}`;
   const ekpLoginUrl = `${base}${ssoPath}?RedirectURL=${redirectParam}`;
-  logger.info('SSO redirect to EKP', { ekpLoginUrl: ekpLoginUrl.replace(/RedirectURL=([^&]+)/, 'RedirectURL=***') });
+  logger.info('SSO redirect to EKP', { callbackUrl, ekpLoginUrl: ekpLoginUrl.replace(/RedirectURL=([^&]+)/, 'RedirectURL=***') });
   res.redirect(ekpLoginUrl);
 }
 
@@ -108,7 +128,7 @@ router.get('/callback', async (req: Request, res: Response) => {
     const cookieOptions: Record<string, any> = {
       httpOnly: false,
       path: '/',
-      secure: req.secure || !!req.headers['x-forwarded-proto'],
+      secure: isLandrayDomain ? true : (req.secure || !!req.headers['x-forwarded-proto']),
       sameSite: 'lax',
     };
 

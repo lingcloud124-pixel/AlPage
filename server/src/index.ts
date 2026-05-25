@@ -270,16 +270,34 @@ async function start() {
     }
     const ekpConfigured = !!(process.env.EKP_BASE_URL);
     const tokenPath = process.env.EKP_TOKEN_RESOLVE_PATH || '/sys/authentication/sso/loginService_rest/getTokenLoginName';
+    const isDevMode = process.env.ENABLE_DEV_AUTH === 'true' && process.env.NODE_ENV !== 'production';
+    const xForwardedProto = req.headers['x-forwarded-proto'] || null;
+    const publicBaseUrl = process.env.PUBLIC_BASE_URL || '';
+
+    const warnings: string[] = [];
+    if (isDevMode) warnings.push('ENABLE_DEV_AUTH=true in production — all auth bypassed');
+    if (xForwardedProto === 'http' && req.headers.host?.endsWith('.landray.com.cn')) {
+      warnings.push('x-forwarded-proto is http but host is landray.com.cn — should be https');
+    }
+    if (!ssoCookies.LRToken.found && !ssoCookies.LtpaToken.found && !ssoCookies.LR_myekp.found) {
+      warnings.push('No EKP SSO cookies received — EKP cookies may not be scoped to .landray.com.cn');
+    }
+    if (!publicBaseUrl && xForwardedProto !== 'https') {
+      warnings.push('Set PUBLIC_BASE_URL=https://cloud-theme.landray.com.cn to fix callback URL');
+    }
+
     res.json({
       host: req.headers.host,
       origin: req.headers.origin || null,
       xForwardedFor: req.headers['x-forwarded-for'] || null,
-      xForwardedProto: req.headers['x-forwarded-proto'] || null,
+      xForwardedProto,
       allCookieNames: allCookies,
       ssoCookies,
       ekpConfigured,
       tokenResolvePath: tokenPath,
-      devMode: process.env.ENABLE_DEV_AUTH === 'true' && process.env.NODE_ENV !== 'production',
+      publicBaseUrl,
+      devMode: isDevMode,
+      warnings,
     });
   });
 
