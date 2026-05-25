@@ -94,25 +94,62 @@ function redirectToEkpSso(req: Request, res: Response) {
   res.redirect(ekpLoginUrl);
 }
 
+// Fallback: redirect to EKP login page directly (when SSO redirect flow fails)
+function redirectToEkpLogin(req: Request, res: Response) {
+  const base = EKP_BASE_URL.replace(/\/+$/, '');
+  const publicHost = parsePublicHost(req);
+  const callbackUrl = `${publicHost}/api/auth/sso/callback`;
+  const loginUrl = `${base}/login.jsp?RedirectURL=${encodeURIComponent(callbackUrl)}`;
+  logger.info('SSO fallback: redirect to EKP login page', { loginUrl: loginUrl.replace(/RedirectURL=([^&]+)/, 'RedirectURL=***') });
+  res.redirect(loginUrl);
+}
+
 router.get('/callback', async (req: Request, res: Response) => {
   const token = (req.query.token || req.query.ticket || req.query.sso_token) as string | undefined;
+  const directLoginName = req.query.loginName as string | undefined;
   const queryKeys = Object.keys(req.query);
   logger.info('SSO callback received', {
     hasToken: !!token,
     tokenPrefix: token ? token.substring(0, 8) + '...' : null,
+    directLoginName: directLoginName || null,
     queryKeys,
   });
 
-  if (!token) {
-    logger.warn('SSO callback missing token', { queryKeys });
+  if (!token && !directLoginName) {
+    logger.warn('SSO callback missing token and loginName', { queryKeys });
     res.status(400).json({ error: 'Missing token parameter' });
     return;
   }
 
   try {
-    const loginName = await resolveLoginName(token);
+    let loginName: string | null = null;
+
+    // Strategy 1: Try EKP token validation API
+    if (token) {
+      loginName = await resolveLoginName(token);
+      if (loginName) {
+        logger.info('SSO callback: token validation succeeded', { loginName });
+      } else {
+        logger.warn('SSO callback: token validation API failed', { tokenPrefix: token.substring(0, 8) + '...' });
+      }
+    }
+
+    // Strategy 2: Use direct loginName from EKP redirect (fallback when API unavailable)
+    if (!loginName && directLoginName && typeof directLoginName === 'string' && directLoginName.trim().length > 0) {
+      loginName = directLoginName.trim();
+      logger.info('SSO callback: using direct loginName from EKP redirect', { loginName });
+    }
+
+    // Strategy 3: Use token itself as a session identifier (last resort, API unavailable + no loginName)
+    if (!loginName && token) {
+      logger.warn('SSO callback: API unavailable and no direct loginName — redirecting to EKP login');
+      // Instead of accepting unknown tokens, redirect to EKP login for proper authentication
+      const base = EKP_BASE_URL.replace(/\/+$/, '');
+      res.redirect(`${base}/login.jsp`);
+      return;
+    }
+
     if (!loginName) {
-      logger.warn('SSO callback token validation failed', { tokenPrefix: token.substring(0, 8) + '...' });
       res.status(401).json({ error: 'Token validation failed' });
       return;
     }
@@ -143,7 +180,7 @@ router.get('/callback', async (req: Request, res: Response) => {
       hostname,
     });
 
-    res.cookie(APP_COOKIE_NAME, token, cookieOptions);
+    res.cookie(APP_COOKIE_NAME, token || loginName, cookieOptions);
 
     const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
     if (wantsJson) {

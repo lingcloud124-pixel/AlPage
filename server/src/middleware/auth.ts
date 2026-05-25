@@ -71,7 +71,19 @@ export async function resolveLoginName(token: string, useCache = true): Promise<
     const res = await fetch(resolveUrl, {
       headers,
       signal: AbortSignal.timeout(5000),
+      redirect: 'manual',
     });
+
+    // EKP may return 302 to anonym.jsp when API auth fails — detect and handle
+    if (res.status >= 300 && res.status < 400) {
+      const redirectLocation = res.headers.get('location') || '';
+      logger.warn('EKP token validation API returned redirect (likely auth issue)', {
+        status: res.status,
+        redirectLocation,
+        resolveUrl: resolveUrl.replace(/token=[^&]+/, 'token=***'),
+      });
+      return null;
+    }
 
     if (!res.ok) {
       logger.error('EKP token validation HTTP error', {
@@ -82,7 +94,17 @@ export async function resolveLoginName(token: string, useCache = true): Promise<
       return null;
     }
 
-    const data = (await res.json()) as EkpTokenResponse;
+    const text = await res.text();
+    let data: EkpTokenResponse;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      logger.warn('EKP token validation returned non-JSON response', {
+        preview: text.substring(0, 200),
+      });
+      return null;
+    }
+
     if (!data.result || !data.loginName) {
       logger.warn('EKP token validation failed', { errorMsg: data.errorMsg });
       return null;
