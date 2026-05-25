@@ -79,8 +79,8 @@ router.get('/login', (req: Request, res: Response) => {
     return;
   }
 
-  logger.info('SSO login: no SSO cookie found, redirecting to EKP SSO');
-  redirectToEkpSso(req, res);
+  logger.info('SSO login: no SSO cookie found, redirecting to EKP login page');
+  redirectToEkpLogin(req, res);
 });
 
 function redirectToEkpSso(req: Request, res: Response) {
