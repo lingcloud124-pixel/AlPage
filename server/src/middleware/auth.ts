@@ -8,7 +8,7 @@ const EKP_SSO_PASS = process.env.EKP_SSO_PASS || '';
 const EKP_TOKEN_RESOLVE_PATH = process.env.EKP_TOKEN_RESOLVE_PATH || '/sys/authentication/sso/loginService_rest/getTokenLoginName';
 const SSO_COOKIE_CANDIDATES = ['LRToken', 'LtpaToken', 'LR_myekp'];
 
-const DEV_MODE = process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_AUTH === 'true';
+const DEV_MODE = process.env.ENABLE_DEV_AUTH === 'true' && process.env.NODE_ENV !== 'production';
 const DEV_LOGIN_NAME = process.env.DEV_LOGIN_NAME || 'dev_user';
 
 const TOKEN_CACHE_TTL_MS = 5 * 60 * 1000;
