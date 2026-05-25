@@ -19,7 +19,7 @@ import {
   setupCollapsibleColorPanel,
 } from './ui-setup';
 import { loadDefaultTemplates } from './theme-engine';
-import { checkAuth, getUser } from './auth';
+import { checkAuth, consumeUrlToken, getUser } from './auth';
 import { fetchCredits, setupCreditsTooltip, startCreditsAutoRefresh, updateCreditsDisplay } from './credits';
 import { initSidebar } from './components/sidebar';
 import { registerPreviewResize, resizePreviewPages } from './preview/resize-preview';
@@ -112,6 +112,8 @@ async function initializeFeatureModules() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {
+    await consumeUrlToken();
+
     const isAuth = await checkAuth();
     if (!isAuth) {
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {

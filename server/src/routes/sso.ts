@@ -3,6 +3,8 @@ import { resolveLoginName, EKP_BASE_URL, SSO_COOKIE_NAME } from '../middleware/a
 import { ensureUserByLoginName } from '../db.js';
 import { logger } from '../logger.js';
 
+const EKP_SSO_LOGIN_PATH = process.env.EKP_SSO_LOGIN_PATH || '/sys/authentication/sso/login_auto.jsp';
+
 const router = Router();
 
 function parsePublicHost(req: Request): string {
@@ -38,16 +40,18 @@ router.get('/login', (req: Request, res: Response) => {
 function redirectToEkpSso(req: Request, res: Response) {
   const callbackUrl = `${parsePublicHost(req)}/api/auth/sso/callback`;
   const redirectParam = encodeURIComponent(callbackUrl);
-  const ekpLoginUrl = `${EKP_BASE_URL}/sys/authentication/sso/login_auto.jsp?RedirectURL=${redirectParam}`;
+  const base = EKP_BASE_URL.replace(/\/+$/, '');
+  const ssoPath = EKP_SSO_LOGIN_PATH.startsWith('/') ? EKP_SSO_LOGIN_PATH : `/${EKP_SSO_LOGIN_PATH}`;
+  const ekpLoginUrl = `${base}${ssoPath}?RedirectURL=${redirectParam}`;
   logger.info('SSO redirect to EKP', { callbackUrl });
   res.redirect(ekpLoginUrl);
 }
 
 router.get('/callback', async (req: Request, res: Response) => {
-  const token = req.query.token as string | undefined;
+  const token = (req.query.token || req.query.ticket || req.query.sso_token) as string | undefined;
   if (!token) {
     logger.warn('SSO callback missing token');
-    res.status(400).send('Missing token parameter');
+    res.status(400).json({ error: 'Missing token parameter' });
     return;
   }
 
@@ -55,7 +59,7 @@ router.get('/callback', async (req: Request, res: Response) => {
     const loginName = await resolveLoginName(token);
     if (!loginName) {
       logger.warn('SSO callback token validation failed');
-      res.status(401).send('Token validation failed');
+      res.status(401).json({ error: 'Token validation failed' });
       return;
     }
 
@@ -79,10 +83,16 @@ router.get('/callback', async (req: Request, res: Response) => {
     }
 
     res.cookie(SSO_COOKIE_NAME, token, cookieOptions);
-    res.redirect('/');
+
+    const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
+    if (wantsJson) {
+      res.json({ success: true, loginName });
+    } else {
+      res.redirect('/');
+    }
   } catch (err) {
     logger.error('SSO callback error', err);
-    res.status(500).send('Internal server error');
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
