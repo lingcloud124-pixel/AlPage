@@ -125,17 +125,16 @@ export async function resolveLoginName(token: string, useCache = true): Promise<
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
   const receivedCookies = req.cookies ? Object.keys(req.cookies) : [];
   const ssoCookieFound: Record<string, boolean> = {};
-  let token: string | undefined;
+  const tokens: Array<{ name: string; value: string }> = [];
   for (const name of SSO_COOKIE_CANDIDATES) {
     const val = req.cookies?.[name];
     ssoCookieFound[name] = typeof val === 'string' && val.length > 0;
     if (ssoCookieFound[name]) {
-      token = val;
-      break;
+      tokens.push({ name, value: val });
     }
   }
 
-  if (!token) {
+  if (tokens.length === 0) {
     logger.info('Auth: no SSO cookie found', {
       path: req.path,
       receivedCookies,
@@ -150,18 +149,22 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     return;
   }
 
-  resolveLoginName(token)
-    .then((loginName) => {
-      if (!loginName) {
-        res.status(401).json({ error: 'Token validation failed', code: 'INVALID_TOKEN' });
+  // Try each cookie token until one validates successfully
+  (async () => {
+    for (const { name, value } of tokens) {
+      const loginName = await resolveLoginName(value);
+      if (loginName) {
+        logger.info('Auth: token validated', { cookieName: name, loginName });
+        (req as any).loginName = loginName;
+        next();
         return;
       }
-      (req as any).loginName = loginName;
-      next();
-    })
-    .catch(() => {
-      res.status(502).json({ error: 'Authentication service unavailable', code: 'SSO_UNAVAILABLE' });
-    });
+      logger.warn('Auth: token validation failed for cookie', { cookieName: name });
+    }
+    res.status(401).json({ error: 'Token validation failed', code: 'INVALID_TOKEN' });
+  })().catch(() => {
+    res.status(502).json({ error: 'Authentication service unavailable', code: 'SSO_UNAVAILABLE' });
+  });
 }
 
 export function adminAuthMiddleware(req: Request, res: Response, next: NextFunction) {
