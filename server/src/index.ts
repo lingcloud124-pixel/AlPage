@@ -301,6 +301,43 @@ async function start() {
     });
   });
 
+  app.get('/api/auth/test-sso', async (req, res) => {
+    const result: Record<string, any> = { step1_cookies: {}, step2_api: {}, conclusion: '' };
+
+    // Step 1: Check cookies
+    const ssoCookieNames = ['LRToken', 'LtpaToken', 'LR_myekp'];
+    let foundToken: string | undefined;
+    for (const name of ssoCookieNames) {
+      const val = req.cookies?.[name];
+      result.step1_cookies[name] = val ? { found: true, length: val.length, prefix: val.substring(0, 8) + '...' } : { found: false };
+      if (val && !foundToken) foundToken = val;
+    }
+    result.step1_allCookies = req.cookies ? Object.keys(req.cookies) : [];
+
+    if (!foundToken) {
+      result.conclusion = 'FAIL: 浏览器没有发送任何 EKP Cookie，请确认已登录 EKP 且 Cookie 域名为 .landray.com.cn';
+      res.json(result);
+      return;
+    }
+
+    // Step 2: Try EKP API
+    const { resolveLoginName } = await import('./middleware/auth.js');
+    try {
+      const loginName = await resolveLoginName(foundToken, false);
+      result.step2_api = { called: true, loginName };
+      if (loginName) {
+        result.conclusion = `SUCCESS: 用户 ${loginName} 认证成功`;
+      } else {
+        result.conclusion = 'FAIL: Cookie 已收到但 API 验证返回空（API 权限或路径问题）';
+      }
+    } catch (err: any) {
+      result.step2_api = { called: true, error: err.message };
+      result.conclusion = `FAIL: API 调用异常 — ${err.message}`;
+    }
+
+    res.json(result);
+  });
+
   app.get('/api/auth/users', adminAuthMiddleware, async (_req, res) => {
     try {
       const stmt = db.prepare('SELECT id, name, display_name, last_login_at FROM users ORDER BY last_login_at DESC, id ASC');
