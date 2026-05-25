@@ -321,56 +321,69 @@ async function start() {
       return;
     }
 
-    // Step 2: Call EKP API directly with full diagnostics
+    // Step 2: Try multiple API paths to find the correct one
     const EKP_BASE_URL = process.env.EKP_BASE_URL || '';
     const EKP_SSO_USER = process.env.EKP_SSO_USER || '';
     const EKP_SSO_PASS = process.env.EKP_SSO_PASS || '';
-    const tokenPath = process.env.EKP_TOKEN_RESOLVE_PATH || '/sys/authentication/sso/loginService_rest/getTokenLoginName';
-    const resolveUrl = `${EKP_BASE_URL.replace(/\/+$/, '')}${tokenPath}?token=${encodeURIComponent(foundToken)}`;
+    const base = EKP_BASE_URL.replace(/\/+$/, '');
 
-    result.step2_api = {
-      url: resolveUrl.replace(/token=[^&]+/, 'token=***'),
-      tokenName: foundTokenName,
-      hasCredentials: !!(EKP_SSO_USER && EKP_SSO_PASS),
-      user: EKP_SSO_USER || '(none)',
-    };
+    const apiPaths = [
+      '/sys/authentication/sso/loginService_rest/getTokenLoginName',
+      '/api/sys-authentication/loginService/getTokenLoginName',
+      '/sys/authentication/loginService_rest/getTokenLoginName',
+      '/sys/sso/loginService_rest/getTokenLoginName',
+      '/sys/sso/loginService/getTokenLoginName',
+      '/sys/authentication/sso/loginService/getTokenLoginName',
+    ];
 
-    try {
-      const headers: Record<string, string> = {};
-      if (EKP_SSO_USER && EKP_SSO_PASS) {
-        headers.Authorization = `Basic ${Buffer.from(`${EKP_SSO_USER}:${EKP_SSO_PASS}`).toString('base64')}`;
-      }
+    const headers: Record<string, string> = {};
+    if (EKP_SSO_USER && EKP_SSO_PASS) {
+      headers.Authorization = `Basic ${Buffer.from(`${EKP_SSO_USER}:${EKP_SSO_PASS}`).toString('base64')}`;
+    }
 
-      const apiRes = await fetch(resolveUrl, {
-        headers,
-        signal: AbortSignal.timeout(10000),
-        redirect: 'manual',
-      });
+    result.step2_api = { tokenName: foundTokenName, user: EKP_SSO_USER, pathsTested: [] };
+    let successResult: string | null = null;
 
-      result.step2_api.httpStatus = apiRes.status;
-      result.step2_api.location = apiRes.headers.get('location');
+    for (const path of apiPaths) {
+      const url = `${base}${path}?token=${encodeURIComponent(foundToken)}`;
+      const entry: Record<string, any> = { path, httpStatus: 0 };
+      try {
+        const apiRes = await fetch(url, { headers, signal: AbortSignal.timeout(8000), redirect: 'manual' });
+        entry.httpStatus = apiRes.status;
+        entry.location = apiRes.headers.get('location');
+        const body = await apiRes.text();
+        entry.bodyPreview = body.substring(0, 300);
 
-      const body = await apiRes.text();
-      result.step2_api.bodyPreview = body.substring(0, 500);
-
-      if (apiRes.status >= 300 && apiRes.status < 400) {
-        result.conclusion = `FAIL: API 返回 ${apiRes.status} 重定向到 ${apiRes.headers.get('location')}（认证被拒绝或路径错误）`;
-      } else {
-        try {
-          const data = JSON.parse(body);
-          result.step2_api.parsedJson = data;
-          if (data.result && data.loginName) {
-            result.conclusion = `SUCCESS: 用户 ${data.loginName} 认证成功`;
-          } else {
-            result.conclusion = `FAIL: API 返回 JSON 但验证失败 — result=${data.result}, errorMsg=${data.errorMsg || '(none)'}`;
+        if (apiRes.status === 200) {
+          try {
+            const data = JSON.parse(body);
+            entry.parsedJson = data;
+            if (data.result && data.loginName) {
+              entry.status = 'SUCCESS';
+              successResult = data.loginName;
+            } else {
+              entry.status = 'JSON但验证失败';
+            }
+          } catch {
+            entry.status = '非JSON';
           }
-        } catch {
-          result.conclusion = `FAIL: API 返回非 JSON 内容（HTTP ${apiRes.status}），可能是路径错误或需要登录`;
+        } else if (apiRes.status >= 300 && apiRes.status < 400) {
+          entry.status = 'REDIRECT';
+        } else {
+          entry.status = `HTTP_${apiRes.status}`;
         }
+      } catch (err: any) {
+        entry.status = 'ERROR';
+        entry.error = err.message;
       }
-    } catch (err: any) {
-      result.step2_api.error = err.message;
-      result.conclusion = `FAIL: API 调用异常 — ${err.message}`;
+      result.step2_api.pathsTested.push(entry);
+      if (successResult) break;
+    }
+
+    if (successResult) {
+      result.conclusion = `SUCCESS: 用户 ${successResult} 认证成功`;
+    } else {
+      result.conclusion = 'FAIL: 所有 API 路径均验证失败，请让蓝凌确认正确的 getTokenLoginName 接口地址和认证方式';
     }
 
     res.json(result);
