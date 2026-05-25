@@ -307,10 +307,11 @@ async function start() {
     // Step 1: Check cookies
     const ssoCookieNames = ['LRToken', 'LtpaToken', 'LR_myekp'];
     let foundToken: string | undefined;
+    let foundTokenName: string | undefined;
     for (const name of ssoCookieNames) {
       const val = req.cookies?.[name];
       result.step1_cookies[name] = val ? { found: true, length: val.length, prefix: val.substring(0, 8) + '...' } : { found: false };
-      if (val && !foundToken) foundToken = val;
+      if (val && !foundToken) { foundToken = val; foundTokenName = name; }
     }
     result.step1_allCookies = req.cookies ? Object.keys(req.cookies) : [];
 
@@ -320,18 +321,55 @@ async function start() {
       return;
     }
 
-    // Step 2: Try EKP API
-    const { resolveLoginName } = await import('./middleware/auth.js');
+    // Step 2: Call EKP API directly with full diagnostics
+    const EKP_BASE_URL = process.env.EKP_BASE_URL || '';
+    const EKP_SSO_USER = process.env.EKP_SSO_USER || '';
+    const EKP_SSO_PASS = process.env.EKP_SSO_PASS || '';
+    const tokenPath = process.env.EKP_TOKEN_RESOLVE_PATH || '/sys/authentication/sso/loginService_rest/getTokenLoginName';
+    const resolveUrl = `${EKP_BASE_URL.replace(/\/+$/, '')}${tokenPath}?token=${encodeURIComponent(foundToken)}`;
+
+    result.step2_api = {
+      url: resolveUrl.replace(/token=[^&]+/, 'token=***'),
+      tokenName: foundTokenName,
+      hasCredentials: !!(EKP_SSO_USER && EKP_SSO_PASS),
+      user: EKP_SSO_USER || '(none)',
+    };
+
     try {
-      const loginName = await resolveLoginName(foundToken, false);
-      result.step2_api = { called: true, loginName };
-      if (loginName) {
-        result.conclusion = `SUCCESS: 用户 ${loginName} 认证成功`;
+      const headers: Record<string, string> = {};
+      if (EKP_SSO_USER && EKP_SSO_PASS) {
+        headers.Authorization = `Basic ${Buffer.from(`${EKP_SSO_USER}:${EKP_SSO_PASS}`).toString('base64')}`;
+      }
+
+      const apiRes = await fetch(resolveUrl, {
+        headers,
+        signal: AbortSignal.timeout(10000),
+        redirect: 'manual',
+      });
+
+      result.step2_api.httpStatus = apiRes.status;
+      result.step2_api.location = apiRes.headers.get('location');
+
+      const body = await apiRes.text();
+      result.step2_api.bodyPreview = body.substring(0, 500);
+
+      if (apiRes.status >= 300 && apiRes.status < 400) {
+        result.conclusion = `FAIL: API 返回 ${apiRes.status} 重定向到 ${apiRes.headers.get('location')}（认证被拒绝或路径错误）`;
       } else {
-        result.conclusion = 'FAIL: Cookie 已收到但 API 验证返回空（API 权限或路径问题）';
+        try {
+          const data = JSON.parse(body);
+          result.step2_api.parsedJson = data;
+          if (data.result && data.loginName) {
+            result.conclusion = `SUCCESS: 用户 ${data.loginName} 认证成功`;
+          } else {
+            result.conclusion = `FAIL: API 返回 JSON 但验证失败 — result=${data.result}, errorMsg=${data.errorMsg || '(none)'}`;
+          }
+        } catch {
+          result.conclusion = `FAIL: API 返回非 JSON 内容（HTTP ${apiRes.status}），可能是路径错误或需要登录`;
+        }
       }
     } catch (err: any) {
-      result.step2_api = { called: true, error: err.message };
+      result.step2_api.error = err.message;
       result.conclusion = `FAIL: API 调用异常 — ${err.message}`;
     }
 
