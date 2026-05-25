@@ -321,7 +321,7 @@ async function start() {
       return;
     }
 
-    // Step 2: Call EKP API with POST on the correct path
+    // Step 2: Try each cookie token against the API
     const EKP_BASE_URL = process.env.EKP_BASE_URL || '';
     const EKP_SSO_USER = process.env.EKP_SSO_USER || '';
     const EKP_SSO_PASS = process.env.EKP_SSO_PASS || '';
@@ -336,41 +336,43 @@ async function start() {
       headers.Authorization = `Basic ${Buffer.from(`${EKP_SSO_USER}:${EKP_SSO_PASS}`).toString('base64')}`;
     }
 
-    result.step2_api = { tokenName: foundTokenName, user: EKP_SSO_USER, method: 'POST', url: apiUrl };
+    result.step2_api = { user: EKP_SSO_USER, method: 'POST', url: apiUrl, testedTokens: [] };
+    let successResult: string | null = null;
 
-    try {
-      const apiRes = await fetch(apiUrl, {
-        method: 'POST',
-        headers,
-        body: `token=${encodeURIComponent(foundToken)}`,
-        signal: AbortSignal.timeout(10000),
-        redirect: 'manual',
-      });
-
-      result.step2_api.httpStatus = apiRes.status;
-      result.step2_api.location = apiRes.headers.get('location');
-
-      const body = await apiRes.text();
-      result.step2_api.bodyPreview = body.substring(0, 500);
-
-      if (apiRes.status >= 300 && apiRes.status < 400) {
-        result.conclusion = `FAIL: API 返回 ${apiRes.status} 重定向（认证被拒绝）`;
-      } else {
+    for (const name of ssoCookieNames) {
+      const val = req.cookies?.[name];
+      if (!val) continue;
+      const entry: Record<string, any> = { cookieName: name, tokenPrefix: val.substring(0, 8) + '...' };
+      try {
+        const apiRes = await fetch(apiUrl, {
+          method: 'POST',
+          headers,
+          body: `token=${encodeURIComponent(val)}`,
+          signal: AbortSignal.timeout(10000),
+          redirect: 'manual',
+        });
+        entry.httpStatus = apiRes.status;
+        const body = await apiRes.text();
         try {
           const data = JSON.parse(body);
-          result.step2_api.parsedJson = data;
-          if (data.loginName) {
-            result.conclusion = `SUCCESS: 用户 ${data.loginName} 认证成功`;
-          } else {
-            result.conclusion = `FAIL: API 返回 JSON 但无 loginName — ${JSON.stringify(data)}`;
-          }
+          entry.result = data.result;
+          entry.loginName = data.loginName || null;
+          entry.errorMsg = data.errorMsg || null;
+          if (data.loginName) { successResult = data.loginName; }
         } catch {
-          result.conclusion = `FAIL: API 返回非 JSON（HTTP ${apiRes.status}）`;
+          entry.bodyPreview = body.substring(0, 200);
         }
+      } catch (err: any) {
+        entry.error = err.message;
       }
-    } catch (err: any) {
-      result.step2_api.error = err.message;
-      result.conclusion = `FAIL: API 调用异常 — ${err.message}`;
+      result.step2_api.testedTokens.push(entry);
+      if (successResult) break;
+    }
+
+    if (successResult) {
+      result.conclusion = `SUCCESS: 用户 ${successResult} 认证成功`;
+    } else {
+      result.conclusion = 'FAIL: 所有 Cookie Token 均无法解密，请让蓝凌确认 third_ai_01 账号是否有解密权限，或需要配置 LRToken';
     }
 
     res.json(result);
