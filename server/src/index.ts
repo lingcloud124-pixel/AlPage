@@ -321,69 +321,56 @@ async function start() {
       return;
     }
 
-    // Step 2: Try multiple API paths to find the correct one
+    // Step 2: Call EKP API with POST on the correct path
     const EKP_BASE_URL = process.env.EKP_BASE_URL || '';
     const EKP_SSO_USER = process.env.EKP_SSO_USER || '';
     const EKP_SSO_PASS = process.env.EKP_SSO_PASS || '';
     const base = EKP_BASE_URL.replace(/\/+$/, '');
+    const apiPath = '/api/sys-authentication/loginService/getTokenLoginName';
+    const apiUrl = `${base}${apiPath}`;
 
-    const apiPaths = [
-      '/sys/authentication/sso/loginService_rest/getTokenLoginName',
-      '/api/sys-authentication/loginService/getTokenLoginName',
-      '/sys/authentication/loginService_rest/getTokenLoginName',
-      '/sys/sso/loginService_rest/getTokenLoginName',
-      '/sys/sso/loginService/getTokenLoginName',
-      '/sys/authentication/sso/loginService/getTokenLoginName',
-    ];
-
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
     if (EKP_SSO_USER && EKP_SSO_PASS) {
       headers.Authorization = `Basic ${Buffer.from(`${EKP_SSO_USER}:${EKP_SSO_PASS}`).toString('base64')}`;
     }
 
-    result.step2_api = { tokenName: foundTokenName, user: EKP_SSO_USER, pathsTested: [] };
-    let successResult: string | null = null;
+    result.step2_api = { tokenName: foundTokenName, user: EKP_SSO_USER, method: 'POST', url: apiUrl };
 
-    for (const path of apiPaths) {
-      const url = `${base}${path}?token=${encodeURIComponent(foundToken)}`;
-      const entry: Record<string, any> = { path, httpStatus: 0 };
-      try {
-        const apiRes = await fetch(url, { headers, signal: AbortSignal.timeout(8000), redirect: 'manual' });
-        entry.httpStatus = apiRes.status;
-        entry.location = apiRes.headers.get('location');
-        const body = await apiRes.text();
-        entry.bodyPreview = body.substring(0, 300);
+    try {
+      const apiRes = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: `token=${encodeURIComponent(foundToken)}`,
+        signal: AbortSignal.timeout(10000),
+        redirect: 'manual',
+      });
 
-        if (apiRes.status === 200) {
-          try {
-            const data = JSON.parse(body);
-            entry.parsedJson = data;
-            if (data.result && data.loginName) {
-              entry.status = 'SUCCESS';
-              successResult = data.loginName;
-            } else {
-              entry.status = 'JSON但验证失败';
-            }
-          } catch {
-            entry.status = '非JSON';
+      result.step2_api.httpStatus = apiRes.status;
+      result.step2_api.location = apiRes.headers.get('location');
+
+      const body = await apiRes.text();
+      result.step2_api.bodyPreview = body.substring(0, 500);
+
+      if (apiRes.status >= 300 && apiRes.status < 400) {
+        result.conclusion = `FAIL: API 返回 ${apiRes.status} 重定向（认证被拒绝）`;
+      } else {
+        try {
+          const data = JSON.parse(body);
+          result.step2_api.parsedJson = data;
+          if (data.loginName) {
+            result.conclusion = `SUCCESS: 用户 ${data.loginName} 认证成功`;
+          } else {
+            result.conclusion = `FAIL: API 返回 JSON 但无 loginName — ${JSON.stringify(data)}`;
           }
-        } else if (apiRes.status >= 300 && apiRes.status < 400) {
-          entry.status = 'REDIRECT';
-        } else {
-          entry.status = `HTTP_${apiRes.status}`;
+        } catch {
+          result.conclusion = `FAIL: API 返回非 JSON（HTTP ${apiRes.status}）`;
         }
-      } catch (err: any) {
-        entry.status = 'ERROR';
-        entry.error = err.message;
       }
-      result.step2_api.pathsTested.push(entry);
-      if (successResult) break;
-    }
-
-    if (successResult) {
-      result.conclusion = `SUCCESS: 用户 ${successResult} 认证成功`;
-    } else {
-      result.conclusion = 'FAIL: 所有 API 路径均验证失败，请让蓝凌确认正确的 getTokenLoginName 接口地址和认证方式';
+    } catch (err: any) {
+      result.step2_api.error = err.message;
+      result.conclusion = `FAIL: API 调用异常 — ${err.message}`;
     }
 
     res.json(result);
