@@ -46,7 +46,7 @@ COPY --from=build /app/assets assets
 ENV NODE_ENV=production
 ENV PORT=3001
 
-RUN mkdir -p /app/data /app/logs /app/output/service-jobs
+RUN mkdir -p /app/data
 
 EXPOSE 3001
 

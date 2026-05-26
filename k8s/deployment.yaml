@@ -35,10 +35,6 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /app/data
-            - name: output
-              mountPath: /app/output/service-jobs
-            - name: logs
-              mountPath: /app/logs
           livenessProbe:
             httpGet:
               path: /api/health
@@ -66,8 +62,3 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: theme-studio-data-pvc
-        - name: output
-          persistentVolumeClaim:
-            claimName: theme-studio-output-pvc
-        - name: logs
-          emptyDir: {}

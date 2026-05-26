@@ -143,10 +143,19 @@ kubectl rollout undo deployment/theme-studio -n theme-studio
 
 ## 7. 数据持久化
 
-| PVC | 挂载路径 | 用途 | 建议大小 |
-|-----|---------|------|---------|
-| `theme-studio-data-pvc` | `/app/data` | SQLite 数据库、备份 | 1Gi |
-| `theme-studio-output-pvc` | `/app/output/service-jobs` | 打包产物 zip | 5Gi |
+所有持久化数据统一存储在 `/app/data/` 目录下，通过单个 PVC 挂载：
+
+| 目录 | 用途 |
+|------|------|
+| `/app/data/theme-studio.db` | SQLite 数据库（用户、配置、对话） |
+| `/app/data/backups/` | 数据库备份 |
+| `/app/data/logs/` | 应用日志 |
+| `/app/data/output/service-jobs/` | 导出任务产物（主题包 zip） |
+| `/app/data/exports/` | 导出文件 |
+
+| PVC | 挂载路径 | 建议大小 |
+|-----|---------|---------|
+| `theme-studio-data-pvc` | `/app/data` | 5Gi |
 
 > SQLite 是单写库，当前架构仅支持单副本（`replicas: 1`）。如需多副本水平扩展，需迁移至 PostgreSQL/MySQL 并将文件存储改为 S3/NFS。
 
@@ -155,7 +164,7 @@ kubectl rollout undo deployment/theme-studio -n theme-studio
 ### 查看 PVC 使用情况
 
 ```bash
-kubectl exec -it -n theme-studio $(kubectl get pods -n theme-studio -l app=theme-studio -o jsonpath='{.items[0].metadata.name}') -- df -h /app/data /app/output
+kubectl exec -it -n theme-studio $(kubectl get pods -n theme-studio -l app=theme-studio -o jsonpath='{.items[0].metadata.name}') -- df -h /app/data
 ```
 
 ### 手动备份数据库

@@ -280,8 +280,20 @@ function toggleImageProviderFields() {
 
   var defaults = IMAGE_PROVIDER_DEFAULTS[provider];
   if (defaults) {
-    document.getElementById('imageEndpoint').value = defaults.endpoint;
-    document.getElementById('imageModel').value = defaults.model;
+    var endpointEl = document.getElementById('imageEndpoint');
+    var modelEl = document.getElementById('imageModel');
+    var currentEndpoint = endpointEl.value.trim();
+    var currentModel = modelEl.value.trim();
+    var isEndpointFromOtherProvider = false;
+    var isModelFromOtherProvider = false;
+    for (var p in IMAGE_PROVIDER_DEFAULTS) {
+      if (p !== provider) {
+        if (currentEndpoint === IMAGE_PROVIDER_DEFAULTS[p].endpoint) isEndpointFromOtherProvider = true;
+        if (currentModel === IMAGE_PROVIDER_DEFAULTS[p].model) isModelFromOtherProvider = true;
+      }
+    }
+    if (!currentEndpoint || isEndpointFromOtherProvider) endpointEl.value = defaults.endpoint;
+    if (!currentModel || isModelFromOtherProvider) modelEl.value = defaults.model;
   }
 }
 
