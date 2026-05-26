@@ -1,8 +1,8 @@
 import { timingSafeEqual } from 'crypto';
 import { Router, Request, Response } from 'express';
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
 import { logger } from '../logger.js';
+import { getStoredAdminPassword, setStoredAdminPassword } from '../db.js';
+import { decryptIfNeeded, encryptIfNeeded } from '../crypto.js';
 
 const router = Router();
 
@@ -11,34 +11,6 @@ function safeCompare(leftValue: string, rightValue: string): boolean {
   const right = Buffer.from(rightValue);
   if (left.length !== right.length) return false;
   return timingSafeEqual(left, right);
-}
-
-function resolveEnvPath(): string | null {
-  const candidates = [
-    resolve(process.cwd(), '.env'),
-    resolve(process.cwd(), '..', '.env'),
-  ];
-  for (const p of candidates) {
-    try {
-      readFileSync(p, 'utf-8');
-      return p;
-    } catch {
-    }
-  }
-  return null;
-}
-
-function updateEnvFileKey(filePath: string, key: string, value: string): void {
-  const content = readFileSync(filePath, 'utf-8');
-  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`^${escapedKey}=.*$`, 'm');
-  if (regex.test(content)) {
-    const updated = content.replace(regex, `${key}=${value}`);
-    writeFileSync(filePath, updated, 'utf-8');
-  } else {
-    const updated = content.endsWith('\n') ? `${content}${key}=${value}\n` : `${content}\n${key}=${value}\n`;
-    writeFileSync(filePath, updated, 'utf-8');
-  }
 }
 
 router.put('/', async (req: Request, res: Response) => {
@@ -55,7 +27,10 @@ router.put('/', async (req: Request, res: Response) => {
       return;
     }
 
-    const currentPassword = process.env.ADMIN_PASSWORD;
+    const stored = getStoredAdminPassword();
+    const currentPassword = stored
+      ? decryptIfNeeded(stored)
+      : process.env.ADMIN_PASSWORD;
 
     if (currentPassword) {
       if (typeof oldPassword !== 'string' || !safeCompare(oldPassword, currentPassword)) {
@@ -66,15 +41,10 @@ router.put('/', async (req: Request, res: Response) => {
 
     const trimmedNew = newPassword.trim();
 
+    setStoredAdminPassword(encryptIfNeeded(trimmedNew));
     process.env.ADMIN_PASSWORD = trimmedNew;
 
-    const envPath = resolveEnvPath();
-    if (envPath) {
-      updateEnvFileKey(envPath, 'ADMIN_PASSWORD', trimmedNew);
-      logger.info('Admin password updated (persisted to .env)');
-    } else {
-      logger.warn('Admin password updated in memory only — no .env file found to persist');
-    }
+    logger.info('Admin password updated (persisted to database)');
 
     res.json({ success: true });
   } catch (error) {

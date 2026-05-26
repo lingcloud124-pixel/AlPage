@@ -1,6 +1,8 @@
 import { timingSafeEqual } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { createSession, destroySession, validateSession, ADMIN_SESSION_COOKIE } from '../admin-session.js';
+import { getStoredAdminPassword } from '../db.js';
+import { decryptIfNeeded } from '../crypto.js';
 
 const router = Router();
 
@@ -10,6 +12,14 @@ const COOKIE_MAX_AGE_MS = 4 * 60 * 60 * 1000;
 const COOKIE_SECURE = process.env.NODE_ENV === 'production';
 
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function resolveAdminPassword(): string | null {
+  const stored = getStoredAdminPassword();
+  if (stored) {
+    return decryptIfNeeded(stored);
+  }
+  return process.env.ADMIN_PASSWORD || null;
+}
 
 function getClientIp(req: Request): string {
   const forwarded = req.headers['x-forwarded-for'];
@@ -55,7 +65,7 @@ function setAdminCookie(res: Response, token: string): void {
 }
 
 router.post('/login', (req: Request, res: Response) => {
-  const adminPassword = process.env.ADMIN_PASSWORD;
+  const adminPassword = resolveAdminPassword();
   if (!adminPassword) {
     res.status(503).json({ error: 'Admin authentication is not configured' });
     return;
@@ -88,7 +98,7 @@ router.post('/logout', (req: Request, res: Response) => {
 });
 
 router.get('/check', (req: Request, res: Response) => {
-  const adminPassword = process.env.ADMIN_PASSWORD;
+  const adminPassword = resolveAdminPassword();
   const sessionToken = req.cookies?.[ADMIN_SESSION_COOKIE] as string | undefined;
   const valid = validateSession(sessionToken);
   res.json({

@@ -108,6 +108,14 @@ export async function initDb(): Promise<void> {
   stmt3.step();
   stmt3.free();
 
+  // Create app_config table (key-value store for admin password etc.)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS app_config (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL DEFAULT ''
+    );
+  `);
+
   // Create model_config table
   db.run(`
     CREATE TABLE IF NOT EXISTS model_config (
@@ -617,4 +625,23 @@ export function ensureUserByLoginName(loginName: string): number {
   saveDb();
   logger.info('Auto-created user from EKP SSO', { loginName, userId: newUserId });
   return newUserId;
+}
+
+export function getStoredAdminPassword(): string | null {
+  const stmt = db.prepare("SELECT value FROM app_config WHERE key = 'admin_password'");
+  let value: string | null = null;
+  if (stmt.step()) {
+    const row = stmt.getAsObject() as { value: string };
+    value = row.value || null;
+  }
+  stmt.free();
+  return value;
+}
+
+export function setStoredAdminPassword(encryptedPassword: string): void {
+  const stmt = db.prepare("INSERT OR REPLACE INTO app_config (key, value) VALUES ('admin_password', ?)");
+  stmt.bind([encryptedPassword]);
+  stmt.step();
+  stmt.free();
+  saveDb();
 }
