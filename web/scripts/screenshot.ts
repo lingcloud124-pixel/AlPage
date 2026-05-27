@@ -11,6 +11,7 @@ const DEFAULT_SERVER_URL = `http://127.0.0.1:${DEFAULT_SERVER_PORT}`;
 
 type TemplateType = 'light-ui' | 'dark-ui';
 type AssetFormat = 'PNG' | 'JPEG';
+type PreviewMode = 'auto' | 'service' | 'local';
 
 export interface PreviewCaptureTask {
   id: string;
@@ -36,6 +37,7 @@ interface ScreenshotCliOptions {
   snapshotPath?: string;
   outputDir?: string;
   baseUrl?: string;
+  previewMode?: PreviewMode;
 }
 
 interface ScreenshotRuntimeOptions {
@@ -43,6 +45,7 @@ interface ScreenshotRuntimeOptions {
   snapshotPath: string;
   outputDir: string;
   baseUrl?: string;
+  previewMode?: PreviewMode;
 }
 
 interface AssetSnapshot {
@@ -67,6 +70,15 @@ interface DevServerHandle {
   baseUrl: string;
   close: () => Promise<void>;
 }
+
+interface PreviewServerPolicyOptions {
+  previewMode?: string;
+  baseUrl?: string;
+}
+
+type PreviewServerPolicy =
+  | { mode: 'service'; baseUrl: string }
+  | { mode: 'local' };
 
 function parseCliArgs(argv: string[]): ScreenshotCliOptions {
   const options: Partial<ScreenshotCliOptions> = {};
@@ -93,6 +105,11 @@ function parseCliArgs(argv: string[]): ScreenshotCliOptions {
       index += 1;
       continue;
     }
+    if (arg === '--preview-mode') {
+      options.previewMode = argv[index + 1] as PreviewMode;
+      index += 1;
+      continue;
+    }
   }
 
   if (!options.manifestPath) {
@@ -100,6 +117,26 @@ function parseCliArgs(argv: string[]): ScreenshotCliOptions {
   }
 
   return options as ScreenshotCliOptions;
+}
+
+export function resolvePreviewServerPolicy(options: PreviewServerPolicyOptions): PreviewServerPolicy {
+  const mode = (options.previewMode ?? 'auto').trim().toLowerCase();
+  const baseUrl = options.baseUrl?.trim();
+
+  if (mode === 'service') {
+    if (!baseUrl) {
+      throw new Error('EXPORT_PREVIEW_MODE=service requires SCREENSHOT_BASE_URL or --base-url');
+    }
+    return { mode: 'service', baseUrl };
+  }
+  if (mode === 'local') {
+    return { mode: 'local' };
+  }
+  if (mode === 'auto') {
+    return baseUrl ? { mode: 'service', baseUrl } : { mode: 'local' };
+  }
+
+  throw new Error(`Invalid preview mode: ${options.previewMode}. Expected auto, service, or local.`);
 }
 
 function normalizeCssVariables(cssVariables: Record<string, string> = {}): Record<string, string> {
@@ -331,12 +368,18 @@ export async function capturePreviewAssets(options: ScreenshotRuntimeOptions): P
   const manifest = readJsonFile<PreparedAssetsManifest>(options.manifestPath);
   const snapshot = readJsonFile<AssetSnapshot>(options.snapshotPath);
   const tasks = manifest.pendingPreviewCaptures ?? [];
+  const previewPolicy = resolvePreviewServerPolicy({
+    previewMode: options.previewMode,
+    baseUrl: options.baseUrl,
+  });
 
   if (tasks.length === 0) {
     return {};
   }
 
-  const server = await startPreviewServer(options.baseUrl);
+  const server = previewPolicy.mode === 'service'
+    ? await startPreviewServer(previewPolicy.baseUrl)
+    : await startPreviewServer();
   let browser: Browser | null = null;
 
   try {
@@ -370,6 +413,7 @@ if (process.argv[1]?.endsWith('screenshot.ts')) {
     snapshotPath,
     outputDir,
     baseUrl: cliOptions.baseUrl,
+    previewMode: cliOptions.previewMode,
   }).then((outputs) => {
     console.log(`\n素材截图完成: ${Object.keys(outputs).length} 个预览文件`);
   }).catch((error) => {

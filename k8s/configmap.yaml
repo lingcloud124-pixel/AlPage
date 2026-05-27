@@ -7,6 +7,7 @@ data:
   NODE_ENV: "production"
   PORT: "3001"
   SCREENSHOT_BASE_URL: "http://theme-studio-svc:3001"
+  EXPORT_PREVIEW_MODE: "service"
   EKP_TOKEN_RESOLVE_PATH: "/api/sys-authentication/loginService/getTokenLoginName"
   PUBLIC_BASE_URL: "https://cloud-theme.landray.com.cn"
 ---

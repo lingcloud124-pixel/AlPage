@@ -16,4 +16,11 @@ describe('export screenshot runtime dependencies', () => {
 
     expect(source).toContain('PROJECT_ROOT / "node_modules" / "tsx" / "dist" / "loader.mjs"');
   });
+
+  test('asset preparation forwards explicit export preview mode to screenshot capture', () => {
+    const source = readFileSync(join(process.cwd(), 'scripts/prepare_export_assets.py'), 'utf8');
+
+    expect(source).toContain('EXPORT_PREVIEW_MODE');
+    expect(source).toContain('"--preview-mode"');
+  });
 });

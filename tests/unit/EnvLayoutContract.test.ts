@@ -16,4 +16,15 @@ describe('env layout contract', () => {
     expect(fs.existsSync(path.join(projectRoot, 'server/.env.example'))).toBe(false);
     expect(fs.existsSync(path.join(projectRoot, 'web/.env.example'))).toBe(false);
   });
+
+  test('production config exposes explicit export preview mode control', () => {
+    const envExample = fs.readFileSync(path.join(projectRoot, '.env.example'), 'utf8');
+    const k8sConfig = fs.readFileSync(path.join(projectRoot, 'k8s/configmap.yaml'), 'utf8');
+    const productionCheck = fs.readFileSync(path.join(projectRoot, 'scripts/check-production.sh'), 'utf8');
+
+    expect(envExample).toContain('EXPORT_PREVIEW_MODE=auto');
+    expect(k8sConfig).toContain('EXPORT_PREVIEW_MODE: "service"');
+    expect(productionCheck).toContain('EXPORT_PREVIEW_MODE');
+    expect(productionCheck).toContain('auto|service|local');
+  });
 });

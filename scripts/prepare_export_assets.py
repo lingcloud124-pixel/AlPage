@@ -63,6 +63,7 @@ def main() -> int:
         ]
         tsx_loader = next((loader for loader in tsx_loaders if loader.exists()), None)
         base_url = os.environ.get("SCREENSHOT_BASE_URL")
+        preview_mode = os.environ.get("EXPORT_PREVIEW_MODE")
 
         # Prefer installed loaders so production never depends on transient npx packages.
         if tsx_loader:
@@ -82,6 +83,8 @@ def main() -> int:
         ]
         if base_url:
             command += ["--base-url", base_url]
+        if preview_mode:
+            command += ["--preview-mode", preview_mode]
         print("🖼️ Capturing preview-based thumbnail assets...")
         subprocess.run(command, cwd=PROJECT_ROOT / "web", check=True)
         print("✅ Preview-based thumbnail assets captured")
