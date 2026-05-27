@@ -57,11 +57,15 @@ def main() -> int:
 
     if not args.skip_preview_capture and manifest.get("pendingPreviewCaptures"):
         screenshot_script = PROJECT_ROOT / "web" / "scripts" / "screenshot.ts"
-        tsx_loader = PROJECT_ROOT / "web" / "node_modules" / "tsx" / "dist" / "loader.mjs"
+        tsx_loaders = [
+            PROJECT_ROOT / "web" / "node_modules" / "tsx" / "dist" / "loader.mjs",
+            PROJECT_ROOT / "node_modules" / "tsx" / "dist" / "loader.mjs",
+        ]
+        tsx_loader = next((loader for loader in tsx_loaders if loader.exists()), None)
         base_url = os.environ.get("SCREENSHOT_BASE_URL")
 
-        # Use direct loader if available, otherwise fall back to npx tsx
-        if tsx_loader.exists():
+        # Prefer installed loaders so production never depends on transient npx packages.
+        if tsx_loader:
             command = [
                 "node", "--import", str(tsx_loader),
                 str(screenshot_script),
