@@ -37,8 +37,11 @@ function parsePublicHost(req: Request): string {
 }
 
 router.get('/login', (req: Request, res: Response) => {
-  if (!EKP_BASE_URL) {
-    res.status(503).send('EKP SSO is not configured');
+  if (!EKP_BASE_URL || !EKP_BASE_URL.startsWith('http')) {
+    logger.error('SSO /login aborted: EKP_BASE_URL missing or malformed', {
+      value: EKP_BASE_URL ? `"${EKP_BASE_URL}"` : '(empty)',
+    });
+    res.status(503).json({ error: 'EKP SSO is not configured on the server' });
     return;
   }
 
@@ -83,11 +86,24 @@ router.get('/login', (req: Request, res: Response) => {
   redirectToEkpLogin(req, res);
 });
 
+function requireEkpBaseUrl(res: Response): string | null {
+  if (!EKP_BASE_URL || !EKP_BASE_URL.startsWith('http')) {
+    logger.error('SSO redirect aborted: EKP_BASE_URL is missing or malformed', {
+      value: EKP_BASE_URL ? `"${EKP_BASE_URL}"` : '(empty)',
+    });
+    res.status(503).json({ error: 'EKP SSO is not configured on the server' });
+    return null;
+  }
+  return EKP_BASE_URL.replace(/\/+$/, '');
+}
+
 function redirectToEkpSso(req: Request, res: Response) {
+  const base = requireEkpBaseUrl(res);
+  if (!base) return;
+
   const publicHost = parsePublicHost(req);
   const callbackUrl = `${publicHost}/api/auth/sso/callback`;
   const redirectParam = encodeURIComponent(callbackUrl);
-  const base = EKP_BASE_URL.replace(/\/+$/, '');
   const ssoPath = EKP_SSO_LOGIN_PATH.startsWith('/') ? EKP_SSO_LOGIN_PATH : `/${EKP_SSO_LOGIN_PATH}`;
   const ekpLoginUrl = `${base}${ssoPath}?RedirectURL=${redirectParam}`;
   logger.info('SSO redirect to EKP', { callbackUrl, ekpLoginUrl: ekpLoginUrl.replace(/RedirectURL=([^&]+)/, 'RedirectURL=***') });
@@ -96,7 +112,9 @@ function redirectToEkpSso(req: Request, res: Response) {
 
 // Fallback: redirect to EKP login page directly (when SSO redirect flow fails)
 function redirectToEkpLogin(req: Request, res: Response) {
-  const base = EKP_BASE_URL.replace(/\/+$/, '');
+  const base = requireEkpBaseUrl(res);
+  if (!base) return;
+
   const publicHost = parsePublicHost(req);
   const callbackUrl = `${publicHost}/api/auth/sso/callback`;
   const loginUrl = `${base}/login.jsp?RedirectURL=${encodeURIComponent(callbackUrl)}`;
@@ -140,12 +158,10 @@ router.get('/callback', async (req: Request, res: Response) => {
       logger.info('SSO callback: using direct loginName from EKP redirect', { loginName });
     }
 
-    // Strategy 3: Use token itself as a session identifier (last resort, API unavailable + no loginName)
+    // Strategy 3: API unavailable + no loginName — redirect to EKP login with callback
     if (!loginName && token) {
       logger.warn('SSO callback: API unavailable and no direct loginName — redirecting to EKP login');
-      // Instead of accepting unknown tokens, redirect to EKP login for proper authentication
-      const base = EKP_BASE_URL.replace(/\/+$/, '');
-      res.redirect(`${base}/login.jsp`);
+      redirectToEkpLogin(req, res);
       return;
     }
 

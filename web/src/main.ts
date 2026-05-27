@@ -119,6 +119,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         console.warn('Local dev: auth skipped (no EKP cookie)');
       } else {
+        // Fetch SSO login endpoint — server will either redirect (302) or return error (503)
+        try {
+          const ssoRes = await fetch('/api/auth/sso/login', { redirect: 'manual', credentials: 'include' });
+          if (ssoRes.status === 503) {
+            // EKP SSO not configured — show error instead of navigating to a broken URL
+            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui;color:#666"><div style="text-align:center"><h2>登录服务暂不可用</h2><p>SSO 认证服务未配置，请联系管理员检查 EKP_BASE_URL 设置</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 24px;cursor:pointer;border-radius:6px;border:1px solid #ccc">重试</button></div></div>';
+            return;
+          }
+          // 302 redirect — follow it
+          const redirectUrl = ssoRes.headers.get('location');
+          if (redirectUrl) {
+            window.location.href = redirectUrl;
+            return;
+          }
+        } catch {
+          // fetch failed — fallback to direct navigation
+        }
         window.location.href = '/api/auth/sso/login';
         return;
       }
