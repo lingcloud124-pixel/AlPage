@@ -1,8 +1,6 @@
 import { timingSafeEqual } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { createSession, destroySession, validateSession, ADMIN_SESSION_COOKIE } from '../admin-session.js';
-import { getStoredAdminPassword } from '../db.js';
-import { decryptIfNeeded } from '../crypto.js';
 
 const router = Router();
 
@@ -14,10 +12,6 @@ const COOKIE_SECURE = process.env.NODE_ENV === 'production';
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 
 function resolveAdminPassword(): string | null {
-  const stored = getStoredAdminPassword();
-  if (stored) {
-    return decryptIfNeeded(stored);
-  }
   return process.env.ADMIN_PASSWORD || null;
 }
 

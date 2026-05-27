@@ -31,51 +31,9 @@ document.addEventListener('click', function(e) {
   if (dd && !e.target.closest('.menu-btn') && !e.target.closest('.menu-dropdown')) dd.classList.remove('open');
 });
 
-function showChangePassword() {
-  document.getElementById('menuDropdown').classList.remove('open');
-  document.getElementById('cpOldPassword').value = '';
-  document.getElementById('cpNewPassword').value = '';
-  document.getElementById('cpConfirmPassword').value = '';
-  document.getElementById('changePasswordModal').classList.add('open');
-}
-
-function hideChangePassword() {
-  document.getElementById('changePasswordModal').classList.remove('open');
-}
-
-document.getElementById('changePasswordModal').addEventListener('click', function(e) {
-  if (e.target === e.currentTarget) hideChangePassword();
-});
 document.getElementById('landingPromptsModal').addEventListener('click', function(e) {
   if (e.target === e.currentTarget) hideLandingPromptsModal();
 });
-
-async function submitChangePassword() {
-  var oldPassword = document.getElementById('cpOldPassword').value;
-  var newPassword = document.getElementById('cpNewPassword').value;
-  var confirmPassword = document.getElementById('cpConfirmPassword').value;
-
-  if (!newPassword) { toast('请输入新密码', 'error'); return; }
-  if (newPassword.length < 4) { toast('新密码长度至少为4位', 'error'); return; }
-  if (newPassword !== confirmPassword) { toast('两次输入的新密码不一致', 'error'); return; }
-
-  try {
-    var res = await fetch('/api/admin-password', {
-      method: 'PUT',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldPassword: oldPassword, newPassword: newPassword }),
-    });
-    var data = await res.json();
-    if (!res.ok) { toast(data.error || '修改失败', 'error'); return; }
-
-    toast('密码修改成功，请重新登录');
-    hideChangePassword();
-    logoutAdmin();
-  } catch (e) {
-    toast('修改失败: ' + e.message, 'error');
-  }
-}
 
 function toast(msg, type) {
   type = type || 'success';
@@ -935,8 +893,7 @@ document.getElementById('menuDropdown').addEventListener('click', function(e) {
   var btn = e.target.closest('button[data-action]');
   if (!btn) return;
   var action = btn.dataset.action;
-  if (action === 'change-password') showChangePassword();
-  else if (action === 'logout') logoutAdmin();
+  if (action === 'logout') logoutAdmin();
 });
 
 document.querySelectorAll('.tab-btn').forEach(function(btn) {
@@ -984,8 +941,6 @@ document.getElementById('whitelistAddInput').addEventListener('keydown', functio
 });
 
 document.getElementById('wlAddBtn').addEventListener('click', addWhitelistUser);
-document.getElementById('cpCancelBtn').addEventListener('click', hideChangePassword);
-document.getElementById('cpSubmitBtn').addEventListener('click', submitChangePassword);
 document.getElementById('lpModalCloseBtn').addEventListener('click', hideLandingPromptsModal);
 document.getElementById('lpAddEntryBtn').addEventListener('click', addLandingPromptEntry);
 document.getElementById('lpResetBtn').addEventListener('click', resetLandingPromptsToDefault);

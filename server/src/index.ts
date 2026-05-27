@@ -41,7 +41,6 @@ const [
   { creditsRouter },
   { requestLogger },
   { conversationsRouter },
-  { default: adminPasswordRouter },
   { default: adminAuthRouter },
   { usageLogsRouter },
   { ssoRouter },
@@ -62,7 +61,6 @@ const [
   import('./routes/credits.js'),
   import('./middleware/request-logger.js'),
   import('./routes/conversations.js'),
-  import('./routes/admin-password.js'),
   import('./routes/admin-auth.js'),
   import('./routes/usage-logs.js'),
   import('./routes/sso.js'),
@@ -145,7 +143,6 @@ app.get('/api/health', async (_req, res) => {
 
 app.use('/api/model-config', adminAuthMiddleware, modelConfigRouter);
 app.use('/api/security-config', adminAuthMiddleware, securityConfigRouter);
-app.use('/api/admin-password', adminAuthMiddleware, adminPasswordRouter);
 app.use('/api/admin/usage-logs', adminAuthMiddleware, usageLogsRouter);
 app.get('/api/landing-prompts-config', async (_req, res) => {
   try {
