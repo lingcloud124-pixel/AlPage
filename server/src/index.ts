@@ -336,35 +336,82 @@ async function start() {
       headers.Authorization = `Basic ${Buffer.from(`${EKP_SSO_USER}:${EKP_SSO_PASS}`).toString('base64')}`;
     }
 
-    result.step2_api = { user: EKP_SSO_USER, method: 'POST', url: apiUrl, testedTokens: [] };
+    const probeDefinitions = [
+      {
+        label: 'GET_QUERY',
+        method: 'GET',
+        buildUrl: (token: string) => `${apiUrl}?token=${encodeURIComponent(token)}`,
+        buildBody: (_token: string) => undefined,
+      },
+      {
+        label: 'POST_QUERY',
+        method: 'POST',
+        buildUrl: (token: string) => `${apiUrl}?token=${encodeURIComponent(token)}`,
+        buildBody: (_token: string) => undefined,
+      },
+      {
+        label: 'POST_BODY',
+        method: 'POST',
+        buildUrl: (_token: string) => apiUrl,
+        buildBody: (token: string) => `token=${encodeURIComponent(token)}`,
+      },
+    ];
+
+    result.step2_api = {
+      user: EKP_SSO_USER,
+      url: apiUrl,
+      probeMethods: probeDefinitions.map(({ label, method }) => ({ label, method })),
+      testedTokens: [],
+    };
     let successResult: string | null = null;
 
     for (const name of ssoCookieNames) {
       const val = req.cookies?.[name];
       if (!val) continue;
-      const entry: Record<string, any> = { cookieName: name, tokenPrefix: val.substring(0, 8) + '...' };
-      try {
-        const apiRes = await fetch(apiUrl, {
-          method: 'POST',
-          headers,
-          body: `token=${encodeURIComponent(val)}`,
-          signal: AbortSignal.timeout(10000),
-          redirect: 'manual',
-        });
-        entry.httpStatus = apiRes.status;
-        const body = await apiRes.text();
+      const entry: Record<string, any> = {
+        cookieName: name,
+        tokenPrefix: val.substring(0, 8) + '...',
+        probeResults: [],
+      };
+
+      for (const probe of probeDefinitions) {
+        const probeEntry: Record<string, any> = {
+          label: probe.label,
+          method: probe.method,
+        };
         try {
-          const data = JSON.parse(body);
-          entry.result = data.result;
-          entry.loginName = data.loginName || null;
-          entry.errorMsg = data.errorMsg || null;
-          if (data.loginName) { successResult = data.loginName; }
-        } catch {
-          entry.bodyPreview = body.substring(0, 200);
+          const body = probe.buildBody(val);
+          const requestOptions: RequestInit = {
+            method: probe.method,
+            headers,
+            signal: AbortSignal.timeout(10000),
+            redirect: 'manual',
+          };
+          if (body !== undefined) {
+            requestOptions.body = body;
+          }
+
+          const apiRes = await fetch(probe.buildUrl(val), requestOptions);
+          probeEntry.httpStatus = apiRes.status;
+          probeEntry.location = apiRes.headers.get('location');
+          const responseBody = await apiRes.text();
+          try {
+            const data = JSON.parse(responseBody);
+            probeEntry.result = data.result;
+            probeEntry.loginName = data.loginName || null;
+            probeEntry.errorMsg = data.errorMsg || null;
+            if (data.loginName) { successResult = data.loginName; }
+          } catch {
+            probeEntry.bodyPreview = responseBody.substring(0, 200);
+          }
+        } catch (err: any) {
+          probeEntry.error = err.message;
         }
-      } catch (err: any) {
-        entry.error = err.message;
+
+        entry.probeResults.push(probeEntry);
+        if (successResult) break;
       }
+
       result.step2_api.testedTokens.push(entry);
       if (successResult) break;
     }
