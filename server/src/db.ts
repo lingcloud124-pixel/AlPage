@@ -1,14 +1,10 @@
 import initSqlJs, { Database } from 'sql.js';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync, statSync, rmSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import { logger } from './logger.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = join(__dirname, '..', '..');
-
-const DB_PATH = join(PROJECT_ROOT, 'data', 'theme-studio.db');
-const BACKUP_DIR = join(PROJECT_ROOT, 'data', 'backups');
+const DB_PATH = join(process.cwd(), 'data', 'theme-studio.db');
+const BACKUP_DIR = join(process.cwd(), 'data', 'backups');
 const BACKUP_INTERVAL_MS = 60 * 60 * 1000;
 const DEFAULT_BACKUP_RETENTION_COUNT = 8;
 const DEFAULT_EXPORT_RETENTION_DAYS = 7;
@@ -72,7 +68,7 @@ export async function initDb(): Promise<void> {
     const buffer = readFileSync(DB_PATH);
     db = new SQL.Database(buffer);
   } else {
-    mkdirSync(join(PROJECT_ROOT, 'data'), { recursive: true });
+    mkdirSync(join(process.cwd(), 'data'), { recursive: true });
     db = new SQL.Database();
   }
   
@@ -381,7 +377,7 @@ function startBackupScheduler(): void {
   }, 10000);
 }
 
-const EXPORT_OUTPUT_DIR = join(PROJECT_ROOT, 'data', 'output', 'service-jobs');
+const EXPORT_OUTPUT_DIR = join(process.cwd(), 'data', 'output', 'service-jobs');
 
 function cleanupOldExportFiles(): void {
   try {

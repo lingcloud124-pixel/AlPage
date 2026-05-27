@@ -1,13 +1,8 @@
 import { Router } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import archiver from 'archiver';
 import { createExportJob, getExportJobByIdAndUser, updateExportJob } from '../export-jobs-memory-store.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = join(__dirname, '..', '..', '..');
 import { getSecurityConfig } from '../db.js';
 import { normalizeAndValidateSelectedProducts } from '../export-job-validation.js';
 import { logger } from '../logger.js';
@@ -56,7 +51,7 @@ function finalizeExportUsageLog(usageLogId: string | null, status: 'success' | '
 
 router.post('/pick-directory', async (_req, res) => {
   try {
-    const exportRoot = join(PROJECT_ROOT, 'data', 'exports', 'ThemeStudio-Exports');
+    const exportRoot = path.join(process.cwd(), 'data', 'exports', 'ThemeStudio-Exports');
     res.json({ path: exportRoot });
   } catch (error) {
     logger.error('Pick directory error', error);

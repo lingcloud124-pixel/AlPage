@@ -15,7 +15,7 @@ const PROJECT_ROOT = join(__dirname, '..', '..');
 
 const STEP_DELAY_MS = 50;
 const execFileAsync = promisify(execFile);
-const SERVICE_EXPORT_ROOT = join(PROJECT_ROOT, 'data', 'output', 'service-jobs');
+const SERVICE_EXPORT_ROOT = join(process.cwd(), 'data', 'output', 'service-jobs');
 const EXPORT_DIRECTORY_README_NAME = '使用说明.txt';
 const EXPORT_DIRECTORY_README_CONTENT = `主题包使用说明
 1. 本目录下每个 zip 对应一个产品版本的主题包或登录包，请按实际环境选择导入。
