@@ -3,13 +3,19 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { listQueuedExportJobs, requeueInFlightExportJobs, updateExportJob } from './export-jobs-memory-store.js';
 import { buildServerExportAssetSnapshot, buildServerExportYaml } from './export-build-shared.js';
 import { logger } from './logger.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const PROJECT_ROOT = join(__dirname, '..', '..');
+
 const STEP_DELAY_MS = 50;
 const execFileAsync = promisify(execFile);
-const SERVICE_EXPORT_ROOT = path.join(process.cwd(), 'data', 'output', 'service-jobs');
+const SERVICE_EXPORT_ROOT = join(PROJECT_ROOT, 'data', 'output', 'service-jobs');
 const EXPORT_DIRECTORY_README_NAME = '使用说明.txt';
 const EXPORT_DIRECTORY_README_CONTENT = `主题包使用说明
 1. 本目录下每个 zip 对应一个产品版本的主题包或登录包，请按实际环境选择导入。
@@ -98,7 +104,7 @@ async function runJob(jobId: string): Promise<void> {
   logger.info('Export job entered stage', { jobId, stage: 'capturing' });
 
   try {
-    const prepareScriptPath = path.join(process.cwd(), 'scripts', 'prepare_export_assets.py');
+    const prepareScriptPath = join(PROJECT_ROOT, 'scripts', 'prepare_export_assets.py');
     const prepareEnv = process.env.SCREENSHOT_BASE_URL
       ? { ...process.env, SCREENSHOT_BASE_URL: process.env.SCREENSHOT_BASE_URL }
       : process.env;
@@ -111,7 +117,7 @@ async function runJob(jobId: string): Promise<void> {
       '--metadata-dir',
       metadataDir,
     ], {
-      cwd: process.cwd(),
+      cwd: PROJECT_ROOT,
       env: prepareEnv,
     });
   } catch (error) {
@@ -153,7 +159,7 @@ async function runJob(jobId: string): Promise<void> {
   fs.writeFileSync(yamlPath, yaml, 'utf8');
 
   try {
-    const builderScriptPath = path.join(process.cwd(), 'theme_builder.py');
+    const builderScriptPath = join(PROJECT_ROOT, 'theme_builder.py');
     await execFileAsync('python3', [
       builderScriptPath,
       '--config',
@@ -161,7 +167,7 @@ async function runJob(jobId: string): Promise<void> {
       '--output',
       packagesDir,
     ], {
-      cwd: process.cwd(),
+      cwd: PROJECT_ROOT,
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
@@ -186,14 +192,14 @@ async function runJob(jobId: string): Promise<void> {
   logger.info('Export job entered stage', { jobId, stage: 'verifying' });
 
   try {
-    const verifyScriptPath = path.join(process.cwd(), 'scripts', 'verify-build.py');
+    const verifyScriptPath = join(PROJECT_ROOT, 'scripts', 'verify-build.py');
     await execFileAsync('python3', [
       verifyScriptPath,
       packagesDir,
       '--products',
       preparing.selectedProducts.join(','),
     ], {
-      cwd: process.cwd(),
+      cwd: PROJECT_ROOT,
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
