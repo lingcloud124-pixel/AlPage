@@ -262,7 +262,7 @@ async function start() {
   app.get('/api/auth/diagnose', (req, res) => {
     const allCookies = req.cookies ? Object.keys(req.cookies) : [];
     const ssoCookies: Record<string, { found: boolean; length?: number; prefix?: string }> = {};
-    for (const name of ['LRToken', 'LtpaToken', 'LR_myekp']) {
+    for (const name of ['LRToken', 'LtpaToken', 'LR_myekp', 'LRekp01Token']) {
       const val = req.cookies?.[name];
       ssoCookies[name] = val
         ? { found: true, length: val.length, prefix: val.substring(0, 8) + '...' }
@@ -279,7 +279,7 @@ async function start() {
     if (xForwardedProto === 'http' && req.headers.host?.endsWith('.landray.com.cn')) {
       warnings.push('x-forwarded-proto is http but host is landray.com.cn — should be https');
     }
-    if (!ssoCookies.LRToken.found && !ssoCookies.LtpaToken.found && !ssoCookies.LR_myekp.found) {
+    if (!ssoCookies.LRToken.found && !ssoCookies.LtpaToken.found && !ssoCookies.LR_myekp.found && !ssoCookies.LRekp01Token.found) {
       warnings.push('No EKP SSO cookies received — EKP cookies may not be scoped to .landray.com.cn');
     }
     if (!publicBaseUrl && xForwardedProto !== 'https') {
@@ -305,7 +305,7 @@ async function start() {
     const result: Record<string, any> = { step1_cookies: {}, step2_api: {}, conclusion: '' };
 
     // Step 1: Check cookies
-    const ssoCookieNames = ['LRToken', 'LtpaToken', 'LR_myekp'];
+    const ssoCookieNames = ['LRToken', 'LtpaToken', 'LR_myekp', 'LRekp01Token'];
     let foundToken: string | undefined;
     let foundTokenName: string | undefined;
     for (const name of ssoCookieNames) {

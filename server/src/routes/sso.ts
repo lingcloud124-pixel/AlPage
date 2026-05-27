@@ -3,7 +3,7 @@ import { resolveLoginName, EKP_BASE_URL } from '../middleware/auth.js';
 import { ensureUserByLoginName } from '../db.js';
 import { logger } from '../logger.js';
 
-const SSO_COOKIE_CANDIDATES = ['LRToken', 'LtpaToken', 'LR_myekp'];
+const SSO_COOKIE_CANDIDATES = ['LRToken', 'LtpaToken', 'LR_myekp', 'LRekp01Token'];
 const APP_COOKIE_NAME = 'LRToken';
 
 const EKP_SSO_LOGIN_PATH = process.env.EKP_SSO_LOGIN_PATH || '/sys/authentication/sso/login_auto.jsp';
@@ -55,30 +55,35 @@ router.get('/login', (req: Request, res: Response) => {
     })),
   });
 
-  let ssoCookie: string | undefined;
+  const tokens: Array<{ name: string; value: string }> = [];
   for (const name of SSO_COOKIE_CANDIDATES) {
     const val = req.cookies?.[name];
     if (typeof val === 'string' && val.length > 0) {
-      ssoCookie = val;
-      break;
+      tokens.push({ name, value: val });
     }
   }
-  if (ssoCookie) {
-    logger.info('SSO login: found existing SSO cookie, attempting token validation');
-    resolveLoginName(ssoCookie)
-      .then((loginName) => {
+
+  if (tokens.length > 0) {
+    logger.info('SSO login: found existing SSO cookies, attempting token validation', {
+      cookieNames: tokens.map(({ name }) => name),
+    });
+    (async () => {
+      for (const { name, value } of tokens) {
+        const loginName = await resolveLoginName(value);
         if (loginName) {
-          logger.info('SSO login: token validation succeeded, redirecting to /', { loginName });
+          logger.info('SSO login: token validation succeeded, redirecting to /', { cookieName: name, loginName });
           res.redirect('/');
           return;
         }
-        logger.warn('SSO login: SSO cookie found but token validation failed, redirecting to EKP SSO');
-        redirectToEkpSso(req, res);
-      })
+        logger.warn('SSO login: token validation failed for cookie', { cookieName: name });
+      }
+      logger.warn('SSO login: all SSO cookies failed validation, redirecting to EKP SSO');
+      redirectToEkpSso(req, res);
+    })()
       .catch((err) => {
         logger.error('SSO login: token validation error, redirecting to EKP SSO', err);
         redirectToEkpSso(req, res);
-      });
+      })
     return;
   }
 
