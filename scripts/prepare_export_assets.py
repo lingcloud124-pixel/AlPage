@@ -59,17 +59,22 @@ def main() -> int:
         screenshot_script = PROJECT_ROOT / "web" / "scripts" / "screenshot.ts"
         tsx_loader = PROJECT_ROOT / "web" / "node_modules" / "tsx" / "dist" / "loader.mjs"
         base_url = os.environ.get("SCREENSHOT_BASE_URL")
-        command = [
-            "node",
-            "--import",
-            str(tsx_loader),
-            str(screenshot_script),
-            "--manifest",
-            str(manifest_path),
-            "--snapshot",
-            str(snapshot_path),
-            "--output",
-            str(output_dir),
+
+        # Use direct loader if available, otherwise fall back to npx tsx
+        if tsx_loader.exists():
+            command = [
+                "node", "--import", str(tsx_loader),
+                str(screenshot_script),
+            ]
+        else:
+            command = [
+                "npx", "tsx", str(screenshot_script),
+            ]
+
+        command += [
+            "--manifest", str(manifest_path),
+            "--snapshot", str(snapshot_path),
+            "--output", str(output_dir),
         ]
         if base_url:
             command += ["--base-url", base_url]
