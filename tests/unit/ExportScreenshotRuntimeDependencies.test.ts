@@ -23,4 +23,16 @@ describe('export screenshot runtime dependencies', () => {
     expect(source).toContain('EXPORT_PREVIEW_MODE');
     expect(source).toContain('"--preview-mode"');
   });
+
+  test('runtime apt package manifest is the single source for browser system libraries', () => {
+    const dockerfile = readFileSync(join(process.cwd(), 'Dockerfile'), 'utf8');
+    const manifest = readFileSync(join(process.cwd(), 'deploy/runtime-apt-packages.txt'), 'utf8');
+
+    expect(dockerfile).toContain('deploy/runtime-apt-packages.txt');
+    expect(dockerfile).toContain('xargs -a deploy/runtime-apt-packages.txt apt-get install');
+    expect(manifest).toContain('libnspr4');
+    expect(manifest).toContain('libnss3');
+    expect(manifest).toContain('python3');
+    expect(manifest).toContain('python3-pil');
+  });
 });

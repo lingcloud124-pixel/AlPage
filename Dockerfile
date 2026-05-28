@@ -21,8 +21,10 @@ WORKDIR /app
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
+COPY deploy/runtime-apt-packages.txt deploy/runtime-apt-packages.txt
+
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 python3-pip python3-pil \
+  && xargs -a deploy/runtime-apt-packages.txt apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./

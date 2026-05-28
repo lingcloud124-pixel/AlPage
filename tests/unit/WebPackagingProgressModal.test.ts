@@ -27,4 +27,17 @@ describe('web packaging progress modal', () => {
     expect(source).toContain('showNotificationWithOptions');
     expect(source).toContain('triggerBlobDownload');
   });
+
+  test('download button stays visible with loading state until save dialog is triggered', () => {
+    const source = fs.readFileSync(path.join(projectRoot, 'web/src/package-manager.ts'), 'utf8');
+    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+
+    expect(source).toContain('setProgressDownloadButtonLoading');
+    expect(source).toContain("downloadBtn.addEventListener('click', async () =>");
+    expect(source).toContain('await triggerBlobDownload');
+    expect(source).toContain("downloadBtn.style.display = 'none'");
+    expect(source).toContain("button.dataset.loading = loading ? 'true' : 'false';");
+    expect(styles).toContain('.package-progress-btn[data-loading="true"]');
+    expect(styles).toContain('.package-progress-btn-spinner');
+  });
 });

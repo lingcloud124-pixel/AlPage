@@ -166,25 +166,31 @@ function closeProgressModal() {
   if (overlay) overlay.remove();
 }
 
-function triggerBlobDownload(dlUrl: string, filename: string) {
-  apiFetch(dlUrl)
-    .then(res => {
-      if (!res.ok) throw new Error('download failed');
-      return res.blob();
-    })
-    .then(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    })
-    .catch(() => {
-      showNotificationWithOptions('下载失败，请稍后重试', { variant: 'critical' });
-    });
+async function triggerBlobDownload(dlUrl: string, filename: string): Promise<void> {
+  try {
+    const res = await apiFetch(dlUrl);
+    if (!res.ok) throw new Error('download failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch {
+    showNotificationWithOptions('下载失败，请稍后重试', { variant: 'critical' });
+    throw new Error('download failed');
+  }
+}
+
+function setProgressDownloadButtonLoading(button: HTMLButtonElement, loading: boolean): void {
+  button.disabled = loading;
+  button.dataset.loading = loading ? 'true' : 'false';
+  button.innerHTML = loading
+    ? '<span class="package-progress-btn-spinner" aria-hidden="true"></span><span>准备下载...</span>'
+    : '下载文件';
 }
 
 function renderProgress(step: string, detail?: string) {
@@ -216,11 +222,16 @@ function renderProgressWithDownload(step: string, detail?: string, dlUrl?: strin
 
   if (!isLoading && step === 'completed') {
     const downloadBtn = document.getElementById('progressDownloadBtn');
-    if (downloadBtn) {
-      downloadBtn.addEventListener('click', () => {
-        triggerBlobDownload(downloadBtn.dataset.dlUrl ?? '', downloadBtn.dataset.filename ?? '');
-        const el = downloadBtn as HTMLElement;
-        (el as HTMLButtonElement).style.display = 'none';
+    if (downloadBtn instanceof HTMLButtonElement) {
+      downloadBtn.addEventListener('click', async () => {
+        if (downloadBtn.dataset.loading === 'true') return;
+        setProgressDownloadButtonLoading(downloadBtn, true);
+        try {
+          await triggerBlobDownload(downloadBtn.dataset.dlUrl ?? '', downloadBtn.dataset.filename ?? '');
+          downloadBtn.style.display = 'none';
+        } catch {
+          setProgressDownloadButtonLoading(downloadBtn, false);
+        }
       });
     }
     const dismissBtn = document.getElementById('progressDismissBtn');

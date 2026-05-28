@@ -27,6 +27,15 @@ k8s/
 
 ## 3. 构建与推送镜像
 
+运行时系统依赖统一维护在 `deploy/runtime-apt-packages.txt`。该清单覆盖 Python 打包、图片处理、Playwright Chromium 截图所需的 Debian/Ubuntu 包；Dockerfile 会直接使用它安装依赖。
+
+如果部署同事不是用本项目 Dockerfile 构建镜像，而是在已有 Debian/Ubuntu 镜像或服务器中手动补依赖，请执行：
+
+```bash
+apt-get update
+xargs -a deploy/runtime-apt-packages.txt apt-get install -y --no-install-recommends
+```
+
 ```bash
 # 在项目根目录执行
 docker build -t theme-studio:latest .
