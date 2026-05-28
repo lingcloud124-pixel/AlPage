@@ -37,11 +37,13 @@ function parsePublicHost(req: Request): string {
 }
 
 router.get('/login', (req: Request, res: Response) => {
-  if (!EKP_BASE_URL || !EKP_BASE_URL.startsWith('http')) {
-    logger.error('SSO /login aborted: EKP_BASE_URL missing or malformed', {
-      value: EKP_BASE_URL ? `"${EKP_BASE_URL}"` : '(empty)',
+  const ekpValidation = normalizeEkpBaseUrl(EKP_BASE_URL);
+  if (!ekpValidation.ok) {
+    logger.error('SSO /login aborted: EKP_BASE_URL validation failed', {
+      value: EKP_BASE_URL || '(empty)',
+      reason: ekpValidation.reason,
     });
-    res.status(503).json({ error: 'EKP SSO is not configured on the server' });
+    res.status(503).json({ error: 'EKP SSO is not configured on the server', detail: ekpValidation.reason });
     return;
   }
 
@@ -91,15 +93,57 @@ router.get('/login', (req: Request, res: Response) => {
   redirectToEkpLogin(req, res);
 });
 
+/**
+ * Validate and normalize EKP_BASE_URL into a safe origin string.
+ * Rejects URLs that would produce broken redirects (e.g. hostname "login.jsp").
+ */
+function normalizeEkpBaseUrl(raw: string): { ok: true; origin: string } | { ok: false; reason: string } {
+  if (!raw) return { ok: false, reason: 'EKP_BASE_URL is empty' };
+
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return { ok: false, reason: `EKP_BASE_URL is not a valid URL: "${raw}"` };
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return { ok: false, reason: `EKP_BASE_URL has unsupported protocol "${parsed.protocol}", only http: and https: allowed` };
+  }
+
+  // Reject bare filenames masquerading as hostnames (e.g. "https://login.jsp")
+  const host = parsed.hostname;
+  if (!host || !host.includes('.')) {
+    return { ok: false, reason: `EKP_BASE_URL hostname "${host}" is not a valid domain (must contain at least one dot)` };
+  }
+
+  // EKP hosts are always subdomains like ekp.landray.com.cn — require at least 2 dots
+  // to reject filenames like "login.jsp" (1 dot) that would produce broken redirects
+  const dotCount = (host.match(/\./g) || []).length;
+  if (dotCount < 2) {
+    return { ok: false, reason: `EKP_BASE_URL hostname "${host}" looks like a filename, not a domain. Expected format: https://ekp.example.com` };
+  }
+
+  // Reject if the original URL contains a path beyond "/" — likely misconfigured
+  // e.g. "https://ekp.landray.com.cn/login.jsp" should be "https://ekp.landray.com.cn"
+  if (parsed.pathname !== '/' && parsed.pathname !== '') {
+    return { ok: false, reason: `EKP_BASE_URL should not contain a path (got "${parsed.pathname}"), use origin only: "${parsed.origin}"` };
+  }
+
+  return { ok: true, origin: parsed.origin };
+}
+
 function requireEkpBaseUrl(res: Response): string | null {
-  if (!EKP_BASE_URL || !EKP_BASE_URL.startsWith('http')) {
-    logger.error('SSO redirect aborted: EKP_BASE_URL is missing or malformed', {
-      value: EKP_BASE_URL ? `"${EKP_BASE_URL}"` : '(empty)',
+  const result = normalizeEkpBaseUrl(EKP_BASE_URL);
+  if (!result.ok) {
+    logger.error('SSO redirect aborted: EKP_BASE_URL validation failed', {
+      value: EKP_BASE_URL || '(empty)',
+      reason: result.reason,
     });
-    res.status(503).json({ error: 'EKP SSO is not configured on the server' });
+    res.status(503).json({ error: 'EKP SSO is not configured on the server', detail: result.reason });
     return null;
   }
-  return EKP_BASE_URL.replace(/\/+$/, '');
+  return result.origin;
 }
 
 function redirectToEkpSso(req: Request, res: Response) {
@@ -110,7 +154,7 @@ function redirectToEkpSso(req: Request, res: Response) {
   const callbackUrl = `${publicHost}/api/auth/sso/callback`;
   const redirectParam = encodeURIComponent(callbackUrl);
   const ssoPath = EKP_SSO_LOGIN_PATH.startsWith('/') ? EKP_SSO_LOGIN_PATH : `/${EKP_SSO_LOGIN_PATH}`;
-  const ekpLoginUrl = `${base}${ssoPath}?RedirectURL=${redirectParam}`;
+  const ekpLoginUrl = new URL(`${ssoPath}?RedirectURL=${redirectParam}`, base).href;
   logger.info('SSO redirect to EKP', { callbackUrl, ekpLoginUrl: ekpLoginUrl.replace(/RedirectURL=([^&]+)/, 'RedirectURL=***') });
   res.redirect(ekpLoginUrl);
 }
@@ -122,7 +166,7 @@ function redirectToEkpLogin(req: Request, res: Response) {
 
   const publicHost = parsePublicHost(req);
   const callbackUrl = `${publicHost}/api/auth/sso/callback`;
-  const loginUrl = `${base}/login.jsp?RedirectURL=${encodeURIComponent(callbackUrl)}`;
+  const loginUrl = new URL(`/login.jsp?RedirectURL=${encodeURIComponent(callbackUrl)}`, base).href;
   logger.info('SSO fallback: redirect to EKP login page', { loginUrl: loginUrl.replace(/RedirectURL=([^&]+)/, 'RedirectURL=***') });
   res.redirect(loginUrl);
 }
