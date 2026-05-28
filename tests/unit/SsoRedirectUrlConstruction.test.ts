@@ -167,7 +167,7 @@ describe('SSO redirect URL construction — incident regression', async () => {
     expect(res._redirectUrl).toMatch(/RedirectURL=https%3A%2F%2Fcloud-theme\.landray\.com\.cn/);
   });
 
-  test('invalid cookies → redirect to EKP SSO login_auto.jsp with correct domain', async () => {
+  test('invalid cookies → do not redirect to undocumented EKP login_auto.jsp RedirectURL flow', async () => {
     process.env.EKP_BASE_URL = 'https://ekp.landray.com.cn';
     process.env.PUBLIC_BASE_URL = 'https://cloud-theme.landray.com.cn';
     resolveLoginNameMock.mockResolvedValue(null);
@@ -179,8 +179,10 @@ describe('SSO redirect URL construction — incident regression', async () => {
 
     await vi.waitFor(() => expect(res._redirectUrl).toBeTruthy(), { timeout: 3000 });
 
-    // Should redirect to login_auto.jsp on ekp.landray.com.cn
-    expect(res._redirectUrl).toMatch(/^https:\/\/ekp\.landray\.com\.cn\/.*login_auto\.jsp\?RedirectURL=/);
+    // EKP docs describe login_auto.jsp for sessionId-based EKP login, not RedirectURL callbacks.
+    // That undocumented flow redirects production browsers to https://login.jsp/.
+    expect(res._redirectUrl).toMatch(/^https:\/\/ekp\.landray\.com\.cn\/login\.jsp\?RedirectURL=/);
+    expect(res._redirectUrl).not.toContain('login_auto.jsp');
   });
 
   test('valid cookie → redirect to / without hitting EKP', async () => {

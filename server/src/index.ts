@@ -259,14 +259,14 @@ async function start() {
   app.get('/api/auth/diagnose', (req, res) => {
     const allCookies = req.cookies ? Object.keys(req.cookies) : [];
     const ssoCookies: Record<string, { found: boolean; length?: number; prefix?: string }> = {};
-    for (const name of ['LRToken', 'LtpaToken', 'LR_myekp', 'LRekp01Token']) {
+    for (const name of ['LRToken', 'LtpaToken_myekp', 'LtpaToken', 'LR_myekp', 'LRekp01Token']) {
       const val = req.cookies?.[name];
       ssoCookies[name] = val
         ? { found: true, length: val.length, prefix: val.substring(0, 8) + '...' }
         : { found: false };
     }
     const ekpConfigured = !!(process.env.EKP_BASE_URL);
-    const tokenPath = process.env.EKP_TOKEN_RESOLVE_PATH || '/sys/authentication/sso/loginService_rest/getTokenLoginName';
+    const tokenPath = process.env.EKP_TOKEN_RESOLVE_PATH || '/api/sys-authentication/loginService/getTokenLoginName';
     const isDevMode = process.env.ENABLE_DEV_AUTH === 'true' && process.env.NODE_ENV !== 'production';
     const xForwardedProto = req.headers['x-forwarded-proto'] || null;
     const publicBaseUrl = process.env.PUBLIC_BASE_URL || '';
@@ -276,7 +276,7 @@ async function start() {
     if (xForwardedProto === 'http' && req.headers.host?.endsWith('.landray.com.cn')) {
       warnings.push('x-forwarded-proto is http but host is landray.com.cn — should be https');
     }
-    if (!ssoCookies.LRToken.found && !ssoCookies.LtpaToken.found && !ssoCookies.LR_myekp.found && !ssoCookies.LRekp01Token.found) {
+    if (!ssoCookies.LRToken.found && !ssoCookies.LtpaToken_myekp.found && !ssoCookies.LtpaToken.found && !ssoCookies.LR_myekp.found && !ssoCookies.LRekp01Token.found) {
       warnings.push('No EKP SSO cookies received — EKP cookies may not be scoped to .landray.com.cn');
     }
     if (!publicBaseUrl && xForwardedProto !== 'https') {
@@ -302,7 +302,7 @@ async function start() {
     const result: Record<string, any> = { step1_cookies: {}, step2_api: {}, conclusion: '' };
 
     // Step 1: Check cookies
-    const ssoCookieNames = ['LRToken', 'LtpaToken', 'LR_myekp', 'LRekp01Token'];
+    const ssoCookieNames = ['LRToken', 'LtpaToken_myekp', 'LtpaToken', 'LR_myekp', 'LRekp01Token'];
     let foundToken: string | undefined;
     let foundTokenName: string | undefined;
     for (const name of ssoCookieNames) {
@@ -323,7 +323,7 @@ async function start() {
     const EKP_SSO_USER = process.env.EKP_SSO_USER || '';
     const EKP_SSO_PASS = process.env.EKP_SSO_PASS || '';
     const base = EKP_BASE_URL.replace(/\/+$/, '');
-    const apiPath = '/api/sys-authentication/loginService/getTokenLoginName';
+    const apiPath = process.env.EKP_TOKEN_RESOLVE_PATH || '/api/sys-authentication/loginService/getTokenLoginName';
     const apiUrl = `${base}${apiPath}`;
 
     const headers: Record<string, string> = {

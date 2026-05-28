@@ -24,4 +24,11 @@ describe('server SSO cookie contract', () => {
     expect(ssoSource).toContain('resolveLoginName(value)');
     expect(ssoSource).not.toContain('resolveLoginName(ssoCookie)');
   });
+
+  test('EKP token parser sends token as URL parameter per loginService documentation', () => {
+    const authSource = fs.readFileSync(path.join(projectRoot, 'server/src/middleware/auth.ts'), 'utf8');
+
+    expect(authSource).toContain('`${resolveUrl}?token=${encodeURIComponent(token)}`');
+    expect(authSource).not.toContain('body: `token=${encodeURIComponent(token)}`');
+  });
 });

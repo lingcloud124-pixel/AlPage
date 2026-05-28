@@ -6,7 +6,7 @@ const EKP_BASE_URL = process.env.EKP_BASE_URL || '';
 const EKP_SSO_USER = process.env.EKP_SSO_USER || '';
 const EKP_SSO_PASS = process.env.EKP_SSO_PASS || '';
 const EKP_TOKEN_RESOLVE_PATH = process.env.EKP_TOKEN_RESOLVE_PATH || '/api/sys-authentication/loginService/getTokenLoginName';
-const SSO_COOKIE_CANDIDATES = ['LRToken', 'LtpaToken', 'LR_myekp', 'LRekp01Token'];
+const SSO_COOKIE_CANDIDATES = ['LRToken', 'LtpaToken_myekp', 'LtpaToken', 'LR_myekp', 'LRekp01Token'];
 
 const DEV_MODE = process.env.ENABLE_DEV_AUTH === 'true' && process.env.NODE_ENV !== 'production';
 const DEV_LOGIN_NAME = process.env.DEV_LOGIN_NAME || 'dev_user';
@@ -70,10 +70,9 @@ export async function resolveLoginName(token: string, useCache = true): Promise<
     }
 
     const resolveUrl = buildTokenResolveUrl();
-    const res = await fetch(resolveUrl, {
+    const res = await fetch(`${resolveUrl}?token=${encodeURIComponent(token)}`, {
       method: 'POST',
       headers,
-      body: `token=${encodeURIComponent(token)}`,
       signal: AbortSignal.timeout(5000),
       redirect: 'manual',
     });

@@ -3,7 +3,7 @@ import { resolveLoginName, EKP_BASE_URL } from '../middleware/auth.js';
 import { ensureUserByLoginName } from '../db.js';
 import { logger } from '../logger.js';
 
-const SSO_COOKIE_CANDIDATES = ['LRToken', 'LtpaToken', 'LR_myekp', 'LRekp01Token'];
+const SSO_COOKIE_CANDIDATES = ['LRToken', 'LtpaToken_myekp', 'LtpaToken', 'LR_myekp', 'LRekp01Token'];
 const APP_COOKIE_NAME = 'LRToken';
 
 const EKP_SSO_LOGIN_PATH = process.env.EKP_SSO_LOGIN_PATH || '/sys/authentication/sso/login_auto.jsp';
@@ -79,12 +79,12 @@ router.get('/login', (req: Request, res: Response) => {
         }
         logger.warn('SSO login: token validation failed for cookie', { cookieName: name });
       }
-      logger.warn('SSO login: all SSO cookies failed validation, redirecting to EKP SSO');
-      redirectToEkpSso(req, res);
+      logger.warn('SSO login: all SSO cookies failed validation, redirecting to EKP login page');
+      redirectToEkpLogin(req, res);
     })()
       .catch((err) => {
-        logger.error('SSO login: token validation error, redirecting to EKP SSO', err);
-        redirectToEkpSso(req, res);
+        logger.error('SSO login: token validation error, redirecting to EKP login page', err);
+        redirectToEkpLogin(req, res);
       })
     return;
   }
