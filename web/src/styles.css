@@ -6547,10 +6547,12 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
 {
   width: 14px;
   height: 14px;
+  box-sizing: border-box;
   border: 2px solid rgba(255,255,255,0.45);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: spin 0.75s linear infinite;
+  animation: pkg-spin 0.75s linear infinite;
+  transform-origin: 50% 50%;
   flex: 0 0 auto;
 }
 

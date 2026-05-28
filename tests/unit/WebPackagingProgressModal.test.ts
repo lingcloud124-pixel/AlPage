@@ -39,5 +39,8 @@ describe('web packaging progress modal', () => {
     expect(source).toContain("button.dataset.loading = loading ? 'true' : 'false';");
     expect(styles).toContain('.package-progress-btn[data-loading="true"]');
     expect(styles).toContain('.package-progress-btn-spinner');
+    expect(styles).toContain('animation: pkg-spin 0.75s linear infinite;');
+    expect(styles).toContain('transform-origin: 50% 50%;');
+    expect(styles).toContain('box-sizing: border-box;');
   });
 });
