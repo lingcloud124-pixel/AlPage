@@ -28,4 +28,14 @@ describe('server export job runner', () => {
     expect(source).toContain('packagesReadmePath');
     expect(source).toContain("mode: 'packaged'");
   });
+
+  test('runner forwards admin-configured export preview mode to asset preparation', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const source = readFileSync(join(process.cwd(), 'server/src/export-job-runner.ts'), 'utf8');
+
+    expect(source).toContain('getSecurityConfig');
+    expect(source).toContain('export_preview_mode');
+    expect(source).toContain('EXPORT_PREVIEW_MODE');
+  });
 });

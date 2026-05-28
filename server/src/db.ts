@@ -8,6 +8,7 @@ const BACKUP_DIR = join(process.cwd(), 'data', 'backups');
 const BACKUP_INTERVAL_MS = 60 * 60 * 1000;
 const DEFAULT_BACKUP_RETENTION_COUNT = 8;
 const DEFAULT_EXPORT_RETENTION_DAYS = 7;
+const DEFAULT_EXPORT_PREVIEW_MODE = 'auto';
 
 let db: Database;
 let backupTimer: ReturnType<typeof setInterval> | null = null;
@@ -165,6 +166,7 @@ export async function initDb(): Promise<void> {
       daily_credits_limit INTEGER NOT NULL DEFAULT 10,
       backup_retention_count INTEGER NOT NULL DEFAULT 8,
       export_retention_days INTEGER NOT NULL DEFAULT 7,
+      export_preview_mode TEXT NOT NULL DEFAULT 'auto',
       credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 10 积分\n2、每成功生成 1 次主题背景图，扣除 1 积分\n3、每日积分将在次日 06:00 自动清零并重新发放',
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
@@ -187,6 +189,9 @@ export async function initDb(): Promise<void> {
     }
     if (!colNames.includes('export_retention_days')) {
       db.run(`ALTER TABLE security_config ADD COLUMN export_retention_days INTEGER NOT NULL DEFAULT ${DEFAULT_EXPORT_RETENTION_DAYS}`);
+    }
+    if (!colNames.includes('export_preview_mode')) {
+      db.run(`ALTER TABLE security_config ADD COLUMN export_preview_mode TEXT NOT NULL DEFAULT '${DEFAULT_EXPORT_PREVIEW_MODE}'`);
     }
     if (!colNames.includes('credits_tooltip_content')) {
       db.run(`ALTER TABLE security_config ADD COLUMN credits_tooltip_content TEXT NOT NULL DEFAULT '1、每位用户每日可获得 10 积分
@@ -480,6 +485,7 @@ credits_per_image?: number,
 daily_credits_limit?: number,
 backup_retention_count?: number,
 export_retention_days?: number,
+export_preview_mode?: string,
 credits_tooltip_content?: string,
 whitelist_enabled?: boolean,
 whitelist_users?: string[]
@@ -496,6 +502,7 @@ if (credits_per_image !== undefined) updateFields.credits_per_image = credits_pe
 if (daily_credits_limit !== undefined) updateFields.daily_credits_limit = daily_credits_limit;
 if (backup_retention_count !== undefined) updateFields.backup_retention_count = backup_retention_count;
 if (export_retention_days !== undefined) updateFields.export_retention_days = export_retention_days;
+if (export_preview_mode !== undefined) updateFields.export_preview_mode = export_preview_mode;
 if (credits_tooltip_content !== undefined) updateFields.credits_tooltip_content = credits_tooltip_content;
 if (whitelist_enabled !== undefined) updateFields.whitelist_enabled = whitelist_enabled ? 1 : 0;
 if (whitelist_users !== undefined) updateFields.whitelist_users = JSON.stringify(whitelist_users);

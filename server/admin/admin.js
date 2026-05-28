@@ -346,6 +346,7 @@ async function loadConfig() {
     document.getElementById('creditsPerImage').value = securityData.creditsPerImage != null ? securityData.creditsPerImage : '50';
     document.getElementById('backupRetentionCount').value = securityData.backupRetentionCount != null ? securityData.backupRetentionCount : '8';
     document.getElementById('exportRetentionDays').value = securityData.exportRetentionDays != null ? securityData.exportRetentionDays : '7';
+    document.getElementById('exportPreviewMode').value = securityData.exportPreviewMode || 'auto';
     document.getElementById('creditsTooltipContent').value = securityData.creditsTooltipContent || '';
 
     var creditsEnabled = !(securityData.enabledFeatures && securityData.enabledFeatures.quota === false);
@@ -411,6 +412,7 @@ async function saveConfig() {
       creditsPerImage: parseInt(document.getElementById('creditsPerImage').value) || 50,
       backupRetentionCount: parseInt(document.getElementById('backupRetentionCount').value) || 8,
       exportRetentionDays: parseInt(document.getElementById('exportRetentionDays').value) || 7,
+      exportPreviewMode: document.getElementById('exportPreviewMode').value,
       creditsTooltipContent: document.getElementById('creditsTooltipContent').value
     };
 
@@ -444,6 +446,7 @@ async function saveConfig() {
           creditsPerImage: body.creditsPerImage,
           backupRetentionCount: body.backupRetentionCount,
           exportRetentionDays: body.exportRetentionDays,
+          exportPreviewMode: body.exportPreviewMode,
           creditsTooltipContent: body.creditsTooltipContent,
         })
       }))

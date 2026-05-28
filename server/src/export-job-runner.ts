@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { listQueuedExportJobs, requeueInFlightExportJobs, updateExportJob } from './export-jobs-memory-store.js';
 import { buildServerExportAssetSnapshot, buildServerExportYaml } from './export-build-shared.js';
+import { getSecurityConfig } from './db.js';
 import { logger } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -105,9 +106,13 @@ async function runJob(jobId: string): Promise<void> {
 
   try {
     const prepareScriptPath = join(PROJECT_ROOT, 'scripts', 'prepare_export_assets.py');
+    const securityConfig = getSecurityConfig();
+    const exportPreviewMode = typeof securityConfig?.export_preview_mode === 'string'
+      ? securityConfig.export_preview_mode
+      : process.env.EXPORT_PREVIEW_MODE;
     const prepareEnv = process.env.SCREENSHOT_BASE_URL
-      ? { ...process.env, SCREENSHOT_BASE_URL: process.env.SCREENSHOT_BASE_URL }
-      : process.env;
+      ? { ...process.env, SCREENSHOT_BASE_URL: process.env.SCREENSHOT_BASE_URL, EXPORT_PREVIEW_MODE: exportPreviewMode }
+      : { ...process.env, EXPORT_PREVIEW_MODE: exportPreviewMode };
     await execFileAsync('python3', [
       prepareScriptPath,
       '--snapshot',

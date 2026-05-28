@@ -20,6 +20,15 @@ describe('security config database schema', () => {
     expect(source).toContain('export_retention_days INTEGER NOT NULL DEFAULT 7');
   });
 
+  test('security_config schema stores export preview mode for admin advanced settings', () => {
+    const source = readFileSync(join(process.cwd(), 'server/src/db.ts'), 'utf8');
+    expect(source).toContain("export_preview_mode TEXT NOT NULL DEFAULT 'auto'");
+    expect(source).toContain("ALTER TABLE security_config ADD COLUMN export_preview_mode TEXT NOT NULL DEFAULT");
+    expect(source).toContain('DEFAULT_EXPORT_PREVIEW_MODE');
+    expect(source).toContain('export_preview_mode?: string');
+    expect(source).toContain('updateFields.export_preview_mode = export_preview_mode');
+  });
+
   test('security_config table has proper constraints', () => {
     const source = readFileSync(join(process.cwd(), 'server/src/db.ts'), 'utf8');
     expect(source).toContain('CHECK (id = 1)');
@@ -91,14 +100,28 @@ describe('storage retention admin configuration', () => {
 
   test('admin page exposes retention fields and saves them through security config', () => {
     const source = readFileSync(join(process.cwd(), 'server/admin/index.html'), 'utf8');
+    const script = readFileSync(join(process.cwd(), 'server/admin/admin.js'), 'utf8');
     expect(source).toContain('id="backupRetentionCount"');
     expect(source).toContain('id="exportRetentionDays"');
-    expect(source).toContain("document.getElementById('backupRetentionCount').value = securityData.backupRetentionCount ?? '8';");
-    expect(source).toContain("document.getElementById('exportRetentionDays').value = securityData.exportRetentionDays ?? '7';");
-    expect(source).toContain("backupRetentionCount: parseInt(document.getElementById('backupRetentionCount').value) || 8");
-    expect(source).toContain("exportRetentionDays: parseInt(document.getElementById('exportRetentionDays').value) || 7");
-    expect(source).toContain("} else if (securityRes.status === 'fulfilled') {");
-    expect(source).toContain("toast(await readErrorMessage(securityRes.value, `安全配置保存失败 (${securityRes.value.status})`), 'error');");
-    expect(source).toContain("if (successCount === 2) {");
+    expect(script).toContain("document.getElementById('backupRetentionCount').value = securityData.backupRetentionCount != null ? securityData.backupRetentionCount : '8';");
+    expect(script).toContain("document.getElementById('exportRetentionDays').value = securityData.exportRetentionDays != null ? securityData.exportRetentionDays : '7';");
+    expect(script).toContain("backupRetentionCount: parseInt(document.getElementById('backupRetentionCount').value) || 8");
+    expect(script).toContain("exportRetentionDays: parseInt(document.getElementById('exportRetentionDays').value) || 7");
+    expect(script).toContain("} else if (securityRes.status === 'fulfilled') {");
+    expect(script).toContain("toast(await readErrorMessage(securityRes.value, '安全配置保存失败 (' + securityRes.value.status + ')'), 'error');");
+    expect(script).toContain("if (successCount === 2) {");
+  });
+
+  test('admin advanced settings expose and save export preview mode', () => {
+    const route = readFileSync(join(process.cwd(), 'server/src/routes/security-config.ts'), 'utf8');
+    const html = readFileSync(join(process.cwd(), 'server/admin/index.html'), 'utf8');
+    const script = readFileSync(join(process.cwd(), 'server/admin/admin.js'), 'utf8');
+
+    expect(route).toContain('exportPreviewMode');
+    expect(route).toContain('normalizeExportPreviewMode');
+    expect(html).toContain('id="exportPreviewMode"');
+    expect(html).toContain('导出预览服务模式');
+    expect(script).toContain("document.getElementById('exportPreviewMode').value = securityData.exportPreviewMode || 'auto';");
+    expect(script).toContain("exportPreviewMode: document.getElementById('exportPreviewMode').value");
   });
 });

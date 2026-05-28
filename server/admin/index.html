@@ -293,6 +293,12 @@
                 <input type="number" id="exportRetentionDays" placeholder="例如: 7">
               </div>
             </div>
+            <label style="margin-top: 12px;">导出预览服务模式</label>
+            <select id="exportPreviewMode">
+              <option value="auto">自动：有截图地址则复用服务，否则启动本地 preview</option>
+              <option value="service">生产推荐：必须复用截图地址，不启动本地 preview</option>
+              <option value="local">本地调试：允许启动本地 Vite preview</option>
+            </select>
             <label>跨域资源共享 (CORS) 允许域名列表</label>
             <textarea id="corsAllowlist" placeholder="每行一个域名&#10;http://localhost:5173（已默认配置）" rows="3"></textarea>
             
