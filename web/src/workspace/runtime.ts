@@ -1,6 +1,7 @@
 import { listCardTemplates } from '../api/card-templates';
 import { getCurrentProjectId, loadProject, saveProject } from '../project-manager';
 import { persistWorkspaceToLocal, syncWorkspaceToServer } from './store';
+import { escapeHtml, getWorkspaceCardTitle, renderWorkspaceCardShell } from './card-renderer';
 
 import type { WorkspaceConfig } from '../types';
 import type { CardTemplateListItem } from '../api/card-templates';
@@ -16,13 +17,6 @@ export function createWorkspaceRuntimeState(projectId: string, workspace: Worksp
     workspace,
   };
 }
-
-const CARD_TITLES: Record<string, string> = {
-  'message-todo': '待办事务',
-  'news-carousel': '新闻轮播',
-  'my-schedule': '我的日程',
-  'quick-access': '快捷入口',
-};
 
 let currentWorkspace: WorkspaceConfig | null = null;
 let selectedWorkspaceCardId: string | null = null;
@@ -46,20 +40,6 @@ interface WorkspacePlacement {
   y: number;
   w: number;
   h: number;
-}
-
-interface WorkspaceCardContent {
-  body: string;
-  extraClassName?: string;
-}
-
-function escapeHtml(value: unknown): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 function setWorkspaceTemplateCache(items: CardTemplateListItem[]): void {
@@ -97,94 +77,9 @@ function getWorkspaceCardTemplateProps(item: Record<string, any>): Record<string
   };
 }
 
-function buildCardRows(templateId: string): string {
-  const rowsByTemplate: Record<string, string[]> = {
-    'message-todo': ['待审批事项', '我发起的流程', '超时提醒'],
-    'news-carousel': ['企业新闻头条', '公告速览', '活动专题'],
-    'my-schedule': ['今日会议安排', '本周计划', '待跟进事项'],
-    'quick-access': ['常用入口', '业务导航', '收藏应用'],
-  };
-  const rows = rowsByTemplate[templateId] ?? ['卡片内容占位'];
-  return rows
-    .map((row, index) => `<div class="workspace-editor-card-row"><span>${row}</span><span>${index + 1}</span></div>`)
-    .join('');
-}
-
-function renderTodoCardContent(props: Record<string, any>): WorkspaceCardContent {
-  const items = Array.isArray(props.items) ? props.items.slice(0, Number(props.itemCount ?? props.items.length ?? 4)) : [];
-  return {
-    extraClassName: 'workspace-card-list',
-    body: `
-      ${props.summary ? `<div class="workspace-card-summary">${escapeHtml(props.summary)}</div>` : ''}
-      <div class="workspace-card-list">
-        ${items.map((entry: Record<string, unknown>) => `<div class="workspace-card-list-item"><span>${escapeHtml(entry.label)}</span><strong>${escapeHtml(entry.meta)}</strong></div>`).join('')}
-      </div>
-    `,
-  };
-}
-
-function renderNewsCardContent(props: Record<string, any>): WorkspaceCardContent {
-  const items = Array.isArray(props.items) ? props.items.slice(0, Number(props.itemCount ?? props.items.length ?? 2)) : [];
-  return {
-    body: `
-      <div class="workspace-card-news-hero">
-        <div class="workspace-card-news-badge">${escapeHtml(props.badge || '专题')}</div>
-        <div class="workspace-card-news-title">${escapeHtml(props.headline || '新闻标题')}</div>
-        <div class="workspace-card-news-copy">${escapeHtml(props.summary || '新闻摘要')}</div>
-      </div>
-      <div class="workspace-card-list">
-        ${items.map((entry: Record<string, unknown>) => `<div class="workspace-card-list-item"><span>${escapeHtml(entry.title)}</span><strong>${escapeHtml(entry.meta)}</strong></div>`).join('')}
-      </div>
-    `,
-  };
-}
-
-function renderScheduleCardContent(props: Record<string, any>): WorkspaceCardContent {
-  const items = Array.isArray(props.items) ? props.items.slice(0, Number(props.itemCount ?? props.items.length ?? 3)) : [];
-  return {
-    body: `
-      ${items.map((entry: Record<string, unknown>) => `
-        <div class="workspace-card-schedule-item">
-          <div>
-            <div class="workspace-card-schedule-title">${escapeHtml(entry.title)}</div>
-            <div class="workspace-card-schedule-meta">${escapeHtml(entry.meta)}</div>
-          </div>
-          <strong>${escapeHtml(entry.status)}</strong>
-        </div>
-      `).join('')}
-    `,
-  };
-}
-
-function renderQuickAccessCardContent(props: Record<string, any>): WorkspaceCardContent {
-  const links = Array.isArray(props.links) ? props.links.slice(0, Number(props.itemCount ?? props.links.length ?? 6)) : [];
-  return {
-    body: `
-      <div class="workspace-card-quick-links">
-        ${links.map((label: unknown) => `<button type="button">${escapeHtml(label)}</button>`).join('')}
-      </div>
-    `,
-  };
-}
-
-function renderWorkspaceCardContent(item: Record<string, any>): WorkspaceCardContent {
-  const templateId = String(item.templateId || '');
-  const props = getWorkspaceCardTemplateProps(item);
-  if (templateId === 'message-todo') return renderTodoCardContent(props);
-  if (templateId === 'news-carousel') return renderNewsCardContent(props);
-  if (templateId === 'my-schedule') return renderScheduleCardContent(props);
-  if (templateId === 'quick-access') return renderQuickAccessCardContent(props);
-  return {
-    body: buildCardRows(templateId),
-  };
-}
-
-function getCardDisplayTitle(item: Record<string, any>): string {
-  const instanceTitle = typeof item.instanceProps?.title === 'string' ? item.instanceProps.title.trim() : '';
-  const template = getWorkspaceCardTemplate(String(item.templateId || ''));
-  return instanceTitle || String(template?.defaultProps?.title || template?.name || CARD_TITLES[item.templateId] || item.templateId);
-}
-
+// rich content builders moved to card-renderer.ts:
+// renderTodoCardContent, renderNewsCardContent, renderScheduleCardContent,
+// renderQuickAccessCardContent, renderWorkspaceCardContent
 function getNextWorkspaceY(workspace: WorkspaceConfig): number {
   return workspace.items.reduce((max, item) => Math.max(max, item.y + item.h), 0);
 }
@@ -577,27 +472,9 @@ export function renderWorkspaceEditorShell(workspace: WorkspaceConfig | null): v
   applyCardGridStyles(workspace);
   canvas.removeAttribute('data-empty');
   canvas.innerHTML = workspace.items.map((item) => {
-    const title = getCardDisplayTitle(item as Record<string, any>);
     const gridStyle = `grid-column: ${item.x + 1} / span ${item.w}; grid-row: ${item.y + 1} / span ${item.h};`;
-    const content = renderWorkspaceCardContent(item as Record<string, any>);
-    return `
-      <article class="workspace-editor-card ${content.extraClassName ?? ''}" style="${gridStyle}" data-item-id="${item.id}" data-width="${item.w}" data-height="${item.h}" data-template-id="${item.templateId}">
-        <header class="workspace-editor-card-header">
-          <div class="workspace-editor-card-header-main">
-            <button class="workspace-editor-card-drag-handle" type="button" data-action="drag-card" aria-label="拖拽卡片" title="拖拽卡片">⋮⋮</button>
-            <div class="workspace-editor-card-title">${title}</div>
-          </div>
-          <div class="workspace-editor-card-header-actions">
-            <div class="workspace-editor-card-meta">${item.templateId}</div>
-            <button class="workspace-editor-card-delete" type="button" data-action="delete-card" aria-label="删除卡片" title="删除卡片">×</button>
-          </div>
-        </header>
-        <div class="workspace-editor-card-content">
-          ${content.body}
-        </div>
-        <button class="workspace-editor-card-resize-handle" type="button" data-action="resize-card" aria-label="缩放卡片" title="缩放卡片">↘</button>
-      </article>
-    `;
+    const shell = renderWorkspaceCardShell({ item, context: { mode: 'editor', templateCache: workspaceTemplateCache } });
+    return shell.replace('<article class="workspace-editor-card"', `<article class="workspace-editor-card" style="${gridStyle}" data-width="${item.w}" data-height="${item.h}"`);
   }).join('');
   bindWorkspaceCardSelection();
   if (isWorkspacePropertiesDrawerOpen) {
@@ -739,7 +616,7 @@ export function renderWorkspacePropertyPanel(mode: WorkspacePropertiesPanelMode 
 
   const item = currentWorkspace.items.find((candidate) => candidate.id === selectedWorkspaceCardId) ?? null;
   const templateProps = item ? getWorkspaceCardTemplateProps(item as Record<string, any>) : {};
-  const title = item ? getCardDisplayTitle(item as Record<string, any>) : '未选中卡片';
+  const title = item ? getWorkspaceCardTitle(item, workspaceTemplateCache) : '未选中卡片';
   const supportsItemCount = item ? ['message-todo', 'news-carousel', 'my-schedule', 'quick-access'].includes(item.templateId) : false;
   const supportsHeadline = item?.templateId === 'news-carousel';
   container.innerHTML = `
