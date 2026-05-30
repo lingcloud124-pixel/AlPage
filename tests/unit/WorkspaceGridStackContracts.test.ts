@@ -12,15 +12,15 @@ describe('workspace gridstack integration contracts', () => {
   test('editor delegates drag and resize to GridStack and persists change events', () => {
     const adapter = read('web/src/workspace/gridstack-adapter.ts');
     const runtime = read('web/src/workspace/runtime.ts');
-    const css = read('web/src/styles/workspace.css');
+    const css = read('web/src/styles/sidebar.css');
 
     expect(adapter).toContain("import 'gridstack/dist/gridstack.min.css'");
     expect(adapter).toContain('import { GridStack }');
     expect(adapter).toContain('export function mountWorkspaceGrid');
     expect(adapter).toContain('GridStack.init');
-    expect(adapter).toContain("grid.on('change'");
+    expect(adapter).toContain(".on('change'");
     expect(adapter).toContain('onLayoutChange');
-    expect(adapter).toContain('grid.destroy(false)');
+    expect(adapter).toContain('.destroy(false)');
 
     expect(runtime).toContain('mountWorkspaceGrid');
     expect(runtime).not.toContain('function startWorkspaceDrag');

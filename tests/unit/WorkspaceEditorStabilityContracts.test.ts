@@ -14,13 +14,17 @@ describe('workspace editor stability contracts', () => {
     expect(source).toContain('const slot = findWorkspaceSlot');
   });
 
-  test('drag and resize operations guard against out of bounds and overlapping cards', () => {
+  test('GridStack adapter delegates layout to gridstack.js and commitWorkspaceMutation normalizes items', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
+    const adapter = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/gridstack-adapter.ts'), 'utf8');
 
     expect(source).toContain('isWithinWorkspaceBounds');
     expect(source).toContain('if (hasWorkspaceCollision(');
     expect(source).toContain('return origin');
-    expect(source).toContain('Math.min(metrics.columns - nextW');
+    expect(source).toContain('normalizeWorkspaceLayout');
+
+    expect(adapter).toContain('onLayoutChange');
+    expect(adapter).toContain('GridStack.init');
   });
 
   test('styles expose drag preview state for rejected placement feedback', () => {

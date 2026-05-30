@@ -254,6 +254,12 @@
   align-content: start;
 }
 
+.workspace-card-canvas.grid-stack
+{
+  display: block;
+  min-height: 520px;
+}
+
 .workspace-card-canvas[data-empty="true"]
 {
   display: block;
@@ -395,6 +401,34 @@
   gap: 10px;
   padding: 16px 18px;
   overflow: auto;
+}
+
+.grid-stack-item-content
+{
+  inset: 0;
+  border-radius: 16px;
+  overflow: visible;
+}
+
+.grid-stack .workspace-editor-card
+{
+  height: 100%;
+}
+
+.grid-stack .workspace-editor-card-content
+{
+  height: calc(100% - 48px);
+  overflow: hidden;
+}
+
+.workspace-editor-card-drag-handle
+{
+  cursor: grab;
+}
+
+.workspace-editor-card-drag-handle:active
+{
+  cursor: grabbing;
 }
 
 .workspace-editor-card-row

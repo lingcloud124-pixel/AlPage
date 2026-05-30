@@ -2,6 +2,7 @@ import { listCardTemplates } from '../api/card-templates';
 import { getCurrentProjectId, loadProject, saveProject } from '../project-manager';
 import { persistWorkspaceToLocal, syncWorkspaceToServer } from './store';
 import { escapeHtml, getWorkspaceCardTitle, renderWorkspaceCardShell } from './card-renderer';
+import { destroyWorkspaceGrid, mountWorkspaceGrid } from './gridstack-adapter';
 
 import type { WorkspaceConfig } from '../types';
 import type { CardTemplateListItem } from '../api/card-templates';
@@ -25,15 +26,6 @@ type WorkspacePropertiesPanelMode = 'global' | 'card';
 let workspacePropertiesPanelMode: WorkspacePropertiesPanelMode = 'global';
 let workspaceTemplateCache: Record<string, CardTemplateListItem> = {};
 let workspaceTemplateLoadPromise: Promise<void> | null = null;
-
-interface GridMetrics {
-  columns: number;
-  columnWidth: number;
-  rowStep: number;
-  rowHeight: number;
-  gapX: number;
-  gapY: number;
-}
 
 interface WorkspacePlacement {
   x: number;
@@ -299,25 +291,6 @@ async function updateWorkspaceCardInstanceProps(itemId: string, patch: Record<st
   await commitWorkspaceMutation(nextWorkspace);
 }
 
-function getGridMetrics(workspace: WorkspaceConfig): GridMetrics | null {
-  const canvas = document.getElementById('workspaceCardCanvas') as HTMLElement | null;
-  if (!canvas) return null;
-  const columns = Math.max(1, Number(workspace.settings.columns || 4));
-  const gapX = Number(workspace.settings.gapX || 16);
-  const gapY = Number(workspace.settings.gapY || 16);
-  const rowHeight = Math.max(8, Number(workspace.settings.rowHeight || 24));
-  const innerWidth = Math.max(0, canvas.clientWidth - Number(workspace.settings.paddingX || 20) * 2);
-  const columnWidth = Math.max(1, (innerWidth - gapX * (columns - 1)) / columns);
-  return {
-    columns,
-    columnWidth,
-    rowStep: rowHeight + gapY,
-    rowHeight,
-    gapX,
-    gapY,
-  };
-}
-
 function applyCardGridStyles(workspace: WorkspaceConfig): void {
   const canvas = document.getElementById('workspaceCardCanvas') as HTMLElement | null;
   if (!canvas) return;
@@ -327,121 +300,6 @@ function applyCardGridStyles(workspace: WorkspaceConfig): void {
   canvas.style.setProperty('--workspace-gap-y', `${workspace.settings.gapY || 16}px`);
   canvas.style.setProperty('--workspace-padding-x', `${workspace.settings.paddingX || 20}px`);
   canvas.style.setProperty('--workspace-padding-y', `${workspace.settings.paddingY || 20}px`);
-}
-
-function startWorkspaceDrag(event: PointerEvent, itemId: string): void {
-  if (!currentWorkspace) return;
-  const item = currentWorkspace.items.find((candidate) => candidate.id === itemId);
-  const card = document.querySelector(`.workspace-editor-card[data-item-id="${itemId}"]`) as HTMLElement | null;
-  const metrics = item ? getGridMetrics(currentWorkspace) : null;
-  if (!item || !card || !metrics) return;
-
-  const startX = event.clientX;
-  const startY = event.clientY;
-  const origin = { x: item.x, y: item.y, w: item.w, h: item.h };
-
-  const onPointerMove = (moveEvent: PointerEvent) => {
-    const dx = moveEvent.clientX - startX;
-    const dy = moveEvent.clientY - startY;
-    const deltaCols = Math.round(dx / (metrics.columnWidth + metrics.gapX));
-    const deltaRows = Math.round(dy / metrics.rowStep);
-    const nextX = Math.max(0, Math.min(metrics.columns - item.w, origin.x + deltaCols));
-    const nextY = Math.max(0, origin.y + deltaRows);
-    const candidate = { x: nextX, y: nextY, w: item.w, h: item.h };
-    const isInvalid = hasWorkspaceCollision(currentWorkspace!, candidate, itemId);
-    card.style.transform = `translate(${dx}px, ${dy}px)`;
-    card.style.zIndex = '5';
-    card.classList.toggle('is-drag-invalid', isInvalid);
-  };
-
-  const onPointerUp = (upEvent: PointerEvent) => {
-    const dx = upEvent.clientX - startX;
-    const dy = upEvent.clientY - startY;
-    const deltaCols = Math.round(dx / (metrics.columnWidth + metrics.gapX));
-    const deltaRows = Math.round(dy / metrics.rowStep);
-    const nextX = Math.max(0, Math.min(metrics.columns - item.w, origin.x + deltaCols));
-    const nextY = Math.max(0, origin.y + deltaRows);
-    const placement = resolveWorkspacePlacement(currentWorkspace!, origin, { x: nextX, y: nextY, w: item.w, h: item.h }, itemId);
-    card.style.removeProperty('transform');
-    card.style.removeProperty('z-index');
-    card.classList.remove('is-drag-invalid');
-    window.removeEventListener('pointermove', onPointerMove);
-    window.removeEventListener('pointerup', onPointerUp);
-    if (placement.x === item.x && placement.y === item.y) return;
-    const nextWorkspace: WorkspaceConfig = {
-      ...currentWorkspace!,
-      items: currentWorkspace!.items.map((candidate) =>
-        candidate.id === itemId ? { ...candidate, x: placement.x, y: placement.y } : candidate
-      ),
-      meta: {
-        ...currentWorkspace!.meta,
-        updatedAt: Date.now(),
-      },
-    };
-    void commitWorkspaceMutation(nextWorkspace);
-  };
-
-  window.addEventListener('pointermove', onPointerMove);
-  window.addEventListener('pointerup', onPointerUp, { once: true });
-}
-
-function startWorkspaceResize(event: PointerEvent, itemId: string): void {
-  if (!currentWorkspace) return;
-  const item = currentWorkspace.items.find((candidate) => candidate.id === itemId);
-  const card = document.querySelector(`.workspace-editor-card[data-item-id="${itemId}"]`) as HTMLElement | null;
-  const metrics = item ? getGridMetrics(currentWorkspace) : null;
-  if (!item || !card || !metrics) return;
-
-  const startX = event.clientX;
-  const startY = event.clientY;
-  const origin = { x: item.x, y: item.y, w: item.w, h: item.h };
-
-  const onPointerMove = (moveEvent: PointerEvent) => {
-    const dx = moveEvent.clientX - startX;
-    const dy = moveEvent.clientY - startY;
-    const deltaCols = Math.round(dx / (metrics.columnWidth + metrics.gapX));
-    const deltaRows = Math.round(dy / metrics.rowStep);
-    const previewW = Math.max(item.minW ?? 1, origin.w + deltaCols);
-    const previewH = Math.max(item.minH ?? 1, origin.h + deltaRows);
-    const boundedW = Math.max(item.minW ?? 1, Math.min(metrics.columns - item.x, previewW));
-    const candidate = { x: item.x, y: item.y, w: boundedW, h: previewH };
-    const isInvalid = hasWorkspaceCollision(currentWorkspace!, candidate, itemId);
-    card.style.transform = `translate(${Math.max(0, dx) * 0.08}px, ${Math.max(0, dy) * 0.08}px)`;
-    card.style.zIndex = '5';
-    card.classList.toggle('is-drag-invalid', isInvalid);
-  };
-
-  const onPointerUp = (upEvent: PointerEvent) => {
-    const dx = upEvent.clientX - startX;
-    const dy = upEvent.clientY - startY;
-    const deltaCols = Math.round(dx / (metrics.columnWidth + metrics.gapX));
-    const deltaRows = Math.round(dy / metrics.rowStep);
-    const rawNextW = Math.max(item.minW ?? 1, origin.w + deltaCols);
-    const nextW = Math.max(item.minW ?? 1, Math.min(metrics.columns - item.x, rawNextW));
-    const maxX = Math.min(metrics.columns - nextW, metrics.columns - 1);
-    const nextH = Math.max(item.minH ?? 1, origin.h + deltaRows);
-    const placement = resolveWorkspacePlacement(currentWorkspace!, origin, { x: Math.min(item.x, maxX), y: item.y, w: nextW, h: nextH }, itemId);
-    card.style.removeProperty('transform');
-    card.style.removeProperty('z-index');
-    card.classList.remove('is-drag-invalid');
-    window.removeEventListener('pointermove', onPointerMove);
-    window.removeEventListener('pointerup', onPointerUp);
-    if (placement.w === item.w && placement.h === item.h) return;
-    const nextWorkspace: WorkspaceConfig = {
-      ...currentWorkspace!,
-      items: currentWorkspace!.items.map((candidate) =>
-        candidate.id === itemId ? { ...candidate, x: placement.x, w: placement.w, h: placement.h } : candidate
-      ),
-      meta: {
-        ...currentWorkspace!.meta,
-        updatedAt: Date.now(),
-      },
-    };
-    void commitWorkspaceMutation(nextWorkspace);
-  };
-
-  window.addEventListener('pointermove', onPointerMove);
-  window.addEventListener('pointerup', onPointerUp, { once: true });
 }
 
 export function renderWorkspaceEditorShell(workspace: WorkspaceConfig | null): void {
@@ -461,26 +319,48 @@ export function renderWorkspaceEditorShell(workspace: WorkspaceConfig | null): v
   }
 
   if (!workspace || !Array.isArray(workspace.items) || workspace.items.length === 0) {
+    destroyWorkspaceGrid();
+    canvas.classList.remove('grid-stack');
     canvas.setAttribute('data-empty', 'true');
     canvas.innerHTML = '<div class="workspace-editor-empty">暂无工作区卡片，请先从卡片库添加。</div>';
     return;
   }
 
   applyCardGridStyles(workspace);
+  canvas.classList.add('grid-stack');
   canvas.removeAttribute('data-empty');
   canvas.innerHTML = workspace.items.map((item) => {
-    const gridStyle = `grid-column: ${item.x + 1} / span ${item.w}; grid-row: ${item.y + 1} / span ${item.h};`;
     return renderWorkspaceCardShell({
       item,
       context: { mode: 'editor', templateCache: workspaceTemplateCache },
-      style: gridStyle,
+      extraClassName: 'grid-stack-item',
       attributes: {
-        'data-width': item.w,
-        'data-height': item.h,
+        'gs-id': item.id,
+        'gs-x': item.x,
+        'gs-y': item.y,
+        'gs-w': item.w,
+        'gs-h': item.h,
+        'gs-min-w': item.minW ?? 1,
+        'gs-min-h': item.minH ?? 1,
       },
     });
-  }).join('');
+  }).replace(/(<div class="workspace-editor-card-content")/g, '<div class="grid-stack-item-content">$1').replace(/(<\/article>)/g, '</div>$1');
   bindWorkspaceCardSelection();
+  mountWorkspaceGrid({
+    canvas,
+    workspace,
+    onLayoutChange: (items) => {
+      const nextWorkspace: WorkspaceConfig = {
+        ...workspace,
+        items,
+        meta: {
+          ...workspace.meta,
+          updatedAt: Date.now(),
+        },
+      };
+      void commitWorkspaceMutation(nextWorkspace);
+    },
+  });
   if (isWorkspacePropertiesDrawerOpen) {
     renderWorkspacePropertyPanel();
   }
@@ -501,22 +381,6 @@ function bindWorkspaceCardSelection(): void {
       const itemId = card.getAttribute('data-item-id');
       if (itemId) {
         void deleteWorkspaceCard(itemId);
-      }
-    });
-    const dragHandle = card.querySelector('[data-action="drag-card"]');
-    dragHandle?.addEventListener('pointerdown', (event) => {
-      event.stopPropagation();
-      const itemId = card.getAttribute('data-item-id');
-      if (itemId) {
-        startWorkspaceDrag(event as PointerEvent, itemId);
-      }
-    });
-    const resizeHandle = card.querySelector('[data-action="resize-card"]');
-    resizeHandle?.addEventListener('pointerdown', (event) => {
-      event.stopPropagation();
-      const itemId = card.getAttribute('data-item-id');
-      if (itemId) {
-        startWorkspaceResize(event as PointerEvent, itemId);
       }
     });
   });

@@ -17,8 +17,8 @@ describe('workspace editor mutation contracts', () => {
     expect(source).toContain('crypto.randomUUID');
   });
 
-  test('workspace cards expose a delete affordance in the static shell', () => {
-    const source = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
+  test('workspace cards expose a delete affordance in the shared renderer shell', () => {
+    const source = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/card-renderer.ts'), 'utf8');
 
     expect(source).toContain('workspace-editor-card-delete');
     expect(source).toContain('删除卡片');

@@ -15,17 +15,21 @@ describe('workspace editor layout contracts', () => {
     expect(css).toContain('.workspace-editor-card-resize-handle');
   });
 
-  test('runtime positions cards from x y w h and exposes drag resize handlers', () => {
+  test('runtime positions cards via GridStack and exposes drag resize through the adapter', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
+    const adapter = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/gridstack-adapter.ts'), 'utf8');
 
-    expect(source).toContain('grid-column:');
-    expect(source).toContain('grid-row:');
-    expect(source).toContain('startWorkspaceDrag');
-    expect(source).toContain('startWorkspaceResize');
-    expect(source).toContain('pointermove');
-    expect(source).toContain('pointerup');
-    expect(source).toContain('workspace-editor-card-drag-handle');
-    expect(source).toContain('workspace-editor-card-resize-handle');
+    expect(source).toContain('mountWorkspaceGrid');
+    expect(source).toContain('gs-x');
+    expect(source).toContain('gs-y');
+    expect(source).toContain('gs-w');
+    expect(source).toContain('gs-h');
+    expect(source).not.toContain('function startWorkspaceDrag');
+    expect(source).not.toContain('function startWorkspaceResize');
+
+    expect(adapter).toContain("import { GridStack }");
+    expect(adapter).toContain('GridStack.init');
+    expect(adapter).toContain('.workspace-editor-card-drag-handle');
   });
 
   test('layout mutations still reuse workspace persistence and sync path', () => {
