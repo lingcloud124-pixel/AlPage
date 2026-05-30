@@ -522,6 +522,14 @@ function bindWorkspaceCardSelection(): void {
   });
 }
 
+export function escapeCssUrl(value: unknown): string {
+  return String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '&quot;')
+    .replace(/\n|\r|\f/g, '');
+}
+
 function renderCardLibraryList(items: Array<Record<string, any>>): void {
   const container = document.getElementById('workspaceCardLibraryList');
   if (!container) return;
@@ -530,7 +538,7 @@ function renderCardLibraryList(items: Array<Record<string, any>>): void {
     return;
   }
   container.innerHTML = items.map((item) => {
-    const previewImageUrl = escapeHtml(item.previewImageUrl ?? '');
+    const previewImageUrl = escapeCssUrl(item.previewImageUrl);
     const previewStyle = previewImageUrl
       ? ` style="background-image: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(129, 140, 248, 0.06)), url('${previewImageUrl}');"`
       : '';

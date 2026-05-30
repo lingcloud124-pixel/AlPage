@@ -1,9 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import type { CardTemplateListItem } from '../../web/src/api/card-templates';
 import type { WorkspaceConfig } from '../../web/src/types';
 import { renderWorkspaceCardShell } from '../../web/src/workspace/card-renderer';
+import { escapeCssUrl } from '../../web/src/workspace/runtime';
 
 const baseItem: WorkspaceConfig['items'][number] = {
   id: 'card-1',
@@ -147,11 +146,13 @@ describe('workspace card renderer', () => {
     expect(html).toContain('data-height="12"');
   });
 
-  test('escapes card library preview image URL before writing style attribute', () => {
-    const runtimeSource = readFileSync(resolve(process.cwd(), 'web/src/workspace/runtime.ts'), 'utf-8');
+  test('escapes card library preview image URL for CSS string and HTML style contexts', () => {
+    const injectedCss = escapeCssUrl("x');background:red");
+    const quotedUrl = escapeCssUrl('hero"image.png');
 
-    expect(runtimeSource).toContain("const previewImageUrl = escapeHtml(item.previewImageUrl ?? '')");
-    expect(runtimeSource).toContain("url('${previewImageUrl}')");
-    expect(runtimeSource).not.toContain('String(item.previewImageUrl).replace');
+    expect(injectedCss).toBe("x\\');background:red");
+    expect(injectedCss).not.toMatch(/(^|[^\\])'\);/);
+    expect(quotedUrl).toBe('hero&quot;image.png');
+    expect(quotedUrl).not.toContain('"');
   });
 });
