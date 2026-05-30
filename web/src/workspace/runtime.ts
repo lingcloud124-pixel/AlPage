@@ -1,7 +1,7 @@
 import { listCardTemplates } from '../api/card-templates';
 import { getCurrentProjectId, loadProject, saveProject } from '../project-manager';
 import { persistWorkspaceToLocal, syncWorkspaceToServer } from './store';
-import { escapeHtml, getWorkspaceCardTitle, renderWorkspaceCardShell } from './card-renderer';
+import { getWorkspaceCardTitle, renderWorkspaceCardShell } from './card-renderer';
 
 import type { WorkspaceConfig } from '../types';
 import type { CardTemplateListItem } from '../api/card-templates';
@@ -77,9 +77,6 @@ function getWorkspaceCardTemplateProps(item: Record<string, any>): Record<string
   };
 }
 
-// rich content builders moved to card-renderer.ts:
-// renderTodoCardContent, renderNewsCardContent, renderScheduleCardContent,
-// renderQuickAccessCardContent, renderWorkspaceCardContent
 function getNextWorkspaceY(workspace: WorkspaceConfig): number {
   return workspace.items.reduce((max, item) => Math.max(max, item.y + item.h), 0);
 }

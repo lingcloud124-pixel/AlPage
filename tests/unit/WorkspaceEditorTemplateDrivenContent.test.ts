@@ -12,14 +12,16 @@ describe('workspace editor template driven content', () => {
     expect(source).toContain('configurable');
   });
 
-  test('runtime caches backend templates and merges defaultProps with instanceProps for rendering', () => {
-    const source = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
+  test('runtime caches backend templates and shared renderer merges defaultProps with instanceProps for rendering', () => {
+    const runtimeSource = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
+    const rendererSource = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/card-renderer.ts'), 'utf8');
 
-    expect(source).toContain('workspaceTemplateCache');
-    expect(source).toContain('ensureWorkspaceTemplateCache');
-    expect(source).toContain('getWorkspaceCardTemplateProps');
-    expect(source).toContain('defaultProps');
-    expect(source).toContain('instanceProps');
+    expect(runtimeSource).toContain('workspaceTemplateCache');
+    expect(runtimeSource).toContain('ensureWorkspaceTemplateCache');
+    expect(runtimeSource).toContain('renderWorkspaceCardShell');
+    expect(rendererSource).toContain('getTemplateProps');
+    expect(rendererSource).toContain('defaultProps');
+    expect(rendererSource).toContain('instanceProps');
   });
 
   test('property drawer exposes template driven content fields for card level editing', () => {
