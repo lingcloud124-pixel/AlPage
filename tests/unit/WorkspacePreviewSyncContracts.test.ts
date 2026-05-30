@@ -17,8 +17,9 @@ describe('workspace preview synchronization contracts', () => {
 
     expect(preview).toContain('export function renderWorkspacePreview');
     expect(preview).toContain('WorkspaceConfig');
-    expect(preview).toContain('workspace-preview-card');
+    expect(preview).toContain('portal-workspace-preview-host');
     expect(preview).toContain('renderWorkspaceCardShell');
+    expect(preview).toContain("mode: 'preview'");
 
     expect(uiSetup).toContain('renderWorkspacePreview');
     expect(uiSetup).toMatch(/renderTemplate\('desktop', mainPage\)[\s\S]*?renderWorkspacePreview/);

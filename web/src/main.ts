@@ -25,6 +25,7 @@ import { initSidebar } from './components/sidebar';
 import { registerPreviewResize, resizePreviewPages } from './preview/resize-preview';
 import { ensureProjectWorkspaceReady } from './workspace/store';
 import { renderWorkspaceEditorShell, setupWorkspaceEditorShell } from './workspace/runtime';
+import { renderWorkspacePreview } from './workspace/preview';
 
 declare global {
   interface Window {
@@ -109,6 +110,7 @@ async function initializeFeatureModules() {
       const project = snapshot as any;
       project.workspace = await ensureProjectWorkspaceReady(project.id, project.workspace);
       renderWorkspaceEditorShell(project.workspace ?? null);
+      renderWorkspacePreview(document.getElementById('mainPage'), project.workspace ?? null);
       if (project.colors) {
         for (const [k, v] of Object.entries(project.colors)) {
           setThemeVar(`--${k}`, v as string);

@@ -12,6 +12,7 @@ import { setupChatInterface } from './chat-manager';
 import { initializeColorEditor } from './components/color-editor';
 import { showWorkspaceLandingState } from './main';
 import { toggleSidebar } from './components/sidebar';
+import { renderWorkspacePreview } from './workspace/preview';
 
 let previewTemplatesLoaded = false;
 
@@ -240,6 +241,9 @@ export function setupTabSwitching() {
     mainPage.style.pointerEvents = 'auto';
     mainPage.setAttribute('aria-hidden', 'false');
     syncWorkbenchLayoutForActiveTab(true, 'mainPageTab');
+    const projectId = getCurrentProjectId();
+    const project = projectId ? await loadProject(projectId) : null;
+    renderWorkspacePreview(mainPage, project?.workspace ?? null);
     requestAnimationFrame(() => (window as any).resizePreview?.());
   })();
 }

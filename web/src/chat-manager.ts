@@ -48,6 +48,7 @@ import {
   mergePortalProfile,
 } from './portal-agent';
 import { renderWorkspaceEditorShell } from './workspace/runtime';
+import { renderWorkspacePreview } from './workspace/preview';
 import { persistWorkspaceToLocal, syncWorkspaceToServer } from './workspace/store';
 import {
   showPortalConfirmForm,
@@ -406,6 +407,7 @@ export function setupChatInterface(deps: ChatDeps) {
     await saveProject(project);
     await syncProjectWorkspaceSnapshot(project);
     renderWorkspaceEditorShell(project.workspace ?? null);
+    renderWorkspacePreview(document.getElementById('mainPage'), project.workspace ?? null);
     const prompt = createPortalGenerationPrompt(project.portalSummary);
     await callAI(prompt);
   });
