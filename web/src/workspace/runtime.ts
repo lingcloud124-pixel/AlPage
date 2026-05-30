@@ -530,8 +530,9 @@ function renderCardLibraryList(items: Array<Record<string, any>>): void {
     return;
   }
   container.innerHTML = items.map((item) => {
-    const previewStyle = item.previewImageUrl
-      ? ` style="background-image: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(129, 140, 248, 0.06)), url('${String(item.previewImageUrl).replace(/"/g, '&quot;')}');"`
+    const previewImageUrl = escapeHtml(item.previewImageUrl ?? '');
+    const previewStyle = previewImageUrl
+      ? ` style="background-image: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(129, 140, 248, 0.06)), url('${previewImageUrl}');"`
       : '';
     return `
       <article class="workspace-card-library-item" data-template-type="${escapeHtml(item.type)}">

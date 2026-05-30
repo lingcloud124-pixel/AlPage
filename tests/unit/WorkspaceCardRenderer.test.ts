@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { CardTemplateListItem } from '../../web/src/api/card-templates';
 import type { WorkspaceConfig } from '../../web/src/types';
 import { renderWorkspaceCardShell } from '../../web/src/workspace/card-renderer';
@@ -143,5 +145,13 @@ describe('workspace card renderer', () => {
     expect(html).toContain('style="grid-column: 1 / span 2; grid-row: 1 / span 12;"');
     expect(html).toContain('data-width="2"');
     expect(html).toContain('data-height="12"');
+  });
+
+  test('escapes card library preview image URL before writing style attribute', () => {
+    const runtimeSource = readFileSync(resolve(process.cwd(), 'web/src/workspace/runtime.ts'), 'utf-8');
+
+    expect(runtimeSource).toContain("const previewImageUrl = escapeHtml(item.previewImageUrl ?? '')");
+    expect(runtimeSource).toContain("url('${previewImageUrl}')");
+    expect(runtimeSource).not.toContain('String(item.previewImageUrl).replace');
   });
 });
