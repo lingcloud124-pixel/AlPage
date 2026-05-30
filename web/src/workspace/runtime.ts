@@ -1,7 +1,7 @@
 import { listCardTemplates } from '../api/card-templates';
 import { getCurrentProjectId, loadProject, saveProject } from '../project-manager';
 import { persistWorkspaceToLocal, syncWorkspaceToServer } from './store';
-import { getWorkspaceCardTitle, renderWorkspaceCardShell } from './card-renderer';
+import { escapeHtml, getWorkspaceCardTitle, renderWorkspaceCardShell } from './card-renderer';
 
 import type { WorkspaceConfig } from '../types';
 import type { CardTemplateListItem } from '../api/card-templates';
