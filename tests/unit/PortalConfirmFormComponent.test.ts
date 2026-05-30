@@ -39,4 +39,16 @@ describe('portal confirm form component', () => {
     expect(source).toContain('highlightedCards');
     expect(source).toContain('visualPreference');
   });
+
+  test('submit resolves active project via project-manager instead of chat title dataset', () => {
+    const source = fs.readFileSync(
+      path.join(projectRoot, 'web/src/components/portal-confirm-form.ts'),
+      'utf8',
+    );
+
+    expect(source).toMatch(/import \{[^}]*getCurrentProjectId[^}]*loadProject[^}]*\} from '\.\.\/project-manager';/s);
+    expect(source).toContain('const projectId = getCurrentProjectId();');
+    expect(source).toContain('const project = projectId ? await loadProject(projectId) : null;');
+    expect(source).not.toContain("document.getElementById('chatProjectName')?.dataset?.projectId");
+  });
 });

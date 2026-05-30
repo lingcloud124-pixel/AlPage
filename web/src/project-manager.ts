@@ -2,6 +2,8 @@ import type {
   ExportBatch,
   PortalCustomerProfile,
   PortalDraft,
+  PortalPlan,
+  PortalPlanStatus,
   PortalResultState,
   PortalSummary,
   ServerExportJob,
@@ -30,6 +32,8 @@ export interface Project {
   portalSummary?: PortalSummary;
   portalDraft?: PortalDraft;
   portalResult?: PortalResultState;
+  portalPlan?: PortalPlan;
+  portalPlanStatus?: PortalPlanStatus;
   workspace?: WorkspaceConfig;
   serverExportJobs?: ServerExportJob[];
   exportBatches?: ExportBatch[];
@@ -203,13 +207,22 @@ export async function createProjectWithPreset(name: string, templateType: 'light
 }
 
 export function markPortalResultSaved(project: Project): Project {
+  const savedAt = Date.now();
   return {
     ...project,
+    portalPlan: project.portalPlan
+      ? {
+          ...project.portalPlan,
+          status: 'saved',
+          updatedAt: savedAt,
+        }
+      : project.portalPlan,
+    portalPlanStatus: 'saved',
     portalResult: {
       ...project.portalResult,
-      savedAt: Date.now(),
+      savedAt,
     },
-    updatedAt: Date.now(),
+    updatedAt: savedAt,
   };
 }
 
