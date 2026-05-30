@@ -470,8 +470,15 @@ export function renderWorkspaceEditorShell(workspace: WorkspaceConfig | null): v
   canvas.removeAttribute('data-empty');
   canvas.innerHTML = workspace.items.map((item) => {
     const gridStyle = `grid-column: ${item.x + 1} / span ${item.w}; grid-row: ${item.y + 1} / span ${item.h};`;
-    const shell = renderWorkspaceCardShell({ item, context: { mode: 'editor', templateCache: workspaceTemplateCache } });
-    return shell.replace('<article class="workspace-editor-card"', `<article class="workspace-editor-card" style="${gridStyle}" data-width="${item.w}" data-height="${item.h}"`);
+    return renderWorkspaceCardShell({
+      item,
+      context: { mode: 'editor', templateCache: workspaceTemplateCache },
+      style: gridStyle,
+      attributes: {
+        'data-width': item.w,
+        'data-height': item.h,
+      },
+    });
   }).join('');
   bindWorkspaceCardSelection();
   if (isWorkspacePropertiesDrawerOpen) {
@@ -527,11 +534,11 @@ function renderCardLibraryList(items: Array<Record<string, any>>): void {
       ? ` style="background-image: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(129, 140, 248, 0.06)), url('${String(item.previewImageUrl).replace(/"/g, '&quot;')}');"`
       : '';
     return `
-      <article class="workspace-card-library-item" data-template-type="${item.type}">
+      <article class="workspace-card-library-item" data-template-type="${escapeHtml(item.type)}">
         <div class="workspace-card-library-thumb"${previewStyle}>模板预览</div>
-        <div class="workspace-card-library-item-title">${item.name || item.type}</div>
-        <div class="workspace-card-library-item-meta">${item.category || '未分类'} · ${item.defaultW || 2} x ${item.defaultH || 12}</div>
-        <div class="workspace-card-library-item-meta">${item.description || '从后台卡片库选择后加入当前工作区'}</div>
+        <div class="workspace-card-library-item-title">${escapeHtml(item.name || item.type)}</div>
+        <div class="workspace-card-library-item-meta">${escapeHtml(item.category || '未分类')} · ${escapeHtml(item.defaultW || 2)} x ${escapeHtml(item.defaultH || 12)}</div>
+        <div class="workspace-card-library-item-meta">${escapeHtml(item.description || '从后台卡片库选择后加入当前工作区')}</div>
       </article>
     `;
   }).join('');

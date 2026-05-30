@@ -16,6 +16,9 @@ export interface WorkspaceCardRenderContext {
 export interface WorkspaceCardShellOptions {
   item: WorkspaceConfig['items'][number];
   context: WorkspaceCardRenderContext;
+  style?: string;
+  attributes?: Record<string, unknown>;
+  extraClassName?: string;
 }
 
 export interface WorkspaceCardContent {
@@ -134,19 +137,30 @@ export function renderWorkspaceCardContent(
   };
 }
 
-export function renderWorkspaceCardShell({ item, context }: WorkspaceCardShellOptions): string {
+function renderHtmlAttributes(attributes: Record<string, unknown> = {}): string {
+  return Object.entries(attributes)
+    .filter(([name, value]) => name.trim().length > 0 && value !== null && value !== undefined && value !== false)
+    .map(([name, value]) => ` ${escapeHtml(name)}="${escapeHtml(value === true ? '' : value)}"`)
+    .join('');
+}
+
+export function renderWorkspaceCardShell({ item, context, style, attributes, extraClassName }: WorkspaceCardShellOptions): string {
   const title = getWorkspaceCardTitle(item, context.templateCache);
   const content = renderWorkspaceCardContent(item, context.templateCache);
   const isEditor = context.mode === 'editor';
-  const shellClass = isEditor ? 'workspace-editor-card' : 'workspace-preview-card';
+  const shellClass = [isEditor ? 'workspace-editor-card' : 'workspace-preview-card', content.extraClassName, extraClassName]
+    .filter(Boolean)
+    .map((className) => escapeHtml(className))
+    .join(' ');
   const contentClass = isEditor ? 'workspace-editor-card-content' : 'workspace-preview-card-content';
   const headerControls = isEditor
     ? '<button class="workspace-editor-card-drag-handle" type="button" data-action="drag-card" aria-label="拖拽卡片" title="拖拽卡片">⋮⋮</button>'
     : '';
   const resizeHandle = isEditor ? '<button class="workspace-editor-card-resize-handle" type="button" data-action="resize-card" aria-label="缩放卡片" title="缩放卡片">↘</button>' : '';
+  const styleAttribute = style ? ` style="${escapeHtml(style)}"` : '';
 
   return `
-    <article class="${shellClass}" data-item-id="${escapeHtml(item.id)}" data-template-id="${escapeHtml(item.templateId)}">
+    <article class="${shellClass}"${styleAttribute} data-item-id="${escapeHtml(item.id)}" data-template-id="${escapeHtml(item.templateId)}"${renderHtmlAttributes(attributes)}>
       <header class="workspace-editor-card-header">
         <div class="workspace-editor-card-header-main">
           ${isEditor ? headerControls : ''}
