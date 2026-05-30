@@ -23,6 +23,10 @@ describe('workspace gridstack integration contracts', () => {
     expect(adapter).toContain('.destroy(false)');
 
     expect(runtime).toContain('mountWorkspaceGrid');
+    expect(runtime).toContain('syncPortalPlanFromWorkspace');
+    expect(runtime).toMatch(/project\.workspace = currentWorkspace;[\s\S]*?Object\.assign\(project, syncPortalPlanFromWorkspace\(project\)\);[\s\S]*?await saveProject\(project\);/);
+    expect(runtime).toMatch(/workspace\.items\.map\([\s\S]*?\)\.join\(''\)[\s\S]*?\.replace/);
+    expect(runtime).not.toContain('}).replace');
     expect(runtime).not.toContain('function startWorkspaceDrag');
     expect(runtime).not.toContain('function startWorkspaceResize');
     expect(runtime).not.toContain("window.addEventListener('pointermove'");

@@ -1,5 +1,6 @@
 import { listCardTemplates } from '../api/card-templates';
 import { getCurrentProjectId, loadProject, saveProject } from '../project-manager';
+import { syncPortalPlanFromWorkspace } from '../portal-plan';
 import { persistWorkspaceToLocal, syncWorkspaceToServer } from './store';
 import { escapeHtml, getWorkspaceCardTitle, renderWorkspaceCardShell } from './card-renderer';
 import { destroyWorkspaceGrid, mountWorkspaceGrid } from './gridstack-adapter';
@@ -205,6 +206,7 @@ async function commitWorkspaceMutation(nextWorkspace: WorkspaceConfig): Promise<
   const project = await loadProject(projectId);
   if (project) {
     project.workspace = currentWorkspace;
+    Object.assign(project, syncPortalPlanFromWorkspace(project));
     await saveProject(project);
   }
   renderWorkspaceEditorShell(currentWorkspace);
@@ -352,7 +354,7 @@ export function renderWorkspaceEditorShell(workspace: WorkspaceConfig | null): v
         'gs-min-h': item.minH ?? 1,
       },
     });
-  }).replace(/(<div class="workspace-editor-card-content")/g, '<div class="grid-stack-item-content">$1').replace(/(<\/article>)/g, '</div>$1');
+  }).join('').replace(/(<div class="workspace-editor-card-content")/g, '<div class="grid-stack-item-content">$1').replace(/(<\/article>)/g, '</div>$1');
   bindWorkspaceCardSelection();
   mountWorkspaceGrid({
     canvas,

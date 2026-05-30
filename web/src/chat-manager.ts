@@ -47,6 +47,11 @@ import {
   isPortalSummaryConfirmationMessage,
   mergePortalProfile,
 } from './portal-agent';
+import {
+  applyPortalPlanToProject,
+  createPortalPlanFromProject,
+  setPortalPlanStatus,
+} from './portal-plan';
 import { renderWorkspaceEditorShell } from './workspace/runtime';
 import { renderWorkspacePreview } from './workspace/preview';
 import { persistWorkspaceToLocal, syncWorkspaceToServer } from './workspace/store';
@@ -325,6 +330,9 @@ async function resolvePortalWorkflowForMessage(project: Project, userMessage: st
 
   if (nextProfile) {
     project.portalProfile = nextProfile;
+    if (!project.portalPlanStatus) {
+      Object.assign(project, setPortalPlanStatus(project, 'collecting'));
+    }
     if (project.name === '未命名项目' && nextProfile.customerName) {
       project.name = `${nextProfile.customerName}门户`;
       project.themeName = project.name;
@@ -339,6 +347,7 @@ async function resolvePortalWorkflowForMessage(project: Project, userMessage: st
 
   if (profileChanged && nextProfile) {
     project.portalSummary = buildPortalSummary(nextProfile);
+    Object.assign(project, setPortalPlanStatus(project, 'summary_pending'));
   }
 
   await saveProject(project);
@@ -395,21 +404,29 @@ export interface ChatDeps {
 
 export function setupChatInterface(deps: ChatDeps) {
   _chatDeps = deps;
-  onPortalConfirmSubmit(async (project) => {
+  async function generatePortalPlanFromConfirmedProject(project: Project): Promise<void> {
     if (!project.portalProfile) return;
-    const portalSummary = project.portalSummary ?? buildPortalSummary(project.portalProfile);
+    const portalSummary = buildPortalSummary(project.portalProfile);
     const portalDraft = buildPortalDraft(portalSummary);
     Object.assign(project, applyPortalDraftToProject(project, portalDraft));
     project.portalSummary = {
       ...portalSummary,
       confirmedAt: Date.now(),
     };
+    const portalPlan = createPortalPlanFromProject(project);
+    portalPlan.status = 'generated';
+    portalPlan.updatedAt = Date.now();
+    Object.assign(project, applyPortalPlanToProject(project, portalPlan));
     await saveProject(project);
     await syncProjectWorkspaceSnapshot(project);
     renderWorkspaceEditorShell(project.workspace ?? null);
     renderWorkspacePreview(document.getElementById('mainPage'), project.workspace ?? null);
     const prompt = createPortalGenerationPrompt(project.portalSummary);
     await callAI(prompt);
+  }
+
+  onPortalConfirmSubmit(async (project) => {
+    await generatePortalPlanFromConfirmedProject(project);
   });
   (globalThis as any).__selectThemePreview = (index: number) => {
     if (!latestThemePreviews || index < 0 || index >= latestThemePreviews.length) return;
@@ -817,6 +834,11 @@ export function setupChatInterface(deps: ChatDeps) {
       const activeProject = await loadProject(activeProjectId);
       if (activeProject) {
         await resolvePortalWorkflowForMessage(activeProject, content);
+        const workflow = getPortalWorkflowState(activeProject.portalProfile, activeProject.portalSummary ?? null);
+        if (content && isPortalSummaryConfirmationMessage(content) && workflow.status === 'ready_to_generate') {
+          await generatePortalPlanFromConfirmedProject(activeProject);
+          return;
+        }
       }
     }
 

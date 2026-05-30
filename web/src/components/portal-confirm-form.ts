@@ -1,4 +1,5 @@
 import type { Project } from '../project-manager';
+import { getCurrentProjectId, loadProject } from '../project-manager';
 
 type PortalConfirmCallback = (project: Project) => void;
 
@@ -105,7 +106,7 @@ export function initPortalConfirmForm(): void {
 
   const submitBtn = document.getElementById('portalConfirmSubmitBtn');
   if (submitBtn) {
-    submitBtn.addEventListener('click', () => {
+    submitBtn.addEventListener('click', async () => {
       const nameInput = document.getElementById('portalConfirmCustomerName') as HTMLInputElement;
       const industrySelectEl = document.getElementById('portalConfirmIndustry') as HTMLSelectElement;
       const industryCustomEl = document.getElementById('portalConfirmIndustryCustom') as HTMLInputElement;
@@ -130,26 +131,21 @@ export function initPortalConfirmForm(): void {
         : (visualSelectEl?.value ?? '');
 
       if (onSubmitCallback) {
-        const pid = document.getElementById('chatProjectName')?.dataset?.projectId;
-        if (pid) {
-          import('../project-manager').then(({ loadProject }) => {
-            loadProject(pid).then((project) => {
-              if (project) {
-                project.portalProfile = {
-                  customerName,
-                  customerIndustry,
-                  customerFunctions,
-                  portalPurpose,
-                  highlightedCards,
-                  visualPreference,
-                  source: ['form'],
-                  completeness: 1,
-                  updatedAt: Date.now(),
-                };
-                onSubmitCallback!(project);
-              }
-            });
-          });
+        const projectId = getCurrentProjectId();
+        const project = projectId ? await loadProject(projectId) : null;
+        if (project) {
+          project.portalProfile = {
+            customerName,
+            customerIndustry,
+            customerFunctions,
+            portalPurpose,
+            highlightedCards,
+            visualPreference,
+            source: ['form'],
+            completeness: 1,
+            updatedAt: Date.now(),
+          };
+          onSubmitCallback(project);
         }
       }
 

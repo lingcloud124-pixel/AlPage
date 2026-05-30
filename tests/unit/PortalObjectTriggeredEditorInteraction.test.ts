@@ -15,8 +15,6 @@ describe('Portal configuration side panel interaction', () => {
     expect(html).toContain('id="panelToggleBtn"');
     expect(html).not.toContain('id="backToHomeBtn"');
     expect(html).not.toContain('id="portalThemePanelBtn"');
-    expect(html).not.toContain('id="resultSaveBtn"');
-    expect(html).not.toContain('id="resultEditBtn"');
     expect(html).not.toContain('id="portalWorkspacePanelBtn"');
     expect(html).not.toContain('portal-object-actions');
     expect(html).not.toContain('previewHeaderHotspot');

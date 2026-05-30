@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -71,5 +74,52 @@ describe('portal agent workflow', () => {
     expect(draft.workspaceSeed[0]?.templateId).toBe('quick-access');
     expect(draft.workspaceSeed.some((item) => item.title?.includes('申能集团'))).toBe(true);
     expect(draft.workspaceSeed.some((item) => item.summary?.includes('能源'))).toBe(true);
+  });
+
+  test('chat confirmation flow rebuilds summary from the current profile before generating plan', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), 'web/src/chat-manager.ts'), 'utf8');
+    const confirmGenerator = source.match(/async function generatePortalPlanFromConfirmedProject[\s\S]*?\n  \}/)?.[0] ?? '';
+
+    expect(confirmGenerator).toContain('const portalSummary = buildPortalSummary(project.portalProfile);');
+    expect(confirmGenerator).not.toContain('project.portalSummary ?? buildPortalSummary(project.portalProfile)');
+    expect(confirmGenerator.indexOf('const portalSummary = buildPortalSummary(project.portalProfile);')).toBeLessThan(
+      confirmGenerator.indexOf('const portalDraft = buildPortalDraft(portalSummary);'),
+    );
+    expect(confirmGenerator.indexOf('project.portalSummary = {')).toBeLessThan(
+      confirmGenerator.indexOf('const portalPlan = createPortalPlanFromProject(project);'),
+    );
+  });
+
+  test('message workflow only downgrades plan status when profile data changes or status is new', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), 'web/src/chat-manager.ts'), 'utf8');
+    const resolver = source.match(/async function resolvePortalWorkflowForMessage[\s\S]*?\nfunction pushToolResultToHistory/)?.[0] ?? '';
+
+    expect(resolver).toContain('if (!project.portalPlanStatus)');
+    expect(resolver).toContain('if (profileChanged && nextProfile)');
+    expect(resolver).not.toContain("if (nextProfile) {\n    project.portalProfile = nextProfile;\n    Object.assign(project, setPortalPlanStatus(project, 'collecting'));");
+  });
+
+  test('chat confirmation flow creates and applies a PortalPlan before rendering workspace', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), 'web/src/chat-manager.ts'), 'utf8');
+    const confirmGenerator = source.match(/async function generatePortalPlanFromConfirmedProject[\s\S]*?\n  \}/)?.[0] ?? '';
+
+    expect(confirmGenerator).toContain('createPortalPlanFromProject(project)');
+    expect(confirmGenerator).toContain('applyPortalPlanToProject(project, portalPlan)');
+    expect(confirmGenerator).toContain("portalPlan.status = 'generated'");
+    expect(confirmGenerator).toContain('renderWorkspaceEditorShell(project.workspace ?? null)');
+    expect(confirmGenerator).toContain('renderWorkspacePreview(document.getElementById(\'mainPage\'), project.workspace ?? null)');
+  });
+
+  test('text confirmation in ready workflow triggers PortalPlan generation before generic AI', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), 'web/src/chat-manager.ts'), 'utf8');
+    const sendFlow = source.match(/if \(activeProjectId\) \{[\s\S]*?\n\s*if \(\(content\) && !shouldSkipAiForPrimaryImage/)?.[0] ?? '';
+
+    expect(sendFlow).toContain('isPortalSummaryConfirmationMessage(content)');
+    expect(sendFlow).toContain("workflow.status === 'ready_to_generate'");
+    expect(sendFlow).toContain('await generatePortalPlanFromConfirmedProject(activeProject);');
+    expect(sendFlow).toContain('return;');
+    expect(sendFlow.indexOf('await generatePortalPlanFromConfirmedProject(activeProject);')).toBeLessThan(
+      sendFlow.indexOf('if ((content) && !shouldSkipAiForPrimaryImage'),
+    );
   });
 });

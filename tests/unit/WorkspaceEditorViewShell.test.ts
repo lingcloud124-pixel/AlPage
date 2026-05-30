@@ -13,7 +13,7 @@ describe('workspace editor view shell', () => {
     expect(html).toContain('id="workspaceDesignModeBtn"');
     expect(html).toContain('id="workspaceEditorView"');
     expect(html).toContain('id="workspaceEditorAddBtn"');
-    expect(html).toContain('id="workspaceEditorPropertiesBtn"');
+    expect(html).toContain('id="workspacePropertiesTopbarBtn"');
     expect(html).toContain('id="workspaceCardCanvas"');
   });
 

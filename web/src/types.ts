@@ -195,6 +195,100 @@ export interface PortalResultState {
   fullscreenViewedAt?: number;
 }
 
+export type PortalPlanStatus = 'collecting' | 'summary_pending' | 'generated' | 'editing' | 'saved';
+
+export interface PortalEnterpriseProfile {
+  customerName: string;
+  industry: string;
+  customerFunctions: string[];
+  portalPurpose: string;
+  highlightedCards: string[];
+  visualPreference: string;
+  summary: string;
+  sourceProfile?: PortalCustomerProfile;
+}
+
+export interface PortalThemeLayer {
+  themeDirection: string;
+  colors: Record<string, string>;
+  headerStyle: string;
+  navigationStyle: string;
+  bannerStrategy: string;
+  visualKeywords: string[];
+}
+
+export type PortalCardDensity = 'compact' | 'standard' | 'comfortable';
+export type PortalLayoutMode = 'dense' | 'showcase' | 'dashboard';
+
+export interface PortalRegion {
+  id: string;
+  name: string;
+  columns: number;
+  rowHeight: number;
+  padding: number;
+}
+
+export interface PortalCardPlacement {
+  cardId: string;
+  templateId: string;
+  regionId: string;
+  column: number;
+  row: number;
+  columnSpan: number;
+  rowSpan: number;
+  minColumnSpan?: number;
+  maxColumnSpan?: number;
+  minRowSpan?: number;
+  maxRowSpan?: number;
+}
+
+export interface PortalWorkspaceRuleLayer {
+  cardRadius: number;
+  cardGap: number;
+  cardDensity: PortalCardDensity;
+  shadowStyle: string;
+  gridColumns: number;
+  rowHeight: number;
+  layoutMode: PortalLayoutMode;
+  regions: PortalRegion[];
+  cardPlacements: PortalCardPlacement[];
+}
+
+export interface PortalCardContent {
+  id: string;
+  templateId: string;
+  title: string;
+  summary?: string;
+  badge?: string;
+  headline?: string;
+  items?: Array<Record<string, unknown>>;
+  links?: string[];
+  enterpriseMappingReason: string;
+}
+
+export interface PortalCardContentLayer {
+  cards: PortalCardContent[];
+}
+
+export interface PortalEditHistoryItem {
+  source: 'agent' | 'config';
+  layer: 'theme' | 'workspaceRules' | 'cardContent';
+  summary: string;
+  createdAt: number;
+}
+
+export interface PortalPlan {
+  id: string;
+  status: PortalPlanStatus;
+  enterpriseProfile: PortalEnterpriseProfile;
+  themeLayer: PortalThemeLayer;
+  workspaceRuleLayer: PortalWorkspaceRuleLayer;
+  cardContentLayer: PortalCardContentLayer;
+  editHistory: PortalEditHistoryItem[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface WorkspaceSettings {
   columns: number;
   rowHeight: number;
