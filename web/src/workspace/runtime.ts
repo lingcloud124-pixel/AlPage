@@ -3,6 +3,7 @@ import { getCurrentProjectId, loadProject, saveProject } from '../project-manage
 import { persistWorkspaceToLocal, syncWorkspaceToServer } from './store';
 import { escapeHtml, getWorkspaceCardTitle, renderWorkspaceCardShell } from './card-renderer';
 import { destroyWorkspaceGrid, mountWorkspaceGrid } from './gridstack-adapter';
+import { renderWorkspacePreview } from './preview';
 
 import type { WorkspaceConfig } from '../types';
 import type { CardTemplateListItem } from '../api/card-templates';
@@ -182,6 +183,11 @@ function normalizeWorkspaceLayout(workspace: WorkspaceConfig, items: WorkspaceCo
   return normalizedItems;
 }
 
+function refreshWorkspacePreview(): void {
+  renderWorkspacePreview(document.getElementById('mainPage'), currentWorkspace);
+  requestAnimationFrame(() => (window as any).resizePreview?.());
+}
+
 async function commitWorkspaceMutation(nextWorkspace: WorkspaceConfig): Promise<void> {
   const normalizedItems = normalizeWorkspaceLayout(nextWorkspace, nextWorkspace.items);
   currentWorkspace = {
@@ -191,6 +197,7 @@ async function commitWorkspaceMutation(nextWorkspace: WorkspaceConfig): Promise<
   const projectId = getCurrentProjectId();
   if (!projectId) {
     renderWorkspaceEditorShell(currentWorkspace);
+    refreshWorkspacePreview();
     return;
   }
 
@@ -201,6 +208,7 @@ async function commitWorkspaceMutation(nextWorkspace: WorkspaceConfig): Promise<
     await saveProject(project);
   }
   renderWorkspaceEditorShell(currentWorkspace);
+  refreshWorkspacePreview();
   void syncWorkspaceToServer(projectId, currentWorkspace);
 }
 

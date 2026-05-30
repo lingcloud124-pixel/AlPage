@@ -30,4 +30,13 @@ describe('workspace preview synchronization contracts', () => {
     expect(chatManager).toContain('renderWorkspacePreview');
     expect(chatManager).toMatch(/renderWorkspaceEditorShell\(project\.workspace \?\? null\);[\s\S]*?renderWorkspacePreview/);
   });
+
+  test('workspace mutations refresh the portal preview immediately', () => {
+    const runtime = read('web/src/workspace/runtime.ts');
+
+    expect(runtime).toContain('function refreshWorkspacePreview');
+    expect(runtime).toContain("document.getElementById('mainPage')");
+    expect(runtime).toContain('renderWorkspacePreview');
+    expect(runtime).toMatch(/commitWorkspaceMutation[\s\S]*?renderWorkspaceEditorShell\(currentWorkspace\);[\s\S]*?refreshWorkspacePreview\(\);/);
+  });
 });
