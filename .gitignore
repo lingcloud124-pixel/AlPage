@@ -31,6 +31,7 @@ tests/history/
 tests/fixtures/zips/
 server/data/
 data/
+.worktrees/
 server/node_modules/
 test-jimeng/node_modules/
 test-jimeng/output_direct/

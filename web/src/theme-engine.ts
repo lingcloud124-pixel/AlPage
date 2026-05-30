@@ -143,7 +143,6 @@ export function getAllCSSVariables(): Record<string, string> {
 
 export async function loadDefaultTemplates() {
   try {
-    const loginTarget = document.getElementById('loginPage');
     const mainTarget = document.getElementById('mainPage');
     const headerDefaultTarget = document.getElementById('headerDefaultPage');
     const headerComplexTarget = document.getElementById('headerComplexPage');
@@ -151,7 +150,6 @@ export async function loadDefaultTemplates() {
     const headerBannerTarget = document.getElementById('headerBannerPage');
     const sidebarTarget = document.getElementById('sidebarPage');
 
-    if (loginTarget) await renderTemplate('login', loginTarget);
     if (mainTarget) await renderTemplate('desktop', mainTarget);
     if (mainTarget?.firstElementChild instanceof HTMLElement) {
       initDesktopBehavior(mainTarget.firstElementChild);

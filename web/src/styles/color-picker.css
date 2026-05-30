@@ -1,0 +1,71 @@
+/* 颜色选择器原有样式 */
+.color-group
+{
+  margin-bottom: 16px;
+}
+
+.color-group h3
+{
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: var(--header-font-color);
+  font-weight: bold;
+}
+
+.color-setting
+{
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  justify-content: space-between;
+}
+
+.color-setting label
+{
+  font-size: 12px;
+  color: var(--auxiliary-gray-dark);
+  flex: 1;
+  margin-right: 10px;
+}
+
+.color-picker-container
+{
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.color-picker-container input[type="color"]
+{
+  width: 30px;
+  height: 30px;
+  border: none;
+  cursor: pointer;
+}
+
+.color-picker-container input[type="text"]
+{
+  width: 80px;
+  padding: 4px;
+  font-size: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+}
+
+.reset-button
+{
+  width: 100%;
+  padding: 10px;
+  margin-top: 16px;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.reset-button:hover
+{
+  background-color: #f0f0f0;
+}
+

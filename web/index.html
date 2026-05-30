@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Theme Studio - Portal Agent 工作台</title>
+    <title>AlPage - Portal Agent 工作台</title>
     <link rel="stylesheet" href="/src/styles.css">
     <link rel="stylesheet" href="/src/templates/theme-variables.css">
     <link rel="stylesheet" href="/src/tailwind.css">
@@ -167,33 +167,23 @@
                 <div class="workspace-topbar">
                     <div class="topbar-left">
                         <span class="project-name" id="projectName">未命名项目</span>
-                        <div class="topbar-tabs">
-                            <div class="tab-indicator"></div>
-                            <button id="loginTab" class="tab-btn active-tab">登录页</button>
-                            <button id="mainPageTab" class="tab-btn">主页</button>
-                        </div>
                     </div>
                     <div class="topbar-right">
                         <div class="workspace-mode-switch">
                             <button class="workspace-mode-btn is-active" id="workspacePreviewModeBtn" type="button">预览</button>
                             <button class="workspace-mode-btn" id="workspaceDesignModeBtn" type="button">工作区设计</button>
                         </div>
-                        <button class="topbar-action-btn" id="backToHomeBtn">返回工作台</button>
-                        <button class="topbar-action-btn" id="panelToggleBtn">面板</button>
+                        <button class="topbar-action-btn" id="panelToggleBtn">颜色配置</button>
+                        <button class="topbar-action-btn" id="workspacePropertiesTopbarBtn" type="button">属性</button>
                         <div class="workspace-result-actions" id="workspaceResultActions">
                             <button class="topbar-action-btn" id="resultFullscreenBtn" type="button">全屏查看</button>
-                            <button class="topbar-action-btn" id="resultSaveBtn" type="button">保存门户</button>
                              <button class="topbar-action-btn" id="resultShareBtn" type="button">分享方案</button>
-                             <button class="topbar-action-btn" id="resultEditBtn" type="button">继续编辑</button>
                          </div>
                     </div>
                 </div>
                 
                 <div class="preview-content">
-                    <div id="loginPage" class="preview-page active-preview">
-                    </div>
-                    
-                    <div id="mainPage" class="preview-page">
+                    <div id="mainPage" class="preview-page active-preview">
                     </div>
                 </div>
                 <div class="workspace-editor-view" id="workspaceEditorView" hidden>
@@ -204,7 +194,6 @@
                         </div>
                         <div class="workspace-editor-toolbar-actions">
                             <button class="topbar-action-btn" id="workspaceEditorAddBtn" type="button">添加</button>
-                            <button class="topbar-action-btn" id="workspaceEditorPropertiesBtn" type="button">属性</button>
                         </div>
                     </div>
                     <div class="workspace-card-canvas" id="workspaceCardCanvas"></div>
@@ -246,11 +235,12 @@
 
         <aside class="workspace-properties-drawer" id="workspacePropertiesDrawer" aria-hidden="true">
             <div class="drawer-header">
-                <h3>属性</h3>
+                <h3>属性配置</h3>
                 <button class="drawer-close-btn" id="workspacePropertiesDrawerCloseBtn" type="button" aria-label="关闭">×</button>
             </div>
             <div class="workspace-properties-content" id="workspacePropertiesContent"></div>
         </aside>
+
 
         <script>
           function resizePreview() {
@@ -292,9 +282,6 @@
           document.addEventListener('DOMContentLoaded', function() {
             setTimeout(resizePreview, 200);
             setTimeout(resizePreview, 1000);
-            document.querySelectorAll('.topbar-tabs .tab-btn').forEach(function(btn) {
-              btn.addEventListener('click', function() { setTimeout(resizePreview, 100); });
-            });
           });
         </script>
 

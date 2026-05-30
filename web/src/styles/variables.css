@@ -1,0 +1,68 @@
+/* Theme Studio - Style Variables */
+:root
+{
+  /* xAI-inspired shell tokens */
+  --app-bg: #F5F5F5;
+  --surface-0: #FFFFFF;
+  --surface-1: #F7F7F7;
+  --surface-2: #EFEFEF;
+  --surface-3: #E7E7E7;
+  --text-primary: #1a1a1a;
+  --text-secondary: rgba(0,0,0,0.62);
+  --text-muted: rgba(0,0,0,0.42);
+  --text-tertiary: rgba(0,0,0,0.28);
+  --border-subtle: rgba(0,0,0,0.08);
+  --border-strong: rgba(0,0,0,0.16);
+  --accent-ui: #1a1a1a;
+  --accent-ui-soft: rgba(0,0,0,0.06);
+  --surface-hover: rgba(0,0,0,0.04);
+  --surface-msg: rgba(0,0,0,0.02);
+  --surface-btn: rgba(0,0,0,0.04);
+  --border-accent: rgba(0,0,0,0.20);
+  --font-size-display: 28px;
+  --font-size-title: 16px;
+  --font-size-body: 14px;
+  --font-size-meta: 12px;
+  --font-size-micro: 11px;
+
+  /* 主题色 */
+  --primary-color: #2C615C;
+  --primary-color-hover: #35817A;
+  --alter-color: #1A3A37;
+  --alter-color-hover-on: #7B9C99;
+  --primary-color-opacity-10: #eaefef;
+  --primary-color-opacity-20: #d5dfde;
+  --primary-color-opacity-30: #c0d0ce;
+  
+  /* 文字色 */
+  --header-font-color: #333333;
+  --auxiliary-gray: #999999;
+  --auxiliary-gray-dark: #666666;
+  --white: #FFFFFF;
+  --black: #000000;
+  
+  /* 背景色 */
+  --body-bg-color: #F8F8F8;
+  --tlayout-header-bg-extend-color: #F6F6F4;
+  --portal-header-bg-extend-color: #F6F6F4;
+  --portal-header-complex-bg-extend-color: #F6F6F4;
+  --login-bg-color: #F8F9F6;
+  --panel-bg-color: #FFFFFF;
+  --chat-bg-color: #F9FAFB;
+  --message-user-bg: #DCF8C6;
+  --message-ai-bg: #FFFFFF;
+  
+  /* 侧边栏 */
+  --sidebar-panel-bg: #F7F7F3;
+  --sidebar-color: #000000;
+  --sidebar-icon-color: #778281;
+  
+  /* 边框 */
+  --border-color: #D8D8D8;
+  --border-icon-color: #CFD2D2;
+  
+  /* 渐变组件色 */
+  --gradient-start: #F6F6F4;
+  --gradient-mid: #EAEFEF;
+}
+

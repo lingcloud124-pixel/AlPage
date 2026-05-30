@@ -1,0 +1,86 @@
+/* 右侧滑出面板 */
+.side-panel
+{
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 360px;
+  background: white;
+  border-left: 1px solid var(--border-color);
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 16px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+.side-panel.open
+{
+  transform: translateX(0);
+}
+
+.side-panel-header
+{
+  height: 70px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.side-panel-header h3
+{
+  margin: 0;
+  font-size: 16px;
+  color: var(--header-font-color);
+}
+
+.side-panel-body
+{
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.side-panel-close
+{
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* 包选择弹窗样式 */
+.package-product-list
+{
+  columns: 2;
+  column-gap: 20px;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.package-product-list label
+{
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.package-product-list input[type="checkbox"]
+{
+  margin-right: 8px;
+}
+

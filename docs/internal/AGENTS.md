@@ -1,19 +1,39 @@
 # AGENTS.md — Theme Studio 项目 AI 持久记忆
 
 > **本项目 AI 助手（OpenCode/Sisyphus）在每次新对话时自动加载此文件。**
-> **最后更新**: 2026-04-19
+> **最后更新**: 2026-05-18
+
+---
+
+## 0. 2026-05-14 产品对齐覆盖说明
+
+如果你是后续接手本项目的大模型，先读：
+
+- `docs/internal/PRODUCT-ALIGNMENT.md`
+
+从 2026-05-14 起，产品讨论统一按以下口径：
+
+- Theme Studio 的**目标产品定义**是：`面向售前的 Portal Agent 工作台`
+- 统一主链路是：`客户需求输入 → 信息补齐 → 摘要确认 → 生成新门户 → 预览迭代 → 全屏查看 → 保存 / 分享 / 再次编辑`
+- 当前代码**仍然保留**部分主题设计、项目持久化的历史心智
+- 当"目标产品"和"当前实现"冲突时，必须明确区分，不要混写
+
+简化规则：
+
+1. 讨论产品目标，用"Portal Agent / 门户生成与编辑"口径
+2. 讨论当前代码，用"仍带主题设计历史壳"口径
+3. 不要把 Theme Agent 当成最终目标，视觉主题生成只是门户生成子能力
 
 ---
 
 ## 一、项目身份
 
-**这是一个 OA 系统主题包生成工具，不是网页设计工具。**
+**这是一个面向售前的 Portal Agent 工作台。**
 
 - **项目名**: Theme Studio（主题自动化 / Topic Automation）
-- **项目路径**: `/Users/gulingfei/Desktop/APP（vibe-coding）/Topic Automation`
-- **核心用途**: 用户在 Web 界面描述需求 → AI 生成背景图 → 提取配色 → HTML 模板实时预览 → 用户按需选择产品 → 后台截图打包 → 生成 9 个 OA 主题 zip 包
+- **项目路径**: `/Users/gulingfei/Desktop/APP（vibe-coding）/AlPage`
+- **目标用途**: 售前在 Web 界面围绕单个客户描述需求并上传资料 → 系统收集足够客户信息 → 摘要确认 → 生成一个新门户 → 用户继续通过对话或直接编辑卡片调整 → 全屏查看 → 保存 / 分享 / 再次进入编辑
 - **目标产品**: EKp / MK / KK 等 OA 系统（当前支持 V14 ~ V17）
-- **Skill 名称**: `theme-automation`
 
 ---
 
@@ -27,27 +47,27 @@
 
 ### 产品线 B：Theme Studio Web 应用（当前活跃，HTML + CSS + TS + Tailwind v4）
 
-一个 AI 驱动的 Web 界面，让用户通过对话方式生成主题：
+一个 AI 驱动的 Web 界面，让用户通过对话方式生成门户：
 
 ```
 web/
-├── index.html                      # 主入口（三列布局：侧边栏 + 对话 + 预览）
+├── index.html                      # 主入口（三栏布局：侧边栏 + 对话 + 预览）
 ├── desktop-preview.html            # 独立桌面预览页（截图用）
 ├── login-preview.html              # 独立登录预览页（截图用）
-├── vite.config.ts                  # Vite + Tailwind v4 插件 + chat/image/export proxy
+├── vite.config.ts                  # Vite + Tailwind v4 插件 + API proxy
 ├── package.json                    # theme-studio v0.1.0
 ├── tsconfig.json                   # ES2022 + bundler 模块解析
 ├── playwright.config.ts            # E2E 测试配置
-├── .env                            # VITE_DASHSCOPE_API_KEY, VITE_MINIMAX_API_KEY
+├── .env                            # 环境变量（开发用）
 ├── .env.example                    # 环境变量示例
 ├── UI_GUIDELINES.md                # UI 指南
 ├── presets/                        # 预设配色（light-ui.json, dark-ui.json）
 ├── public/
-│   ├── backgrounds/                # 14 张预设背景图
-│   ├── colors/                     # 35 个配色 JSON（镜像自根 colors/）
+│   ├── backgrounds/                # 预设背景图
+│   ├── colors/                     # 配色 JSON（镜像自根 colors/）
 │   ├── logo.png                    # 应用 Logo
 │   └── assets/references/          # Symlink 到样例包
-├── scripts/                        # Playwright 截图 + 构建 + 本地导出桥接
+├── scripts/                        # Playwright 截图 + 构建
 │   ├── screenshot.ts
 │   ├── build.ts
 │   ├── export-bridge.ts
@@ -57,33 +77,59 @@ web/
 │   └── smoke.spec.ts
 ├── screenshots/                    # 截图产物
 └── src/
-    ├── main.ts                     # 精简入口（143行）— 初始化 + showWorkspace + 路由
-    ├── project-manager.ts          # 项目 CRUD + localStorage + 侧边栏 + 预设数据（509行）
-    ├── theme-engine.ts             # CSS 变量管理 + 颜色操作 + QC + 模板加载（192行）
-    ├── chat-manager.ts             # 聊天 UI + AI 调用 + 工具执行 + 流式响应（678行）
-    ├── package-manager.ts          # 打包模态框 + 导出任务创建（146行）
-    ├── ui-setup.ts                 # DOM 事件 + 设置对话框 + 布局 + 预览面板（291行）
+    ├── main.ts                     # 入口（165行）— 初始化 + showWorkspace + 路由
+    ├── project-manager.ts          # 项目 CRUD + localStorage + 侧边栏 + 预设数据（354行）
+    ├── theme-engine.ts             # CSS 变量管理 + 颜色操作 + QC + 模板加载（256行）
+    ├── chat-manager.ts             # 聊天 UI + AI 调用 + 工具执行 + 流式响应（1347行）
+    ├── package-manager.ts          # 历史打包弹窗残留（422行）
+    ├── ui-setup.ts                 # DOM 事件 + 设置对话框 + 布局 + 预览面板（346行）
+    ├── portal-agent.ts             # Portal Agent 入口 — 客户信息收集 + 摘要确认 + 门户生成编排
+    ├── auth.ts                     # 认证模块 — SSO 登录 + 用户信息
+    ├── credits.ts                  # 积分/次数管理
+    ├── image-intent.ts             # 图片意图分类（主图 vs 参考图）
+    ├── primary-image-flow.ts       # 主图直接生成流程
+    ├── project-naming.ts           # 项目命名规则
+    ├── workspace-recovery.ts       # 工作区恢复逻辑
+    ├── landing-prompts.ts          # 首页快捷指令配置（8 条预设 prompt + primaryHint）
+    ├── landing-prompts-admin.ts    # 首页快捷指令管理（admin 配置界面）
     ├── types.ts                    # TypeScript 类型定义
     ├── styles.css                  # 全局样式（与 Tailwind 共存）
     ├── tailwind.css                # Tailwind v4 设计令牌（21 CSS vars → 语义名）
+    ├── api/                        # API 抽象层
+    │   ├── card-templates.ts       # 卡片模板 CRUD
+    │   ├── conversations.ts        # 对话历史 CRUD + 收藏/删除
+    │   └── workspace.ts            # 工作区配置 CRUD（settings + items）
     ├── agent/                      # AI 对话层
-    │   ├── chat-client.ts          # SSE 流式客户端（Coding Plan qwen3.6-plus + MiniMax image-01 1920x1080）
+    │   ├── chat-client.ts          # SSE 流式客户端（支持自定义模型 + 默认 qwen3.6-plus）
     │   ├── system-prompt.ts        # 动态 System Prompt（3-image preview 工作流指令）
     │   ├── knowledge-base.ts       # 34 预设描述 + 12 行业色板 + Header 指南
     │   ├── user-preferences.ts     # 跨项目偏好记忆（localStorage）
     │   └── tool-call-utils.ts      # Tool call enricher + detectThemeSelection + 色调推断
     ├── components/
-    │   └── color-editor.ts         # 21 色编辑面板 + 品牌色派生功能
-    ├── packaging/
-    │   └── package-builder.ts      # 旧浏览器打包实现（保留参考，非产品主链）
-    ├── export/
-    │   ├── screenshot-rules.ts     # 截图目标定义（读取 config/pen-export-rules.json）
-    │   ├── build-config.ts         # theme_builder 请求生成
-    │   ├── export-job.ts           # 导出任务与批次快照
-    │   ├── export-paths.ts         # 导出根目录/项目目录/批次目录
-    │   └── export-bridge.ts        # 本地导出桥接契约
+    │   ├── color-editor.ts         # 21 色编辑面板 + 品牌色派生功能
+    │   └── sidebar.ts              # 侧边栏组件（展开/收起、对话列表、收藏/删除）
+    ├── export/                     # 历史导出链路残留
+    │   ├── asset-snapshot.ts
+    │   ├── build-config.ts
+    │   ├── export-bridge.ts
+    │   ├── export-history-view.ts
+    │   ├── export-job.ts
+    │   ├── export-open-client.ts
+    │   ├── export-paths.ts
+    │   ├── export-status-client.ts
+    │   ├── live-preview-snapshot.ts
+    │   ├── online-export.ts
+    │   ├── online-export-state.ts
+    │   ├── screenshot-rules.ts
+    │   └── theme-image-overrides.ts
+    ├── packaging/                  # 历史打包残留
+    │   └── package-builder.ts
+    ├── preview/                    # 预览相关
+    │   ├── resize-preview.ts       # 预览缩放
+    │   └── scale-layout.ts         # 布局缩放
     ├── templates/                  # HTML/CSS 模板（28 文件）
     │   ├── loader.ts               # 动态模板加载器
+    │   ├── desktop-behavior.ts     # 桌面页交互逻辑
     │   ├── login-behavior.ts       # 登录页交互（Tab 切换、表单、验证码）
     │   ├── theme-images.ts         # 模板 ID → CSS 图片变量映射
     │   ├── theme-variables.css     # CSS 变量定义
@@ -96,6 +142,12 @@ web/
     │   ├── header-semantics.ts     # Header ID → 显示名映射
     │   ├── template-registry.ts    # 模板配置（读取 config/web-template-registry.json）
     │   └── template-specific-vars.ts # Dark-UI 特殊 CSS 变量
+    ├── workspace/                  # 工作区管理
+    │   ├── index.ts                # 工作区模块入口
+    │   ├── store.ts                # 工作区状态持久化（local + server 双写）
+    │   ├── registry.ts             # 卡片模板注册表
+    │   ├── runtime.ts              # 工作区运行时 — 卡片渲染、编辑、库浏览
+    │   └── design-mode.ts          # 设计模式切换
     └── tools/                      # Tool Calling + Theme Agent
         ├── executor.ts             # 工具调度（generate_theme_previews + apply_selected_theme 等）
         ├── contrast-validator.ts   # WCAG 2.1 对比度校验
@@ -107,6 +159,7 @@ web/
         ├── theme-regeneration-director.ts # 反馈驱动的场景重建
         ├── theme-preference-updater.ts # 偏好决策引擎（项目短期 vs 客户长期）
         ├── theme-image-reviewer.ts # 生成图片自动评审（8 项检查 + 评分）
+        ├── prompt-optimizer-config.ts # Prompt 优化配置
         ├── customer-visual-profile-store.ts # 客户长期偏好存储（localStorage）
         └── project-visual-context-store.ts  # 项目视觉上下文存储（localStorage）
 ```
@@ -117,51 +170,58 @@ web/
 
 ## 三、核心工作流
 
-**产品模型是 创建 → 迭代 → 导出，不是线性流水线。**
+**产品目标模型是 客户需求输入 → 信息补齐 → 摘要确认 → 生成新门户 → 预览迭代 → 全屏查看 → 保存 / 分享 / 再次编辑。**
 
 | 环节 | 描述 | 触发方式 | 实现 |
 |------|------|---------|------|
-| **① 创建** | AI 对话生成背景图 → 提取配色 → 实时预览 | 用户发起对话 | `chat-manager.ts` → `executor.ts` → MiniMax API → `theme-engine.ts` |
-| **② 迭代** | 用户继续对话微调，或通过颜色面板手动修改 | 用户主动操作 | `chat-manager.ts` + `color-editor.ts` + `theme-engine.ts` |
-| **③ 导出** | 用户选择产品 → 创建导出批次 → 后台截图 + 打包 → 输出到用户配置目录 | 用户点击打包按钮 | 产品功能，本地桥接 + `screenshot.ts` + `theme_builder.py` |
+| **① 需求输入** | 售前输入客户需求并上传资料，系统收集客户信息 | 用户发起对话 | `chat-manager.ts` + 上下文收集逻辑 |
+| **② 摘要确认** | 系统整理客户信息和门户理解，等待用户确认 | 信息足够后自动进入 | 当前实现缺少完整门槛与确认层 |
+| **③ 门户生成** | 系统生成一个可预览、可继续编辑的新门户 | 摘要确认后执行 | 当前实现仍主要由主题预览与工作区状态拼装支撑 |
+| **④ 预览迭代** | 用户继续对话修改，或直接编辑工作区卡片 | 用户主动操作 | `chat-manager.ts` + `workspace/runtime.ts` + `theme-engine.ts` |
+| **⑤ 结果使用** | 用户全屏查看、保存、分享、再次进入编辑 | 用户对结果满意后 | 这是目标链路，当前实现仍未完全补齐 |
 
-**Agent 职责边界**：到用户满意预览为止（①②）。导出（③）是产品功能，Agent 不参与。
+**重要区分**：
+
+- 上表是**目标产品链路**
+- 当前代码里仍存在 `package-manager.ts`、`export/` 等历史残留模块，这些不属于当前产品能力
+
+**Agent 职责边界**：到用户满意预览为止（①②③④）。全屏查看后的结果使用由产品能力承接。
 
 **核心原则**：
 1. 先出图，再配色，保证主题色与背景图色调匹配
 2. `archive/legacy-tools/rules/` 目录下规则是最高权威
 3. 颜色必须由图片决定，不能凭空编造
 4. CSS 变量驱动所有颜色，不硬编码
-5. 项目持久化（localStorage），用户可随时打开历史项目继续编辑或重新打包
-6. 导出根目录由用户在设置中配置，导出路径固定为 `导出根目录/projects/{projectId}-{nameEn}/exports/{timestamp}/`
+5. 当前代码已具备项目/工作区持久化基础，但产品表达应弱化“项目先行”
 
-### Theme Agent（主题视觉总监）原则
 
-Theme Studio 的图片生成能力应逐步演进为一个 **Theme Agent**，用于替代“直译 prompt → 生图”的薄弱链路。
+### Portal Agent 原则
+
+Theme Studio 的目标 Agent 不是单纯的 Theme Agent，而是一个面向售前的 **Portal Agent**。其中图片生成能力只是 Portal Agent 的子能力。
 
 #### Agent 目标
-1. **首图保底**：第一张图至少达到可继续使用与微调的及格线，不跑题、不像通用壁纸。
-2. **逐步学习**：随着客户长期使用，Agent 学会客户偏好的视觉方向，但不得污染其他项目与其他客户。
+1. **客户信息补齐**：生成前必须补齐客户名称、客户行业、客户核心职能/业务特征、本次门户用途、重点卡片、品牌/视觉倾向。
+2. **摘要确认**：在生成前先输出当前客户画像和门户理解，避免直接带着错误假设生成。
+3. **门户初稿输出**：首轮结果至少达到可继续使用与微调的及格线，不是只有主题图，而是门户初稿。
+4. **逐步学习**：随着客户长期使用，Agent 学会客户偏好的视觉方向，但不得污染其他项目与其他客户。
 
 #### Agent 必须负责
+- 当前客户信息收集与完成度判断
+- 客户行业、品牌、用途到门户方案的理解收敛
+- 门户结果规划：视觉主题 + 工作区结构 + 行业/企业适配示例内容
 - 主题意图理解（category / subCategory / tone / color / useCase）
 - 场景规划（scene / subject / composition / lighting / style / mood）
 - OA 背景图约束（左锚点、右留白、企业感、非壁纸化）
 - 用户反馈后的局部修正
 
 #### Agent 绝对不能负责
-- 打包逻辑
-- 截图逻辑
-- 导出目录与批次结构
-- zip 生成与 verify
+- 打包、截图、导出逻辑（当前产品无此能力）
 
 #### 技术边界
-Theme Agent 只允许影响：
+当前代码中，自动工具仍主要允许影响：
 - 背景图 prompt 生成
 - 图像生成结果选择与迭代
 - 预览阶段的图片/色彩快照
-
-导出阶段只能消费已经确认的项目快照，**不允许在打包时重新生图或动态重算方向**。
 
 #### 已实现模块（12 个）
 - `theme-intent-parser.ts` — 6 类分类 + festival 6 子分类 + nature 4 子分类
@@ -194,19 +254,6 @@ Theme Agent 只允许影响：
 - `response_format` 必须 `url`（不是 `base64`，Token Plan 密钥用 base64 会返回 1033 错误）
 - **禁止** `prompt_optimizer` 参数
 - Prompt 必须包含："no text", "no UI elements"
-
-### 切图导出
-
-- **必须用 `scale: 1`**（不能用 scale: 2）
-- Light-UI 节点：`A7bgM`(60px), `TdfhH`(90px), `C0kVM`(130px), `Nk9d0`(banner), `jTA4O`(sidebar), `LiN3g`(login bg), `nXv3Y`(login full), `dKOHu`(desktop)
-- Dark-UI 节点：`y6LPs`, `CagmA`, `KDpQp`, `K7n6g`, `zmpSH`, `PAgAA`, `nXv3Y`, `dKOHu`
-
-### 打包
-
-- 9 个 zip：MK(2) + V14_16(5) + V17(2)
-- 前端只负责创建导出任务，不直接拼 zip
-- 本地桥接层负责执行 `web/scripts/screenshot.ts`、`web/scripts/build.ts`、`theme_builder.py`
-- 深度验证：`python3 scripts/deep-verify.py`
 
 ---
 
@@ -255,10 +302,8 @@ Theme Agent 只允许影响：
 | 问题 | 原因 | 解决 |
 |------|------|------|
 | 背景图一闪消失 | 用了相对路径 | **必须用绝对路径** |
-| 打包图片是模板原始图 | 截图链没有使用当前项目快照 | 背景图与色值必须从当前项目快照注入截图模板 |
 | 硬编码旧色值残留 | 脚本只更新变量 | 需手动检查清理硬编码色值 |
 | 找不到模板目录 | 目录名不一致 | `assets/references/samples/主题样例包` 是 symlink |
-| `npm run update` 失败 | 已弃用 | 用 `python3 theme_builder.py` |
 | CI workflow 反复被删 | PAT scope 问题 | 目前无 CI，不要重建 |
 | Dark-UI 项目选择预览图后颜色不对 | detectThemeSelection 硬编码了 light-ui | 已修复：templateType 从项目上下文传递 |
 | 预览图点击后没反应 | 旧版只填输入框不自动发送 | 已修复：点击预览图自动触发发送 |
@@ -272,68 +317,45 @@ Theme Agent 只允许影响：
 ```
 Topic Automation/
 ├── AGENTS.md              # ← 你正在读的文件（AI 持久记忆）
-├── SKILL.md               # Agent 操作手册（创建 + 迭代，不含导出）
 ├── PRODUCT.md             # 产品定义（Web 应用规划）
-├── DESIGN.md              # 设计系统文档
 ├── PROJECT.md             # 项目简介
 ├── README.md              # 使用说明
-├── 操作说明书.md           # 用户操作手册
-├── TEST-PLAN.md           # 测试计划（~85 个用例）
-├── theme_builder.py       # 统一打包工具（15 zip）
-├── manifest.json          # 旧工具链 manifest（历史保留，非当前主链路）
-├── theme-build-request.yaml # CLI 打包配置
 ├── package.json           # Root Node 项目（vitest + 依赖）
 ├── vite.config.ts         # Root vitest 配置（仅测试，非 Web 构建）
 ├── tsconfig.json          # Root TS 编译配置（NodeNext → dist/）
 ├── .env                   # API Keys（MINIMAX_API_KEY）
 │
-├── config/                # ⭐ 配置即数据层（8 JSON，驱动 CLI + Web）
-│   ├── build-verification-rules.json
+├── config/                # ⭐ 配置即数据层（JSON，驱动 Web 应用）
 │   ├── header-mapping-light-ui.json
-│   ├── pen-export-rules.json
 │   ├── theme-relations.json
 │   ├── variable-mapping.json
 │   ├── web-header-guides.json
 │   ├── web-template-registry.json
 │   └── web-version-compatibility.json
 │
-├── rules/                 # ⭐ 技术规则铁律
-│   ├── dark-ui-color-rules.md
-│   ├── light-ui-color-rules.md
-│   ├── image-generation-rules.md
-│   └── export-rules.md
+├── archive/               # 历史工具链与规则（仅供参考）
+│   └── legacy-tools/rules/
+│       ├── dark-ui-color-rules.md
+│       ├── light-ui-color-rules.md
+│       └── image-generation-rules.md
 │
-├── workflows/             # 流程文档（5 个）
-├── docs/                  # 项目文档（9 个）
-│   ├── PRD-产品使用流程.md
-│   ├── 三阶段演进计划.md
-│   ├── 专项技术方案-Pencil到HTML预览与截图打包.md
-│   ├── 外部资料整理-主题规则切图打包映射.md
-│   ├── 实施路线图-开发任务拆分表.md
-│   ├── 开发者系统流程图.md
+├── docs/                  # 项目文档
+│   ├── README.md          # 文档导航
 │   ├── 用户操作说明书.md
-│   └── plans/             # 历史实施计划
+│   ├── PRD-产品使用流程.md
+│   └── internal/          # 内部文档
+│       ├── AGENTS.md
+│       ├── PRODUCT.md
+│       ├── PRODUCT-ALIGNMENT.md
+│       ├── SKILL.md
+│       ├── TEST-PLAN.md
+│       ├── workflows/
+│       └── archive/       # 历史实施计划与方案
 │
-├── scripts/               # 自动化脚本（17 个 + lib/）
-│   ├── update-pen-theme.py    # 历史 Pen 文件更新脚本（非当前主链路）
-│   ├── verify-build.py        # 打包后验证
-│   ├── deep-verify.py         # 深度验证
-│   ├── export-pen-images.py   # 历史图片导出脚本（非当前主链路）
+├── scripts/               # 自动化脚本
 │   ├── install-skill.sh       # Skill 安装
-│   ├── image_gen.py           # 图片生成 CLI
-│   ├── validate-colors.py     # 色值验证
-│   ├── apply-theme.mjs        # 主题应用
-│   ├── generate-manifest.mjs  # 历史 Manifest 生成脚本
-│   ├── verify-export.mjs      # 导出验证
-│   ├── verify-theme.mjs       # 主题验证
-│   ├── validate-phase.mjs     # 阶段验证
-│   ├── e2e-test.mjs           # E2E 测试运行器
-│   ├── check-dark-ui-colors.sh # Dark-UI 色值检查
-│   ├── run-updater.mjs        # 已弃用（历史残留）
-│   ├── generate_sample_image.py # 样例图片生成
-│   └── lib/                   # 共享库
-│       ├── build-global-colors.mjs
-│       └── export-asset-rules.mjs
+│   ├── prepare_export_assets.py # 历史素材准备脚本
+│   └── verify-build.py        # 历史打包验证脚本
 │
 ├── colors/                # 配色方案 JSON（35 个）
 ├── designs/
@@ -373,27 +395,22 @@ Topic Automation/
 │
 ├── dist/                  # 编译产物（tsconfig.json → dist/）
 │
-├── tests/                 # Vitest 测试套件（82 文件，247 测试）
-│   ├── unit/              # 82 个单元测试
+├── tests/                 # Vitest 测试套件（139 文件，313 测试）
+│   ├── unit/              # 单元测试
 │   ├── integration/       # 1 个集成测试
-│   ├── fixtures/          # 测试数据（zips, colors, images, SCSS）
+│   ├── fixtures/          # 测试数据（colors, images, SCSS）
 │   ├── helpers/           # 测试工具（fixtureZips.ts）
 │   ├── latest/            # 运行时测试输出（建议忽略/可清理）
 │   └── history/           # 历史测试输出（建议忽略/可清理）
 │
-├── web/                   # Theme Studio Web 应用
-│   ├── index.html         # 主入口（三列布局）
-│   ├── src/               # 源码（详见第二节产品线 B）
-│   ├── scripts/           # Playwright 截图 + 构建
-│   ├── e2e/               # Playwright E2E
-│   ├── presets/           # 预设配色
-│   ├── public/            # 静态资源（背景图、颜色、Logo）
-│   └── dist/              # 构建产物
-│
-└── output/                # 输出
-    └── {日期}-{nameEn}/
-        ├── 素材包/
-        └── 输出包/
+└── web/                   # Theme Studio Web 应用
+    ├── index.html         # 主入口
+    ├── src/               # 源码（详见第二节产品线 B）
+    ├── scripts/           # Playwright 截图 + 构建
+    ├── e2e/               # Playwright E2E
+    ├── presets/           # 预设配色
+    ├── public/            # 静态资源（背景图、颜色、Logo）
+    └── dist/              # 构建产物
 ```
 
 ---
@@ -412,31 +429,31 @@ Topic Automation/
 
 ### Web 应用开发时
 
-1. 遵循 `DESIGN.md` 的设计规范
+1. 遵循 `PRODUCT.md` 的产品定义
 2. HTML + CSS + TypeScript，不用框架（React/Vue）
 3. Tailwind CSS v4 仅用于设计令牌映射（`tailwind.css` 中 21 个 CSS vars → 语义名），不用于组件样式
 4. 中文 UI
 5. CSS 变量驱动颜色，不硬编码
-6. `main.ts` 已拆分为 5 个模块，修改时找对模块：
+6. `main.ts` 已拆分为多个模块，修改时找对模块：
    - 项目 CRUD → `project-manager.ts`
    - 聊天/AI → `chat-manager.ts`
    - 主题/颜色 → `theme-engine.ts`
-   - 打包 → `package-manager.ts`
    - UI/设置 → `ui-setup.ts`
+   - 工作区 → `workspace/`
+   - API 层 → `api/`
+   - Portal Agent → `portal-agent.ts`
 
 ### 技术栈
 
 | 层 | 技术 |
 |----|------|
-| 主题包 | Python（当前主线为 `theme_builder.py`，其余历史脚本仅作参考） |
 | Web 前端 | HTML + CSS + TypeScript + Tailwind v4（Vite 开发服务器） |
+| 服务端 | Express + SQLite（sql.js） |
 | AI 聊天 | 标准模式：用户自定义聊天模型；开发测试默认：通义千问 qwen3.6-plus（via DashScope Coding Plan API） |
 | 图片生成 | 标准模式：用户自定义图像模型；开发测试默认：MiniMax image-01（via Token Plan API） |
 | 设计文件 | `.pen` / 设计参考模板（仅作 HTML 模板参考） |
-| 截图 | Playwright |
-| 图片处理 | ImageMagick（convert） |
-| 测试 | Vitest（单元，82 文件 247 测试）+ Playwright（E2E） |
-| 构建 | Vite（Web）+ tsc（src/ → dist/） |
+| 测试 | Vitest（单元，139 文件 313 测试）+ Playwright（E2E） |
+| 构建 | Vite（Web）+ tsc（server → dist/） |
 
 ### Web 端 AI 数据流
 
@@ -461,11 +478,11 @@ Topic Automation/
 | 配置 | 值 |
 |------|-----|
 | 聊天 API（dev） | `/api/chat` → Vite proxy → `coding.dashscope.aliyuncs.com` |
-| 聊天 API（prod） | `coding.dashscope.aliyuncs.com/v1` |
-| 聊天模型 | `qwen3.6-plus` |
-| 图片 API | `api.minimaxi.com/v1` |
-| 图片模型 | `image-01` |
-| 环境变量 | `VITE_DASHSCOPE_API_KEY`, `VITE_MINIMAX_API_KEY` |
+| 聊天 API（prod） | 由服务端 `/admin` 配置 |
+| 聊天模型 | 由服务端 `/admin` 配置（dev 默认 `qwen3.6-plus`） |
+| 图片 API | 由服务端 `/admin` 配置（dev 默认 `api.minimaxi.com/v1`） |
+| 图片模型 | 由服务端 `/admin` 配置（dev 默认 `image-01`） |
+| 环境变量 | 服务端 `.env`（ADMIN_PASSWORD、EKP SSO 等）；API Key 由 `/admin` 页面配置 |
 
 ### 模型接入说明（重要）
 
@@ -504,16 +521,10 @@ Topic Automation/
 
 ## 九、环境依赖
 
-- **Node.js**: `npm install`（项目根目录 + web/ 目录）
-- **Python 3**: `theme_builder.py`、`deep-verify.py`（`update-pen-theme.py` 属历史参考脚本）
-- **ImageMagick**: `convert` 命令（切图裁剪）
-- **Pencil**: 仅在查看历史参考模板时可能需要，不属于当前产品必需依赖
+- **Node.js**: `npm install`（项目根目录 + web/ 目录 + server/ 目录）
 - **Playwright**: Web 端截图 + E2E 测试
-- **导出根目录**: 用户在设置中配置，本地桥接层必须有写权限
-- **API Keys**:
-  - 根 `.env`: `MINIMAX_API_KEY`
-  - `web/.env`: `VITE_DASHSCOPE_API_KEY`, `VITE_MINIMAX_API_KEY`
-  - 注意：根 `.env` 主要服务于根目录脚本/打包链路；Web 工作台主要依赖 `web/.env`
+- **API Keys**: 由服务端 `/admin` 页面配置，不存放在前端环境变量中
+- **服务端 .env**: `ADMIN_PASSWORD`（必填）、EKP SSO 相关配置（生产环境必填）
 
 ---
 
@@ -534,8 +545,6 @@ Topic Automation/
 
 | 日期 | 决策 | 原因 |
 |------|------|------|
-| 2026-04-09 | 废弃 `run-updater.mjs`，改用 `theme_builder.py` | 旧工具链 bug 多，13包→15包 |
-| 2026-04-09 | 引入 `verify-build.py` 自动验证 | 避免人工检查多个 zip |
 | 2026-04-09 | 强制阶段锁定机制 | 防止 AI 跳步 |
 | 2026-04-10 | 阶段从 5 阶段简化为 4 阶段 | 合并冗余步骤 |
 | 2026-04-11 | Web 端架构重构：原生 HTML 模板替代 .pen 渲染引擎 | 性能和可维护性 |
@@ -545,16 +554,14 @@ Topic Automation/
 | 2026-04-12 | 引入 Tailwind CSS v4（仅设计令牌） | 21 CSS vars → 语义 token 映射 |
 | 2026-04-12 | AI 模型从 GLM-4-Flash 切换到 qwen3.6-plus | 模型能力升级 |
 | 2026-04-12 | 图片生成从智谱切换到 MiniMax image-01 | 专用图片模型质量更好 |
-| 2026-04-12 | 引入 `deep-verify.py` 深度验证 | 更严格的打包后校验 |
 | 2026-04-13 | 引入 `config/` 配置即数据层 | 集中管理硬编码配置，CLI + Web 共享 |
 | 2026-04-13 | Header 模板扩展到 9 种变体 | 覆盖更多 OA 版本布局需求 |
 | 2026-04-13 | `src/` 从"已弃用"升级为活跃维护 | 新增 theme-automation 工作流 + 25 单元测试 |
 | 2026-04-13 | AGENTS.md 全面更新 | 反映 Codex 修改后的实际项目状态 |
-| 2026-04-13 | `main.ts` 上帝模块拆分（2310→143行） | 拆分为 5 个模块：project-manager, theme-engine, chat-manager, package-manager, ui-setup |
+| 2026-04-13 | `main.ts` 上帝模块拆分 | 拆分为多个模块：project-manager, theme-engine, chat-manager, ui-setup 等 |
 | 2026-04-13 | 删除死代码 `preview/theme-renderer.ts` | 零引用，已被 theme-engine.ts 替代 |
 | 2026-04-13 | API 端点修正：Coding Plan + MiniMax Token Plan | dashscope→coding.dashscope, minimax response_format→url, IP 直连 47.100.184.181 |
 | 2026-04-13 | 测试修复：ChatClientSettings.test.ts | 更新端点断言从旧 dashscope 直连到 /api/chat proxy |
-| 2026-04-13 | SKILL.md v9.0：Agent 职责边界重定义 | 从 4 阶段流水线改为创建→迭代→导出，导出归产品功能 |
 | 2026-04-13 | 文档全面更新 | AGENTS.md、开发者系统流程图、实施路线图同步新模型 |
 | 2026-04-19 | Theme Agent prompt pipeline 重建 | 从 7-field 抽象模板改为 concrete visual descriptions（~765 chars） |
 | 2026-04-19 | 图片分辨率从 1280x720 提升到 1920x1080 | 更高质量的背景图 |
@@ -566,5 +573,5 @@ Topic Automation/
 | 2026-04-19 | 修复 imageProxyPlugin proxy agent 死代码 | 改为 http/https.get + HttpsProxyAgent |
 | 2026-04-19 | 点击预览图自动发送选择消息 | 无需用户手动按发送 |
 | 2026-04-19 | 删除死代码 prompt-enhancer.ts + quality-anchors.json | 零引用，已被 Theme Agent pipeline 替代 |
-| 2026-04-19 | 修复 9 个过时测试断言 | 测试文件 82/82 通过，247/247 测试通过 |
+| 2026-04-19 | 修复 9 个过时测试断言 | 测试全部通过 |
 | 2026-04-19 | Dark-UI 规则文档亮度值修正 | 214-216→85, 180+→90（HSL L 范围 0-100） |

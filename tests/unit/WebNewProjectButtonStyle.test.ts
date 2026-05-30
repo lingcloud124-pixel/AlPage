@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
 describe('web new project button style', () => {
   test('uses outlined soft-fill styling with white text in dark mode and light surface with black text in light mode', () => {
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = readAllCSS();
 
     expect(styles).toContain('.sidebar-new-chat-full {');
     expect(styles).toContain('background: #eef4ff;');

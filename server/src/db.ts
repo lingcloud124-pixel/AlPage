@@ -208,6 +208,127 @@ export async function initDb(): Promise<void> {
     cs.free();
   });
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS card_template_categories (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS card_templates (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      category_id TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      enabled INTEGER NOT NULL DEFAULT 1,
+      configurable INTEGER NOT NULL DEFAULT 1,
+      default_w INTEGER NOT NULL DEFAULT 2,
+      default_h INTEGER NOT NULL DEFAULT 12,
+      min_w INTEGER,
+      min_h INTEGER,
+      max_w INTEGER,
+      max_h INTEGER,
+      default_props TEXT NOT NULL DEFAULT '{}',
+      layout_rules TEXT NOT NULL DEFAULT '{}',
+      preview_image_url TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_card_templates_category_updated ON card_templates(category_id, updated_at DESC)');
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS project_workspaces (
+      project_id TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      workspace_settings TEXT NOT NULL DEFAULT '{}',
+      workspace_items TEXT NOT NULL DEFAULT '[]',
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (project_id, user_id)
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_project_workspaces_user_updated ON project_workspaces(user_id, updated_at DESC)');
+
+  const workspaceSeedNow = Math.floor(Date.now() / 1000);
+  const todoDefaultProps = JSON.stringify({
+    summary: '今日共 4 项待处理',
+    itemCount: 4,
+    items: [
+      { label: '合同审批待处理', meta: '2h' },
+      { label: '预算调整待确认', meta: '今天' },
+      { label: '项目结项流程', meta: '明天' },
+      { label: '采购申请提醒', meta: '待办' },
+    ],
+  });
+  const newsDefaultProps = JSON.stringify({
+    badge: '专题',
+    headline: '年度经营复盘大会将在本周五举行',
+    summary: '聚焦重点经营指标、业务协同与组织提效，统一发布季度行动清单。',
+    itemCount: 2,
+    items: [
+      { title: '园区活动报名通道开启', meta: '08:30' },
+      { title: '品牌升级规范正式发布', meta: '昨天' },
+    ],
+  });
+  const scheduleDefaultProps = JSON.stringify({
+    itemCount: 3,
+    items: [
+      { title: '晨会同步', meta: '09:00 - 09:30 · 运营中心', status: '进行中' },
+      { title: '门户改版评审', meta: '14:00 - 15:00 · 会议室 A', status: '待开始' },
+      { title: '项目周报整理', meta: '17:30 - 18:00 · 在线', status: '今日' },
+    ],
+  });
+  const quickAccessDefaultProps = JSON.stringify({
+    itemCount: 6,
+    links: ['流程中心', '知识库', '项目空间', '客户台账', '数据报表', '团队日历'],
+  });
+  db.run(`
+    INSERT OR IGNORE INTO card_template_categories (id, name, sort_order, created_at, updated_at)
+    VALUES ('cat-portal-basic', '基础门户', 0, ${workspaceSeedNow}, ${workspaceSeedNow})
+  `);
+
+  db.run(`
+    INSERT OR IGNORE INTO card_templates (
+      id, name, type, category_id, description, enabled, configurable,
+      default_w, default_h, min_w, min_h, max_w, max_h,
+      default_props, layout_rules, preview_image_url, created_at, updated_at
+    ) VALUES
+      (
+        'tpl-message-todo', '待办事务', 'message-todo', 'cat-portal-basic',
+        '标准门户默认待办卡片', 1, 1,
+        2, 14, 2, 12, 4, 20,
+        '${todoDefaultProps}', '{}', '', ${workspaceSeedNow}, ${workspaceSeedNow}
+      ),
+      (
+        'tpl-news-carousel', '新闻轮播', 'news-carousel', 'cat-portal-basic',
+        '标准门户默认新闻卡片', 1, 1,
+        2, 14, 2, 12, 4, 20,
+        '${newsDefaultProps}', '{}', '', ${workspaceSeedNow}, ${workspaceSeedNow}
+      ),
+      (
+        'tpl-my-schedule', '我的日程', 'my-schedule', 'cat-portal-basic',
+        '标准门户默认日程卡片', 1, 1,
+        2, 12, 1, 12, 4, 20,
+        '${scheduleDefaultProps}', '{}', '', ${workspaceSeedNow}, ${workspaceSeedNow}
+      ),
+      (
+        'tpl-quick-access', '快捷入口', 'quick-access', 'cat-portal-basic',
+        '标准门户默认快捷入口卡片', 1, 1,
+        2, 12, 1, 12, 4, 20,
+        '${quickAccessDefaultProps}', '{}', '', ${workspaceSeedNow}, ${workspaceSeedNow}
+      )
+  `);
+
+  db.run(`UPDATE card_templates SET default_props = '${todoDefaultProps}', updated_at = ${workspaceSeedNow} WHERE id = 'tpl-message-todo'`);
+  db.run(`UPDATE card_templates SET default_props = '${newsDefaultProps}', updated_at = ${workspaceSeedNow} WHERE id = 'tpl-news-carousel'`);
+  db.run(`UPDATE card_templates SET default_props = '${scheduleDefaultProps}', updated_at = ${workspaceSeedNow} WHERE id = 'tpl-my-schedule'`);
+  db.run(`UPDATE card_templates SET default_props = '${quickAccessDefaultProps}', updated_at = ${workspaceSeedNow} WHERE id = 'tpl-quick-access'`);
+
   // Create conversations table for sidebar history
   db.run(`
     CREATE TABLE IF NOT EXISTS conversations (

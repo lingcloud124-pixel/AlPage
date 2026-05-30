@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
@@ -17,7 +18,7 @@ describe('portal confirm form HTML', () => {
   });
 
   test('styles.css contains portal confirm form styles', () => {
-    const css = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const css = readAllCSS();
 
     expect(css).toContain('.portal-confirm-form');
     expect(css).toContain('.portal-confirm-field');

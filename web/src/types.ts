@@ -138,6 +138,103 @@ export interface AISettings {
   uiTheme?: 'dark' | 'light';
 }
 
+export type PortalIntakeField =
+  | 'customerName'
+  | 'customerIndustry'
+  | 'customerFunctions'
+  | 'portalPurpose'
+  | 'highlightedCards'
+  | 'visualPreference';
+
+export interface PortalCustomerProfile {
+  customerName?: string;
+  customerIndustry?: string;
+  customerFunctions?: string[];
+  portalPurpose?: string;
+  highlightedCards?: string[];
+  visualPreference?: string;
+  source?: Array<'chat' | 'form' | 'attachment' | 'inferred'>;
+  completeness: number;
+  updatedAt?: number;
+}
+
+export interface PortalSummary {
+  customerName: string;
+  customerIndustry: string;
+  customerFunctions: string[];
+  portalPurpose: string;
+  highlightedCards: string[];
+  visualPreference: string;
+  structureUnderstanding: string[];
+  styleUnderstanding: string;
+  confirmedAt?: number;
+}
+
+export interface PortalWorkspaceSeedItem {
+  templateId: string;
+  reason: string;
+  title?: string;
+  summary?: string;
+  badge?: string;
+  headline?: string;
+  priority?: 'high' | 'medium' | 'low';
+  itemCount?: number;
+  items?: Array<Record<string, unknown>>;
+  links?: string[];
+}
+
+export interface PortalDraft {
+  themeDirection: string;
+  workspaceSeed: PortalWorkspaceSeedItem[];
+  generatedAt: number;
+}
+
+export interface PortalResultState {
+  savedAt?: number;
+  sharedAt?: number;
+  fullscreenViewedAt?: number;
+}
+
+export interface WorkspaceSettings {
+  columns: number;
+  rowHeight: number;
+  gapX: number;
+  gapY: number;
+  paddingX: number;
+  paddingY: number;
+  maxWidth?: number;
+  backgroundMode?: 'theme' | 'plain';
+}
+
+export interface WorkspaceItem {
+  id: string;
+  templateId: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  minW?: number;
+  minH?: number;
+  maxW?: number;
+  maxH?: number;
+  locked?: boolean;
+  zIndex?: number;
+  instanceProps?: Record<string, unknown>;
+  styleOverrides?: Record<string, unknown>;
+}
+
+export interface WorkspaceMeta {
+  initializedAt: number;
+  updatedAt: number;
+  source: 'default' | 'portal-draft';
+}
+
+export interface WorkspaceConfig {
+  settings: WorkspaceSettings;
+  items: WorkspaceItem[];
+  meta: WorkspaceMeta;
+}
+
 export interface ConfirmedProjectSnapshot {
   projectId: string;
   name: string;

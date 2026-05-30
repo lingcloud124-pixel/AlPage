@@ -1,0 +1,660 @@
+/* Modal Overlay */
+.modal-overlay
+{
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.active
+{
+  display: flex;
+}
+
+.modal-content
+{
+  border-radius: 32px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Settings Modal — x.ai inspired */
+.settings-modal
+{
+  width: 640px;
+  max-width: 92vw;
+  max-height: 92vh;
+  border-radius: 20px;
+}
+
+.settings-header
+{
+  padding: 32px 32px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.settings-title
+{
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.settings-subtitle
+{
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.settings-modal .modal-close-btn
+{
+  padding: 8px;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+
+.settings-modal .modal-close-btn:hover
+{
+  background: var(--surface-2);
+}
+
+.settings-body
+{
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settings-body::-webkit-scrollbar
+{
+  width: 4px;
+}
+
+.settings-body::-webkit-scrollbar-track
+{
+  background: transparent;
+}
+
+.settings-body::-webkit-scrollbar-thumb
+{
+  background: var(--border-strong);
+  border-radius: 10px;
+}
+
+.settings-section
+{
+  display: flex;
+  flex-direction: column;
+}
+
+.section-heading
+{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.section-accent
+{
+  width: 4px;
+  height: 24px;
+  border-radius: 2px;
+  background: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.section-heading h3
+{
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-card
+{
+  background: var(--surface-1);
+  padding: 24px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-card--prompt-config
+{
+  gap: 20px;
+}
+
+.settings-card-intro
+{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-card-intro-title
+{
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-card-intro-copy
+{
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.landing-prompt-config-list
+{
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.landing-prompt-config-item
+{
+  background: var(--surface-0);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.landing-prompt-config-header
+{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.landing-prompt-config-index
+{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--accent-ui-soft);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.landing-prompt-config-title
+{
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.landing-prompt-config-grid
+{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  gap: 14px;
+}
+
+.landing-prompt-config-field
+{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.landing-prompt-config-field--full
+{
+  grid-column: 1 / -1;
+}
+
+.landing-prompt-config-label
+{
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.landing-prompt-config-input,
+.landing-prompt-config-textarea
+{
+  width: 100%;
+  background: rgba(12, 15, 22, 0.92);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  font-family: inherit;
+}
+
+.landing-prompt-config-input:focus,
+.landing-prompt-config-textarea:focus
+{
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.18);
+}
+
+.landing-prompt-config-textarea
+{
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.landing-prompt-config-actions
+{
+  display: flex;
+  justify-content: flex-end;
+}
+
+.form-row
+{
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.form-label
+{
+  width: 33.33%;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-label-group
+{
+  width: 33.33%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-label-desc
+{
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.form-input-wrap
+{
+  flex: 1;
+  position: relative;
+}
+
+.form-input-wrap input,
+.form-input-wrap select
+{
+  width: 100%;
+  background: var(--surface-0);
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+  font-family: inherit;
+}
+
+.form-input-wrap input:focus,
+.form-input-wrap select:focus
+{
+  box-shadow: 0 0 0 2px var(--border-strong);
+}
+
+.form-input-wrap input::placeholder
+{
+  color: var(--text-tertiary);
+}
+
+.form-input-wrap select
+{
+  cursor: pointer;
+  appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.form-input-help
+{
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.form-input-help[data-status="ok"]
+{
+  color: var(--text-secondary);
+}
+
+.form-input-help[data-status="warn"]
+{
+  color: #d6ad66;
+}
+
+.export-root-picker
+{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.export-root-picker input
+{
+  flex: 1;
+}
+
+.export-root-picker-btn
+{
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent-ui-soft);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.export-root-picker-btn:hover
+{
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.settings-footer
+{
+  padding: 20px 32px;
+  background: var(--surface-1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-help-link
+{
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.settings-help-link:hover
+{
+  color: var(--text-secondary);
+}
+
+.settings-footer-actions
+{
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-cancel
+{
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: color 0.15s;
+}
+
+.btn-cancel:hover
+{
+  color: var(--text-primary);
+}
+
+.btn-save
+{
+  padding: 10px 32px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--app-bg);
+  background: var(--accent-ui);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.btn-save:hover
+{
+  background: var(--text-primary);
+  color: var(--app-bg);
+}
+
+.btn-save:active
+{
+  transform: scale(0.97);
+}
+
+/* Package Modal - x.ai spec */
+.modal-content.package-modal
+{
+  width: min(900px, 92vw);
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+}
+
+.package-modal-header
+{
+  padding: 32px 32px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.package-modal-title
+{
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.package-modal-subtitle
+{
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.package-modal-close-btn
+{
+  padding: 8px;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.package-modal-close-btn:hover
+{
+  background: var(--surface-2);
+}
+
+.package-modal-body
+{
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.package-section
+{
+  display: flex;
+  flex-direction: column;
+}
+
+.package-actions
+{
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.package-actions button
+{
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.package-actions button:hover
+{
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+.package-product-list
+{
+  columns: 2;
+  column-gap: 16px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.package-product-list label
+{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  break-inside: avoid;
+  transition: background 0.15s;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.package-product-list label:hover
+{
+  background: var(--surface-1);
+}
+
+.package-product-list input[type="checkbox"]
+{
+  accent-color: var(--accent-ui);
+}
+
+.package-export-history
+{
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--surface-0);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.export-history-empty
+{
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.package-modal-footer
+{
+  padding: 20px 32px;
+  background: var(--surface-1);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  border-radius: 0 0 16px 16px;
+}
+
+.btn-primary
+{
+  padding: 10px 32px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--app-bg);
+  background: var(--accent-ui);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.btn-primary:hover
+{
+  background: var(--text-primary);
+  color: var(--app-bg);
+}
+
+.btn-primary:active
+{
+  transform: scale(0.97);
+}
+
+.btn-secondary
+{
+  padding: 10px 32px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.btn-secondary:hover
+{
+  color: var(--text-primary);
+}
+

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
@@ -15,7 +16,7 @@ describe('generation-to-preview flow', () => {
   });
 
   test('result actions have highlight animation in CSS', () => {
-    const css = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const css = readAllCSS();
 
     expect(css).toContain('workspace-result-actions');
     expect(css).toContain('result-actions-highlight');

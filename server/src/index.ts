@@ -42,6 +42,8 @@ const [
   { default: adminPasswordRouter },
   { default: adminAuthRouter },
   { usageLogsRouter },
+  { cardTemplatesRouter },
+  { workspaceRouter },
 ] = await Promise.all([
   import('express'),
   import('./db.js'),
@@ -61,6 +63,8 @@ const [
   import('./routes/admin-password.js'),
   import('./routes/admin-auth.js'),
   import('./routes/usage-logs.js'),
+  import('./routes/card-templates.js'),
+  import('./routes/workspace.js'),
 ]);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -125,6 +129,8 @@ app.use('/api/security-config', adminAuthMiddleware, securityConfigRouter);
 app.use('/api/admin-password', adminAuthMiddleware, adminPasswordRouter);
 app.use('/api/admin/usage-logs', adminAuthMiddleware, usageLogsRouter);
 app.use('/api/admin-auth', adminAuthRouter);
+app.use('/api/card-templates', authMiddleware, cardTemplatesRouter);
+app.use('/api/theme/projects', authMiddleware, workspaceRouter);
 app.use('/api/theme', authMiddleware);
 app.use('/api/theme', (req: any, _res: any, next: any) => {
   const loginName = req.loginName as string | undefined;

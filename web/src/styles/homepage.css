@@ -1,0 +1,193 @@
+/* 主页样式 (保持现有) */
+.main-page-container
+{
+  width: 1920px;
+  height: 1079px;
+  background-color: var(--body-bg-color);
+}
+
+.page-header
+{
+  height: 60px;
+  background-color: var(--portal-header-bg-extend-color);
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.header-gradient-left
+{
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 859px;
+  height: 60px;
+  background: linear-gradient(to right, var(--gradient-start) 0%, var(--gradient-mid) 50%, transparent 100%);
+  z-index: 1;
+}
+
+.header-gradient-right
+{
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 920px;
+  height: 60px;
+  background: linear-gradient(to left, var(--gradient-start) 0%, var(--gradient-mid) 50%, transparent 100%);
+  z-index: 1;
+}
+
+.header-content
+{
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  width: 100%;
+  z-index: 2;
+}
+
+.logo-placeholder
+{
+  font-weight: bold;
+  margin-right: 30px;
+  color: var(--header-font-color);
+}
+
+.main-nav
+{
+  display: flex;
+  gap: 30px;
+  margin-right: auto;
+}
+
+.nav-item
+{
+  color: var(--auxiliary-gray-dark);
+  text-decoration: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+.nav-item.active
+{
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+.search-bar input
+{
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  width: 200px;
+  font-size: 14px;
+}
+
+.header-icons
+{
+  display: flex;
+  gap: 20px;
+  margin-left: 20px;
+}
+
+.icon-btn
+{
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.avatar
+{
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.main-layout
+{
+  display: flex;
+  height: calc(100% - 60px);
+}
+
+.sidebar
+{
+  width: 200px;
+  background-color: var(--sidebar-panel-bg);
+  padding: 20px 0;
+}
+
+.sidebar .nav-item
+{
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  color: var(--sidebar-color);
+  cursor: pointer;
+}
+
+.sidebar .nav-icon
+{
+  margin-right: 10px;
+  color: var(--sidebar-icon-color);
+  width: 24px;
+}
+
+.content-area
+{
+  flex: 1;
+  padding: 20px;
+  background-color: var(--body-bg-color);
+  overflow-y: auto;
+}
+
+.content-grid
+{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.portlet-card
+{
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 15px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.portlet-card h4
+{
+  color: var(--header-font-color);
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.portlet-card p
+{
+  color: var(--auxiliary-gray);
+  font-size: 14px;
+}
+
+.page-footer
+{
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  color: var(--auxiliary-gray);
+  font-size: 12px;
+}
+
+.page-footer p
+{
+  margin-bottom: 5px;
+}
+

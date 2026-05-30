@@ -1,0 +1,86 @@
+<h2>重新选择三层编辑交互方向</h2>
+<p class="subtitle">你刚才指出“布局方向不对、视觉太粗糙、信息架构不对”。下面先不做功能，只比较三种结构方向。请看哪一种更接近你想要的产品形态。</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:260px;background:#f6f7f9;border-radius:14px;padding:14px;display:grid;grid-template-columns:76px 1fr 300px;gap:12px;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;">
+        <div style="background:#111827;border-radius:14px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;writing-mode:vertical-rl;letter-spacing:4px;">Agent</div>
+        <div style="background:#fff;border-radius:18px;border:1px solid #e5e7eb;padding:14px;box-shadow:0 10px 28px rgba(15,23,42,.08);">
+          <div style="height:20px;width:160px;background:#e5e7eb;border-radius:99px;margin-bottom:16px;"></div>
+          <div style="height:170px;border:1px dashed #cbd5e1;border-radius:16px;display:grid;place-items:center;color:#94a3b8;">门户预览</div>
+        </div>
+        <div style="background:#fff;border-radius:18px;border:1px solid #e5e7eb;padding:12px;box-shadow:-12px 0 30px rgba(15,23,42,.08);">
+          <div style="font-weight:700;margin-bottom:8px;">编辑配置</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:14px;">
+            <div style="background:#111827;color:#fff;border-radius:8px;text-align:center;padding:6px;font-size:11px;">主题</div>
+            <div style="background:#f3f4f6;border-radius:8px;text-align:center;padding:6px;font-size:11px;">规则</div>
+            <div style="background:#f3f4f6;border-radius:8px;text-align:center;padding:6px;font-size:11px;">内容</div>
+          </div>
+          <div style="height:120px;background:#f9fafb;border-radius:12px;border:1px solid #eef2f7;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 右侧属性抽屉</h3>
+      <p>传统三栏：Agent 收窄、预览居中、右侧配置。稳定但像后台工具，容易“粗糙”和拥挤。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:260px;background:#f6f7f9;border-radius:14px;padding:14px;display:grid;grid-template-columns:300px 1fr;gap:12px;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;">
+        <div style="display:grid;grid-template-rows:52px 1fr;gap:10px;">
+          <div style="background:#fff;border-radius:16px;border:1px solid #e5e7eb;padding:10px;display:flex;align-items:center;gap:8px;">
+            <div style="width:34px;height:34px;background:#111827;border-radius:10px;"></div>
+            <div><div style="font-weight:700;font-size:13px;">Portal Agent</div><div style="font-size:10px;color:#94a3b8;">继续对话修改</div></div>
+          </div>
+          <div style="background:#fff;border-radius:18px;border:1px solid #e5e7eb;padding:12px;">
+            <div style="height:24px;background:#f3f4f6;border-radius:10px;margin-bottom:8px;"></div>
+            <div style="height:24px;background:#f3f4f6;border-radius:10px;width:80%;"></div>
+          </div>
+        </div>
+        <div style="background:#fff;border-radius:18px;border:1px solid #e5e7eb;padding:14px;box-shadow:0 10px 28px rgba(15,23,42,.08);position:relative;">
+          <div style="position:absolute;top:14px;left:14px;right:14px;height:42px;background:#111827;color:white;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:22px;font-size:12px;">
+            <span>主题</span><span style="opacity:.55">工作区规则</span><span style="opacity:.55">卡片内容</span>
+          </div>
+          <div style="margin-top:58px;height:160px;border:1px dashed #cbd5e1;border-radius:16px;display:grid;place-items:center;color:#94a3b8;">门户预览 + 顶部浮层编辑</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. 顶部浮层编辑器</h3>
+      <p>配置不占右侧，像“设计模式工具条”。预览空间大，适合强调视觉确认，但字段多时会受限。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:260px;background:#f6f7f9;border-radius:14px;padding:14px;display:grid;grid-template-columns:280px 1fr;gap:12px;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;">
+        <div style="background:#fff;border-radius:18px;border:1px solid #e5e7eb;padding:12px;display:flex;flex-direction:column;gap:10px;">
+          <div style="font-weight:700;font-size:13px;">Portal Agent</div>
+          <div style="background:#f8fafc;border-radius:12px;padding:10px;font-size:11px;color:#64748b;line-height:1.5;">我已基于当前 PortalPlan 拆成三层，可点击预览中的区域直接编辑。</div>
+          <div style="margin-top:auto;display:flex;gap:6px;"><div style="background:#111827;color:#fff;border-radius:999px;padding:6px 10px;font-size:10px;">对话</div><div style="background:#f3f4f6;border-radius:999px;padding:6px 10px;font-size:10px;">配置</div></div>
+        </div>
+        <div style="background:#fff;border-radius:18px;border:1px solid #e5e7eb;padding:14px;box-shadow:0 10px 28px rgba(15,23,42,.08);display:grid;grid-template-columns:1fr 220px;gap:12px;">
+          <div style="border:1px dashed #cbd5e1;border-radius:16px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;padding:12px;">
+            <div style="background:#eef2ff;border:2px solid #4f46e5;border-radius:12px;"></div>
+            <div style="background:#f8fafc;border-radius:12px;"></div>
+            <div style="background:#f8fafc;border-radius:12px;"></div>
+            <div style="background:#f8fafc;border-radius:12px;"></div>
+          </div>
+          <div style="background:#111827;color:#fff;border-radius:16px;padding:12px;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px;">选中：待办卡片</div>
+            <div style="font-size:11px;color:#cbd5e1;line-height:1.6;">位置 / 大小 / 内容 在同一个上下文里编辑</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 画布选中式编辑</h3>
+      <p>配置跟随“当前选中对象”。更像门户编辑器，而不是表单后台；最适合卡片位置、大小和内容一起调。</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle">我的推荐是 C：先保留 Agent，但把配置从“右侧大表单”改为“预览画布选中对象后的上下文编辑”。这更符合门户编辑，而不是后台配置。</p>

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
@@ -12,7 +13,7 @@ describe('web sidebar icon row consistency', () => {
   });
 
   test('aligns collapse, new chat, and settings icon box sizing and row affordance', () => {
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = readAllCSS();
 
     expect(styles).toContain('.sidebar-header .sidebar-icon-btn,');
     expect(styles).toContain('.sidebar-new-chat-full svg,');
