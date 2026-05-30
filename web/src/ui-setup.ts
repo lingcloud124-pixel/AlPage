@@ -40,6 +40,11 @@ export function syncWorkbenchLayoutForActiveTab(hasPreview: boolean, activeTabId
   }
   const chatPanel = document.getElementById('chatPanel') as HTMLElement | null;
   if (!chatPanel) return;
+  const appContainer = document.querySelector('.app-container');
+  if (appContainer?.classList.contains('preview-open')) {
+    chatPanel.classList.remove('landing-mode');
+    chatPanel.classList.remove('is-full-landing');
+  }
   if (!chatPanel.style.width) {
     setChatPanelWidth(378);
   }
@@ -119,7 +124,6 @@ export function setupPreviewPanel() {
 
 export function setupBackToHome() {
   const homeTriggers = [
-    document.getElementById('backToHomeBtn'),
     document.getElementById('landingHomeBtn'),
   ].filter((el): el is HTMLElement => Boolean(el));
 
@@ -204,6 +208,9 @@ export function setupResultActions() {
   editBtn?.addEventListener('click', handleResultEdit);
 }
 
+export function setupPortalObjectEditing(): void {
+}
+
 async function loadHeaderIntoMainPage(headerId: string) {
   const mainPage = document.getElementById('mainPage');
   if (!mainPage) return;
@@ -221,77 +228,26 @@ async function loadHeaderIntoMainPage(headerId: string) {
 }
 
 export function setupTabSwitching() {
-  const TAB_MAP = [
-    { btnId: 'loginTab', pageId: 'loginPage', templateId: 'login' },
-    { btnId: 'mainPageTab', pageId: 'mainPage', templateId: 'desktop' },
-  ];
-  let activeTabInfo = { btn: null as HTMLButtonElement | null, page: null as HTMLElement | null, templateId: '' };
-  const indicator = document.querySelector('.topbar-tabs .tab-indicator') as HTMLElement;
+  const mainPage = document.getElementById('mainPage') as HTMLElement | null;
+  if (!mainPage) return;
 
-  function moveIndicator(btn: HTMLButtonElement) {
-    if (!indicator) return;
-    indicator.style.left = btn.offsetLeft + 'px';
-  }
-
-  function syncActiveIndicator() {
-    if (activeTabInfo.btn) moveIndicator(activeTabInfo.btn);
-  }
-
-  function syncPageVisibility(activePage: HTMLElement) {
-    TAB_MAP.forEach(({ pageId }) => {
-      const candidate = document.getElementById(pageId) as HTMLElement | null;
-      if (!candidate) return;
-      const isActive = candidate === activePage;
-      candidate.classList.toggle('active-preview', isActive);
-      candidate.style.display = isActive ? 'block' : 'none';
-      candidate.style.pointerEvents = isActive ? 'auto' : 'none';
-      candidate.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-    });
-  }
-
-  async function activateTab(btn: HTMLButtonElement, page: HTMLElement, templateId: string) {
-    if (!page.firstElementChild) {
-      await renderTemplate(templateId, page);
+  void (async () => {
+    if (!mainPage.firstElementChild) {
+      await renderTemplate('desktop', mainPage);
     }
-    activeTabInfo.btn?.classList.remove('active-tab');
-    btn.classList.add('active-tab');
-    syncPageVisibility(page);
-    activeTabInfo = { btn, page, templateId };
-    moveIndicator(btn);
-    syncWorkbenchLayoutForActiveTab(true, btn.id as 'loginTab' | 'mainPageTab');
+    mainPage.classList.add('active-preview');
+    mainPage.style.display = 'block';
+    mainPage.style.pointerEvents = 'auto';
+    mainPage.setAttribute('aria-hidden', 'false');
+    syncWorkbenchLayoutForActiveTab(true, 'mainPageTab');
     requestAnimationFrame(() => (window as any).resizePreview?.());
-  }
-
-  TAB_MAP.forEach(tabInfo => {
-    const { btnId, pageId, templateId } = tabInfo;
-    const btn = document.getElementById(btnId) as HTMLButtonElement;
-    const page = document.getElementById(pageId) as HTMLElement;
-    if (!btn || !page) return;
-
-    if (btnId === 'loginTab') {
-      btn.classList.add('active-tab');
-      syncPageVisibility(page);
-      activeTabInfo = { btn, page, templateId };
-      requestAnimationFrame(() => moveIndicator(btn));
-      setTimeout(() => moveIndicator(btn), 50);
-    }
-
-    btn.addEventListener('click', async () => {
-      if (activeTabInfo.btn === btn) {
-        syncWorkbenchLayoutForActiveTab(true, btn.id as 'loginTab' | 'mainPageTab');
-        requestAnimationFrame(() => (window as any).resizePreview?.());
-        return;
-      }
-      await activateTab(btn, page, templateId);
-    });
-  });
-
-  window.addEventListener('resize', syncActiveIndicator);
+  })();
 }
 
 export function setupCollapsibleColorPanel() {
   const appContainer = document.querySelector('.app-container') as HTMLElement;
   const sidePanel = document.getElementById('sidePanel') as HTMLElement;
+  const propertiesDrawer = document.getElementById('workspacePropertiesDrawer') as HTMLElement | null;
   const panelToggleBtn = document.getElementById('panelToggleBtn') as HTMLButtonElement;
   const sidePanelClose = document.getElementById('sidePanelClose') as HTMLButtonElement;
 
@@ -303,16 +259,19 @@ export function setupCollapsibleColorPanel() {
   let prePanelState: { chatWidth: string; chatFlex: string; chatMinWidth: string } | null = null;
 
   function openPanel() {
-    if (appContainer.classList.contains('panel-open')) return;
     const chatPanel = document.getElementById('chatPanel') as HTMLElement;
-    prePanelState = {
-      chatWidth: chatPanel?.style.width ?? '',
-      chatFlex: chatPanel?.style.flex ?? '',
-      chatMinWidth: chatPanel?.style.minWidth ?? '',
-    };
+    if (!appContainer.classList.contains('panel-open')) {
+      prePanelState = {
+        chatWidth: chatPanel?.style.width ?? '',
+        chatFlex: chatPanel?.style.flex ?? '',
+        chatMinWidth: chatPanel?.style.minWidth ?? '',
+      };
+    }
     appContainer.classList.add('panel-open');
+    propertiesDrawer?.classList.remove('open');
+    propertiesDrawer?.setAttribute('aria-hidden', 'true');
     sidePanel.classList.add('open');
-    panelToggleBtn.textContent = '收起面板';
+    panelToggleBtn.textContent = '面板';
   }
 
   function closePanel() {
@@ -335,7 +294,7 @@ export function setupCollapsibleColorPanel() {
   }
 
   panelToggleBtn.addEventListener('click', () => {
-    if (appContainer.classList.contains('panel-open')) closePanel();
+    if (sidePanel.classList.contains('open')) closePanel();
     else openPanel();
   });
 

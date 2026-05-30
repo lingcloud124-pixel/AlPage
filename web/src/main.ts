@@ -16,6 +16,7 @@ import {
   setupPreviewPanel,
   setupBackToHome,
   setupCollapsibleColorPanel,
+  setupPortalObjectEditing,
   setupResultActions,
 } from './ui-setup';
 import { checkAuth, getUser, redirectToLogin } from './auth';
@@ -38,14 +39,24 @@ declare global {
 export function showWorkspaceLandingState(): void {
   const workspaceView = document.getElementById('workspaceView');
   const chatPanel = document.getElementById('chatPanel');
+  const appContainer = document.querySelector('.app-container');
+  const previewPanel = document.getElementById('previewPanel');
+  const sidePanel = document.getElementById('sidePanel');
   if (workspaceView) workspaceView.classList.remove('view-hidden');
+  appContainer?.classList.remove('preview-open');
+  appContainer?.classList.remove('panel-open');
+  previewPanel?.classList.remove('expanded');
+  sidePanel?.classList.remove('open');
+  setChatPanelWidth(null);
   setCurrentProjectId(null);
   resetThemeTargetStyles();
   applyTemplateSpecificThemeVars('light-ui');
   syncColorEditorFromTheme();
-  chatPanel?.classList.add('landing-mode');
   collapsePreview();
   showDefaultChatView();
+  setChatPanelWidth(null);
+  chatPanel?.classList.add('landing-mode');
+  chatPanel?.classList.add('is-full-landing');
   const messagesContainer = document.getElementById('messagesContainer') as HTMLElement | null;
   if (messagesContainer) {
     messagesContainer.innerHTML = '';
@@ -80,6 +91,7 @@ async function initializeFeatureModules() {
   setupQualityCheck();
   setupPreviewPanel();
   setupBackToHome();
+  setupPortalObjectEditing();
   setupResultActions();
   setupWorkspaceEditorShell();
   initSidebar();
