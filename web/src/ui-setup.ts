@@ -3,16 +3,17 @@ import {
   getCurrentProjectId,
   loadProject,
   markPortalResultFullscreenViewed,
-  markPortalResultSaved,
   markPortalResultShared,
   saveProject,
 } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, loadDefaultTemplates } from './theme-engine';
 import { setupChatInterface } from './chat-manager';
-import { initializeColorEditor } from './components/color-editor';
+import { initializeThemeConfiguration } from './components/color-editor';
+import type { WorkspaceCardSelection } from './components/card-content-configuration';
 import { showWorkspaceLandingState } from './main';
 import { toggleSidebar } from './components/sidebar';
 import { renderWorkspacePreview } from './workspace/preview';
+import { ensureWorkspaceTemplateCache, getWorkspaceTemplateCache } from './workspace/runtime';
 
 let previewTemplatesLoaded = false;
 
@@ -154,27 +155,13 @@ async function handleResultFullscreen(): Promise<void> {
   });
 }
 
-async function handleResultSave(): Promise<void> {
-  await withCurrentProject(async (project) => {
-    await saveProject(markPortalResultSaved(project));
-  });
-  const saveBtn = document.getElementById('resultSaveBtn') as HTMLButtonElement | null;
-  if (saveBtn) {
-    const original = saveBtn.textContent;
-    saveBtn.textContent = '已保存';
-    window.setTimeout(() => {
-      saveBtn.textContent = original ?? '保存门户';
-    }, 1600);
-  }
-}
-
 async function handleResultShare(): Promise<void> {
   const projectId = getCurrentProjectId();
   if (!projectId) return;
   const shareUrl = `${window.location.origin}${window.location.pathname}#project=${projectId}`;
   const shareData = {
     title: '客户门户方案',
-    text: '我刚整理了一份客户门户方案，可以直接查看并继续迭代。',
+    text: '我刚整理了一份客户门户方案，可以直接查看并迭代。',
     url: shareUrl,
   };
   if (navigator.share) {
@@ -192,21 +179,12 @@ async function handleResultShare(): Promise<void> {
   });
 }
 
-function handleResultEdit(): void {
-  const designModeBtn = document.getElementById('workspaceDesignModeBtn') as HTMLButtonElement | null;
-  designModeBtn?.click();
-}
-
 export function setupResultActions() {
   const fullscreenBtn = document.getElementById('resultFullscreenBtn') as HTMLButtonElement | null;
-  const saveBtn = document.getElementById('resultSaveBtn') as HTMLButtonElement | null;
   const shareBtn = document.getElementById('resultShareBtn') as HTMLButtonElement | null;
-  const editBtn = document.getElementById('resultEditBtn') as HTMLButtonElement | null;
 
   fullscreenBtn?.addEventListener('click', () => { void handleResultFullscreen(); });
-  saveBtn?.addEventListener('click', () => { void handleResultSave(); });
   shareBtn?.addEventListener('click', () => { void handleResultShare(); });
-  editBtn?.addEventListener('click', handleResultEdit);
 }
 
 export function setupPortalObjectEditing(): void {
@@ -243,12 +221,13 @@ export function setupTabSwitching() {
     syncWorkbenchLayoutForActiveTab(true, 'mainPageTab');
     const projectId = getCurrentProjectId();
     const project = projectId ? await loadProject(projectId) : null;
-    renderWorkspacePreview(mainPage, project?.workspace ?? null);
+    await ensureWorkspaceTemplateCache();
+    renderWorkspacePreview(mainPage, project?.workspace ?? null, getWorkspaceTemplateCache());
     requestAnimationFrame(() => (window as any).resizePreview?.());
   })();
 }
 
-export function setupCollapsibleColorPanel() {
+export function setupConfigurationPanel() {
   const appContainer = document.querySelector('.app-container') as HTMLElement;
   const sidePanel = document.getElementById('sidePanel') as HTMLElement;
   const propertiesDrawer = document.getElementById('workspacePropertiesDrawer') as HTMLElement | null;
@@ -256,7 +235,7 @@ export function setupCollapsibleColorPanel() {
   const sidePanelClose = document.getElementById('sidePanelClose') as HTMLButtonElement;
 
   if (!appContainer || !sidePanel || !panelToggleBtn) {
-    console.error('Panel toggle elements not found');
+    console.error('Configuration panel elements not found');
     return;
   }
 
@@ -272,17 +251,20 @@ export function setupCollapsibleColorPanel() {
       };
     }
     appContainer.classList.add('panel-open');
+    appContainer.classList.add('configuration-panel-open');
     propertiesDrawer?.classList.remove('open');
     propertiesDrawer?.setAttribute('aria-hidden', 'true');
     sidePanel.classList.add('open');
-    panelToggleBtn.textContent = '面板';
+    panelToggleBtn.textContent = '主题配置';
+    initializeThemeConfiguration();
   }
 
   function closePanel() {
     if (!appContainer.classList.contains('panel-open')) return;
     appContainer.classList.remove('panel-open');
+    appContainer.classList.remove('configuration-panel-open');
     sidePanel.classList.remove('open');
-    panelToggleBtn.textContent = '面板';
+    panelToggleBtn.textContent = '主题配置';
     if (prePanelState) {
       const chatPanel = document.getElementById('chatPanel') as HTMLElement;
       if (chatPanel) {
@@ -297,6 +279,15 @@ export function setupCollapsibleColorPanel() {
     }
   }
 
+  window.addEventListener('workspace-card:selected', (event) => {
+    const selection = (event as CustomEvent<WorkspaceCardSelection>).detail;
+    if (!selection?.id) return;
+    if (!propertiesDrawer?.classList.contains('open')) return;
+    propertiesDrawer.querySelectorAll('.config-panel-tab').forEach((el) => {
+      el.classList.toggle('is-active', (el as HTMLElement).dataset.tab === 'card');
+    });
+  });
+
   panelToggleBtn.addEventListener('click', () => {
     if (sidePanel.classList.contains('open')) closePanel();
     else openPanel();
@@ -306,3 +297,5 @@ export function setupCollapsibleColorPanel() {
     sidePanelClose.addEventListener('click', closePanel);
   }
 }
+
+export const setupCollapsibleColorPanel = setupConfigurationPanel;

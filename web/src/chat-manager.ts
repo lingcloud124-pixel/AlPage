@@ -54,6 +54,7 @@ import {
 } from './portal-plan';
 import { renderWorkspaceEditorShell } from './workspace/runtime';
 import { renderWorkspacePreview } from './workspace/preview';
+import { ensureWorkspaceTemplateCache, getWorkspaceTemplateCache } from './workspace/runtime';
 import { persistWorkspaceToLocal, syncWorkspaceToServer } from './workspace/store';
 import {
   showPortalConfirmForm,
@@ -318,6 +319,36 @@ async function syncProjectWorkspaceSnapshot(project: Project): Promise<void> {
   await syncWorkspaceToServer(project.id, project.workspace);
 }
 
+async function ensureNeedsDrivenWorkspace(project: Project): Promise<Project> {
+  if (!project.portalProfile) return project;
+  if (project.workspace?.meta?.source !== 'default' && project.portalPlanStatus === 'editing') return project;
+
+  const portalSummary = project.portalSummary ?? buildPortalSummary(project.portalProfile);
+  const portalDraft = buildPortalDraft(portalSummary);
+  Object.assign(project, applyPortalDraftToProject(project, portalDraft));
+  project.portalSummary = project.portalSummary?.confirmedAt
+    ? { ...portalSummary, confirmedAt: project.portalSummary.confirmedAt }
+    : portalSummary;
+  const portalPlan = createPortalPlanFromProject(project);
+  portalPlan.status = project.portalPlanStatus === 'editing' ? 'editing' : 'generated';
+  portalPlan.updatedAt = Date.now();
+  Object.assign(project, applyPortalPlanToProject(project, portalPlan));
+  await saveProject(project);
+  await syncProjectWorkspaceSnapshot(project);
+  return project;
+}
+
+async function refreshNeedsDrivenWorkspacePreview(): Promise<void> {
+  const projectId = getCurrentProjectId();
+  if (!projectId) return;
+  const project = await loadProject(projectId);
+  if (!project) return;
+  const hydratedProject = await ensureNeedsDrivenWorkspace(project);
+  await ensureWorkspaceTemplateCache();
+  renderWorkspaceEditorShell(hydratedProject.workspace ?? null);
+  renderWorkspacePreview(document.getElementById('mainPage'), hydratedProject.workspace ?? null, getWorkspaceTemplateCache());
+}
+
 async function resolvePortalWorkflowForMessage(project: Project, userMessage: string): Promise<{
   project: Project;
 }> {
@@ -351,6 +382,7 @@ async function resolvePortalWorkflowForMessage(project: Project, userMessage: st
   }
 
   await saveProject(project);
+  await refreshNeedsDrivenWorkspacePreview();
 
   return { project };
 }
@@ -419,8 +451,9 @@ export function setupChatInterface(deps: ChatDeps) {
     Object.assign(project, applyPortalPlanToProject(project, portalPlan));
     await saveProject(project);
     await syncProjectWorkspaceSnapshot(project);
+    await ensureWorkspaceTemplateCache();
     renderWorkspaceEditorShell(project.workspace ?? null);
-    renderWorkspacePreview(document.getElementById('mainPage'), project.workspace ?? null);
+    renderWorkspacePreview(document.getElementById('mainPage'), project.workspace ?? null, getWorkspaceTemplateCache());
     const prompt = createPortalGenerationPrompt(project.portalSummary);
     await callAI(prompt);
   }
@@ -505,6 +538,9 @@ export function setupChatInterface(deps: ChatDeps) {
         renderMessage(msg.role === 'assistant' ? 'ai' : msg.role, displayContent);
       }
       showConversationChatView();
+      const chatPanel = document.getElementById('chatPanel');
+      chatPanel?.classList.remove('landing-mode');
+      chatPanel?.classList.remove('is-full-landing');
       setActiveConversationId(detail.id);
       pendingImages.length = 0;
       renderImagePreviewBar();
@@ -1198,6 +1234,7 @@ export function setupChatInterface(deps: ChatDeps) {
               directionDescription: '',
             }] : null;
             await saveCurrentColorsToProject();
+            await refreshNeedsDrivenWorkspacePreview();
             syncColorEditorFromTheme();
             if (pipelineData?.imageUrl) {
               const previewHtml =

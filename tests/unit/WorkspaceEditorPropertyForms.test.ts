@@ -6,23 +6,22 @@ import { readAllCSS } from '../helpers/read-css';
 const projectRoot = process.cwd();
 
 describe('workspace editor property forms', () => {
-  test('properties drawer renders editable global layout controls', () => {
-    const source = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
+  test('properties drawer renders workspace planning content', () => {
+    const source = fs.readFileSync(path.join(projectRoot, 'web/src/components/workspace-configuration.ts'), 'utf8');
 
-    expect(source).toContain('workspace-setting-columns');
-    expect(source).toContain('workspace-setting-gapX');
-    expect(source).toContain('workspace-setting-gapY');
-    expect(source).toContain('workspace-setting-paddingX');
-    expect(source).toContain('workspace-setting-paddingY');
-    expect(source).toContain('updateWorkspaceSettings');
+    expect(source).toContain('工作区规划');
+    expect(source).toContain('门户编辑会自动保存');
+    expect(source).toContain('getWorkspaceSummary');
   });
 
   test('single card properties expose a basic editable title field and size summary', () => {
-    const source = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
+    const source = fs.readFileSync(path.join(projectRoot, 'web/src/components/card-content-configuration.ts'), 'utf8');
+
+    const runtime = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
 
     expect(source).toContain('workspace-card-title-input');
-    expect(source).toContain('updateWorkspaceCardInstanceProps');
-    expect(source).toContain('instanceProps');
+    expect(runtime).toContain('updateWorkspaceCardInstanceProps');
+    expect(runtime).toContain('instanceProps');
     expect(source).toContain('当前尺寸');
   });
 

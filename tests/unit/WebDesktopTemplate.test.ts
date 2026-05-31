@@ -35,7 +35,7 @@ describe('web desktop theme image mapping', () => {
 });
 
 describe('web desktop template structure', () => {
-  test('desktop html includes themed hero and sidebar visual anchors', () => {
+  test('desktop html keeps themed shell anchors without static workspace cards', () => {
     const desktopHtml = fs.readFileSync(
       path.join(projectRoot, 'web/src/templates/desktop.html'),
       'utf8',
@@ -43,9 +43,9 @@ describe('web desktop template structure', () => {
 
     expect(desktopHtml).toContain('sidebar-theme-surface');
     expect(desktopHtml).toContain('sidebar-theme-base');
-    expect(desktopHtml).toContain('featured-story-card');
-    expect(desktopHtml).toContain('featured-story-media');
-    expect(desktopHtml).toContain('featured-story-list');
+    expect(desktopHtml).toContain('class="desktop-grid"');
+    expect(desktopHtml).not.toContain('featured-story-card');
+    expect(desktopHtml).not.toContain('widget-card');
   });
 
   test('theme variable sheet declares desktop-specific image variables', () => {

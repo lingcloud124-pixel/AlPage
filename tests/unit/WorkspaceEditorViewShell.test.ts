@@ -29,15 +29,16 @@ describe('workspace editor view shell', () => {
     expect(css).toContain('.workspace-editor-card-content');
   });
 
-  test('runtime renders the four starter cards into a static editor canvas', () => {
-    const source = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
+  test('runtime renders the editor canvas and default project seeds include starter cards', () => {
+    const runtime = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
+    const projectManager = fs.readFileSync(path.join(projectRoot, 'web/src/project-manager.ts'), 'utf8');
 
-    expect(source).toContain('export function renderWorkspaceEditorShell');
-    expect(source).toContain('workspaceCardCanvas');
-    expect(source).toContain('message-todo');
-    expect(source).toContain('news-carousel');
-    expect(source).toContain('my-schedule');
-    expect(source).toContain('quick-access');
+    expect(runtime).toContain('export function renderWorkspaceEditorShell');
+    expect(runtime).toContain('workspaceCardCanvas');
+    expect(projectManager).toContain('message-todo');
+    expect(projectManager).toContain('news-carousel');
+    expect(projectManager).toContain('my-schedule');
+    expect(projectManager).toContain('quick-access');
   });
 
   test('main boot wires workspace design mode toggle and shell rendering', () => {

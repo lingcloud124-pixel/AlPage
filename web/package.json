@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "file-saver": "^2.0.5",
-    "gridstack": "^12.3.3",
     "jszip": "^3.10.1",
     "marked": "^18.0.0",
     "playwright": "^1.52.0"

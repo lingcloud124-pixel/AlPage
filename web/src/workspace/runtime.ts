@@ -3,8 +3,10 @@ import { getCurrentProjectId, loadProject, saveProject } from '../project-manage
 import { syncPortalPlanFromWorkspace } from '../portal-plan';
 import { persistWorkspaceToLocal, syncWorkspaceToServer } from './store';
 import { escapeHtml, getWorkspaceCardTitle, renderWorkspaceCardShell } from './card-renderer';
-import { destroyWorkspaceGrid, mountWorkspaceGrid } from './gridstack-adapter';
+import { destroyWorkspaceGrid, mountWorkspaceGrid } from './interact-adapter';
 import { renderWorkspacePreview } from './preview';
+import { renderWorkspacePlanningView } from '../components/workspace-configuration';
+import { renderCardContentConfiguration } from '../components/card-content-configuration';
 
 import type { WorkspaceConfig } from '../types';
 import type { CardTemplateListItem } from '../api/card-templates';
@@ -44,7 +46,7 @@ function setWorkspaceTemplateCache(items: CardTemplateListItem[]): void {
   );
 }
 
-async function ensureWorkspaceTemplateCache(force = false): Promise<void> {
+export async function ensureWorkspaceTemplateCache(force = false): Promise<void> {
   if (!force && Object.keys(workspaceTemplateCache).length > 0) return;
   if (workspaceTemplateLoadPromise) {
     await workspaceTemplateLoadPromise;
@@ -184,8 +186,12 @@ function normalizeWorkspaceLayout(workspace: WorkspaceConfig, items: WorkspaceCo
   return normalizedItems;
 }
 
+export function getWorkspaceTemplateCache(): Record<string, CardTemplateListItem> {
+  return workspaceTemplateCache;
+}
+
 function refreshWorkspacePreview(): void {
-  renderWorkspacePreview(document.getElementById('mainPage'), currentWorkspace);
+  renderWorkspacePreview(document.getElementById('mainPage'), currentWorkspace, workspaceTemplateCache);
   requestAnimationFrame(() => (window as any).resizePreview?.());
 }
 
@@ -262,22 +268,6 @@ async function deleteWorkspaceCard(itemId: string): Promise<void> {
   await commitWorkspaceMutation(nextWorkspace);
 }
 
-async function updateWorkspaceSettings(patch: Partial<WorkspaceConfig['settings']>): Promise<void> {
-  if (!currentWorkspace) return;
-  const nextWorkspace: WorkspaceConfig = {
-    ...currentWorkspace,
-    settings: {
-      ...currentWorkspace.settings,
-      ...patch,
-    },
-    meta: {
-      ...currentWorkspace.meta,
-      updatedAt: Date.now(),
-    },
-  };
-  await commitWorkspaceMutation(nextWorkspace);
-}
-
 async function updateWorkspaceCardInstanceProps(itemId: string, patch: Record<string, unknown>): Promise<void> {
   if (!currentWorkspace) return;
   const nextWorkspace: WorkspaceConfig = {
@@ -304,6 +294,7 @@ async function updateWorkspaceCardInstanceProps(itemId: string, patch: Record<st
 function applyCardGridStyles(workspace: WorkspaceConfig): void {
   const canvas = document.getElementById('workspaceCardCanvas') as HTMLElement | null;
   if (!canvas) return;
+
   canvas.style.setProperty('--workspace-columns', String(workspace.settings.columns || 4));
   canvas.style.setProperty('--workspace-row-height', `${workspace.settings.rowHeight || 24}px`);
   canvas.style.setProperty('--workspace-gap-x', `${workspace.settings.gapX || 16}px`);
@@ -330,33 +321,23 @@ export function renderWorkspaceEditorShell(workspace: WorkspaceConfig | null): v
 
   if (!workspace || !Array.isArray(workspace.items) || workspace.items.length === 0) {
     destroyWorkspaceGrid();
-    canvas.classList.remove('grid-stack');
     canvas.setAttribute('data-empty', 'true');
     canvas.innerHTML = '<div class="workspace-editor-empty">暂无工作区卡片，请先从卡片库添加。</div>';
     return;
   }
 
   applyCardGridStyles(workspace);
-  canvas.classList.add('grid-stack');
   canvas.removeAttribute('data-empty');
   canvas.innerHTML = workspace.items.map((item) => {
+    const style = `grid-column: ${item.x + 1} / span ${item.w}; grid-row: ${item.y + 1} / span ${item.h};`;
     return renderWorkspaceCardShell({
       item,
       context: { mode: 'editor', templateCache: workspaceTemplateCache },
-      extraClassName: 'grid-stack-item',
-      attributes: {
-        'gs-id': item.id,
-        'gs-x': item.x,
-        'gs-y': item.y,
-        'gs-w': item.w,
-        'gs-h': item.h,
-        'gs-min-w': item.minW ?? 1,
-        'gs-min-h': item.minH ?? 1,
-      },
+      style,
     });
-  }).join('').replace(/(<div class="workspace-editor-card-content")/g, '<div class="grid-stack-item-content">$1').replace(/(<\/article>)/g, '</div>$1');
+  }).join('');
   bindWorkspaceCardSelection();
-  mountWorkspaceGrid({
+  void mountWorkspaceGrid({
     canvas,
     workspace,
     onLayoutChange: (items) => {
@@ -372,7 +353,7 @@ export function renderWorkspaceEditorShell(workspace: WorkspaceConfig | null): v
     },
   });
   if (isWorkspacePropertiesDrawerOpen) {
-    renderWorkspacePropertyPanel();
+    renderConfigPanelContent();
   }
 }
 
@@ -384,6 +365,17 @@ function bindWorkspaceCardSelection(): void {
       if (itemId) selectedWorkspaceCardId = itemId;
       cards.forEach((candidate) => candidate.classList.toggle('is-selected', candidate === card));
       openWorkspacePropertiesDrawer('card');
+      const selectedItem = itemId ? currentWorkspace?.items.find((candidate) => candidate.id === itemId) : null;
+      if (selectedItem) {
+        window.dispatchEvent(new CustomEvent('workspace-card:selected', {
+          detail: {
+            id: selectedItem.id,
+            title: getWorkspaceCardTitle(selectedItem, workspaceTemplateCache),
+            templateId: selectedItem.templateId,
+            size: `${selectedItem.w} x ${selectedItem.h}`,
+          },
+        }));
+      }
     });
     const deleteButton = card.querySelector('[data-action="delete-card"]');
     deleteButton?.addEventListener('click', (event) => {
@@ -446,123 +438,84 @@ function closeWorkspaceCardLibrary(): void {
   modal?.classList.remove('active');
 }
 
-function setWorkspacePropertiesPanelMode(mode: WorkspacePropertiesPanelMode): void {
-  workspacePropertiesPanelMode = mode;
-  const drawerTitle = document.querySelector('#workspacePropertiesDrawer .drawer-header h3') as HTMLElement | null;
-  if (drawerTitle) drawerTitle.textContent = mode === 'card' ? '卡片配置' : '属性配置';
+type ConfigPanelTab = 'layout' | 'card';
+let activeConfigTab: ConfigPanelTab = 'layout';
+
+function setActiveConfigTab(tab: ConfigPanelTab): void {
+  activeConfigTab = tab;
+  const tabs = document.querySelectorAll('#configPanelTabs .config-panel-tab');
+  tabs.forEach((el) => {
+    el.classList.toggle('is-active', (el as HTMLElement).dataset.tab === tab);
+  });
+  renderConfigPanelContent();
 }
 
-export function renderWorkspacePropertyPanel(mode: WorkspacePropertiesPanelMode = workspacePropertiesPanelMode): void {
-  setWorkspacePropertiesPanelMode(mode);
-  const container = document.getElementById('workspacePropertiesContent');
-  if (!container) return;
+function setupConfigPanelTabs(): void {
+  const tabContainer = document.getElementById('configPanelTabs');
+  if (!tabContainer) return;
+  tabContainer.querySelectorAll('.config-panel-tab').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tab = (btn as HTMLElement).dataset.tab as ConfigPanelTab;
+      if (tab) setActiveConfigTab(tab);
+    });
+  });
+}
 
-  if (mode === 'global' || !selectedWorkspaceCardId || !currentWorkspace) {
-    const settings = currentWorkspace?.settings;
-    container.innerHTML = `
-      <section class="workspace-properties-section">
-        <h4>全局布局配置</h4>
-        <div class="workspace-properties-form workspace-properties-grid">
-          <label class="workspace-properties-field">
-            <span>列数</span>
-            <input id="workspace-setting-columns" class="workspace-properties-input" type="number" min="1" max="6" value="${settings?.columns ?? 4}">
-          </label>
-          <label class="workspace-properties-field">
-            <span>横向间距</span>
-            <input id="workspace-setting-gapX" class="workspace-properties-input" type="number" min="0" max="48" value="${settings?.gapX ?? 16}">
-          </label>
-          <label class="workspace-properties-field">
-            <span>纵向间距</span>
-            <input id="workspace-setting-gapY" class="workspace-properties-input" type="number" min="0" max="48" value="${settings?.gapY ?? 16}">
-          </label>
-          <label class="workspace-properties-field">
-            <span>左右边距</span>
-            <input id="workspace-setting-paddingX" class="workspace-properties-input" type="number" min="0" max="80" value="${settings?.paddingX ?? 20}">
-          </label>
-          <label class="workspace-properties-field">
-            <span>上下边距</span>
-            <input id="workspace-setting-paddingY" class="workspace-properties-input" type="number" min="0" max="80" value="${settings?.paddingY ?? 20}">
-          </label>
-        </div>
-      </section>
-    `;
-    const bindSetting = (id: string, key: keyof WorkspaceConfig['settings']) => {
-      const input = document.getElementById(id) as HTMLInputElement | null;
-      input?.addEventListener('change', () => {
-        const value = Math.max(0, Number(input.value || 0));
-        void updateWorkspaceSettings({ [key]: value } as Partial<WorkspaceConfig['settings']>);
-      });
-    };
-    bindSetting('workspace-setting-columns', 'columns');
-    bindSetting('workspace-setting-gapX', 'gapX');
-    bindSetting('workspace-setting-gapY', 'gapY');
-    bindSetting('workspace-setting-paddingX', 'paddingX');
-    bindSetting('workspace-setting-paddingY', 'paddingY');
-    return;
-  }
-
-  const item = currentWorkspace.items.find((candidate) => candidate.id === selectedWorkspaceCardId) ?? null;
-  const templateProps = item ? getWorkspaceCardTemplateProps(item as Record<string, any>) : {};
-  const title = item ? getWorkspaceCardTitle(item, workspaceTemplateCache) : '未选中卡片';
-  const supportsItemCount = item ? ['message-todo', 'news-carousel', 'my-schedule', 'quick-access'].includes(item.templateId) : false;
-  const supportsHeadline = item?.templateId === 'news-carousel';
-  container.innerHTML = `
-    <section class="workspace-properties-section">
-      <h4>卡片属性</h4>
-      <div class="workspace-properties-form">
-        <label class="workspace-properties-field">
-          <span>卡片标题</span>
-          <input id="workspace-card-title-input" class="workspace-properties-input" type="text" value="${escapeHtml(title)}">
-        </label>
-        ${supportsHeadline ? `
-          <label class="workspace-properties-field">
-            <span>主标题</span>
-            <input id="workspace-card-headline-input" class="workspace-properties-input workspace-properties-input-wide" type="text" value="${escapeHtml(templateProps.headline ?? '')}">
-          </label>
-          <label class="workspace-properties-field">
-            <span>摘要</span>
-            <input id="workspace-card-summary-input" class="workspace-properties-input workspace-properties-input-wide" type="text" value="${escapeHtml(templateProps.summary ?? '')}">
-          </label>
-        ` : ''}
-        ${supportsItemCount ? `
-          <label class="workspace-properties-field">
-            <span>展示条数</span>
-            <input id="workspace-card-item-count-input" class="workspace-properties-input" type="number" min="1" max="12" value="${escapeHtml(templateProps.itemCount ?? 4)}">
-          </label>
-        ` : ''}
-        <div class="workspace-properties-field"><span>模板类型</span><strong>${item?.templateId ?? '-'}</strong></div>
-        <div class="workspace-properties-field"><span>当前尺寸</span><strong>${item?.w ?? '-'} x ${item?.h ?? '-'}</strong></div>
-      </div>
-    </section>
-  `;
+function bindCardContentFormEvents(item: WorkspaceConfig['items'][number]): void {
   const titleInput = document.getElementById('workspace-card-title-input') as HTMLInputElement | null;
   titleInput?.addEventListener('change', () => {
-    if (item?.id) {
-      void updateWorkspaceCardInstanceProps(item.id, { title: titleInput.value.trim() });
-    }
+    void updateWorkspaceCardInstanceProps(item.id, { title: titleInput.value.trim() });
   });
   const itemCountInput = document.getElementById('workspace-card-item-count-input') as HTMLInputElement | null;
   itemCountInput?.addEventListener('change', () => {
-    if (item?.id) {
-      void updateWorkspaceCardInstanceProps(item.id, { itemCount: Math.max(1, Number(itemCountInput.value || 1)) });
-    }
+    void updateWorkspaceCardInstanceProps(item.id, { itemCount: Math.max(1, Number(itemCountInput.value || 1)) });
   });
   const headlineInput = document.getElementById('workspace-card-headline-input') as HTMLInputElement | null;
   headlineInput?.addEventListener('change', () => {
-    if (item?.id) {
-      void updateWorkspaceCardInstanceProps(item.id, { headline: headlineInput.value.trim() });
-    }
+    void updateWorkspaceCardInstanceProps(item.id, { headline: headlineInput.value.trim() });
   });
   const summaryInput = document.getElementById('workspace-card-summary-input') as HTMLInputElement | null;
   summaryInput?.addEventListener('change', () => {
-    if (item?.id) {
-      void updateWorkspaceCardInstanceProps(item.id, { summary: summaryInput.value.trim() });
-    }
+    void updateWorkspaceCardInstanceProps(item.id, { summary: summaryInput.value.trim() });
+  });
+  const badgeInput = document.getElementById('workspace-card-badge-input') as HTMLInputElement | null;
+  badgeInput?.addEventListener('change', () => {
+    void updateWorkspaceCardInstanceProps(item.id, { badge: badgeInput.value.trim() });
   });
 }
 
-export function openWorkspacePropertiesDrawer(mode: WorkspacePropertiesPanelMode = 'global'): void {
-  setWorkspacePropertiesPanelMode(mode);
+function renderConfigPanelContent(): void {
+  if (activeConfigTab === 'card') {
+    if (!selectedWorkspaceCardId || !currentWorkspace) {
+      renderCardContentConfiguration({ id: '', title: '请先在工作区设计中点击一张卡片' });
+      return;
+    }
+    const item = currentWorkspace.items.find((candidate) => candidate.id === selectedWorkspaceCardId);
+    if (!item) {
+      renderCardContentConfiguration({ id: selectedWorkspaceCardId, title: '未找到选中卡片' });
+      return;
+    }
+    renderCardContentConfiguration({
+      selection: {
+        id: item.id,
+        title: getWorkspaceCardTitle(item, workspaceTemplateCache),
+        templateId: item.templateId,
+        size: `${item.w} x ${item.h}`,
+      },
+      item,
+      templateProps: getWorkspaceCardTemplateProps(item as Record<string, any>),
+    });
+    bindCardContentFormEvents(item);
+    return;
+  }
+  void renderWorkspacePlanningView();
+}
+
+export function renderWorkspacePropertyPanel(_mode?: WorkspacePropertiesPanelMode): void {
+  renderConfigPanelContent();
+}
+
+export function openWorkspacePropertiesDrawer(mode?: WorkspacePropertiesPanelMode): void {
   const drawer = document.getElementById('workspacePropertiesDrawer');
   const appContainer = document.querySelector('.app-container');
   const sidePanel = document.getElementById('sidePanel');
@@ -573,8 +526,9 @@ export function openWorkspacePropertiesDrawer(mode: WorkspacePropertiesPanelMode
   drawer.classList.add('open');
   drawer.setAttribute('aria-hidden', 'false');
   appContainer.classList.add('panel-open');
-  if (panelToggleBtn) panelToggleBtn.textContent = '面板';
-  renderWorkspacePropertyPanel(mode);
+  if (panelToggleBtn) panelToggleBtn.textContent = '主题配置';
+  if (mode === 'card') setActiveConfigTab('card');
+  else setActiveConfigTab('layout');
 }
 
 function closeWorkspacePropertiesDrawer(): void {
@@ -586,7 +540,7 @@ function closeWorkspacePropertiesDrawer(): void {
   drawer.classList.remove('open');
   drawer.setAttribute('aria-hidden', 'true');
   appContainer?.classList.remove('panel-open');
-  if (panelToggleBtn) panelToggleBtn.textContent = '面板';
+  if (panelToggleBtn) panelToggleBtn.textContent = '主题配置';
 }
 
 export function setupWorkspaceEditorShell(): void {
@@ -610,12 +564,27 @@ export function setupWorkspaceEditorShell(): void {
     designModeBtn.classList.toggle('is-active', isDesign);
     previewContent.hidden = isDesign;
     editorView.hidden = !isDesign;
+    if (!isDesign) {
+      refreshWorkspacePreview();
+    }
   };
 
-  previewModeBtn.addEventListener('click', () => setMode('preview'));
-  designModeBtn.addEventListener('click', () => setMode('design'));
+  previewModeBtn.addEventListener('click', () => {
+    setMode('preview');
+  });
+  designModeBtn.addEventListener('click', () => {
+    setMode('design');
+    // canvas 从 hidden 变为可见后需要重新渲染以获得正确尺寸
+    if (currentWorkspace) {
+      requestAnimationFrame(() => requestAnimationFrame(() => renderWorkspaceEditorShell(currentWorkspace)));
+    }
+  });
   addBtn?.addEventListener('click', () => { void openWorkspaceCardLibrary(); });
-  propertiesBtn?.addEventListener('click', () => openWorkspacePropertiesDrawer('global'));
+  propertiesBtn?.addEventListener('click', () => {
+    setActiveConfigTab('layout');
+    openWorkspacePropertiesDrawer();
+  });
+  setupConfigPanelTabs();
   libraryCloseBtn?.addEventListener('click', () => closeWorkspaceCardLibrary());
   propertiesCloseBtn?.addEventListener('click', () => closeWorkspacePropertiesDrawer());
   libraryModal?.addEventListener('click', (event) => {

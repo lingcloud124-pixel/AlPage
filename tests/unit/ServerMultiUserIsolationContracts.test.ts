@@ -33,4 +33,13 @@ describe('server multi-user isolation contracts', () => {
     expect(source).toContain("app.use('/api/theme/conversations', conversationsRouter);");
     expect(source).toContain("app.use('/api/theme', exportJobsRouter);");
   });
+
+  test('workspace and portal library routes bind authenticated users before route handlers', () => {
+    const source = fs.readFileSync(path.join(projectRoot, 'server/src/index.ts'), 'utf8');
+
+    expect(source).toContain('function bindAuthenticatedUser');
+    expect(source).toContain("app.use('/api/theme/projects', authMiddleware, bindAuthenticatedUser, workspaceRouter);");
+    expect(source).toContain("app.use('/api/industry-cases', authMiddleware, bindAuthenticatedUser, industryCasesRouter);");
+    expect(source).toContain("app.use('/api/saved-portals', authMiddleware, bindAuthenticatedUser, savedPortalsRouter);");
+  });
 });

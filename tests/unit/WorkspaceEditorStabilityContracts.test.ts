@@ -14,9 +14,9 @@ describe('workspace editor stability contracts', () => {
     expect(source).toContain('const slot = findWorkspaceSlot');
   });
 
-  test('GridStack adapter delegates layout to gridstack.js and commitWorkspaceMutation normalizes items', () => {
+  test('interact adapter uses pointer events and commitWorkspaceMutation normalizes items', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
-    const adapter = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/gridstack-adapter.ts'), 'utf8');
+    const adapter = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/interact-adapter.ts'), 'utf8');
 
     expect(source).toContain('isWithinWorkspaceBounds');
     expect(source).toContain('if (hasWorkspaceCollision(');
@@ -24,12 +24,14 @@ describe('workspace editor stability contracts', () => {
     expect(source).toContain('normalizeWorkspaceLayout');
 
     expect(adapter).toContain('onLayoutChange');
-    expect(adapter).toContain('GridStack.init');
+    expect(adapter).toContain('pointerdown');
+    expect(adapter).toContain('pointermove');
+    expect(adapter).toContain('pointerup');
   });
 
   test('styles expose drag preview state for rejected placement feedback', () => {
     const css = readAllCSS();
 
-    expect(css).toContain('.workspace-editor-card.is-drag-invalid');
+    expect(css).toContain('.workspace-editor-card.is-dragging');
   });
 });

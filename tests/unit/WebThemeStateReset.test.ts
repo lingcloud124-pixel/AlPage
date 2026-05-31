@@ -10,7 +10,7 @@ describe('web theme state reset', () => {
 
     expect(source).toContain('resetThemeTargetStyles();');
     expect(source).toContain("applyTemplateSpecificThemeVars('light-ui');");
-    expect(source).toContain('syncColorEditorFromTheme();');
+    expect(source).toContain('syncThemeConfigurationFromTheme();');
   });
 
   test('restoring a project reapplies template vars using the project template type', () => {

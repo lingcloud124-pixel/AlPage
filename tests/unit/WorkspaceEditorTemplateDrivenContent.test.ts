@@ -25,7 +25,7 @@ describe('workspace editor template driven content', () => {
   });
 
   test('property drawer exposes template driven content fields for card level editing', () => {
-    const source = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
+    const source = fs.readFileSync(path.join(projectRoot, 'web/src/components/card-content-configuration.ts'), 'utf8');
 
     expect(source).toContain('workspace-card-item-count-input');
     expect(source).toContain('workspace-card-headline-input');

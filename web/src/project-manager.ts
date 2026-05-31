@@ -100,7 +100,7 @@ function createDefaultWorkspaceConfig(portalDraft?: PortalDraft | null): Workspa
   const now = Date.now();
   return {
     settings: DEFAULT_WORKSPACE_SETTINGS,
-    items: DEFAULT_WORKSPACE_ITEMS.map((item) => ({ ...item })),
+    items: [],
     meta: {
       initializedAt: now,
       updatedAt: now,

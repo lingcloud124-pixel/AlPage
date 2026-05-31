@@ -1,4 +1,4 @@
-import { initializeColorEditor, syncColorEditorFromTheme } from './components/color-editor';
+import { initializeThemeConfiguration, syncThemeConfigurationFromTheme } from './components/color-editor';
 import {
   setCurrentProjectId,
   restoreFromSnapshot,
@@ -15,7 +15,7 @@ import {
   setupTabSwitching,
   setupPreviewPanel,
   setupBackToHome,
-  setupCollapsibleColorPanel,
+  setupConfigurationPanel,
   setupPortalObjectEditing,
   setupResultActions,
 } from './ui-setup';
@@ -26,6 +26,7 @@ import { registerPreviewResize, resizePreviewPages } from './preview/resize-prev
 import { ensureProjectWorkspaceReady } from './workspace/store';
 import { renderWorkspaceEditorShell, setupWorkspaceEditorShell } from './workspace/runtime';
 import { renderWorkspacePreview } from './workspace/preview';
+import { ensureWorkspaceTemplateCache, getWorkspaceTemplateCache } from './workspace/runtime';
 
 declare global {
   interface Window {
@@ -52,7 +53,7 @@ export function showWorkspaceLandingState(): void {
   setCurrentProjectId(null);
   resetThemeTargetStyles();
   applyTemplateSpecificThemeVars('light-ui');
-  syncColorEditorFromTheme();
+  syncThemeConfigurationFromTheme();
   collapsePreview();
   showDefaultChatView();
   setChatPanelWidth(null);
@@ -87,7 +88,7 @@ async function initializeFeatureModules() {
     syncLayout: syncWorkbenchLayoutForActiveTab,
     setChatPanelWidth,
   });
-  setupCollapsibleColorPanel();
+  setupConfigurationPanel();
   initPortalConfirmForm();
   setupQualityCheck();
   setupPreviewPanel();
@@ -109,8 +110,9 @@ async function initializeFeatureModules() {
       restoreFromSnapshot(snapshot);
       const project = snapshot as any;
       project.workspace = await ensureProjectWorkspaceReady(project.id, project.workspace);
+      await ensureWorkspaceTemplateCache();
       renderWorkspaceEditorShell(project.workspace ?? null);
-      renderWorkspacePreview(document.getElementById('mainPage'), project.workspace ?? null);
+      renderWorkspacePreview(document.getElementById('mainPage'), project.workspace ?? null, getWorkspaceTemplateCache());
       if (project.colors) {
         for (const [k, v] of Object.entries(project.colors)) {
           setThemeVar(`--${k}`, v as string);
@@ -124,7 +126,7 @@ async function initializeFeatureModules() {
         applyThemeImageAssignments('desktop', project.headerBgImageUrl);
       }
       applyTemplateSpecificThemeVars(project.templateType);
-      syncColorEditorFromTheme();
+      syncThemeConfigurationFromTheme();
       expandPreview();
       setChatPanelWidth(378);
     })();
@@ -146,7 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     runHealthCheck();
     applyUiTheme('light');
     hydrateHeaderSelectOptions();
-    initializeColorEditor();
+    initializeThemeConfiguration();
     registerPreviewResize();
     await initializeFeatureModules();
 

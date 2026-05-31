@@ -44,6 +44,8 @@ const [
   { usageLogsRouter },
   { cardTemplatesRouter },
   { workspaceRouter },
+  { industryCasesRouter },
+  { savedPortalsRouter },
 ] = await Promise.all([
   import('express'),
   import('./db.js'),
@@ -65,6 +67,8 @@ const [
   import('./routes/usage-logs.js'),
   import('./routes/card-templates.js'),
   import('./routes/workspace.js'),
+  import('./routes/industry-cases.js'),
+  import('./routes/saved-portals.js'),
 ]);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -94,6 +98,14 @@ function validateStartupConfig(): void {
   requireEnv('EKP_BASE_URL');
   requireEnv('EKP_SSO_USER');
   requireEnv('EKP_SSO_PASS');
+}
+
+function bindAuthenticatedUser(req: any, _res: any, next: any): void {
+  const loginName = req.loginName as string | undefined;
+  if (loginName) {
+    req.userId = ensureUserByLoginName(loginName);
+  }
+  next();
 }
 
 app.use(dynamicCors);
@@ -130,15 +142,11 @@ app.use('/api/admin-password', adminAuthMiddleware, adminPasswordRouter);
 app.use('/api/admin/usage-logs', adminAuthMiddleware, usageLogsRouter);
 app.use('/api/admin-auth', adminAuthRouter);
 app.use('/api/card-templates', authMiddleware, cardTemplatesRouter);
-app.use('/api/theme/projects', authMiddleware, workspaceRouter);
+app.use('/api/theme/projects', authMiddleware, bindAuthenticatedUser, workspaceRouter);
+app.use('/api/industry-cases', authMiddleware, bindAuthenticatedUser, industryCasesRouter);
+app.use('/api/saved-portals', authMiddleware, bindAuthenticatedUser, savedPortalsRouter);
 app.use('/api/theme', authMiddleware);
-app.use('/api/theme', (req: any, _res: any, next: any) => {
-  const loginName = req.loginName as string | undefined;
-  if (loginName) {
-    req.userId = ensureUserByLoginName(loginName);
-  }
-  next();
-});
+app.use('/api/theme', bindAuthenticatedUser);
 app.use('/api/theme', rateLimitMiddleware);
 app.use('/api/theme', creditsMiddleware);
 app.use('/api/theme', exportJobsRouter);

@@ -388,6 +388,41 @@ export async function initDb(): Promise<void> {
   db.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_started ON usage_logs(started_at DESC)');
   db.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_user_started ON usage_logs(user_id, started_at DESC)');
 
+  // 行业案例库
+  db.run(`
+    CREATE TABLE IF NOT EXISTS industry_cases (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      customer_name TEXT NOT NULL DEFAULT '',
+      industry TEXT NOT NULL DEFAULT '',
+      keywords TEXT NOT NULL DEFAULT '[]',
+      portal_plan TEXT NOT NULL DEFAULT '{}',
+      project_id TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_industry_cases_industry ON industry_cases(industry)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_industry_cases_user ON industry_cases(user_id, created_at DESC)');
+
+  // 门户方案保存
+  db.run(`
+    CREATE TABLE IF NOT EXISTS saved_portals (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      project_id TEXT NOT NULL DEFAULT '',
+      name TEXT NOT NULL DEFAULT '未命名门户',
+      template_type TEXT NOT NULL DEFAULT 'light-ui',
+      colors TEXT NOT NULL DEFAULT '{}',
+      workspace TEXT NOT NULL DEFAULT '{}',
+      portal_plan TEXT NOT NULL DEFAULT '{}',
+      status TEXT NOT NULL DEFAULT 'draft',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_saved_portals_user ON saved_portals(user_id, updated_at DESC)');
+
   // Save to disk
   flushDb();
   startBackupScheduler();

@@ -110,7 +110,7 @@ describe('workspace card renderer', () => {
     expect(html).toContain('workspace-editor-card-resize-handle');
   });
 
-  test('applies extraClassName to the article class', () => {
+  test('applies card class to article in editor mode without grid-stack wrapper', () => {
     const html = renderWorkspaceCardShell({
       item: { ...baseItem, templateId: 'message-todo' },
       context: {
@@ -124,16 +124,16 @@ describe('workspace card renderer', () => {
           },
         },
       },
-      extraClassName: 'custom-shell-class',
     });
 
-    expect(html).toContain('class="workspace-editor-card workspace-card-list custom-shell-class"');
+    expect(html).not.toContain('grid-stack-item');
+    expect(html).toContain('class="workspace-layout-card workspace-editor-card workspace-card-list"');
   });
 
-  test('accepts explicit shell style and attributes without string injection', () => {
+  test('applies style attribute in preview mode', () => {
     const html = renderWorkspaceCardShell({
       item: baseItem,
-      context: { mode: 'editor', templateCache: {} },
+      context: { mode: 'preview', templateCache: {} },
       style: 'grid-column: 1 / span 2; grid-row: 1 / span 12;',
       attributes: {
         'data-width': 2,
@@ -142,8 +142,6 @@ describe('workspace card renderer', () => {
     });
 
     expect(html).toContain('style="grid-column: 1 / span 2; grid-row: 1 / span 12;"');
-    expect(html).toContain('data-width="2"');
-    expect(html).toContain('data-height="12"');
   });
 
   test('escapes card library preview image URL for CSS string and HTML style contexts', () => {

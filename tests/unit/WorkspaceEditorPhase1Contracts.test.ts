@@ -53,7 +53,7 @@ describe('workspace editor phase 1 contracts', () => {
     expect(source).toContain("import('./routes/card-templates.js')");
     expect(source).toContain("import('./routes/workspace.js')");
     expect(source).toContain("app.use('/api/card-templates', authMiddleware, cardTemplatesRouter);");
-    expect(source).toContain("app.use('/api/theme/projects', authMiddleware, workspaceRouter);");
+    expect(source).toContain("app.use('/api/theme/projects', authMiddleware, bindAuthenticatedUser, workspaceRouter);");
   });
 
   test('admin panel exposes a card library tab with template preview thumbnails', () => {

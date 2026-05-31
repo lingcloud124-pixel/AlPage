@@ -114,8 +114,12 @@ export function updateThemeColors(colors: Record<string, string>): void {
   }
 }
 
+function getThemeEditorContainer(): HTMLElement | null {
+  return document.getElementById('themeEditor') ?? document.getElementById('colorEditor');
+}
+
 export function syncColorEditorFromTheme(): void {
-  const container = document.getElementById('colorEditor');
+  const container = getThemeEditorContainer();
   if (!container) return;
 
   for (const setting of colorSettings) {
@@ -142,7 +146,7 @@ export function getCurrentVariables(): Record<string, string> {
  * Initializes the color editor by generating all the necessary UI controls
  */
 export function initializeColorEditor(): void {
-  const container = document.getElementById('colorEditor');
+  const container = getThemeEditorContainer();
   if (!container) {
     console.error('Color editor container not found');
     return;
@@ -274,6 +278,13 @@ export function initializeColorEditor(): void {
   container.appendChild(deriveSection);
 
   console.log('Color editor initialized with', colorSettings.length, 'color controls');
+  syncColorEditorFromTheme();
+}
+export function initializeThemeConfiguration(): void {
+  initializeColorEditor();
+}
+
+export function syncThemeConfigurationFromTheme(): void {
   syncColorEditorFromTheme();
 }
 

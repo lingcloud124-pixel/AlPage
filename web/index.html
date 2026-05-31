@@ -118,7 +118,7 @@
 
                         <div class="messages-container messages-container--landing">
                                 <div class="landing-page-footer" aria-label="功能说明">
-                                对话引导收集客户信息 ｜ 摘要确认后生成门户 ｜ 支持工作区直接编辑 ｜ 保存门户与分享方案
+                                对话引导收集客户信息 ｜ 摘要确认后生成门户 ｜ 支持工作区直接编辑 ｜ 自动保存与分享方案
                             </div>
                         </div>
                     </div>
@@ -173,13 +173,11 @@
                             <button class="workspace-mode-btn is-active" id="workspacePreviewModeBtn" type="button">预览</button>
                             <button class="workspace-mode-btn" id="workspaceDesignModeBtn" type="button">工作区设计</button>
                         </div>
-                        <button class="topbar-action-btn" id="panelToggleBtn">颜色配置</button>
-                        <button class="topbar-action-btn" id="workspacePropertiesTopbarBtn" type="button">属性</button>
+                        <button class="topbar-action-btn" id="panelToggleBtn">主题配置</button>
+                        <button class="topbar-action-btn" id="workspacePropertiesTopbarBtn" type="button">工作区</button>
                         <div class="workspace-result-actions" id="workspaceResultActions">
                             <button class="topbar-action-btn" id="resultFullscreenBtn" type="button">全屏查看</button>
-                            <button class="topbar-action-btn" id="resultSaveBtn" type="button">保存门户</button>
                             <button class="topbar-action-btn" id="resultShareBtn" type="button">分享方案</button>
-                            <button class="topbar-action-btn" id="resultEditBtn" type="button">继续编辑</button>
                         </div>
                     </div>
                 </div>
@@ -205,13 +203,13 @@
         </div> <!-- end app-container -->
 
         <!-- 右侧滑出面板 -->
-        <div class="side-panel" id="sidePanel">
-            <div class="side-panel-header">
-                <h3>颜色配置</h3>
-                <button class="side-panel-close" id="sidePanelClose">&times;</button>
+        <div class="side-panel configuration-panel" id="sidePanel">
+            <div class="side-panel-header configuration-panel-header">
+                <h3 id="configurationPanelTitle">主题配置</h3>
+                <button class="side-panel-close" id="sidePanelClose" aria-label="关闭主题配置">&times;</button>
             </div>
-            <div class="side-panel-body" id="colorEditor"></div>
-            
+            <div class="side-panel-body configuration-panel-body" id="themeEditor"></div>
+
             <!-- 质检报告区域 -->
             <div class="qc-section" id="qcSection">
                 <h3 class="qc-title">质检报告</h3>
@@ -237,8 +235,11 @@
 
         <aside class="workspace-properties-drawer" id="workspacePropertiesDrawer" aria-hidden="true">
             <div class="drawer-header">
-                <h3>属性配置</h3>
+                <h3>工作区</h3>
                 <button class="drawer-close-btn" id="workspacePropertiesDrawerCloseBtn" type="button" aria-label="关闭">×</button>
+            </div>
+            <div class="config-panel-tabs" id="configPanelTabs">
+                <button class="config-panel-tab is-active" data-tab="layout" type="button">工作区规划</button>
             </div>
             <div class="workspace-properties-content" id="workspacePropertiesContent"></div>
         </aside>

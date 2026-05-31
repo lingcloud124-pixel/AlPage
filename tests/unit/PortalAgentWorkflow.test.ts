@@ -107,7 +107,7 @@ describe('portal agent workflow', () => {
     expect(confirmGenerator).toContain('applyPortalPlanToProject(project, portalPlan)');
     expect(confirmGenerator).toContain("portalPlan.status = 'generated'");
     expect(confirmGenerator).toContain('renderWorkspaceEditorShell(project.workspace ?? null)');
-    expect(confirmGenerator).toContain('renderWorkspacePreview(document.getElementById(\'mainPage\'), project.workspace ?? null)');
+    expect(confirmGenerator).toContain('renderWorkspacePreview(document.getElementById(\'mainPage\'), project.workspace ?? null, getWorkspaceTemplateCache())');
   });
 
   test('text confirmation in ready workflow triggers PortalPlan generation before generic AI', () => {

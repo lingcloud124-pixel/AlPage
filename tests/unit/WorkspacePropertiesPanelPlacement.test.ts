@@ -20,15 +20,12 @@ describe('workspace properties panel placement', () => {
     expect(editorToolbarActions).not.toContain('id="workspaceEditorPropertiesBtn"');
 
     expect(runtime).toContain("openWorkspacePropertiesDrawer('card')");
-    expect(runtime).toContain("openWorkspacePropertiesDrawer('global')");
-    expect(runtime).toContain("mode === 'card' ? '卡片配置' : '属性配置'");
-    expect(runtime).toContain("renderWorkspacePropertyPanel(mode)");
+    expect(runtime).toContain("setActiveConfigTab('card')");
+    expect(runtime).toContain('renderConfigPanelContent()');
     expect(runtime).toContain('workspacePropertiesTopbarBtn');
     expect(runtime).toContain("appContainer.classList.add('panel-open')");
     expect(runtime).toContain("sidePanel?.classList.remove('open')");
     expect(runtime).toContain("drawer.classList.remove('open')");
-    expect(runtime).toContain("panelToggleBtn.textContent = '面板'");
-    expect(runtime).not.toContain("panelToggleBtn.textContent = '收起面板'");
     expect(runtime).not.toContain('workspaceEditorPropertiesBtn');
     expect(uiSetup).toContain("document.getElementById('workspacePropertiesDrawer')");
     expect(uiSetup).toContain("propertiesDrawer?.classList.remove('open')");
@@ -36,20 +33,26 @@ describe('workspace properties panel placement', () => {
     expect(uiSetup).toContain("propertiesDrawer?.classList.remove('open')");
     expect(uiSetup).not.toContain("if (appContainer.classList.contains('panel-open')) return;");
     expect(uiSetup).toContain("if (sidePanel.classList.contains('open')) closePanel();");
-    expect(uiSetup).toContain("panelToggleBtn.textContent = '面板'");
-    expect(uiSetup).not.toContain("panelToggleBtn.textContent = '收起面板'");
 
-    expect(html).toContain('<h3>颜色配置</h3>');
-    expect(html).toContain('<h3>属性配置</h3>');
+    // 工作区规划面板，卡片内容由工作区卡片点击触发
+    expect(html).toContain('data-tab="layout"');
+    expect(html).not.toContain('data-tab="theme"');
+    expect(html).not.toContain('data-tab="card"');
+    expect(html).toContain('config-panel-tabs');
+    expect(runtime).toContain('renderWorkspacePlanningView');
+    expect(runtime).toContain('renderCardContentConfiguration');
+    expect(css).toContain('.config-panel-tab');
+    expect(css).toContain('.workspace-planning-list');
+
     const drawerBlock = css.match(/\.workspace-properties-drawer\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
     const drawerHeaderBlock = css.match(/\.workspace-properties-drawer \.drawer-header\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
-    const panelOpenBlock = css.match(/\.app-container\.panel-open \.workspace-properties-drawer\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
+    const drawerOpenBlock = css.match(/\.workspace-properties-drawer\.open\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
     expect(drawerBlock).toContain('position: fixed;');
     expect(drawerBlock).toContain('box-shadow: none;');
     expect(drawerHeaderBlock).toContain('height: 70px;');
     expect(drawerHeaderBlock).toContain('padding: 16px 20px;');
     expect(drawerHeaderBlock).toContain('justify-content: space-between;');
     expect(drawerHeaderBlock).toContain('align-items: center;');
-    expect(panelOpenBlock).toContain('transform: translateX(0);');
+    expect(drawerOpenBlock).toContain('transform: translateX(0);');
   });
 });

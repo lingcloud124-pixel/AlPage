@@ -18,6 +18,7 @@ describe('workspace preview synchronization contracts', () => {
     expect(preview).toContain('export function renderWorkspacePreview');
     expect(preview).toContain('WorkspaceConfig');
     expect(preview).toContain('portal-workspace-preview-host');
+    expect(preview).toContain('.desktop-grid');
     expect(preview).toContain('renderWorkspaceCardShell');
     expect(preview).toContain("mode: 'preview'");
 
@@ -38,5 +39,31 @@ describe('workspace preview synchronization contracts', () => {
     expect(runtime).toContain("document.getElementById('mainPage')");
     expect(runtime).toContain('renderWorkspacePreview');
     expect(runtime).toMatch(/commitWorkspaceMutation[\s\S]*?renderWorkspaceEditorShell\(currentWorkspace\);[\s\S]*?refreshWorkspacePreview\(\);/);
+  });
+
+  test('new projects do not seed unrelated default workspace cards', () => {
+    const projectManager = read('web/src/project-manager.ts');
+
+    expect(projectManager).toContain('function createDefaultWorkspaceConfig');
+    expect(projectManager).not.toContain('items: DEFAULT_WORKSPACE_ITEMS.map');
+    expect(projectManager).toMatch(/items:\s*\[\]/);
+  });
+
+  test('desktop template no longer carries static business cards in the workspace grid', () => {
+    const desktop = read('web/src/templates/desktop.html');
+    const grid = desktop.match(/<div class="desktop-grid">([\s\S]*?)<\/div>\s*<\/div>\s*<\/main>/)?.[1] ?? '';
+
+    expect(grid).not.toContain('widget-card');
+    expect(grid).not.toContain('采购合同');
+    expect(grid).not.toContain('企业新闻头条');
+    expect(grid).not.toContain('数字化项目周报');
+  });
+
+  test('empty preview suppresses static portal business chrome', () => {
+    const preview = read('web/src/workspace/preview.ts');
+
+    expect(preview).toContain('suppressStaticPortalChrome');
+    expect(preview).toMatch(/quickLinksBar\.style\.display\s*=\s*'none'/);
+    expect(preview).toContain('workspace-preview-empty');
   });
 });

@@ -24,6 +24,7 @@ designs/generated/
 assets/images/generated-*.png
 extracted/
 .omx/
+.claude/
 temp/
 tmp/
 tests/latest/

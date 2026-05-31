@@ -15,20 +15,23 @@ describe('workspace editor layout contracts', () => {
     expect(css).toContain('.workspace-editor-card-resize-handle');
   });
 
-  test('runtime positions cards via GridStack and exposes drag resize through the adapter', () => {
+  test('runtime positions cards via CSS grid and exposes drag resize through interact adapter', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
-    const adapter = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/gridstack-adapter.ts'), 'utf8');
+    const adapter = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/interact-adapter.ts'), 'utf8');
 
     expect(source).toContain('mountWorkspaceGrid');
-    expect(source).toContain('gs-x');
-    expect(source).toContain('gs-y');
-    expect(source).toContain('gs-w');
-    expect(source).toContain('gs-h');
+    expect(source).toContain('grid-column:');
+    expect(source).toContain('grid-row:');
+    expect(source).not.toContain('gs-x');
+    expect(source).not.toContain('gs-y');
+    expect(source).not.toContain('gs-w');
+    expect(source).not.toContain('gs-h');
     expect(source).not.toContain('function startWorkspaceDrag');
     expect(source).not.toContain('function startWorkspaceResize');
 
-    expect(adapter).toContain("import { GridStack }");
-    expect(adapter).toContain('GridStack.init');
+    expect(adapter).toContain('pointerdown');
+    expect(adapter).toContain('pointermove');
+    expect(adapter).toContain('pointerup');
     expect(adapter).toContain('.workspace-editor-card-drag-handle');
   });
 

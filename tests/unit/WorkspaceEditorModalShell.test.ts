@@ -45,7 +45,7 @@ describe('workspace editor modal shell', () => {
     expect(source).toContain('listCardTemplates');
     expect(source).toContain('workspacePropertiesDrawer');
     expect(source).toContain('workspaceCardLibraryModal');
-    expect(source).toContain('全局布局配置');
-    expect(source).toContain('卡片属性');
+    expect(source).toContain('renderWorkspacePlanningView');
+    expect(source).toContain('renderCardContentConfiguration');
   });
 });

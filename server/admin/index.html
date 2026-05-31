@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Theme Studio - 后台管理</title>
+  <title>AlPage - 后台管理</title>
   <style>
     :root {
       --bg: #0f1117;
@@ -156,7 +156,7 @@
     
     <div id="adminPanel" style="display: none;">
       <div class="header-row">
-        <h1>Theme Studio 后台管理</h1>
+        <h1>AlPage 后台管理</h1>
         <div style="position: relative;">
           <button class="menu-btn" onclick="toggleMenu()">⋯</button>
           <div class="menu-dropdown" id="menuDropdown">
@@ -171,6 +171,7 @@
         <button class="tab-btn active" data-tab="config" onclick="switchTab('config')">产品配置</button>
         <button class="tab-btn" data-tab="users" onclick="switchTab('users')">用户列表</button>
         <button class="tab-btn" data-tab="card-library" onclick="switchTab('card-library')">卡片库</button>
+        <button class="tab-btn" data-tab="industry-cases" onclick="switchTab('industry-cases')">行业案例</button>
       </div>
 
       <div class="tab-panel active" id="tab-config">
@@ -445,6 +446,30 @@
     </div>
   </aside>
 
+  <div class="tab-panel" id="tab-industry-cases">
+    <div class="card">
+      <h2>行业案例库</h2>
+      <div class="row" style="margin-bottom: 16px;">
+        <div>
+          <label>按行业筛选</label>
+          <input type="text" id="caseFilterIndustry" placeholder="如：能源、制造" oninput="loadIndustryCases()">
+        </div>
+        <div>
+          <label>关键词搜索</label>
+          <input type="text" id="caseFilterKeyword" placeholder="如：调度、运营" oninput="loadIndustryCases()">
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>客户名称</th><th>行业</th><th>关键词</th><th>创建时间</th><th>操作</th></tr>
+        </thead>
+        <tbody id="industryCasesBody">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <script>
     let _authenticated = false;
     let _activeUsageUserId = null;
@@ -459,6 +484,7 @@
       document.getElementById(`tab-${name}`).classList.add('active');
       if (name === 'users') loadUsers();
       if (name === 'card-library') loadCardLibrary();
+      if (name === 'industry-cases') loadIndustryCases();
     }
 
     function toggleMenu() {
@@ -1155,10 +1181,58 @@
           showAdminPanel();
           loadConfig();
           loadUsers();
-           loadCardLibrary();
+          loadCardLibrary();
         }
       } catch (_e) { /* show login */ }
     });
+
+    // ── 行业案例库管理 ──
+    async function loadIndustryCases() {
+      const industry = document.getElementById('caseFilterIndustry')?.value?.trim() || '';
+      const keyword = document.getElementById('caseFilterKeyword')?.value?.trim() || '';
+      const qs = new URLSearchParams();
+      if (industry) qs.set('industry', industry);
+      if (keyword) qs.set('keyword', keyword);
+      qs.set('limit', '50');
+      try {
+        const res = await fetch('/api/industry-cases?' + qs.toString(), { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        const tbody = document.getElementById('industryCasesBody');
+        if (!data.items || data.items.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">暂无行业案例</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.items.map(c => `
+          <tr>
+            <td>${esc(c.customer_name || '-')}</td>
+            <td>${esc(c.industry || '-')}</td>
+            <td>${(c.keywords || []).map(esc).join(', ') || '-'}</td>
+            <td>${new Date(c.created_at * 1000).toLocaleDateString()}</td>
+            <td><button class="btn-danger btn-sm" onclick="deleteIndustryCase('${c.id}')">删除</button></td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        document.getElementById('industryCasesBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">加载失败</td></tr>';
+      }
+    }
+
+    async function deleteIndustryCase(id) {
+      if (!confirm('确定删除此案例？')) return;
+      try {
+        await fetch('/api/industry-cases/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        toast('已删除', 'success');
+        loadIndustryCases();
+      } catch (e) {
+        toast('删除失败', 'error');
+      }
+    }
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
   </script>
 </body>
 </html>

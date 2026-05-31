@@ -148,7 +148,11 @@ export function renderWorkspaceCardShell({ item, context, style, attributes, ext
   const title = getWorkspaceCardTitle(item, context.templateCache);
   const content = renderWorkspaceCardContent(item, context.templateCache);
   const isEditor = context.mode === 'editor';
-  const shellClass = [isEditor ? 'workspace-editor-card' : 'workspace-preview-card', content.extraClassName, extraClassName]
+  const cardClass = [
+    'workspace-layout-card',
+    isEditor ? 'workspace-editor-card' : 'workspace-preview-card',
+    content.extraClassName,
+  ]
     .filter(Boolean)
     .map((className) => escapeHtml(className))
     .join(' ');
@@ -159,8 +163,7 @@ export function renderWorkspaceCardShell({ item, context, style, attributes, ext
   const resizeHandle = isEditor ? '<button class="workspace-editor-card-resize-handle" type="button" data-action="resize-card" aria-label="缩放卡片" title="缩放卡片">↘</button>' : '';
   const styleAttribute = style ? ` style="${escapeHtml(style)}"` : '';
 
-  return `
-    <article class="${shellClass}"${styleAttribute} data-item-id="${escapeHtml(item.id)}" data-template-id="${escapeHtml(item.templateId)}"${renderHtmlAttributes(attributes)}>
+  const innerHtml = `
       <header class="workspace-editor-card-header">
         <div class="workspace-editor-card-header-main">
           ${isEditor ? headerControls : ''}
@@ -175,6 +178,8 @@ export function renderWorkspaceCardShell({ item, context, style, attributes, ext
       </header>
       <div class="${contentClass}">${content.body}</div>
       ${resizeHandle}
-    </article>
-  `;
+    `;
+
+  // 编辑器和预览统一：直接输出 article + CSS grid 定位样式
+  return `<article class="${cardClass}"${styleAttribute} data-item-id="${escapeHtml(item.id)}" data-template-id="${escapeHtml(item.templateId)}"${renderHtmlAttributes(attributes)}>${innerHtml}</article>`;
 }

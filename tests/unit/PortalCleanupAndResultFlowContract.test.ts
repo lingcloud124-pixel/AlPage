@@ -12,9 +12,11 @@ describe('portal cleanup and result flow contract', () => {
     expect(indexHtml).not.toContain('下载主题');
     expect(indexHtml).not.toContain('主题包');
     expect(indexHtml).toContain('生成门户');
-    expect(indexHtml).toContain('保存门户');
+    expect(indexHtml).toContain('自动保存');
     expect(indexHtml).toContain('分享方案');
     expect(indexHtml).toContain('全屏查看');
+    expect(indexHtml).not.toContain('保存门户');
+    expect(indexHtml).not.toContain('继续编辑');
   });
 
   test('chat manager no longer depends on legacy landing presets or preset recommendation cards', () => {
@@ -27,14 +29,14 @@ describe('portal cleanup and result flow contract', () => {
     expect(source).not.toContain('setLandingGalleryImage');
   });
 
-  test('result actions support fullscreen, save, share, and re-edit from the preview shell', () => {
+  test('result actions support fullscreen and share from the preview shell', () => {
     const uiSetup = fs.readFileSync(path.join(projectRoot, 'web/src/ui-setup.ts'), 'utf8');
     const indexHtml = fs.readFileSync(path.join(projectRoot, 'web/index.html'), 'utf8');
 
     expect(indexHtml).toContain('resultFullscreenBtn');
-    expect(indexHtml).toContain('resultSaveBtn');
+    expect(indexHtml).not.toContain('resultSaveBtn');
     expect(indexHtml).toContain('resultShareBtn');
-    expect(indexHtml).toContain('resultEditBtn');
+    expect(indexHtml).not.toContain('resultEditBtn');
     expect(uiSetup).toContain('setupResultActions');
     expect(uiSetup).toContain('requestFullscreen');
     expect(uiSetup).toContain('navigator.share');
