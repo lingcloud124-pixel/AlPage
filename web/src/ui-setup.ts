@@ -223,6 +223,7 @@ export function setupTabSwitching() {
     const project = projectId ? await loadProject(projectId) : null;
     await ensureWorkspaceTemplateCache();
     renderWorkspacePreview(mainPage, project?.workspace ?? null, getWorkspaceTemplateCache());
+    previewTemplatesLoaded = true;
     requestAnimationFrame(() => (window as any).resizePreview?.());
   })();
 }

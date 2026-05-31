@@ -66,4 +66,10 @@ describe('workspace preview synchronization contracts', () => {
     expect(preview).toMatch(/quickLinksBar\.style\.display\s*=\s*'none'/);
     expect(preview).toContain('workspace-preview-empty');
   });
+
+  test('initial workspace preview hydration prevents later default template overwrite', () => {
+    const uiSetup = read('web/src/ui-setup.ts');
+
+    expect(uiSetup).toMatch(/renderWorkspacePreview\(mainPage,[\s\S]*?getWorkspaceTemplateCache\(\)\);[\s\S]*?previewTemplatesLoaded\s*=\s*true/);
+  });
 });
