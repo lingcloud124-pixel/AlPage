@@ -4,6 +4,12 @@ export interface IndustryCaseSummary {
   industry: string;
   keywords: string[];
   projectId: string;
+  summary: string;
+  highlights: string[];
+  coverImageUrl?: string;
+  displayEnabled: boolean;
+  referenceEnabled: boolean;
+  anonymizedRequirement?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -16,12 +22,13 @@ function resolveApiUrl(path: string): string {
   return `/api/industry-cases${path}`;
 }
 
-export async function listIndustryCases(params?: { industry?: string; keyword?: string; limit?: number; offset?: number }): Promise<{ total: number; items: IndustryCaseSummary[] }> {
+export async function listIndustryCases(params?: { industry?: string; keyword?: string; limit?: number; offset?: number; referenceOnly?: boolean }): Promise<{ total: number; items: IndustryCaseSummary[] }> {
   const qs = new URLSearchParams();
   if (params?.industry) qs.set('industry', params.industry);
   if (params?.keyword) qs.set('keyword', params.keyword);
   if (params?.limit) qs.set('limit', String(params.limit));
   if (params?.offset) qs.set('offset', String(params.offset));
+  if (params?.referenceOnly) qs.set('referenceOnly', 'true');
   const resp = await fetch(`${resolveApiUrl('')}?${qs.toString()}`, { credentials: 'same-origin' });
   if (!resp.ok) throw new Error(`listIndustryCases failed: ${resp.status}`);
   return resp.json();
@@ -33,7 +40,21 @@ export async function getIndustryCase(id: string): Promise<IndustryCaseDetail> {
   return resp.json();
 }
 
-export async function createIndustryCase(data: { customerName: string; industry: string; keywords: string[]; portalPlan: Record<string, unknown>; projectId: string }): Promise<{ id: string }> {
+export interface CreateIndustryCaseData {
+  customerName: string;
+  industry: string;
+  keywords: string[];
+  portalPlan: Record<string, unknown>;
+  projectId: string;
+  summary?: string;
+  highlights?: string[];
+  coverImageUrl?: string;
+  displayEnabled?: boolean;
+  referenceEnabled?: boolean;
+  anonymizedRequirement?: string;
+}
+
+export async function createIndustryCase(data: CreateIndustryCaseData): Promise<{ id: string }> {
   const resp = await fetch(resolveApiUrl(''), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

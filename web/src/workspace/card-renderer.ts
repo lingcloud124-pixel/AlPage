@@ -172,6 +172,7 @@ export function renderWorkspaceCardShell({ item, context, style, attributes, ext
         ${isEditor ? `
           <div class="workspace-editor-card-header-actions">
             <div class="workspace-editor-card-meta">${escapeHtml(item.templateId)}</div>
+            <button class="workspace-editor-card-config" type="button" data-action="config-card" aria-label="配置卡片" title="配置卡片">⚙</button>
             <button class="workspace-editor-card-delete" type="button" data-action="delete-card" aria-label="删除卡片" title="删除卡片">×</button>
           </div>
         ` : ''}

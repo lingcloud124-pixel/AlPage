@@ -2,6 +2,15 @@ import type { WorkspaceConfig } from '../types';
 import type { CardTemplateListItem } from '../api/card-templates';
 import { renderWorkspaceCardShell } from './card-renderer';
 
+const DEFAULT_PREVIEW_WORKSPACE_SETTINGS = {
+  columns: 4,
+  rowHeight: 24,
+  gapX: 16,
+  gapY: 16,
+  paddingX: 20,
+  paddingY: 16,
+};
+
 function suppressStaticPortalChrome(target: HTMLElement): void {
   const quickLinksBar = target.querySelector('.quick-links-bar') as HTMLElement | null;
   if (quickLinksBar) {
@@ -33,14 +42,19 @@ export function renderWorkspacePreview(target: HTMLElement | null, workspace: Wo
     return;
   }
 
-  host.style.setProperty('--workspace-columns', String(workspace.settings.columns || 4));
-  host.style.setProperty('--workspace-row-height', `${workspace.settings.rowHeight || 24}px`);
-  host.style.setProperty('--workspace-gap-x', `${workspace.settings.gapX || 16}px`);
-  host.style.setProperty('--workspace-gap-y', `${workspace.settings.gapY || 16}px`);
-  host.style.setProperty('--workspace-padding-x', `${workspace.settings.paddingX || 20}px`);
-  host.style.setProperty('--workspace-padding-y', `${workspace.settings.paddingY || 20}px`);
+  const settings = {
+    ...DEFAULT_PREVIEW_WORKSPACE_SETTINGS,
+    ...(workspace.settings ?? {}),
+  };
 
-  const maxWidth = Number(workspace.settings.maxWidth || 0);
+  host.style.setProperty('--workspace-columns', String(settings.columns || 4));
+  host.style.setProperty('--workspace-row-height', `${settings.rowHeight || 24}px`);
+  host.style.setProperty('--workspace-gap-x', `${settings.gapX || 16}px`);
+  host.style.setProperty('--workspace-gap-y', `${settings.gapY || 16}px`);
+  host.style.setProperty('--workspace-padding-x', `${settings.paddingX || 20}px`);
+  host.style.setProperty('--workspace-padding-y', `${settings.paddingY || 16}px`);
+
+  const maxWidth = Number(settings.maxWidth || 0);
   if (maxWidth > 0) {
     host.style.maxWidth = `${maxWidth}px`;
     host.style.marginLeft = 'auto';

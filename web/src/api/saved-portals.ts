@@ -76,3 +76,26 @@ export async function deleteSavedPortal(id: string): Promise<void> {
   });
   if (!resp.ok) throw new Error(`deleteSavedPortal failed: ${resp.status}`);
 }
+
+export async function publishSavedPortal(id: string): Promise<{ ok: boolean; publishedAt: number }> {
+  const resp = await fetch(resolveApiUrl(`/${encodeURIComponent(id)}/publish`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+  });
+  if (!resp.ok) throw new Error(`publishSavedPortal failed: ${resp.status}`);
+  return resp.json();
+}
+
+export async function getPublishedPortal(id: string): Promise<{
+  name: string;
+  templateType: string;
+  colors: Record<string, string>;
+  workspace: Record<string, unknown>;
+  portalPlan: Record<string, unknown>;
+  publishedAt: number;
+}> {
+  const resp = await fetch(resolveApiUrl(`/published/${encodeURIComponent(id)}`));
+  if (!resp.ok) throw new Error(`getPublishedPortal failed: ${resp.status}`);
+  return resp.json();
+}

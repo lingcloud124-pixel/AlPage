@@ -141,6 +141,35 @@ app.use('/api/security-config', adminAuthMiddleware, securityConfigRouter);
 app.use('/api/admin-password', adminAuthMiddleware, adminPasswordRouter);
 app.use('/api/admin/usage-logs', adminAuthMiddleware, usageLogsRouter);
 app.use('/api/admin-auth', adminAuthRouter);
+// Public (unauthenticated) routes — must mount BEFORE auth-protected routes
+app.get('/api/saved-portals/published/:id', async (req, res) => {
+  try {
+    const { db: dbPub } = await import('./db.js');
+    const stmt = dbPub.prepare('SELECT published_snapshot, template_type, name FROM saved_portals WHERE id = ? AND published_snapshot IS NOT NULL AND published_snapshot != \'\'');
+    stmt.bind([req.params.id]);
+    if (!stmt.step()) {
+      stmt.free();
+      return res.status(404).json({ error: '发布内容不存在' });
+    }
+    const row = stmt.getAsObject() as any;
+    stmt.free();
+
+    let snapshot: any = {};
+    try { snapshot = JSON.parse(row.published_snapshot); } catch {}
+
+    res.json({
+      name: row.name || '未命名门户',
+      templateType: snapshot.templateType || row.template_type || 'light-ui',
+      colors: snapshot.colors || {},
+      workspace: snapshot.workspace || {},
+      portalPlan: snapshot.portalPlan || {},
+      publishedAt: snapshot.publishedAt,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.use('/api/card-templates', authMiddleware, cardTemplatesRouter);
 app.use('/api/theme/projects', authMiddleware, bindAuthenticatedUser, workspaceRouter);
 app.use('/api/industry-cases', authMiddleware, bindAuthenticatedUser, industryCasesRouter);

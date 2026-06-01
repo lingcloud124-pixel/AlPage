@@ -25,6 +25,9 @@ router.get('/', (_req, res) => {
         t.default_props,
         t.layout_rules,
         t.preview_image_url,
+        t.industry_tags,
+        t.capability_tags,
+        t.scenario_tags,
         c.name AS category_name
       FROM card_templates t
       LEFT JOIN card_template_categories c ON c.id = t.category_id
@@ -33,8 +36,29 @@ router.get('/', (_req, res) => {
     const items: Array<Record<string, unknown>> = [];
     while (stmt.step()) {
       const row = stmt.getAsObject() as Record<string, unknown>;
+      const templateId = String(row.id);
+
+      // Fetch fields for this template
+      const fieldsStmt = db.prepare('SELECT field_key, label, type, ai_writable, required, options, item_schema, sort_order FROM card_template_fields WHERE template_id = ? ORDER BY sort_order ASC');
+      fieldsStmt.bind([templateId]);
+      const fields: Array<Record<string, unknown>> = [];
+      while (fieldsStmt.step()) {
+        const fRow = fieldsStmt.getAsObject() as Record<string, unknown>;
+        fields.push({
+          key: fRow.field_key,
+          label: fRow.label,
+          type: fRow.type,
+          aiWritable: Boolean(fRow.ai_writable),
+          required: Boolean(fRow.required),
+          options: JSON.parse(String(fRow.options ?? '[]')),
+          itemSchema: JSON.parse(String(fRow.item_schema ?? '{}')),
+          sortOrder: fRow.sort_order,
+        });
+      }
+      fieldsStmt.free();
+
       items.push({
-        id: row.id,
+        id: templateId,
         name: row.name,
         type: row.type,
         description: row.description,
@@ -50,6 +74,10 @@ router.get('/', (_req, res) => {
         defaultProps: JSON.parse(String(row.default_props ?? '{}')),
         layoutRules: JSON.parse(String(row.layout_rules ?? '{}')),
         previewImageUrl: row.preview_image_url ?? '',
+        industryTags: JSON.parse(String(row.industry_tags ?? '[]')),
+        capabilityTags: JSON.parse(String(row.capability_tags ?? '[]')),
+        scenarioTags: JSON.parse(String(row.scenario_tags ?? '[]')),
+        fields,
       });
     }
     stmt.free();
@@ -102,8 +130,10 @@ router.post('/', (req, res) => {
       INSERT INTO card_templates (
         id, name, type, category_id, description, enabled, configurable,
         default_w, default_h, min_w, min_h, max_w, max_h,
-        default_props, layout_rules, preview_image_url, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        default_props, layout_rules, preview_image_url,
+        industry_tags, capability_tags, scenario_tags,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.bind([
       id,
@@ -122,11 +152,17 @@ router.post('/', (req, res) => {
       JSON.stringify(body.defaultProps ?? {}),
       JSON.stringify(body.layoutRules ?? {}),
       body.previewImageUrl ?? '',
+      JSON.stringify(body.industryTags ?? []),
+      JSON.stringify(body.capabilityTags ?? []),
+      JSON.stringify(body.scenarioTags ?? []),
       now,
       now,
     ]);
     stmt.step();
     stmt.free();
+
+    // Insert fields if provided
+    insertFields(id, body.fields);
     saveDb();
     res.status(201).json({ id });
   } catch (error) {
@@ -156,6 +192,9 @@ router.put('/:id', (req, res) => {
         default_props = ?,
         layout_rules = ?,
         preview_image_url = ?,
+        industry_tags = ?,
+        capability_tags = ?,
+        scenario_tags = ?,
         updated_at = ?
       WHERE id = ?
     `);
@@ -175,15 +214,66 @@ router.put('/:id', (req, res) => {
       JSON.stringify(body.defaultProps ?? {}),
       JSON.stringify(body.layoutRules ?? {}),
       body.previewImageUrl ?? '',
+      JSON.stringify(body.industryTags ?? []),
+      JSON.stringify(body.capabilityTags ?? []),
+      JSON.stringify(body.scenarioTags ?? []),
       now,
       req.params.id,
     ]);
     stmt.step();
     stmt.free();
+
+    // Replace fields if provided
+    if (Array.isArray(body.fields)) {
+      const delStmt = db.prepare('DELETE FROM card_template_fields WHERE template_id = ?');
+      delStmt.bind([req.params.id]);
+      delStmt.step();
+      delStmt.free();
+      insertFields(req.params.id, body.fields);
+    }
     saveDb();
     res.json({ id: req.params.id });
   } catch (error) {
     logger.error('Update card template error', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+function insertFields(templateId: string, fields: unknown): void {
+  if (!Array.isArray(fields)) return;
+  for (let i = 0; i < fields.length; i++) {
+    const f = fields[i] as Record<string, unknown>;
+    const fStmt = db.prepare(`
+      INSERT INTO card_template_fields (template_id, field_key, label, type, ai_writable, required, options, item_schema, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    fStmt.bind([
+      templateId,
+      String(f.key ?? ''),
+      String(f.label ?? ''),
+      String(f.type ?? 'text'),
+      f.aiWritable === false ? 0 : 1,
+      f.required === true ? 1 : 0,
+      JSON.stringify(f.options ?? []),
+      JSON.stringify(f.itemSchema ?? {}),
+      i,
+    ]);
+    fStmt.step();
+    fStmt.free();
+  }
+}
+
+router.patch('/:id/toggle', (req, res) => {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const stmt = db.prepare('UPDATE card_templates SET enabled = CASE WHEN enabled = 1 THEN 0 ELSE 1 END, updated_at = ? WHERE id = ?');
+    stmt.bind([now, req.params.id]);
+    stmt.step();
+    stmt.free();
+    saveDb();
+    res.json({ id: req.params.id });
+  } catch (error) {
+    logger.error('Toggle card template error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

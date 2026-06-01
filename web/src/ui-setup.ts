@@ -14,6 +14,9 @@ import { showWorkspaceLandingState } from './main';
 import { toggleSidebar } from './components/sidebar';
 import { renderWorkspacePreview } from './workspace/preview';
 import { ensureWorkspaceTemplateCache, getWorkspaceTemplateCache } from './workspace/runtime';
+import { publishSavedPortal, createSavedPortal, type SavedPortalDetail } from './api/saved-portals';
+import { createIndustryCase, type CreateIndustryCaseData } from './api/industry-cases';
+import { anonymizeRequirementSummary } from './portal-agent';
 
 let previewTemplatesLoaded = false;
 
@@ -182,9 +185,102 @@ async function handleResultShare(): Promise<void> {
 export function setupResultActions() {
   const fullscreenBtn = document.getElementById('resultFullscreenBtn') as HTMLButtonElement | null;
   const shareBtn = document.getElementById('resultShareBtn') as HTMLButtonElement | null;
+  const publishBtn = document.getElementById('resultPublishBtn') as HTMLButtonElement | null;
+  const saveCaseBtn = document.getElementById('resultSaveCaseBtn') as HTMLButtonElement | null;
 
   fullscreenBtn?.addEventListener('click', () => { void handleResultFullscreen(); });
   shareBtn?.addEventListener('click', () => { void handleResultShare(); });
+  publishBtn?.addEventListener('click', () => { void handleResultPublish(); });
+  saveCaseBtn?.addEventListener('click', () => { void handleResultSaveCase(); });
+}
+
+async function handleResultPublish(): Promise<void> {
+  const projectId = getCurrentProjectId();
+  if (!projectId) { alert('请先创建项目'); return; }
+  const project = await loadProject(projectId);
+  if (!project) { alert('项目不存在'); return; }
+
+  try {
+    // First ensure the project is saved as a portal
+    let portalId = project.savedPortalId;
+    if (!portalId) {
+      const result = await createSavedPortal({
+        name: project.themeName || project.name,
+        templateType: project.templateType,
+        colors: project.colors,
+        workspace: (project.workspace ?? {}) as unknown as Record<string, unknown>,
+        portalPlan: (project.portalPlan ?? {}) as unknown as Record<string, unknown>,
+        projectId: project.id,
+        status: 'saved',
+      });
+      portalId = result.id;
+      project.savedPortalId = portalId;
+      await saveProject(project);
+    }
+
+    // Update the saved portal with latest data before publishing
+    const { updateSavedPortal } = await import('./api/saved-portals');
+    await updateSavedPortal(portalId, {
+      name: project.themeName || project.name,
+      templateType: project.templateType,
+      colors: project.colors,
+      workspace: (project.workspace ?? {}) as unknown as Record<string, unknown>,
+      portalPlan: (project.portalPlan ?? {}) as unknown as Record<string, unknown>,
+    });
+
+    // Publish the portal
+    await publishSavedPortal(portalId);
+    const publishUrl = `${window.location.origin}/p/${portalId}`;
+
+    // Show the publish URL
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(publishUrl);
+      alert(`发布成功！链接已复制到剪贴板：\n\n${publishUrl}`);
+    } else {
+      prompt('发布成功！请复制以下链接：', publishUrl);
+    }
+  } catch (err) {
+    alert(`发布失败：${(err as Error).message}`);
+  }
+}
+
+async function handleResultSaveCase(): Promise<void> {
+  const projectId = getCurrentProjectId();
+  if (!projectId) { alert('请先创建项目'); return; }
+  const project = await loadProject(projectId);
+  if (!project) { alert('项目不存在'); return; }
+
+  const title = prompt('案例标题：', project.themeName || project.name || '');
+  if (!title) return;
+
+  const industry = project.portalProfile?.customerIndustry ?? '';
+  const keywords = project.portalProfile?.highlightedCards ?? [];
+
+  // Build anonymized requirement summary
+  let anonymizedRequirement = '';
+  if (project.portalPlan?.requirementSummary) {
+    const anonymized = anonymizeRequirementSummary(project.portalPlan.requirementSummary);
+    anonymizedRequirement = JSON.stringify(anonymized);
+  }
+
+  try {
+    const caseData: CreateIndustryCaseData = {
+      customerName: '', // Anonymized — no real customer name
+      industry,
+      keywords,
+      portalPlan: (project.portalPlan ?? {}) as unknown as Record<string, unknown>,
+      projectId: project.id,
+      summary: `来自项目"${title}"的门户案例`,
+      highlights: keywords,
+      referenceEnabled: true,
+      displayEnabled: false,
+      anonymizedRequirement,
+    };
+    await createIndustryCase(caseData);
+    alert('已录入资料库！案例将作为 AI 参考使用。');
+  } catch (err) {
+    alert(`录入失败：${(err as Error).message}`);
+  }
 }
 
 export function setupPortalObjectEditing(): void {

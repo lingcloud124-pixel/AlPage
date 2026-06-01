@@ -157,6 +157,8 @@ export function createPortalPlanFromProject(project: Project): PortalPlan {
     cardContentLayer: {
       cards: workspace.items.map((item) => mapWorkspaceItemToContent(item, summary)),
     },
+    uncoveredNeeds: project.portalPlan?.uncoveredNeeds ?? [],
+    requirementSummary: project.portalPlan?.requirementSummary,
     editHistory: [],
     createdAt: timestamp,
     updatedAt: timestamp,

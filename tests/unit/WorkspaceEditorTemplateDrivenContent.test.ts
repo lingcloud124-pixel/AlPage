@@ -27,9 +27,11 @@ describe('workspace editor template driven content', () => {
   test('property drawer exposes template driven content fields for card level editing', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'web/src/components/card-content-configuration.ts'), 'utf8');
 
-    expect(source).toContain('workspace-card-item-count-input');
-    expect(source).toContain('workspace-card-headline-input');
-    expect(source).toContain('workspace-card-summary-input');
+    // Schema-driven: fields are generated dynamically from CardTemplate.fields
+    expect(source).toContain('renderSchemaField');
+    expect(source).toContain('card-field-');
+    expect(source).toContain('collectCardFieldValues');
+    expect(source).toContain('getWorkspaceTemplateCache');
   });
 
   test('db seeds the first four templates with structured default props', () => {

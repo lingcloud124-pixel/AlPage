@@ -6,7 +6,8 @@ import { escapeHtml, getWorkspaceCardTitle, renderWorkspaceCardShell } from './c
 import { destroyWorkspaceGrid, mountWorkspaceGrid } from './interact-adapter';
 import { renderWorkspacePreview } from './preview';
 import { renderWorkspacePlanningView } from '../components/workspace-configuration';
-import { renderCardContentConfiguration } from '../components/card-content-configuration';
+import { renderThemeConfiguration } from '../components/theme-configuration';
+import { renderCardContentConfiguration, collectCardFieldValues } from '../components/card-content-configuration';
 
 import type { WorkspaceConfig } from '../types';
 import type { CardTemplateListItem } from '../api/card-templates';
@@ -26,7 +27,7 @@ export function createWorkspaceRuntimeState(projectId: string, workspace: Worksp
 let currentWorkspace: WorkspaceConfig | null = null;
 let selectedWorkspaceCardId: string | null = null;
 let isWorkspacePropertiesDrawerOpen = false;
-type WorkspacePropertiesPanelMode = 'global' | 'card';
+type WorkspacePropertiesPanelMode = 'global' | 'card' | 'theme';
 let workspacePropertiesPanelMode: WorkspacePropertiesPanelMode = 'global';
 let workspaceTemplateCache: Record<string, CardTemplateListItem> = {};
 let workspaceTemplateLoadPromise: Promise<void> | null = null;
@@ -385,6 +386,17 @@ function bindWorkspaceCardSelection(): void {
         void deleteWorkspaceCard(itemId);
       }
     });
+    // Phase E: config button opens card tab in properties drawer
+    const configButton = card.querySelector('[data-action="config-card"]');
+    configButton?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const itemId = card.getAttribute('data-item-id');
+      if (itemId) {
+        selectedWorkspaceCardId = itemId;
+        setActiveConfigTab('card');
+        openWorkspacePropertiesDrawer('card');
+      }
+    });
   });
 }
 
@@ -438,7 +450,7 @@ function closeWorkspaceCardLibrary(): void {
   modal?.classList.remove('active');
 }
 
-type ConfigPanelTab = 'layout' | 'card';
+type ConfigPanelTab = 'theme' | 'layout' | 'card';
 let activeConfigTab: ConfigPanelTab = 'layout';
 
 function setActiveConfigTab(tab: ConfigPanelTab): void {
@@ -466,25 +478,30 @@ function bindCardContentFormEvents(item: WorkspaceConfig['items'][number]): void
   titleInput?.addEventListener('change', () => {
     void updateWorkspaceCardInstanceProps(item.id, { title: titleInput.value.trim() });
   });
-  const itemCountInput = document.getElementById('workspace-card-item-count-input') as HTMLInputElement | null;
-  itemCountInput?.addEventListener('change', () => {
-    void updateWorkspaceCardInstanceProps(item.id, { itemCount: Math.max(1, Number(itemCountInput.value || 1)) });
-  });
-  const headlineInput = document.getElementById('workspace-card-headline-input') as HTMLInputElement | null;
-  headlineInput?.addEventListener('change', () => {
-    void updateWorkspaceCardInstanceProps(item.id, { headline: headlineInput.value.trim() });
-  });
-  const summaryInput = document.getElementById('workspace-card-summary-input') as HTMLInputElement | null;
-  summaryInput?.addEventListener('change', () => {
-    void updateWorkspaceCardInstanceProps(item.id, { summary: summaryInput.value.trim() });
-  });
-  const badgeInput = document.getElementById('workspace-card-badge-input') as HTMLInputElement | null;
-  badgeInput?.addEventListener('change', () => {
-    void updateWorkspaceCardInstanceProps(item.id, { badge: badgeInput.value.trim() });
-  });
+
+  // Bind all schema-driven fields to auto-save on change
+  const container = document.getElementById('workspacePropertiesContent');
+  if (container) {
+    const fields = (container as any).__cardFields as Array<{ key: string; type: string }> | undefined;
+    if (fields && fields.length > 0) {
+      for (const field of fields) {
+        const fieldEl = document.getElementById(`card-field-${field.key}`);
+        if (fieldEl) {
+          const eventType = field.type === 'boolean' ? 'change' : 'change';
+          fieldEl.addEventListener(eventType, () => {
+            void updateWorkspaceCardInstanceProps(item.id, collectCardFieldValues());
+          });
+        }
+      }
+    }
+  }
 }
 
 function renderConfigPanelContent(): void {
+  if (activeConfigTab === 'theme') {
+    void renderThemeConfiguration();
+    return;
+  }
   if (activeConfigTab === 'card') {
     if (!selectedWorkspaceCardId || !currentWorkspace) {
       renderCardContentConfiguration({ id: '', title: '请先在工作区设计中点击一张卡片' });
@@ -528,6 +545,7 @@ export function openWorkspacePropertiesDrawer(mode?: WorkspacePropertiesPanelMod
   appContainer.classList.add('panel-open');
   if (panelToggleBtn) panelToggleBtn.textContent = '主题配置';
   if (mode === 'card') setActiveConfigTab('card');
+  else if (mode === 'theme') setActiveConfigTab('theme');
   else setActiveConfigTab('layout');
 }
 

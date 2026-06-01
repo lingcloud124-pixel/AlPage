@@ -14,18 +14,16 @@ describe('web chat view visibility', () => {
   });
 
   test('chat manager toggles is-hidden between default and conversation views', () => {
-    const source = fs.readFileSync(path.join(projectRoot, 'web/src/chat-manager.ts'), 'utf8');
+    const source = fs.readFileSync(path.join(projectRoot, 'web/src/chat/chat-conversation-state.ts'), 'utf8');
 
     expect(source).toContain("defaultView.classList.toggle('is-hidden', mode !== 'default')");
     expect(source).toContain("conversationView.classList.toggle('is-hidden', mode !== 'conversation')");
   });
 
   test('restoring a conversation exits landing-only layout state', () => {
-    const source = fs.readFileSync(path.join(projectRoot, 'web/src/chat-manager.ts'), 'utf8');
+    const source = fs.readFileSync(path.join(projectRoot, 'web/src/chat/chat-conversation-state.ts'), 'utf8');
 
-    const restoreHandler = source.match(/window\.addEventListener\('sidebar:restore-conversation'[\s\S]*?\}\) as EventListener\);/)?.[0] ?? '';
-
-    expect(restoreHandler).toContain("chatPanel?.classList.remove('landing-mode')");
-    expect(restoreHandler).toContain("chatPanel?.classList.remove('is-full-landing')");
+    expect(source).toContain("chatPanel?.classList.remove('landing-mode')");
+    expect(source).toContain("chatPanel?.classList.remove('is-full-landing')");
   });
 });

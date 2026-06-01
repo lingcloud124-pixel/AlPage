@@ -10,6 +10,7 @@ industryCasesRouter.get('/', (req, res) => {
     const keyword = String(req.query.keyword || '').trim();
     const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
     const offset = Math.max(0, Number(req.query.offset) || 0);
+    const referenceOnly = req.query.referenceOnly === 'true';
 
     let where = 'WHERE 1=1';
     const params: any[] = [];
@@ -18,8 +19,11 @@ industryCasesRouter.get('/', (req, res) => {
       params.push(industry);
     }
     if (keyword) {
-      where += ' AND (customer_name LIKE ? OR keywords LIKE ?)';
-      params.push(`%${keyword}%`, `%${keyword}%`);
+      where += ' AND (customer_name LIKE ? OR keywords LIKE ? OR summary LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
+    if (referenceOnly) {
+      where += ' AND reference_enabled = 1';
     }
 
     const countStmt = db.prepare(`SELECT COUNT(*) as total FROM industry_cases ${where}`);
@@ -28,12 +32,15 @@ industryCasesRouter.get('/', (req, res) => {
     const total = (countStmt.getAsObject() as any).total;
     countStmt.free();
 
-    const stmt = db.prepare(`SELECT id, user_id, customer_name, industry, keywords, project_id, created_at, updated_at FROM industry_cases ${where} ORDER BY updated_at DESC LIMIT ? OFFSET ?`);
+    const stmt = db.prepare(`SELECT id, user_id, customer_name, industry, keywords, project_id, summary, highlights, cover_image_url, display_enabled, reference_enabled, anonymized_requirement, created_at, updated_at FROM industry_cases ${where} ORDER BY updated_at DESC LIMIT ? OFFSET ?`);
     stmt.bind([...params, limit, offset]);
     const rows: any[] = [];
     while (stmt.step()) {
       const row = stmt.getAsObject() as any;
       try { row.keywords = JSON.parse(row.keywords); } catch { row.keywords = []; }
+      try { row.highlights = JSON.parse(row.highlights); } catch { row.highlights = []; }
+      row.displayEnabled = Boolean(row.display_enabled);
+      row.referenceEnabled = Boolean(row.reference_enabled);
       rows.push(row);
     }
     stmt.free();
@@ -53,6 +60,9 @@ industryCasesRouter.get('/:id', (req, res) => {
       row = stmt.getAsObject() as any;
       try { row.keywords = JSON.parse(row.keywords); } catch { row.keywords = []; }
       try { row.portal_plan = JSON.parse(row.portal_plan); } catch { row.portal_plan = {}; }
+      try { row.highlights = JSON.parse(row.highlights); } catch { row.highlights = []; }
+      row.displayEnabled = Boolean(row.display_enabled);
+      row.referenceEnabled = Boolean(row.reference_enabled);
     }
     stmt.free();
     if (!row) return res.status(404).json({ error: '案例不存在' });
@@ -66,12 +76,12 @@ industryCasesRouter.get('/:id', (req, res) => {
 industryCasesRouter.post('/', (req, res) => {
   try {
     const userId = (req as any).userId;
-    const { customerName, industry, keywords, portalPlan, projectId } = req.body;
+    const { customerName, industry, keywords, portalPlan, projectId, summary, highlights, coverImageUrl, displayEnabled, referenceEnabled, anonymizedRequirement } = req.body;
     const id = `case-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const now = Math.floor(Date.now() / 1000);
 
-    const stmt = db.prepare(`INSERT INTO industry_cases (id, user_id, customer_name, industry, keywords, portal_plan, project_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    const stmt = db.prepare(`INSERT INTO industry_cases (id, user_id, customer_name, industry, keywords, portal_plan, project_id, summary, highlights, cover_image_url, display_enabled, reference_enabled, anonymized_requirement, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     stmt.bind([
       id, userId,
       String(customerName || ''),
@@ -79,6 +89,12 @@ industryCasesRouter.post('/', (req, res) => {
       JSON.stringify(keywords || []),
       JSON.stringify(portalPlan || {}),
       String(projectId || ''),
+      String(summary || ''),
+      JSON.stringify(highlights || []),
+      String(coverImageUrl || ''),
+      displayEnabled ? 1 : 0,
+      referenceEnabled === false ? 0 : 1,
+      String(anonymizedRequirement || ''),
       now, now,
     ]);
     stmt.step();

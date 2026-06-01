@@ -4,7 +4,10 @@ import type {
   PortalIntakeField,
   PortalSummary,
   PortalWorkspaceSeedItem,
+  RequirementSummary,
+  UncoveredNeed,
 } from './types';
+import type { CardTemplateListItem } from './api/card-templates';
 
 const REQUIRED_PORTAL_FIELDS: PortalIntakeField[] = [
   'customerName',
@@ -473,4 +476,283 @@ export function createPortalGenerationPrompt(summary: PortalSummary): string {
     `视觉倾向：${summary.visualPreference}`,
     `结构理解：${summary.structureUnderstanding.join(' ')}`,
   ].join('\n');
+}
+
+// ── Phase C: Requirement summary ──
+
+/**
+ * Build a RequirementSummary from profile + card library metadata.
+ * This is the "需求理解确认" step, distinct from profile field confirmation.
+ */
+export function buildRequirementSummary(
+  profile: PortalCustomerProfile,
+  cardTemplates?: CardTemplateListItem[],
+): RequirementSummary {
+  const highlightedCards = profile.highlightedCards ?? [];
+  const functions = profile.customerFunctions ?? [];
+
+  // Determine portal goal from profile fields
+  const portalGoal = profile.portalPurpose
+    ? `为${profile.customerName ?? '客户'}构建${profile.portalPurpose}，面向${profile.customerIndustry ?? '综合行业'}行业`
+    : `为${profile.customerName ?? '客户'}构建门户方案`;
+
+  // Requested capabilities: from highlightedCards + functions
+  const requestedCapabilities = Array.from(new Set([
+    ...highlightedCards,
+    ...functions,
+  ]));
+
+  // Style preferences from visualPreference
+  const stylePreferences: string[] = [];
+  if (profile.visualPreference) {
+    stylePreferences.push(profile.visualPreference);
+  }
+
+  // Match capabilities against card library
+  const coverableCards: string[] = [];
+  const uncoveredNeeds: UncoveredNeed[] = [];
+
+  if (cardTemplates && cardTemplates.length > 0) {
+    for (const cap of requestedCapabilities) {
+      const match = cardTemplates.find((t) =>
+        t.enabled !== false && (
+          (t.capabilityTags && t.capabilityTags.some((tag) => cap.includes(tag))) ||
+          (t.industryTags && t.industryTags.some((tag) => cap.includes(tag))) ||
+          (t.scenarioTags && t.scenarioTags.some((tag) => cap.includes(tag))) ||
+          cap.includes(t.name)
+        ),
+      );
+      if (match) {
+        if (!coverableCards.includes(match.name)) coverableCards.push(match.name);
+      } else {
+        uncoveredNeeds.push({
+          id: `uncovered-${uncoveredNeeds.length + 1}`,
+          label: cap,
+          reason: `当前卡片库中没有直接匹配「${cap}」的卡片`,
+          requestedCapability: cap,
+        });
+      }
+    }
+  } else {
+    // Without card library, treat all highlighted cards as coverable
+    coverableCards.push(...highlightedCards);
+  }
+
+  // Build assumptions from profile
+  const assumptions: string[] = [];
+  if (profile.customerIndustry) {
+    assumptions.push(`行业默认配置：基于${profile.customerIndustry}行业的常见门户结构`);
+  }
+  if (highlightedCards.length === 0) {
+    assumptions.push('用户未指定重点卡片，将使用行业通用卡片布局');
+  }
+  if (!profile.visualPreference) {
+    assumptions.push('用户未指定视觉偏好，将根据行业特征选择默认风格');
+  }
+
+  return {
+    portalGoal,
+    requestedCapabilities,
+    stylePreferences,
+    assumptions,
+    coverableCards: coverableCards.length > 0 ? coverableCards : undefined,
+    uncoveredNeeds: uncoveredNeeds.length > 0 ? uncoveredNeeds : undefined,
+  };
+}
+
+/**
+ * Format RequirementSummary as a readable chat message for user confirmation.
+ */
+export function buildRequirementSummaryPrompt(summary: RequirementSummary): string {
+  const lines: string[] = [
+    '📋 **需求理解确认**\n',
+    `**门户目标**: ${summary.portalGoal}`,
+    `**模块需求**: ${summary.requestedCapabilities.join('、')}`,
+  ];
+
+  if (summary.stylePreferences.length > 0) {
+    lines.push(`**风格偏好**: ${summary.stylePreferences.join('、')}`);
+  }
+
+  if (summary.coverableCards && summary.coverableCards.length > 0) {
+    lines.push(`**可覆盖卡片**: ${summary.coverableCards.join('、')}`);
+  }
+
+  if (summary.uncoveredNeeds && summary.uncoveredNeeds.length > 0) {
+    lines.push(`**未覆盖需求**:`);
+    for (const need of summary.uncoveredNeeds) {
+      lines.push(`  - ${need.label}: ${need.reason}`);
+    }
+  }
+
+  if (summary.assumptions.length > 0) {
+    lines.push(`**AI 假设**:`);
+    for (const assumption of summary.assumptions) {
+      lines.push(`  - ${assumption}`);
+    }
+  }
+
+  lines.push('\n如果没有问题，请回复"确认"开始生成；如需修改请直接说明。');
+  return lines.join('\n');
+}
+
+// ── B2: Card library validation functions ──
+
+/**
+ * Build a card library summary for AI prompt injection.
+ * Only includes what AI needs: ID, name, tags, aiWritable fields with key/label/type/options/itemSchema.
+ * Does NOT include full backend schema details, non-aiWritable fields, or admin metadata.
+ */
+export function buildCardLibraryPromptSummary(templates: CardTemplateListItem[]): string {
+  if (!templates || templates.length === 0) return '';
+  const lines = templates
+    .filter((t) => t.enabled !== false)
+    .map((t) => {
+      const aiFields = (t.fields || [])
+        .filter((f) => f.aiWritable !== false)
+        .map((f) => {
+          let desc = `${f.key}(${f.label}, ${f.type}`;
+          if (f.type === 'select' && f.options && f.options.length > 0) {
+            desc += `, options: ${f.options.join('/')}`;
+          }
+          if (f.type === 'list' && f.itemSchema && Object.keys(f.itemSchema).length > 0) {
+            desc += `, itemSchema: ${JSON.stringify(f.itemSchema)}`;
+          }
+          desc += ')';
+          return desc;
+        });
+      const tags = [
+        ...(t.industryTags || []),
+        ...(t.capabilityTags || []),
+        ...(t.scenarioTags || []),
+      ].join(', ');
+      return `- ${t.id}: ${t.name}${tags ? ` [${tags}]` : ''}${aiFields.length > 0 ? ` | 可写字段: ${aiFields.join(', ')}` : ''}`;
+    });
+  return `## 可用卡片库（AI 只能从中选择）\n${lines.join('\n')}\n\n规则：只能选择以上卡片模板，不能发明新卡片。只能填写 aiWritable 字段。未覆盖的需求列入 uncoveredNeeds。`;
+}
+
+export interface CardSelectionValidationResult {
+  valid: Array<{
+    templateId: string;
+    instanceProps: Record<string, unknown>;
+    rejectedFields: string[];
+  }>;
+  rejected: Array<{
+    templateId: string;
+    reason: string;
+  }>;
+}
+
+/**
+ * Validate AI card selections against the card library.
+ * Rejects unknown templateIds and disabled templates.
+ * Filters instanceProps to only aiWritable fields.
+ */
+export function validateCardSelection(
+  aiCards: Array<{ templateId: string; instanceProps?: Record<string, unknown> }>,
+  availableTemplates: CardTemplateListItem[],
+): CardSelectionValidationResult {
+  const templateMap = new Map(availableTemplates.map((t) => [t.id, t]));
+  const valid: CardSelectionValidationResult['valid'] = [];
+  const rejected: CardSelectionValidationResult['rejected'] = [];
+
+  for (const card of aiCards) {
+    const template = templateMap.get(card.templateId);
+
+    if (!template) {
+      rejected.push({
+        templateId: card.templateId,
+        reason: `未知模板 ID: ${card.templateId}`,
+      });
+      continue;
+    }
+
+    if (template.enabled === false) {
+      rejected.push({
+        templateId: card.templateId,
+        reason: `模板已禁用: ${card.templateId}`,
+      });
+      continue;
+    }
+
+    const filtered = filterAIWritableProps(template, card.instanceProps ?? {});
+    valid.push({
+      templateId: card.templateId,
+      instanceProps: filtered.props,
+      rejectedFields: filtered.rejected,
+    });
+  }
+
+  return { valid, rejected };
+}
+
+/**
+ * Filter instanceProps to only include aiWritable fields from the template schema.
+ * Returns both the filtered props and the list of rejected field keys.
+ */
+export function filterAIWritableProps(
+  template: CardTemplateListItem,
+  proposedProps: Record<string, unknown>,
+): { props: Record<string, unknown>; rejected: string[] } {
+  const fields = template.fields || [];
+  const aiWritableKeys = new Set(
+    fields.filter((f) => f.aiWritable !== false).map((f) => f.key),
+  );
+  const schemaKeys = new Set(fields.map((f) => f.key));
+
+  const props: Record<string, unknown> = {};
+  const rejected: string[] = [];
+
+  for (const [key, value] of Object.entries(proposedProps)) {
+    if (!schemaKeys.has(key)) {
+      rejected.push(`${key} (未定义字段)`);
+      continue;
+    }
+    if (!aiWritableKeys.has(key)) {
+      rejected.push(`${key} (非 aiWritable)`);
+      continue;
+    }
+    props[key] = value;
+  }
+
+  return { props, rejected };
+}
+
+// ── Phase F: Case library dual-purpose ──
+
+/**
+ * Anonymize a RequirementSummary for case library storage.
+ * Removes customer-specific information, keeps industry/style/layout patterns.
+ */
+export function anonymizeRequirementSummary(summary: RequirementSummary): RequirementSummary {
+  return {
+    portalGoal: summary.portalGoal
+      .replace(/[\u4e00-\u9fa5]{2,}(?:公司|集团|有限|股份|企业|科技|网络)/g, '某企业')
+      .replace(/[\u4e00-\u9fa5]{2,}(?:银行|医院|学校|政府|局|厅|部|委)/g, '某机构'),
+    requestedCapabilities: summary.requestedCapabilities,
+    stylePreferences: summary.stylePreferences,
+    assumptions: summary.assumptions.filter(
+      (a) => !a.includes('客户') && !a.includes('名称'),
+    ),
+    coverableCards: summary.coverableCards,
+    uncoveredNeeds: summary.uncoveredNeeds?.map((n) => ({
+      ...n,
+      reason: n.reason.replace(/「[^」]+」/g, '「该能力」'),
+    })),
+  };
+}
+
+/**
+ * Build a reference prompt from case library entries for AI generation.
+ * Only uses referenceEnabled cases, and only references style/layout — never specific content.
+ */
+export function buildCaseReferencePrompt(cases: Array<{ industry: string; summary: string; anonymizedRequirement?: string }>): string {
+  if (!cases || cases.length === 0) return '';
+  const lines = cases.map((c) => {
+    const parts = [`[${c.industry || '综合行业'}]`];
+    if (c.summary) parts.push(c.summary);
+    if (c.anonymizedRequirement) parts.push(`需求: ${c.anonymizedRequirement.substring(0, 100)}`);
+    return parts.join(' — ');
+  });
+  return `## 同行业案例参考（仅供参考风格和布局方向，不可复制具体内容）\n${lines.join('\n')}\n`;
 }

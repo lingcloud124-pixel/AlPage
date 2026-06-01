@@ -118,6 +118,68 @@ savedPortalsRouter.put('/:id', (req, res) => {
   }
 });
 
+// 发布门户（生成只读 snapshot）
+savedPortalsRouter.post('/:id/publish', (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const now = Math.floor(Date.now() / 1000);
+
+    const existing = db.prepare('SELECT id, colors, workspace, portal_plan, template_type FROM saved_portals WHERE id = ? AND user_id = ?');
+    existing.bind([req.params.id, userId]);
+    if (!existing.step()) {
+      existing.free();
+      return res.status(404).json({ error: '门户不存在' });
+    }
+    const row = existing.getAsObject() as any;
+    existing.free();
+
+    const snapshot = JSON.stringify({
+      templateType: row.template_type || 'light-ui',
+      colors: (() => { try { return JSON.parse(row.colors); } catch { return {}; } })(),
+      workspace: (() => { try { return JSON.parse(row.workspace); } catch { return {}; } })(),
+      portalPlan: (() => { try { return JSON.parse(row.portal_plan); } catch { return {}; } })(),
+      publishedAt: now,
+    });
+
+    const stmt = db.prepare('UPDATE saved_portals SET published_snapshot = ?, published_at = ?, status = \'published\', updated_at = ? WHERE id = ? AND user_id = ?');
+    stmt.bind([snapshot, now, now, req.params.id, userId]);
+    stmt.step();
+    stmt.free();
+    saveDb();
+    res.json({ ok: true, publishedAt: now });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 获取发布的只读 snapshot（公开，不需要认证）
+savedPortalsRouter.get('/published/:id', (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT published_snapshot, template_type, name FROM saved_portals WHERE id = ? AND published_snapshot IS NOT NULL AND published_snapshot != \'\'');
+    stmt.bind([req.params.id]);
+    if (!stmt.step()) {
+      stmt.free();
+      return res.status(404).json({ error: '发布内容不存在' });
+    }
+    const row = stmt.getAsObject() as any;
+    stmt.free();
+
+    let snapshot: any = {};
+    try { snapshot = JSON.parse(row.published_snapshot); } catch {}
+
+    res.json({
+      name: row.name || '未命名门户',
+      templateType: snapshot.templateType || row.template_type || 'light-ui',
+      colors: snapshot.colors || {},
+      workspace: snapshot.workspace || {},
+      portalPlan: snapshot.portalPlan || {},
+      publishedAt: snapshot.publishedAt,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // 删除保存的门户
 savedPortalsRouter.delete('/:id', (req, res) => {
   try {

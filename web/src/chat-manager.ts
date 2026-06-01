@@ -1,4 +1,3 @@
-import { marked } from 'marked';
 import {
   chatCompletion,
   loadSettings,
@@ -24,29 +23,24 @@ import {
 import type { Project } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, saveCurrentColorsToProject, getCurrentColors, getThemeTarget } from './theme-engine';
 import { syncColorEditorFromTheme } from './components/color-editor';
-import { parseThemeFeedback } from './tools/theme-feedback-refiner';
 import { decidePreferenceUpdate } from './tools/theme-preference-updater';
 import { updateProjectVisualContext, loadProjectVisualContext } from './tools/project-visual-context-store';
-import { updateCustomerVisualProfile, loadCustomerVisualProfile } from './tools/customer-visual-profile-store';
 import type { ThemePreview } from './tools/executor';
 import { classifyImageIntent } from './image-intent';
 import { applyPrimaryImageToProject } from './primary-image-flow';
 import { showNotificationWithOptions } from './utils/notification';
-import { createConversation, updateConversation } from './api/conversations';
-import type { ConversationCreatePayload, ConversationUpdatePayload, ConversationImageData } from './types';
-import { setActiveConversation, getActiveConversationId, refreshSidebar } from './components/sidebar';
 import {
-  buildPortalCollectionPrompt,
   buildPortalDraft,
   buildPortalSummary,
-  buildPortalSummaryPrompt,
   createPortalGenerationPrompt,
-  didPortalProfileChange,
-  extractPortalProfileFromMessage,
-  getPortalWorkflowState,
   isPortalSummaryConfirmationMessage,
+  getPortalWorkflowState,
   mergePortalProfile,
+  validateCardSelection,
+  buildRequirementSummary,
+  buildRequirementSummaryPrompt,
 } from './portal-agent';
+import { listCardTemplates } from './api/card-templates';
 import {
   applyPortalPlanToProject,
   createPortalPlanFromProject,
@@ -61,13 +55,45 @@ import {
   onPortalConfirmSubmit,
 } from './components/portal-confirm-form';
 
-const conversationHistory: ChatMessage[] = [];
-let activeAbortController: AbortController | null = null;
+// 从拆分模块导入
+import {
+  getConversationHistory,
+  pushToolResultToHistory,
+  pushUserMessage,
+  pushAssistantMessage,
+  saveChatHistory,
+  clearConversationHistory,
+  setActiveConversationId,
+  getConversationId,
+  showDefaultChatView,
+  showConversationChatView,
+  stripToolCallsFromDisplay,
+  restoreConversationUI,
+} from './chat/chat-conversation-state';
+
+// 重新导出供 main.ts 等外部模块使用
+export { showDefaultChatView, showConversationChatView } from './chat/chat-conversation-state';
+export { renderMessage } from './chat/chat-message-renderer';
+export { saveChatHistory, setActiveConversationId, getConversationId, startNewConversation, loadAndRenderChatHistory, getConversationHistory } from './chat/chat-conversation-state';
+
+import {
+  renderMessage,
+  buildThinkingToggle,
+  getConversationMessagesContainer,
+} from './chat/chat-message-renderer';
+
+import {
+  resolvePortalWorkflowForMessage,
+  refreshNeedsDrivenWorkspacePreview,
+  syncProjectWorkspaceSnapshot,
+} from './chat/chat-portal-workflow';
+
 const MAX_UPLOAD_IMAGE_BYTES = 2 * 1024 * 1024;
 
-let _activeConversationId: string | null = null;
-let _saveQueue: Promise<void> = Promise.resolve();
+let activeAbortController: AbortController | null = null;
+
 let _chatDeps: ChatDeps | null = null;
+let _pendingRequirementProject: Project | null = null;
 
 export interface ThemeAgentDebugState {
   toolCallPrompt?: string;
@@ -90,171 +116,14 @@ interface SendUserMessageOptions {
   displayMessage?: string;
 }
 
-export function getConversationHistory() { return conversationHistory; }
 export function getActiveAbortController() { return activeAbortController; }
 export function getLatestThemeAgentDebugState() { return latestThemeAgentDebugState; }
-
-function getConversationMessagesContainer(): HTMLElement | null {
-  return document.getElementById('messagesContainer') as HTMLElement | null;
-}
-
-function setChatViewMode(mode: 'default' | 'conversation'): void {
-  const defaultView = document.getElementById('chatDefaultView');
-  const conversationView = document.getElementById('chatConversationView');
-  if (!defaultView || !conversationView) return;
-  defaultView.classList.toggle('is-hidden', mode !== 'default');
-  conversationView.classList.toggle('is-hidden', mode !== 'conversation');
-}
 
 function highlightResultActions(): void {
   const actions = document.getElementById('workspaceResultActions');
   if (!actions) return;
   actions.classList.add('result-actions-highlight');
   setTimeout(() => { actions.classList.remove('result-actions-highlight'); }, 4000);
-}
-
-export function showDefaultChatView(): void {
-  setChatViewMode('default');
-}
-
-export function showConversationChatView(): void {
-  setChatViewMode('conversation');
-}
-
-export function renderMessage(role: 'user' | 'ai', content: string): HTMLElement {
-  const messagesContainer = getConversationMessagesContainer();
-  if (!messagesContainer) return document.createElement('div');
-
-  const messageDiv = document.createElement('div');
-  messageDiv.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
-
-  const avatarDiv = document.createElement('div');
-  avatarDiv.className = 'avatar';
-  if (role === 'user') {
-    avatarDiv.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg>';
-  } else {
-    avatarDiv.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/><line x1="9" y1="19" x2="9" y2="19"/><line x1="15" y1="19" x2="15" y2="19"/></svg>';
-  }
-
-  const contentDiv = document.createElement('div');
-  contentDiv.className = 'message-content';
-  if (content) {
-    if (role === 'ai') {
-      contentDiv.innerHTML = marked.parse(content) as string;
-    } else {
-      contentDiv.textContent = content;
-    }
-  }
-
-  messageDiv.appendChild(avatarDiv);
-  messageDiv.appendChild(contentDiv);
-  messagesContainer.appendChild(messageDiv);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-  return messageDiv;
-}
-
-export async function saveChatHistory(): Promise<void> {
-  const prev = _saveQueue;
-  let resolve: () => void = () => {};
-  _saveQueue = new Promise(r => { resolve = r; });
-  await prev;
-  try {
-    await doSaveConversation();
-  } finally {
-    resolve();
-  }
-}
-
-async function doSaveConversation(): Promise<void> {
-  const histLen = conversationHistory.length;
-  if (histLen === 0) return;
-  const projectId = getCurrentProjectId();
-  let projectSnapshot: Record<string, unknown> = {};
-  let imageData: ConversationImageData | undefined;
-  if (projectId) {
-    const project = await loadProject(projectId);
-    if (project) {
-      projectSnapshot = JSON.parse(JSON.stringify(project));
-      const images: ConversationImageData = {};
-      if (project.bgImageUrl) images.primaryImage = project.bgImageUrl;
-      if (project.headerBgImageUrl) images.headerImage = project.headerBgImageUrl;
-      if (Object.keys(images).length > 0) imageData = images;
-    }
-  }
-  const messages = conversationHistory.map(m => {
-    let content = m.content;
-    if (content && imageData?.primaryImage) {
-      content = content.replace(
-        /(<img[^>]+src=")(https?:\/\/[^"]+)("[^>]*>)/g,
-        (match, prefix, url, suffix) => url.startsWith('data:') ? match : `${prefix}${imageData!.primaryImage}${suffix}`,
-      );
-    }
-    return {
-      id: m.id, role: m.role, content, timestamp: m.timestamp,
-      toolCalls: m.toolCalls, toolResults: m.toolResults, attachments: m.attachments,
-    };
-  });
-
-  try {
-    if (!_activeConversationId) {
-      const id = crypto.randomUUID();
-      const title = deriveConversationTitle();
-      const payload: ConversationCreatePayload = { id, title, messages, projectSnapshot, imageData, hasGeneratedTheme: !!projectId };
-      const result = await createConversation(payload);
-      if (result) {
-        _activeConversationId = result.id;
-        setActiveConversation(_activeConversationId);
-      }
-    } else {
-      const payload: ConversationUpdatePayload = { messages, projectSnapshot, imageData, hasGeneratedTheme: !!projectId };
-      await updateConversation(_activeConversationId, payload);
-    }
-    refreshSidebar();
-  } catch (err) {
-    console.error('[conversation] Save error:', err);
-  }
-}
-
-function deriveConversationTitle(): string {
-  const first = conversationHistory.find(m => m.role === 'user');
-  if (!first) return '未命名项目';
-  const text = first.content.slice(0, 40).replace(/\n/g, ' ').trim();
-  return text || '未命名项目';
-}
-
-export async function loadChatHistory(): Promise<Array<{ role: string; content: string; timestamp: number }>> {
-  return [];
-}
-
-export async function loadAndRenderChatHistory(messagesContainer: HTMLElement | null): Promise<void> {
-  if (!messagesContainer) return;
-  conversationHistory.length = 0;
-  showDefaultChatView();
-  messagesContainer.innerHTML = '';
-}
-
-export function setActiveConversationId(id: string | null): void {
-  _activeConversationId = id;
-  setActiveConversation(id);
-}
-
-export function getConversationId(): string | null {
-  return _activeConversationId;
-}
-
-export function startNewConversation(): void {
-  conversationHistory.length = 0;
-  _activeConversationId = null;
-  const messagesContainer = document.getElementById('messagesContainer');
-  if (messagesContainer) messagesContainer.innerHTML = '';
-  showDefaultChatView();
-  setCurrentProjectId(null);
-  _chatDeps?.collapsePreview?.();
-  _chatDeps?.setChatPanelWidth(null);
-  const chatProjectName = document.getElementById('chatProjectName');
-  if (chatProjectName) chatProjectName.textContent = '开始新创作';
-  setActiveConversationId(null);
 }
 
   function extractThemeTitle(text: string): string {
@@ -309,123 +178,6 @@ export function startNewConversation(): void {
   return true;
 }
 
-function hasPortalProfilePatch(patch: Partial<PortalCustomerProfile>): boolean {
-  return Object.values(patch).some((value) => Array.isArray(value) ? value.length > 0 : Boolean(value));
-}
-
-async function syncProjectWorkspaceSnapshot(project: Project): Promise<void> {
-  if (!project.workspace) return;
-  persistWorkspaceToLocal(project.id, project.workspace);
-  await syncWorkspaceToServer(project.id, project.workspace);
-}
-
-async function ensureNeedsDrivenWorkspace(project: Project): Promise<Project> {
-  if (!project.portalProfile) return project;
-  if (project.workspace?.meta?.source !== 'default' && project.portalPlanStatus === 'editing') return project;
-
-  const portalSummary = project.portalSummary ?? buildPortalSummary(project.portalProfile);
-  const portalDraft = buildPortalDraft(portalSummary);
-  Object.assign(project, applyPortalDraftToProject(project, portalDraft));
-  project.portalSummary = project.portalSummary?.confirmedAt
-    ? { ...portalSummary, confirmedAt: project.portalSummary.confirmedAt }
-    : portalSummary;
-  const portalPlan = createPortalPlanFromProject(project);
-  portalPlan.status = project.portalPlanStatus === 'editing' ? 'editing' : 'generated';
-  portalPlan.updatedAt = Date.now();
-  Object.assign(project, applyPortalPlanToProject(project, portalPlan));
-  await saveProject(project);
-  await syncProjectWorkspaceSnapshot(project);
-  return project;
-}
-
-async function refreshNeedsDrivenWorkspacePreview(): Promise<void> {
-  const projectId = getCurrentProjectId();
-  if (!projectId) return;
-  const project = await loadProject(projectId);
-  if (!project) return;
-  const hydratedProject = await ensureNeedsDrivenWorkspace(project);
-  await ensureWorkspaceTemplateCache();
-  renderWorkspaceEditorShell(hydratedProject.workspace ?? null);
-  renderWorkspacePreview(document.getElementById('mainPage'), hydratedProject.workspace ?? null, getWorkspaceTemplateCache());
-}
-
-async function resolvePortalWorkflowForMessage(project: Project, userMessage: string): Promise<{
-  project: Project;
-}> {
-  const extracted = extractPortalProfileFromMessage(userMessage);
-  const previousProfile = project.portalProfile;
-  const nextProfile = hasPortalProfilePatch(extracted)
-    ? mergePortalProfile(previousProfile, extracted, 'chat')
-    : previousProfile;
-  const profileChanged = didPortalProfileChange(previousProfile, nextProfile);
-
-  if (nextProfile) {
-    project.portalProfile = nextProfile;
-    if (!project.portalPlanStatus) {
-      Object.assign(project, setPortalPlanStatus(project, 'collecting'));
-    }
-    if (project.name === '未命名项目' && nextProfile.customerName) {
-      project.name = `${nextProfile.customerName}门户`;
-      project.themeName = project.name;
-      updateProjectNameDisplay(project);
-    }
-  }
-
-  if (profileChanged && project.portalSummary?.confirmedAt) {
-    project.portalSummary = undefined;
-    project.portalDraft = undefined;
-  }
-
-  if (profileChanged && nextProfile) {
-    project.portalSummary = buildPortalSummary(nextProfile);
-    Object.assign(project, setPortalPlanStatus(project, 'summary_pending'));
-  }
-
-  await saveProject(project);
-  await refreshNeedsDrivenWorkspacePreview();
-
-  return { project };
-}
-
-function pushToolResultToHistory(content: string): void {
-  conversationHistory.push({
-    id: crypto.randomUUID(),
-    role: 'assistant',
-    content,
-    timestamp: Date.now(),
-  });
-}
-
-function stripToolCallsFromDisplay(content: string): string {
-  let cleaned = content;
-  // Strip <thinkblocking> tags from MiniMax-M2.7 reasoning output
-  cleaned = cleaned.replace(/<thinkblocking>[\s\S]*?<\/thinkblocking>/g, '');
-  cleaned = cleaned.replace(/```json\s*\{[\s\S]*?\}\s*```/g, '');
-  cleaned = cleaned.replace(/\{"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{[\s\S]*?\}\s*\}/g, '');
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-  return cleaned.trim();
-}
-
-function buildThinkingToggle(text: string): HTMLElement {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'thinking-toggle';
-  const btn = document.createElement('button');
-  btn.className = 'thinking-toggle-btn';
-  btn.textContent = '▶ 思考过程';
-  const body = document.createElement('div');
-  body.className = 'thinking-toggle-body';
-  body.textContent = text;
-  body.style.display = 'none';
-  btn.addEventListener('click', () => {
-    const expanded = body.style.display !== 'none';
-    body.style.display = expanded ? 'none' : 'block';
-    btn.textContent = expanded ? '▶ 思考过程' : '▼ 思考过程';
-  });
-  wrapper.appendChild(btn);
-  wrapper.appendChild(body);
-  return wrapper;
-}
-
 export interface ChatDeps {
   expandPreview: () => void;
   collapsePreview?: () => void;
@@ -440,6 +192,34 @@ export function setupChatInterface(deps: ChatDeps) {
     if (!project.portalProfile) return;
     const portalSummary = buildPortalSummary(project.portalProfile);
     const portalDraft = buildPortalDraft(portalSummary);
+
+    // Validate workspace seed against backend card library
+    try {
+      const templates = await listCardTemplates();
+      if (templates.length > 0 && portalDraft.workspaceSeed.length > 0) {
+        const validation = validateCardSelection(
+          portalDraft.workspaceSeed.map((s) => {
+            // Build instanceProps from the seed item's known fields
+            const { templateId, reason, ...rest } = s;
+            return {
+              templateId,
+              instanceProps: rest as Record<string, unknown>,
+            };
+          }),
+          templates,
+        );
+        // Filter out rejected cards, keep only valid templateIds
+        const validIds = new Set(validation.valid.map((v) => v.templateId));
+        portalDraft.workspaceSeed = portalDraft.workspaceSeed.filter(
+          (seed) => validIds.has(seed.templateId),
+        );
+
+        if (validation.rejected.length > 0) {
+          console.warn('[B2] Card selection rejected:', validation.rejected);
+        }
+      }
+    } catch { /* non-critical — proceed with draft as-is */ }
+
     Object.assign(project, applyPortalDraftToProject(project, portalDraft));
     project.portalSummary = {
       ...portalSummary,
@@ -459,6 +239,16 @@ export function setupChatInterface(deps: ChatDeps) {
   }
 
   onPortalConfirmSubmit(async (project) => {
+    // Phase C: show requirement summary first, wait for user confirmation before generating
+    if (project.portalProfile) {
+      let templates: import('./api/card-templates').CardTemplateListItem[] = [];
+      try { templates = await listCardTemplates(); } catch { /* ok */ }
+      const reqSummary = buildRequirementSummary(project.portalProfile, templates);
+      const summaryText = buildRequirementSummaryPrompt(reqSummary);
+      _pendingRequirementProject = project;
+      addMessageToChat('ai', summaryText);
+      return;
+    }
     await generatePortalPlanFromConfirmedProject(project);
   });
   (globalThis as any).__selectThemePreview = (index: number) => {
@@ -513,50 +303,22 @@ export function setupChatInterface(deps: ChatDeps) {
   });
 
   window.addEventListener('sidebar:new-conversation', () => {
-    startNewConversation();
+    clearConversationHistory();
+    setCurrentProjectId(null);
+    _chatDeps?.collapsePreview?.();
+    _chatDeps?.setChatPanelWidth(null);
+    const messagesContainer = document.getElementById('messagesContainer');
+    if (messagesContainer) messagesContainer.innerHTML = '';
+    showDefaultChatView();
+    const chatProjectName = document.getElementById('chatProjectName');
+    if (chatProjectName) chatProjectName.textContent = '开始新创作';
+    setActiveConversationId(null);
   });
 
   window.addEventListener('sidebar:restore-conversation', ((e: CustomEvent) => {
     const detail = e.detail;
     if (detail && detail.messages) {
-      const restoredImageUrl = detail.imageData?.primaryImage || '';
-      conversationHistory.length = 0;
-      conversationHistory.push(...detail.messages);
-      _activeConversationId = detail.id;
-      const messagesContainer = document.getElementById('messagesContainer');
-      if (messagesContainer) messagesContainer.innerHTML = '';
-      for (const msg of conversationHistory) {
-        let displayContent = msg.role === 'assistant'
-          ? stripToolCallsFromDisplay(msg.content)
-          : msg.content;
-        if (restoredImageUrl && displayContent) {
-          displayContent = displayContent.replace(
-            /(<img[^>]+src=")(https?:\/\/[^"]+)("[^>]*>)/g,
-            (_match: string, prefix: string, url: string, suffix: string) => url.startsWith('data:') ? _match : `${prefix}${restoredImageUrl}${suffix}`,
-          );
-        }
-        renderMessage(msg.role === 'assistant' ? 'ai' : msg.role, displayContent);
-      }
-      showConversationChatView();
-      const chatPanel = document.getElementById('chatPanel');
-      chatPanel?.classList.remove('landing-mode');
-      chatPanel?.classList.remove('is-full-landing');
-      setActiveConversationId(detail.id);
-      pendingImages.length = 0;
-      renderImagePreviewBar();
-      if (restoredImageUrl) {
-        const restoredProjectId = (detail.projectSnapshot as any)?.id as string | undefined;
-        if (restoredProjectId) {
-          try { updateProjectVisualContext(restoredProjectId, { imageInput: { dataUrl: restoredImageUrl, role: 'primary', updatedAt: Date.now() } }); } catch { /* non-critical */ }
-        }
-      }
-      if (detail.hasGeneratedTheme && detail.projectSnapshot && Object.keys(detail.projectSnapshot).length > 0) {
-        window.dispatchEvent(new CustomEvent('sidebar:restore-project', { detail: detail.projectSnapshot }));
-        const proj = detail.projectSnapshot as any;
-        const chatProjectName = document.getElementById('chatProjectName');
-        if (chatProjectName && proj.themeName) chatProjectName.textContent = proj.themeName;
-        else if (chatProjectName && proj.name && proj.name !== '未命名项目') chatProjectName.textContent = proj.name;
-      }
+      restoreConversationUI(detail, setCurrentProjectId, updateProjectVisualContext, pendingImages);
     }
   }) as EventListener);
 
@@ -712,12 +474,7 @@ export function setupChatInterface(deps: ChatDeps) {
       uploadedImageRole = finalRole;
       const userLabel = finalRole === 'primary' ? '上传了主图' : '上传了参考图片';
       const msgEl = addMessageToChat('user', content || userLabel);
-      conversationHistory.push({
-        id: userMessageId,
-        role: 'user',
-        content: content || userLabel,
-        timestamp: userMessageTimestamp,
-      });
+      pushUserMessage(content || userLabel, userMessageTimestamp);
       const contentEl = msgEl.querySelector('.message-content') as HTMLElement;
       if (contentEl) {
         imagesToSend.forEach(src => {
@@ -786,12 +543,7 @@ export function setupChatInterface(deps: ChatDeps) {
           const result = await analyzeImageAsync(imageDataUrl);
           if (result.success && result.data) {
             const colors = result.data as { dominantColors: string[] };
-            conversationHistory.push({
-              id: Date.now().toString(),
-              role: 'user',
-              content: `[图片参考] 主色调: ${colors.dominantColors.join(', ')}`,
-              timestamp: Date.now(),
-            });
+            pushUserMessage(`[图片参考] 主色调: ${colors.dominantColors.join(', ')}`);
           }
         } catch (error) {
           console.warn('[chat-manager] 图片参考分析失败，已跳过颜色参考注入:', {
@@ -801,12 +553,7 @@ export function setupChatInterface(deps: ChatDeps) {
       }
     } else {
       addMessageToChat('user', content);
-      conversationHistory.push({
-        id: userMessageId,
-        role: 'user',
-        content,
-        timestamp: userMessageTimestamp,
-      });
+      pushUserMessage(content, userMessageTimestamp);
       await saveChatHistory();
     }
 
@@ -872,6 +619,16 @@ export function setupChatInterface(deps: ChatDeps) {
         await resolvePortalWorkflowForMessage(activeProject, content);
         const workflow = getPortalWorkflowState(activeProject.portalProfile, activeProject.portalSummary ?? null);
         if (content && isPortalSummaryConfirmationMessage(content) && workflow.status === 'ready_to_generate') {
+          // Phase C: show requirement summary before generating, consistent with onPortalConfirmSubmit
+          if (activeProject.portalProfile) {
+            let templates: import('./api/card-templates').CardTemplateListItem[] = [];
+            try { templates = await listCardTemplates(); } catch { /* ok */ }
+            const reqSummary = buildRequirementSummary(activeProject.portalProfile, templates);
+            const summaryText = buildRequirementSummaryPrompt(reqSummary);
+            _pendingRequirementProject = activeProject;
+            addMessageToChat('ai', summaryText);
+            return;
+          }
           await generatePortalPlanFromConfirmedProject(activeProject);
           return;
         }
@@ -882,7 +639,7 @@ export function setupChatInterface(deps: ChatDeps) {
       await callAI(content);
     }
     if (!content && hasImages && currentImageRole !== 'primary') {
-      addMessageToChat('ai', '已收到这张参考图。继续输入一句描述，比如“参考这张图做一个春日门户”，我就会开始生成。');
+      addMessageToChat('ai', '已收到这张参考图。继续输入一句描述，比如"参考这张图做一个春日门户"，我就会开始生成。');
       await saveChatHistory();
     }
 
@@ -919,6 +676,20 @@ export function setupChatInterface(deps: ChatDeps) {
   }
 
   async function callAI(userMessage: string) {
+    // Phase C: intercept requirement summary confirmation
+    if (_pendingRequirementProject) {
+      const isConfirm = isPortalSummaryConfirmationMessage(userMessage);
+      if (isConfirm) {
+        const project = _pendingRequirementProject;
+        _pendingRequirementProject = null;
+        await generatePortalPlanFromConfirmedProject(project);
+        return;
+      }
+      // User wants to modify — clear pending and continue normal flow
+      _pendingRequirementProject = null;
+    }
+
+    const conversationHistory = getConversationHistory();
     const priorAssistantMessage = [...conversationHistory]
       .reverse()
       .find((message) => message.role === 'assistant')?.content ?? '';
@@ -927,17 +698,24 @@ export function setupChatInterface(deps: ChatDeps) {
       .find((message) => message.role === 'user' && message.content.trim() !== userMessage.trim())?.content ?? '';
 
     const settings = loadSettings();
-    // API key check removed - server holds the key now
 
     const prefs = loadUserPreferences();
     const currentProject = getCurrentProjectId() ? await loadProject(getCurrentProjectId()!) : null;
     const templateType = currentProject?.templateType || 'light-ui';
+
+    // Fetch card templates for prompt injection (best-effort, don't block on failure)
+    let cardTemplates: import('./api/card-templates').CardTemplateListItem[] | undefined;
+    try {
+      cardTemplates = await listCardTemplates();
+    } catch { /* non-critical */ }
+
     const systemPrompt = getSystemPrompt({
       templateType,
       currentColors: getCurrentColors(),
       availablePresets: [],
       userPreferences: prefs,
       userMessage,
+      cardTemplates,
     });
 
     const extracted = extractPreferencesFromMessage(userMessage);
@@ -1067,12 +845,7 @@ export function setupChatInterface(deps: ChatDeps) {
 
     conversationSendBtn?.removeEventListener('click', stopHandler);
 
-    conversationHistory.push({
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: fullResponse,
-      timestamp: Date.now(),
-    });
+    pushAssistantMessage(fullResponse);
     await saveChatHistory();
 
     if (contentEl) {
@@ -1082,7 +855,7 @@ export function setupChatInterface(deps: ChatDeps) {
         contentEl.innerHTML = '';
         if (thinkingText) contentEl.appendChild(buildThinkingToggle(thinkingText));
         const mdSpan = document.createElement('span');
-        mdSpan.innerHTML = marked.parse(cleaned || '') as string;
+        mdSpan.innerHTML = (await import('marked')).marked.parse(cleaned || '') as string;
         contentEl.appendChild(mdSpan);
       } catch (renderErr) {
         console.error('[callAI] Render error (saved already):', renderErr);
@@ -1264,7 +1037,7 @@ export function setupChatInterface(deps: ChatDeps) {
               if (proj) {
                 proj.themeName = saveData.name;
                 const normalizedNameEn = normalizeNameEn(saveData.nameEn);
-                const derivedNameEn = deriveNameEnFromText(`${saveData.name} ${conversationHistory.find((m) => m.role === 'user')?.content || ''}`);
+                const derivedNameEn = deriveNameEnFromText(`${saveData.name} ${getConversationHistory().find((m) => m.role === 'user')?.content || ''}`);
                 if (normalizedNameEn || derivedNameEn !== 'project') {
                   proj.nameEn = normalizedNameEn || derivedNameEn;
                 }

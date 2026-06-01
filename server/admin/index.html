@@ -412,6 +412,28 @@
           <label>预览图 URL</label>
           <input type="text" id="cardTemplatePreviewImageUrl">
         </div>
+        <hr style="border:0;border-top:1px solid var(--border);margin:8px 0;">
+        <h3 style="font-size:13px;color:var(--muted);font-weight:600;">标签（逗号分隔）</h3>
+        <div class="drawer-form-grid">
+          <div>
+            <label>行业标签</label>
+            <input type="text" id="cardTemplateIndustryTags" placeholder="能源,制造,金融">
+          </div>
+          <div>
+            <label>能力标签</label>
+            <input type="text" id="cardTemplateCapabilityTags" placeholder="待办,日程,新闻">
+          </div>
+        </div>
+        <div>
+          <label>场景标签</label>
+          <input type="text" id="cardTemplateScenarioTags" placeholder="门户首页,工作台">
+        </div>
+        <hr style="border:0;border-top:1px solid var(--border);margin:8px 0;">
+        <h3 style="font-size:13px;color:var(--muted);font-weight:600;">字段 Schema</h3>
+        <div id="cardTemplateFieldEditor"></div>
+        <button type="button" class="btn-secondary btn-sm" onclick="addFieldRow()" style="margin-bottom:8px;">+ 添加字段</button>
+        <hr style="border:0;border-top:1px solid var(--border);margin:8px 0;">
+        <h3 style="font-size:13px;color:var(--muted);font-weight:600;">默认内容</h3>
         <div class="drawer-form-grid">
           <div>
             <label>卡片标题</label>
@@ -608,20 +630,30 @@
         const previewStyle = item.previewImageUrl
           ? ` style="background-image: linear-gradient(135deg, rgba(99, 102, 241, .16), rgba(129, 140, 248, .06)), url('${escapeHtml(item.previewImageUrl)}');"`
           : '';
+        const statusLabel = item.enabled === false ? '已禁用' : '已启用';
+        const statusColor = item.enabled === false ? 'var(--danger)' : 'var(--success)';
+        const fieldCount = (item.fields || []).length;
+        const tagChips = [].concat(
+          (item.industryTags || []).map(t => `<span class="card-library-tag">${escapeHtml(t)}</span>`),
+          (item.capabilityTags || []).map(t => `<span class="card-library-tag">${escapeHtml(t)}</span>`),
+        ).slice(0, 6).join('');
         return `
           <article class="card-library-card">
             <div class="card-library-preview-thumb"${previewStyle}>模板预览缩略图</div>
             <div class="card-library-card-body">
               <div class="card-library-card-header">
                 <div class="card-library-card-title">${escapeHtml(item.name || '未命名卡片')}</div>
-                <div class="card-library-card-meta">${item.enabled === false ? '已禁用' : '已启用'}</div>
+                <div class="card-library-card-meta" style="color:${statusColor}">${statusLabel}</div>
               </div>
               <div class="card-library-card-meta">${escapeHtml(item.description || item.type || '')}</div>
               <div class="card-library-card-tags">
                 <span class="card-library-tag">${escapeHtml(item.category || '未分类')}</span>
                 <span class="card-library-tag">${escapeHtml(`${item.defaultW || 2} x ${item.defaultH || 12}`)}</span>
+                ${fieldCount > 0 ? `<span class="card-library-tag">${fieldCount} 字段</span>` : ''}
               </div>
+              ${tagChips ? `<div class="card-library-card-tags" style="margin-top:4px;">${tagChips}</div>` : ''}
               <div class="card-library-card-actions">
+                <button type="button" class="btn-secondary btn-sm" onclick='toggleCardTemplateEnable(${JSON.stringify(String(item.id || ""))})'>${item.enabled === false ? '启用' : '禁用'}</button>
                 <button type="button" class="btn-secondary btn-sm" onclick='openCardTemplateEditor(${JSON.stringify(String(item.id || ''))})'>编辑模板</button>
               </div>
             </div>
@@ -635,6 +667,23 @@
       document.getElementById('cardTemplateEditorDrawer').classList.remove('open');
       document.getElementById('cardTemplateEditorDrawer').setAttribute('aria-hidden', 'true');
       document.getElementById('cardTemplateEditorOverlay').classList.remove('open');
+    }
+
+    async function toggleCardTemplateEnable(id) {
+      if (!_authenticated) { toast('请先登录', 'error'); return; }
+      try {
+        const res = await fetch(`/api/card-templates/${encodeURIComponent(id)}/toggle`, {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (res.status === 401) { showLoginSection(); toast('登录已过期', 'error'); return; }
+        if (!res.ok) throw new Error('操作失败');
+        toast('卡片模板状态已切换');
+        await loadCardLibrary();
+      } catch (e) {
+        toast(`操作失败: ${e.message}`, 'error');
+      }
     }
 
     function openCardTemplateEditor(id) {
@@ -653,15 +702,83 @@
       document.getElementById('cardTemplateDefaultH').value = String(item.defaultH || 12);
       document.getElementById('cardTemplateDescription').value = item.description || '';
       document.getElementById('cardTemplatePreviewImageUrl').value = item.previewImageUrl || '';
+      document.getElementById('cardTemplateIndustryTags').value = (item.industryTags || []).join(', ');
+      document.getElementById('cardTemplateCapabilityTags').value = (item.capabilityTags || []).join(', ');
+      document.getElementById('cardTemplateScenarioTags').value = (item.scenarioTags || []).join(', ');
       document.getElementById('cardTemplateCardTitle').value = defaultProps.title || '';
       document.getElementById('cardTemplateItemCount').value = String(defaultProps.itemCount || 4);
       document.getElementById('cardTemplateHeadline').value = defaultProps.headline || '';
       document.getElementById('cardTemplateSummary').value = defaultProps.summary || '';
       document.getElementById('cardTemplateItemsJson').value = JSON.stringify(defaultProps.items || [], null, 2);
       document.getElementById('cardTemplateLinksJson').value = JSON.stringify(defaultProps.links || [], null, 2);
+      renderFieldEditor(item.fields || []);
       document.getElementById('cardTemplateEditorDrawer').classList.add('open');
       document.getElementById('cardTemplateEditorDrawer').setAttribute('aria-hidden', 'false');
       document.getElementById('cardTemplateEditorOverlay').classList.add('open');
+    }
+
+    function renderFieldEditor(fields) {
+      const container = document.getElementById('cardTemplateFieldEditor');
+      if (!fields || fields.length === 0) {
+        container.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px 0;">暂无字段定义</div>';
+        return;
+      }
+      container.innerHTML = fields.map((f, i) => `
+        <div class="drawer-form-grid" style="align-items:end;gap:8px;margin-bottom:4px;">
+          <div><label style="font-size:11px;">Key</label><input type="text" class="field-key" value="${escapeHtml(f.key || '')}" style="font-size:12px;padding:6px 8px;"></div>
+          <div><label style="font-size:11px;">标签</label><input type="text" class="field-label" value="${escapeHtml(f.label || '')}" style="font-size:12px;padding:6px 8px;"></div>
+          <div><label style="font-size:11px;">类型</label><select class="field-type" style="font-size:12px;padding:6px 8px;width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--text);">
+            ${['text','number','image','link','list','select','boolean'].map(t => `<option value="${t}" ${f.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+          </select></div>
+          <div style="display:flex;gap:8px;align-items:center;padding-bottom:2px;">
+            <label style="font-size:11px;display:flex;align-items:center;gap:4px;margin:0;"><input type="checkbox" class="field-ai-writable" ${f.aiWritable !== false ? 'checked' : ''}> AI 可写</label>
+            <label style="font-size:11px;display:flex;align-items:center;gap:4px;margin:0;"><input type="checkbox" class="field-required" ${f.required === true ? 'checked' : ''}> 必填</label>
+            <button type="button" class="btn-danger btn-sm" onclick="this.closest('.drawer-form-grid').remove()" style="padding:4px 8px;font-size:11px;">删除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addFieldRow() {
+      const container = document.getElementById('cardTemplateFieldEditor');
+      const emptyHint = container.querySelector('div[style*="color:var(--muted)"]');
+      if (emptyHint) emptyHint.remove();
+      const html = `
+        <div class="drawer-form-grid" style="align-items:end;gap:8px;margin-bottom:4px;">
+          <div><label style="font-size:11px;">Key</label><input type="text" class="field-key" placeholder="fieldKey" style="font-size:12px;padding:6px 8px;"></div>
+          <div><label style="font-size:11px;">标签</label><input type="text" class="field-label" placeholder="字段名称" style="font-size:12px;padding:6px 8px;"></div>
+          <div><label style="font-size:11px;">类型</label><select class="field-type" style="font-size:12px;padding:6px 8px;width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--text);">
+            ${['text','number','image','link','list','select','boolean'].map(t => `<option value="${t}">${t}</option>`).join('')}
+          </select></div>
+          <div style="display:flex;gap:8px;align-items:center;padding-bottom:2px;">
+            <label style="font-size:11px;display:flex;align-items:center;gap:4px;margin:0;"><input type="checkbox" class="field-ai-writable" checked> AI 可写</label>
+            <label style="font-size:11px;display:flex;align-items:center;gap:4px;margin:0;"><input type="checkbox" class="field-required"> 必填</label>
+            <button type="button" class="btn-danger btn-sm" onclick="this.closest('.drawer-form-grid').remove()" style="padding:4px 8px;font-size:11px;">删除</button>
+          </div>
+        </div>`;
+      container.insertAdjacentHTML('beforeend', html);
+    }
+
+    function collectFields() {
+      const container = document.getElementById('cardTemplateFieldEditor');
+      const rows = container.querySelectorAll('.drawer-form-grid');
+      const fields = [];
+      rows.forEach((row) => {
+        const key = row.querySelector('.field-key')?.value?.trim();
+        if (!key) return;
+        fields.push({
+          key,
+          label: row.querySelector('.field-label')?.value?.trim() || key,
+          type: row.querySelector('.field-type')?.value || 'text',
+          aiWritable: row.querySelector('.field-ai-writable')?.checked !== false,
+          required: row.querySelector('.field-required')?.checked === true,
+        });
+      });
+      return fields;
+    }
+
+    function parseTagsInput(value) {
+      return String(value || '').split(/[,，]/).map(s => s.trim()).filter(Boolean);
     }
 
     async function saveCardTemplateEditor() {
@@ -695,6 +812,10 @@
           },
           layoutRules: _activeCardTemplate.layoutRules || {},
           previewImageUrl: document.getElementById('cardTemplatePreviewImageUrl').value.trim(),
+          industryTags: parseTagsInput(document.getElementById('cardTemplateIndustryTags').value),
+          capabilityTags: parseTagsInput(document.getElementById('cardTemplateCapabilityTags').value),
+          scenarioTags: parseTagsInput(document.getElementById('cardTemplateScenarioTags').value),
+          fields: collectFields(),
         };
         const res = await fetch(`/api/card-templates/${encodeURIComponent(String(_activeCardTemplate.id))}`, {
           method: 'PUT',

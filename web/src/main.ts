@@ -27,6 +27,9 @@ import { ensureProjectWorkspaceReady } from './workspace/store';
 import { renderWorkspaceEditorShell, setupWorkspaceEditorShell } from './workspace/runtime';
 import { renderWorkspacePreview } from './workspace/preview';
 import { ensureWorkspaceTemplateCache, getWorkspaceTemplateCache } from './workspace/runtime';
+import { getPublishedPortal } from './api/saved-portals';
+import { renderTemplate } from './templates/loader';
+import { loadDefaultTemplates } from './theme-engine';
 
 declare global {
   interface Window {
@@ -133,7 +136,71 @@ async function initializeFeatureModules() {
   });
 }
 
+/**
+ * Published portal viewer — lightweight read-only page at /p/:id.
+ * Hides all editing UI, fetches the snapshot, and renders the portal fullscreen.
+ */
+async function initializePublishedPortal(portalId: string): Promise<void> {
+  document.body.classList.add('published-mode');
+  applyUiTheme('light');
+
+  const container = document.getElementById('publishedPortalContainer');
+  if (!container) { console.error('Published portal container not found'); return; }
+
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.width = '100vw';
+  container.style.height = '100vh';
+  container.style.overflow = 'hidden';
+
+  try {
+    const snapshot = await getPublishedPortal(portalId);
+
+    // Header bar
+    const header = document.createElement('div');
+    header.className = 'published-portal-header';
+    header.innerHTML = `<span class="published-portal-name">${snapshot.name || '客户门户'}</span><span class="published-portal-badge">AlPage 预览</span>`;
+    container.appendChild(header);
+
+    // Template render target
+    const previewTarget = document.createElement('div');
+    previewTarget.id = 'publishedPreview';
+    previewTarget.style.flex = '1';
+    previewTarget.style.position = 'relative';
+    previewTarget.style.overflow = 'hidden';
+    container.appendChild(previewTarget);
+
+    // Apply theme colors
+    const templateType = (snapshot.templateType || 'light-ui') as 'light-ui' | 'dark-ui';
+    if (snapshot.colors) {
+      for (const [k, v] of Object.entries(snapshot.colors)) {
+        setThemeVar(`--${k}`, v as string);
+      }
+    }
+    applyTemplateSpecificThemeVars(templateType);
+
+    // Load templates and render
+    loadDefaultTemplates();
+    await renderTemplate('desktop', previewTarget);
+
+    // Render workspace cards
+    await ensureWorkspaceTemplateCache();
+    if (snapshot.workspace) {
+      renderWorkspacePreview(previewTarget, snapshot.workspace as any, getWorkspaceTemplateCache());
+    }
+  } catch (err) {
+    container.innerHTML = `<div class="published-portal-error">加载失败：${(err as Error).message}</div>`;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  // Check for published portal mode (/p/:id)
+  const publishedMatch = window.location.pathname.match(/^\/p\/([a-zA-Z0-9_-]+)/);
+  if (publishedMatch) {
+    await initializePublishedPortal(publishedMatch[1]);
+    return;
+  }
+
   try {
     const isAuth = await checkAuth();
     if (!isAuth) {

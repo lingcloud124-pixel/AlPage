@@ -1,0 +1,51 @@
+/* Published portal read-only viewer (/p/:id) */
+
+/* Hide all editing UI in published mode */
+body.published-mode {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body.published-mode #workspaceView,
+body.published-mode .sidebar,
+body.published-mode #chatPanel,
+body.published-mode #sidePanel,
+body.published-mode #workspacePropertiesDrawer {
+  display: none !important;
+}
+
+.published-portal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  flex-shrink: 0;
+}
+
+.published-portal-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.published-portal-badge {
+  font-size: 11px;
+  color: #9ca3af;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.published-portal-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  color: #6b7280;
+}

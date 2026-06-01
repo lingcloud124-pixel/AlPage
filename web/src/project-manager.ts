@@ -38,6 +38,7 @@ export interface Project {
   serverExportJobs?: ServerExportJob[];
   exportBatches?: ExportBatch[];
   pinned?: boolean;
+  savedPortalId?: string;
   createdAt: number;
   updatedAt: number;
 }

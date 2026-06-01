@@ -236,11 +236,43 @@ export async function initDb(): Promise<void> {
       default_props TEXT NOT NULL DEFAULT '{}',
       layout_rules TEXT NOT NULL DEFAULT '{}',
       preview_image_url TEXT NOT NULL DEFAULT '',
+      industry_tags TEXT NOT NULL DEFAULT '[]',
+      capability_tags TEXT NOT NULL DEFAULT '[]',
+      scenario_tags TEXT NOT NULL DEFAULT '[]',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )
   `);
   db.run('CREATE INDEX IF NOT EXISTS idx_card_templates_category_updated ON card_templates(category_id, updated_at DESC)');
+
+  // Migrate: add tag columns if missing (existing DBs)
+  if (!hasColumn('card_templates', 'industry_tags')) {
+    db.run("ALTER TABLE card_templates ADD COLUMN industry_tags TEXT NOT NULL DEFAULT '[]'");
+  }
+  if (!hasColumn('card_templates', 'capability_tags')) {
+    db.run("ALTER TABLE card_templates ADD COLUMN capability_tags TEXT NOT NULL DEFAULT '[]'");
+  }
+  if (!hasColumn('card_templates', 'scenario_tags')) {
+    db.run("ALTER TABLE card_templates ADD COLUMN scenario_tags TEXT NOT NULL DEFAULT '[]'");
+  }
+
+  // Card template field schema table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS card_template_fields (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      template_id TEXT NOT NULL,
+      field_key TEXT NOT NULL,
+      label TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'text',
+      ai_writable INTEGER NOT NULL DEFAULT 1,
+      required INTEGER NOT NULL DEFAULT 0,
+      options TEXT NOT NULL DEFAULT '[]',
+      item_schema TEXT NOT NULL DEFAULT '{}',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (template_id) REFERENCES card_templates(id) ON DELETE CASCADE
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_card_template_fields_template ON card_template_fields(template_id, sort_order ASC)');
 
   db.run(`
     CREATE TABLE IF NOT EXISTS project_workspaces (
@@ -329,6 +361,53 @@ export async function initDb(): Promise<void> {
   db.run(`UPDATE card_templates SET default_props = '${scheduleDefaultProps}', updated_at = ${workspaceSeedNow} WHERE id = 'tpl-my-schedule'`);
   db.run(`UPDATE card_templates SET default_props = '${quickAccessDefaultProps}', updated_at = ${workspaceSeedNow} WHERE id = 'tpl-quick-access'`);
 
+  // Seed card template fields (INSERT OR IGNORE for idempotency)
+  const todoFields = [
+    { key: 'summary', label: '摘要', type: 'text', aiWritable: 1, required: 0, sortOrder: 0 },
+    { key: 'itemCount', label: '事项数量', type: 'number', aiWritable: 1, required: 0, sortOrder: 1 },
+    { key: 'items', label: '待办列表', type: 'list', aiWritable: 1, required: 0, options: '[]', itemSchema: '{"label":"text","meta":"text"}', sortOrder: 2 },
+  ];
+  const newsFields = [
+    { key: 'badge', label: '角标', type: 'text', aiWritable: 1, required: 0, sortOrder: 0 },
+    { key: 'headline', label: '标题', type: 'text', aiWritable: 1, required: 1, sortOrder: 1 },
+    { key: 'summary', label: '摘要', type: 'text', aiWritable: 1, required: 0, sortOrder: 2 },
+    { key: 'itemCount', label: '新闻数量', type: 'number', aiWritable: 1, required: 0, sortOrder: 3 },
+    { key: 'items', label: '新闻列表', type: 'list', aiWritable: 1, required: 0, options: '[]', itemSchema: '{"title":"text","meta":"text"}', sortOrder: 4 },
+  ];
+  const scheduleFields = [
+    { key: 'itemCount', label: '日程数量', type: 'number', aiWritable: 1, required: 0, sortOrder: 0 },
+    { key: 'items', label: '日程列表', type: 'list', aiWritable: 1, required: 0, options: '[]', itemSchema: '{"title":"text","meta":"text","status":"text"}', sortOrder: 1 },
+  ];
+  const quickAccessFields = [
+    { key: 'itemCount', label: '入口数量', type: 'number', aiWritable: 1, required: 0, sortOrder: 0 },
+    { key: 'links', label: '入口列表', type: 'list', aiWritable: 1, required: 0, options: '[]', itemSchema: '{}', sortOrder: 1 },
+  ];
+  const fieldSeedMap: Array<[string, Array<Record<string, unknown>>]> = [
+    ['tpl-message-todo', todoFields],
+    ['tpl-news-carousel', newsFields],
+    ['tpl-my-schedule', scheduleFields],
+    ['tpl-quick-access', quickAccessFields],
+  ];
+  for (const [templateId, fields] of fieldSeedMap) {
+    for (const field of fields) {
+      const fSeedSql = `INSERT OR IGNORE INTO card_template_fields (template_id, field_key, label, type, ai_writable, required, options, item_schema, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      const fSeedStmt = db.prepare(fSeedSql);
+      fSeedStmt.bind([
+        templateId,
+        field.key,
+        field.label,
+        field.type,
+        field.aiWritable,
+        field.required ? 1 : 0,
+        (field as any).options ?? '[]',
+        (field as any).itemSchema ?? '{}',
+        field.sortOrder,
+      ]);
+      fSeedStmt.step();
+      fSeedStmt.free();
+    }
+  }
+
   // Create conversations table for sidebar history
   db.run(`
     CREATE TABLE IF NOT EXISTS conversations (
@@ -405,6 +484,14 @@ export async function initDb(): Promise<void> {
   db.run('CREATE INDEX IF NOT EXISTS idx_industry_cases_industry ON industry_cases(industry)');
   db.run('CREATE INDEX IF NOT EXISTS idx_industry_cases_user ON industry_cases(user_id, created_at DESC)');
 
+  // Phase F: dual-purpose case library columns
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN summary TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN highlights TEXT NOT NULL DEFAULT \'[]\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN cover_image_url TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN display_enabled INTEGER NOT NULL DEFAULT 0'); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN reference_enabled INTEGER NOT NULL DEFAULT 1'); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN anonymized_requirement TEXT NOT NULL DEFAULT \'\''); } catch {}
+
   // 门户方案保存
   db.run(`
     CREATE TABLE IF NOT EXISTS saved_portals (
@@ -422,6 +509,10 @@ export async function initDb(): Promise<void> {
     )
   `);
   db.run('CREATE INDEX IF NOT EXISTS idx_saved_portals_user ON saved_portals(user_id, updated_at DESC)');
+
+  // Phase G: published snapshot for read-only preview
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN published_snapshot TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN published_at INTEGER'); } catch {}
 
   // Save to disk
   flushDb();

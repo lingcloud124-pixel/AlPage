@@ -36,7 +36,7 @@ describe('workspace properties panel placement', () => {
 
     // 工作区规划面板，卡片内容由工作区卡片点击触发
     expect(html).toContain('data-tab="layout"');
-    expect(html).not.toContain('data-tab="theme"');
+    expect(html).toContain('data-tab="theme"');
     expect(html).not.toContain('data-tab="card"');
     expect(html).toContain('config-panel-tabs');
     expect(runtime).toContain('renderWorkspacePlanningView');

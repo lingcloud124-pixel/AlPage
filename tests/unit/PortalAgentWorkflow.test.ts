@@ -91,12 +91,11 @@ describe('portal agent workflow', () => {
   });
 
   test('message workflow only downgrades plan status when profile data changes or status is new', () => {
-    const source = fs.readFileSync(path.join(process.cwd(), 'web/src/chat-manager.ts'), 'utf8');
-    const resolver = source.match(/async function resolvePortalWorkflowForMessage[\s\S]*?\nfunction pushToolResultToHistory/)?.[0] ?? '';
+    const source = fs.readFileSync(path.join(process.cwd(), 'web/src/chat/chat-portal-workflow.ts'), 'utf8');
 
-    expect(resolver).toContain('if (!project.portalPlanStatus)');
-    expect(resolver).toContain('if (profileChanged && nextProfile)');
-    expect(resolver).not.toContain("if (nextProfile) {\n    project.portalProfile = nextProfile;\n    Object.assign(project, setPortalPlanStatus(project, 'collecting'));");
+    expect(source).toContain('if (!project.portalPlanStatus)');
+    expect(source).toContain('if (profileChanged && nextProfile)');
+    expect(source).not.toContain("if (nextProfile) {\n    project.portalProfile = nextProfile;\n    Object.assign(project, setPortalPlanStatus(project, 'collecting'));");
   });
 
   test('chat confirmation flow creates and applies a PortalPlan before rendering workspace', () => {
