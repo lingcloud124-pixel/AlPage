@@ -23,7 +23,7 @@ export function whitelistMiddleware(req: Request, res: Response, next: NextFunct
     logger.info('Whitelist blocked user', { loginName });
     res.status(403).json({
       error: 'WHITELIST_BLOCKED',
-      message: '系统正在内测中，暂未对您开放，请联系管理员',
+      message: '当前产品处于测试阶段，如需试用请扫码入群联系我们开通。如有任何问题请联系：蓝凌 刘萍',
     });
   } catch {
     logger.error('Failed to parse whitelist_users', { rawValue: String(config.whitelist_users).slice(0, 200) });

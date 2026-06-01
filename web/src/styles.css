@@ -6545,15 +6545,33 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
 
 .package-progress-btn-spinner
 {
+  display: inline-block;
+  position: relative;
   width: 14px;
   height: 14px;
+  box-sizing: border-box;
+  overflow: hidden;
+  line-height: 0;
+  flex: 0 0 14px;
+}
+
+.package-progress-btn-spinner::before
+{
+  content: '';
+  position: absolute;
+  inset: 0;
   box-sizing: border-box;
   border: 2px solid rgba(255,255,255,0.45);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: pkg-spin 0.75s linear infinite;
+  animation: pkg-spinner-spin 0.75s linear infinite;
   transform-origin: 50% 50%;
-  flex: 0 0 auto;
+}
+
+@keyframes pkg-spinner-spin
+{
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .package-progress-btn:hover
@@ -7264,6 +7282,37 @@ body.landing-admin-page
   color: #6b7280;
   line-height: 1.6;
   margin: 0 0 24px;
+}
+
+.whitelist-block-qr
+{
+  margin: 0 auto 16px;
+  width: 160px;
+  height: 160px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+}
+
+.whitelist-block-qr img
+{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.whitelist-block-contact
+{
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.whitelist-block-contact strong
+{
+  color: #1a1a1a;
 }
 
 .whitelist-block-sub
