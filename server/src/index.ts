@@ -206,6 +206,10 @@ app.use('/api/theme', (req: any, _res: any, next: any) => {
   const loginName = req.loginName as string | undefined;
   if (loginName) {
     req.userId = ensureUserByLoginName(loginName);
+  }
+  next();
+});
+
 // Public (unauthenticated) routes — must mount BEFORE auth-protected routes
 app.get('/api/saved-portals/published/:id', async (req, res) => {
   try {

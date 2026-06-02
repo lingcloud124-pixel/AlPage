@@ -3,6 +3,7 @@ import { db, saveDb } from '../db.js';
 
 // 管理员路由：跨用户列出所有保存方案
 export const savedPortalsAdminRouter = Router();
+export const savedPortalsRouter = Router();
 
 savedPortalsAdminRouter.get('/all', (_req, res) => {
   try {

@@ -1,9 +1,12 @@
 export interface SavedPortalSummary {
   id: string;
   projectId: string;
+  conversationId?: string;
   name: string;
   templateType: string;
   status: string;
+  curatedCaseCount?: number;
+  publishedAt?: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -12,6 +15,28 @@ export interface SavedPortalDetail extends SavedPortalSummary {
   colors: Record<string, string>;
   workspace: Record<string, unknown>;
   portalPlan: Record<string, unknown>;
+  projectSnapshot?: Record<string, unknown>;
+  conversationSnapshot?: Record<string, unknown>;
+}
+
+export class SavedPortalNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Saved portal not found: ${id}`);
+    this.name = 'SavedPortalNotFoundError';
+  }
+}
+
+interface SavedPortalPayload {
+  name: string;
+  templateType: string;
+  colors: Record<string, string>;
+  workspace: Record<string, unknown>;
+  portalPlan: Record<string, unknown>;
+  projectId: string;
+  conversationId?: string;
+  projectSnapshot?: Record<string, unknown>;
+  conversationSnapshot?: Record<string, unknown>;
+  status?: string;
 }
 
 function resolveApiUrl(path: string): string {
@@ -33,15 +58,7 @@ export async function getSavedPortal(id: string): Promise<SavedPortalDetail> {
   return resp.json();
 }
 
-export async function createSavedPortal(data: {
-  name: string;
-  templateType: string;
-  colors: Record<string, string>;
-  workspace: Record<string, unknown>;
-  portalPlan: Record<string, unknown>;
-  projectId: string;
-  status?: string;
-}): Promise<{ id: string }> {
+export async function createSavedPortal(data: SavedPortalPayload): Promise<{ id: string }> {
   const resp = await fetch(resolveApiUrl(''), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -52,20 +69,14 @@ export async function createSavedPortal(data: {
   return resp.json();
 }
 
-export async function updateSavedPortal(id: string, data: Partial<{
-  name: string;
-  templateType: string;
-  colors: Record<string, string>;
-  workspace: Record<string, unknown>;
-  portalPlan: Record<string, unknown>;
-  status: string;
-}>): Promise<void> {
+export async function updateSavedPortal(id: string, data: Partial<SavedPortalPayload>): Promise<void> {
   const resp = await fetch(resolveApiUrl(`/${encodeURIComponent(id)}`), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
     body: JSON.stringify(data),
   });
+  if (resp.status === 404) throw new SavedPortalNotFoundError(id);
   if (!resp.ok) throw new Error(`updateSavedPortal failed: ${resp.status}`);
 }
 
