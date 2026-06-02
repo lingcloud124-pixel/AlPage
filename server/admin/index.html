@@ -75,6 +75,8 @@
     .tab-btn.active { color: #fff; background: var(--accent); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
+    .subtab-panel { display: none; }
+    .subtab-panel.active { display: block; }
     .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
     .header-row h1 { margin: 0; }
     .menu-btn { position: relative; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
@@ -171,7 +173,7 @@
         <button class="tab-btn active" data-tab="config" onclick="switchTab('config')">产品配置</button>
         <button class="tab-btn" data-tab="users" onclick="switchTab('users')">用户列表</button>
         <button class="tab-btn" data-tab="card-library" onclick="switchTab('card-library')">卡片库</button>
-        <button class="tab-btn" data-tab="industry-cases" onclick="switchTab('industry-cases')">行业案例</button>
+        <button class="tab-btn" data-tab="industry-cases" onclick="switchTab('industry-cases')">资料库管理</button>
       </div>
 
       <div class="tab-panel active" id="tab-config">
@@ -469,26 +471,114 @@
   </aside>
 
   <div class="tab-panel" id="tab-industry-cases">
-    <div class="card">
-      <h2>行业案例库</h2>
-      <div class="row" style="margin-bottom: 16px;">
-        <div>
-          <label>按行业筛选</label>
-          <input type="text" id="caseFilterIndustry" placeholder="如：能源、制造" oninput="loadIndustryCases()">
+    <!-- 子页签 -->
+    <div class="tab-bar" style="margin-bottom: 16px;">
+      <button class="tab-btn active" data-subtab="saved-portals" onclick="switchSubTab('saved-portals')">已保存方案</button>
+      <button class="tab-btn" data-subtab="curated-cases" onclick="switchSubTab('curated-cases')">沉淀案例</button>
+    </div>
+
+    <!-- 已保存方案 -->
+    <div class="subtab-panel active" id="subtab-saved-portals">
+      <div class="card">
+        <h2>已保存方案</h2>
+        <div class="row" style="margin-bottom: 16px;">
+          <div>
+            <label>关键词搜索</label>
+            <input type="text" id="spFilterKeyword" placeholder="搜索方案名称" oninput="loadSavedPortalsAdmin()">
+          </div>
         </div>
-        <div>
-          <label>关键词搜索</label>
-          <input type="text" id="caseFilterKeyword" placeholder="如：调度、运营" oninput="loadIndustryCases()">
-        </div>
+        <table>
+          <thead>
+            <tr><th>名称</th><th>用户</th><th>行业</th><th>更新时间</th><th>发布</th><th>已沉淀</th><th>操作</th></tr>
+          </thead>
+          <tbody id="savedPortalsAdminBody">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);">加载中...</td></tr>
+          </tbody>
+        </table>
       </div>
-      <table>
-        <thead>
-          <tr><th>客户名称</th><th>行业</th><th>关键词</th><th>创建时间</th><th>操作</th></tr>
-        </thead>
-        <tbody id="industryCasesBody">
-          <tr><td colspan="5" style="text-align:center;color:var(--muted);">加载中...</td></tr>
-        </tbody>
-      </table>
+    </div>
+
+    <!-- 沉淀案例 -->
+    <div class="subtab-panel" id="subtab-curated-cases">
+      <div class="card">
+        <h2>沉淀案例</h2>
+        <div class="row" style="margin-bottom: 16px;">
+          <div>
+            <label>按行业筛选</label>
+            <input type="text" id="caseFilterIndustry" placeholder="如：能源、制造" oninput="loadCuratedCases()">
+          </div>
+          <div>
+            <label>关键词搜索</label>
+            <input type="text" id="caseFilterKeyword" placeholder="如：调度、运营" oninput="loadCuratedCases()">
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr><th>案例标题</th><th>行业</th><th>关键词</th><th>来源方案</th><th>沉淀时间</th><th>AI 参考</th><th>展示</th><th>操作</th></tr>
+          </thead>
+          <tbody id="curatedCasesBody">
+            <tr><td colspan="8" style="text-align:center;color:var(--muted);">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 沉淀为案例弹窗 -->
+  <div class="modal-overlay" id="curateModal">
+    <div class="modal-box" style="width: 440px;">
+      <h2>沉淀为案例</h2>
+      <label>案例标题</label>
+      <input type="text" id="curateCaseTitle" placeholder="输入案例标题">
+      <label>行业</label>
+      <input type="text" id="curateIndustry" placeholder="如：能源、金融" readonly>
+      <label>关键词（逗号分隔）</label>
+      <input type="text" id="curateKeywords" placeholder="关键词1, 关键词2">
+      <label>摘要</label>
+      <textarea id="curateSummary" rows="3" placeholder="简要描述此案例特点"></textarea>
+      <div class="setting-toggle-row" style="margin-top: 14px;">
+        <div class="setting-toggle-copy">
+          <span class="setting-toggle-title">启用 AI 参考</span>
+          <span class="setting-toggle-note">作为 AI 生成时的参考案例</span>
+        </div>
+        <label class="switch" aria-label="启用 AI 参考">
+          <input type="checkbox" id="curateRefEnabled" checked>
+          <span class="switch-slider" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="setting-toggle-row">
+        <div class="setting-toggle-copy">
+          <span class="setting-toggle-title">前台展示</span>
+          <span class="setting-toggle-note">在前台案例展示中可见</span>
+        </div>
+        <label class="switch" aria-label="前台展示">
+          <input type="checkbox" id="curateDisplayEnabled">
+          <span class="switch-slider" aria-hidden="true"></span>
+        </label>
+      </div>
+      <input type="hidden" id="curatePortalId">
+      <div class="actions" style="justify-content: flex-end;">
+        <button class="btn-secondary" onclick="closeCurateModal()">取消</button>
+        <button class="btn-primary" onclick="submitCurateCase()">确认沉淀</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑案例弹窗 -->
+  <div class="modal-overlay" id="editCaseModal">
+    <div class="modal-box" style="width: 440px;">
+      <h2>编辑案例</h2>
+      <label>案例标题</label>
+      <input type="text" id="editCaseTitle" placeholder="输入案例标题">
+      <label>关键词（逗号分隔）</label>
+      <input type="text" id="editCaseKeywords" placeholder="关键词1, 关键词2">
+      <label>摘要</label>
+      <textarea id="editCaseSummary" rows="3" placeholder="简要描述此案例特点"></textarea>
+      <input type="hidden" id="editCaseId">
+      <div class="actions" style="justify-content: flex-end;">
+        <button class="btn-secondary" onclick="closeEditCaseModal()">取消</button>
+        <button class="btn-primary" onclick="saveCaseDetails()">保存</button>
+      </div>
     </div>
   </div>
 
@@ -506,7 +596,7 @@
       document.getElementById(`tab-${name}`).classList.add('active');
       if (name === 'users') loadUsers();
       if (name === 'card-library') loadCardLibrary();
-      if (name === 'industry-cases') loadIndustryCases();
+      if (name === 'industry-cases') { loadSavedPortalsAdmin(); loadCuratedCases(); }
     }
 
     function toggleMenu() {
@@ -1308,7 +1398,109 @@
     });
 
     // ── 行业案例库管理 ──
-    async function loadIndustryCases() {
+    // === 子页签切换 ===
+    function switchSubTab(name) {
+      document.querySelectorAll('[data-subtab]').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.subtab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector(`[data-subtab="${name}"]`).classList.add('active');
+      document.getElementById(`subtab-${name}`).classList.add('active');
+    }
+
+    // === 已保存方案（管理员） ===
+    async function loadSavedPortalsAdmin() {
+      const keyword = document.getElementById('spFilterKeyword')?.value?.trim() || '';
+      const qs = new URLSearchParams();
+      if (keyword) qs.set('keyword', keyword);
+      qs.set('limit', '50');
+      try {
+        const res = await fetch('/api/admin/saved-portals/all?' + qs.toString(), { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        const tbody = document.getElementById('savedPortalsAdminBody');
+        if (!data.items || data.items.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">暂无保存方案</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.items.map(p => `
+          <tr>
+            <td>${esc(p.name || '-')}</td>
+            <td>${esc(p.displayName || '-')}</td>
+            <td>${esc(p.industry || '-')}</td>
+            <td>${new Date(p.updatedAt * 1000).toLocaleDateString()}</td>
+            <td>${p.publishedAt ? '<span class="status-pill success">已发布</span>' : '<span style="color:var(--muted)">未发布</span>'}</td>
+            <td>${p.curatedCaseCount > 0 ? '<span class="status-pill success">已沉淀(' + p.curatedCaseCount + ')</span>' : '-'}</td>
+            <td style="white-space:nowrap;">
+              ${p.publishedAt ? `<button class="btn-sm btn-secondary" onclick="copyPublishLink('${p.id}')">复制链接</button>` : ''}
+              <button class="btn-danger btn-sm" onclick="deleteSavedPortalAdmin('${p.id}')">删除</button>
+              <button class="btn-primary btn-sm" onclick="openCurateModal('${p.id}', '${esc(p.name || '')}', '${esc(p.industry || '')}')">沉淀</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        document.getElementById('savedPortalsAdminBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">加载失败</td></tr>';
+      }
+    }
+
+    function copyPublishLink(portalId) {
+      const url = window.location.origin + '/p/' + portalId;
+      navigator.clipboard?.writeText(url).then(() => toast('已复制预览链接', 'success'));
+    }
+
+    async function deleteSavedPortalAdmin(id) {
+      if (!confirm('确定删除此保存方案？')) return;
+      try {
+        await fetch('/api/admin/saved-portals/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        toast('已删除', 'success');
+        loadSavedPortalsAdmin();
+      } catch (e) {
+        toast('删除失败', 'error');
+      }
+    }
+
+    // === 沉淀为案例弹窗 ===
+    function openCurateModal(portalId, name, industry) {
+      document.getElementById('curatePortalId').value = portalId;
+      document.getElementById('curateCaseTitle').value = name;
+      document.getElementById('curateIndustry').value = industry;
+      document.getElementById('curateKeywords').value = '';
+      document.getElementById('curateSummary').value = '';
+      document.getElementById('curateRefEnabled').checked = true;
+      document.getElementById('curateDisplayEnabled').checked = false;
+      document.getElementById('curateModal').classList.add('open');
+    }
+
+    function closeCurateModal() {
+      document.getElementById('curateModal').classList.remove('open');
+    }
+
+    async function submitCurateCase() {
+      const portalId = document.getElementById('curatePortalId').value;
+      const data = {
+        caseTitle: document.getElementById('curateCaseTitle').value.trim(),
+        referenceEnabled: document.getElementById('curateRefEnabled').checked,
+        displayEnabled: document.getElementById('curateDisplayEnabled').checked,
+        keywords: document.getElementById('curateKeywords').value.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+        summary: document.getElementById('curateSummary').value.trim(),
+      };
+      try {
+        const res = await fetch('/api/admin/industry-cases/from-saved-portal/' + portalId, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed');
+        toast('已沉淀为案例', 'success');
+        closeCurateModal();
+        loadSavedPortalsAdmin();
+        loadCuratedCases();
+      } catch (e) {
+        toast('沉淀失败', 'error');
+      }
+    }
+
+    // === 沉淀案例列表 ===
+    async function loadCuratedCases() {
       const industry = document.getElementById('caseFilterIndustry')?.value?.trim() || '';
       const keyword = document.getElementById('caseFilterKeyword')?.value?.trim() || '';
       const qs = new URLSearchParams();
@@ -1316,36 +1508,102 @@
       if (keyword) qs.set('keyword', keyword);
       qs.set('limit', '50');
       try {
-        const res = await fetch('/api/industry-cases?' + qs.toString(), { credentials: 'same-origin' });
+        const res = await fetch('/api/admin/industry-cases?' + qs.toString(), { credentials: 'same-origin' });
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
-        const tbody = document.getElementById('industryCasesBody');
+        const tbody = document.getElementById('curatedCasesBody');
         if (!data.items || data.items.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">暂无行业案例</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">暂无沉淀案例</td></tr>';
           return;
         }
         tbody.innerHTML = data.items.map(c => `
           <tr>
-            <td>${esc(c.customer_name || '-')}</td>
+            <td>${esc(c.caseTitle || c.case_title || c.customerName || c.customer_name || '-')}</td>
             <td>${esc(c.industry || '-')}</td>
             <td>${(c.keywords || []).map(esc).join(', ') || '-'}</td>
-            <td>${new Date(c.created_at * 1000).toLocaleDateString()}</td>
-            <td><button class="btn-danger btn-sm" onclick="deleteIndustryCase('${c.id}')">删除</button></td>
+            <td>${c.sourcePortalId || c.source_portal_id ? '有来源' : '-'}</td>
+            <td>${new Date(c.createdAt * 1000 || c.created_at * 1000).toLocaleDateString()}</td>
+            <td><label class="switch" style="min-height:28px"><input type="checkbox" ${c.referenceEnabled ? 'checked' : ''} onchange="toggleCaseRef('${c.id}', this.checked)"><span class="switch-slider"></span></label></td>
+            <td><label class="switch" style="min-height:28px"><input type="checkbox" ${c.displayEnabled ? 'checked' : ''} onchange="toggleCaseDisplay('${c.id}', this.checked)"><span class="switch-slider"></span></label></td>
+            <td style="white-space:nowrap;">
+              <button class="btn-secondary btn-sm" onclick="openEditCaseModal('${c.id}', '${esc(c.caseTitle || c.case_title || '')}', '${(c.keywords || []).map(esc).join(', ')}', '${esc(c.summary || '')}')">编辑</button>
+              <button class="btn-danger btn-sm" onclick="deleteCuratedCase('${c.id}')">删除</button>
+            </td>
           </tr>
         `).join('');
       } catch (e) {
-        document.getElementById('industryCasesBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">加载失败</td></tr>';
+        document.getElementById('curatedCasesBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">加载失败</td></tr>';
       }
     }
 
-    async function deleteIndustryCase(id) {
+    async function toggleCaseRef(id, enabled) {
+      try {
+        await fetch('/api/admin/industry-cases/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ referenceEnabled: enabled }),
+        });
+        toast(enabled ? '已启用 AI 参考' : '已停用 AI 参考', 'success');
+      } catch (e) { toast('操作失败', 'error'); }
+    }
+
+    async function toggleCaseDisplay(id, enabled) {
+      try {
+        await fetch('/api/admin/industry-cases/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ displayEnabled: enabled }),
+        });
+        toast(enabled ? '已启用展示' : '已停用展示', 'success');
+      } catch (e) { toast('操作失败', 'error'); }
+    }
+
+    async function deleteCuratedCase(id) {
       if (!confirm('确定删除此案例？')) return;
       try {
-        await fetch('/api/industry-cases/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        await fetch('/api/admin/industry-cases/' + id, { method: 'DELETE', credentials: 'same-origin' });
         toast('已删除', 'success');
-        loadIndustryCases();
+        loadCuratedCases();
       } catch (e) {
         toast('删除失败', 'error');
+      }
+    }
+
+    // === 编辑案例弹窗 ===
+    function openEditCaseModal(id, title, keywords, summary) {
+      document.getElementById('editCaseId').value = id;
+      document.getElementById('editCaseTitle').value = title;
+      document.getElementById('editCaseKeywords').value = keywords;
+      document.getElementById('editCaseSummary').value = summary;
+      document.getElementById('editCaseModal').classList.add('open');
+    }
+
+    function closeEditCaseModal() {
+      document.getElementById('editCaseModal').classList.remove('open');
+    }
+
+    async function saveCaseDetails() {
+      const id = document.getElementById('editCaseId').value;
+      const data = {
+        caseTitle: document.getElementById('editCaseTitle').value.trim(),
+        keywords: document.getElementById('editCaseKeywords').value.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+        summary: document.getElementById('editCaseSummary').value.trim(),
+      };
+      try {
+        const res = await fetch('/api/admin/industry-cases/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed');
+        toast('已保存', 'success');
+        closeEditCaseModal();
+        loadCuratedCases();
+      } catch (e) {
+        toast('保存失败', 'error');
       }
     }
 

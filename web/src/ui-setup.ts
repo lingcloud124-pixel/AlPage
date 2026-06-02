@@ -2,8 +2,9 @@ import { renderTemplate } from './templates/loader';
 import {
   getCurrentProjectId,
   loadProject,
+  markPortalResultSaved,
   markPortalResultFullscreenViewed,
-  markPortalResultShared,
+  type Project,
   saveProject,
 } from './project-manager';
 import { setThemeVar, applyThemeImageAssignments, applyTemplateSpecificThemeVars, getThemeTarget, hydrateHeaderSelectOptions, setupQualityCheck, loadDefaultTemplates } from './theme-engine';
@@ -11,12 +12,12 @@ import { setupChatInterface } from './chat-manager';
 import { initializeThemeConfiguration } from './components/color-editor';
 import type { WorkspaceCardSelection } from './components/card-content-configuration';
 import { showWorkspaceLandingState } from './main';
-import { toggleSidebar } from './components/sidebar';
+import { refreshSidebar, toggleSidebar } from './components/sidebar';
 import { renderWorkspacePreview } from './workspace/preview';
 import { ensureWorkspaceTemplateCache, getWorkspaceTemplateCache } from './workspace/runtime';
-import { publishSavedPortal, createSavedPortal, type SavedPortalDetail } from './api/saved-portals';
-import { createIndustryCase, type CreateIndustryCaseData } from './api/industry-cases';
-import { anonymizeRequirementSummary } from './portal-agent';
+import { publishSavedPortal, createSavedPortal, updateSavedPortal, SavedPortalNotFoundError } from './api/saved-portals';
+import { getConversationId, getConversationHistory, saveChatHistory } from './chat/chat-conversation-state';
+import { showNotificationWithOptions } from './utils/notification';
 
 let previewTemplatesLoaded = false;
 
@@ -148,11 +149,61 @@ async function withCurrentProject(
 }
 
 async function handleResultFullscreen(): Promise<void> {
-  const previewPanel = document.getElementById('previewPanel') as HTMLElement | null;
-  if (!previewPanel) return;
-  if (document.fullscreenElement !== previewPanel) {
-    await previewPanel.requestFullscreen?.();
+  const mainPage = document.getElementById('mainPage');
+  if (!mainPage) return;
+
+  // Collect the rendered portal content
+  const content = mainPage.innerHTML;
+  if (!content.trim()) return;
+
+  // Collect CSS custom properties from #previewPanel (theme colors)
+  const previewPanel = document.getElementById('previewPanel');
+  const themeVars: string[] = [];
+  if (previewPanel) {
+    const style = previewPanel.style;
+    for (let i = 0; i < style.length; i++) {
+      const name = style[i];
+      if (name.startsWith('--')) {
+        themeVars.push(`  ${name}: ${style.getPropertyValue(name)};`);
+      }
+    }
   }
+  const dataTemplateType = previewPanel?.getAttribute('data-template-type') ?? '';
+
+  // Collect all loaded stylesheet hrefs
+  const styleLinks: string[] = [];
+  document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]').forEach((link) => {
+    if (link.href) styleLinks.push(link.href);
+  });
+
+  // Build full HTML page
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>门户预览</title>
+${styleLinks.map((href) => `<link rel="stylesheet" href="${href}">`).join('\n')}
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100vh; }
+  body { ${dataTemplateType ? `data-template-type: "${dataTemplateType}";` : ''} }
+  #portalFullscreen { width: 100%; min-height: 100vh; }
+  .template-desktop, .template-login { position: relative !important; width: 100% !important; height: auto !important; transform: none !important; left: auto !important; top: auto !important; overflow: visible !important; }
+  ${themeVars.length ? `#portalFullscreen {\n${themeVars.join('\n')}\n}` : ''}
+</style>
+</head>
+<body>
+<div id="portalFullscreen" ${dataTemplateType ? `data-template-type="${dataTemplateType}"` : ''}>
+${content}
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+
   await withCurrentProject(async (project) => {
     await saveProject(markPortalResultFullscreenViewed(project));
   });
@@ -160,126 +211,143 @@ async function handleResultFullscreen(): Promise<void> {
 
 async function handleResultShare(): Promise<void> {
   const projectId = getCurrentProjectId();
-  if (!projectId) return;
-  const shareUrl = `${window.location.origin}${window.location.pathname}#project=${projectId}`;
-  const shareData = {
-    title: '客户门户方案',
-    text: '我刚整理了一份客户门户方案，可以直接查看并迭代。',
-    url: shareUrl,
-  };
-  if (navigator.share) {
-    try {
-      await navigator.share(shareData);
-    } catch {
-      // Fall back to clipboard when native share is canceled or unavailable.
+  if (!projectId) { alert('请先创建项目'); return; }
+  const project = await loadProject(projectId);
+  if (!project) { alert('项目不存在'); return; }
+
+  try {
+    const portalId = await saveCurrentPortal(project);
+    await publishSavedPortal(portalId);
+    const publishUrl = `${window.location.origin}/p/${portalId}`;
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(publishUrl);
     }
+    showNotificationWithOptions('已复制预览链接', { position: 'top-center' });
+  } catch (err) {
+    alert(`分享失败：${(err as Error).message}`);
   }
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(shareUrl);
-  }
-  await withCurrentProject(async (project) => {
-    await saveProject(markPortalResultShared(project));
-  });
 }
 
 export function setupResultActions() {
   const fullscreenBtn = document.getElementById('resultFullscreenBtn') as HTMLButtonElement | null;
+  const savePortalBtn = document.getElementById('resultSavePortalBtn') as HTMLButtonElement | null;
   const shareBtn = document.getElementById('resultShareBtn') as HTMLButtonElement | null;
-  const publishBtn = document.getElementById('resultPublishBtn') as HTMLButtonElement | null;
-  const saveCaseBtn = document.getElementById('resultSaveCaseBtn') as HTMLButtonElement | null;
+  const copyEditLinkBtn = document.getElementById('resultCopyEditLinkBtn') as HTMLButtonElement | null;
 
   fullscreenBtn?.addEventListener('click', () => { void handleResultFullscreen(); });
+  savePortalBtn?.addEventListener('click', () => { void handleResultSavePortal(); });
   shareBtn?.addEventListener('click', () => { void handleResultShare(); });
-  publishBtn?.addEventListener('click', () => { void handleResultPublish(); });
-  saveCaseBtn?.addEventListener('click', () => { void handleResultSaveCase(); });
+  copyEditLinkBtn?.addEventListener('click', () => { closeMoreMenu(); void handleResultCopyEditLink(); });
+
+  // 更多操作下拉菜单
+  const moreBtn = document.getElementById('topbarMoreBtn') as HTMLButtonElement | null;
+  moreBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const menu = document.getElementById('topbarMoreMenu');
+    menu?.classList.toggle('open');
+  });
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('topbarMoreMenu');
+    if (menu?.classList.contains('open') && !menu.contains(e.target as Node)) {
+      menu.classList.remove('open');
+    }
+  });
 }
 
-async function handleResultPublish(): Promise<void> {
+function closeMoreMenu(): void {
+  document.getElementById('topbarMoreMenu')?.classList.remove('open');
+}
+
+function cloneProjectSnapshot(project: Project): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(project)) as Record<string, unknown>;
+}
+
+function buildSavedPortalPayload(project: Project, conversationId?: string | null) {
+  const history = getConversationHistory();
+  return {
+    name: project.themeName || project.name || '未命名门户',
+    templateType: project.templateType,
+    colors: project.colors ?? {},
+    workspace: (project.workspace ?? {}) as unknown as Record<string, unknown>,
+    portalPlan: (project.portalPlan ?? {}) as unknown as Record<string, unknown>,
+    projectSnapshot: cloneProjectSnapshot(project),
+    conversationSnapshot: { messages: history.map(m => ({ role: m.role, content: m.content, timestamp: m.timestamp })) },
+    projectId: project.id,
+    conversationId: conversationId ?? '',
+    status: 'saved',
+  };
+}
+
+async function saveCurrentPortal(project: Project): Promise<string> {
+  const conversationId = await saveChatHistory() ?? getConversationId();
+  let portalId = project.savedPortalId;
+  let projectToSave = markPortalResultSaved(project);
+
+  if (!portalId) {
+    const result = await createSavedPortal(buildSavedPortalPayload(projectToSave, conversationId));
+    portalId = result.id;
+    project.savedPortalId = portalId;
+    projectToSave.savedPortalId = portalId;
+    await saveProject(projectToSave);
+  }
+
+  try {
+    await updateSavedPortal(portalId, buildSavedPortalPayload(projectToSave, conversationId));
+  } catch (error) {
+    if (!(error instanceof SavedPortalNotFoundError)) throw error;
+    const result = await createSavedPortal(buildSavedPortalPayload(projectToSave, conversationId));
+    portalId = result.id;
+    project.savedPortalId = portalId;
+    projectToSave.savedPortalId = portalId;
+    await updateSavedPortal(portalId, buildSavedPortalPayload(projectToSave, conversationId));
+  }
+  await saveProject(projectToSave);
+  await saveChatHistory(); // sync conversation snapshot with latest savedPortalId
+  return portalId;
+}
+
+async function handleResultSavePortal(): Promise<void> {
+  const button = document.getElementById('resultSavePortalBtn') as HTMLButtonElement | null;
   const projectId = getCurrentProjectId();
   if (!projectId) { alert('请先创建项目'); return; }
   const project = await loadProject(projectId);
   if (!project) { alert('项目不存在'); return; }
 
+  const originalText = button?.textContent || '保存';
+  if (button) {
+    button.disabled = true;
+    button.textContent = '保存中...';
+  }
+
   try {
-    // First ensure the project is saved as a portal
-    let portalId = project.savedPortalId;
-    if (!portalId) {
-      const result = await createSavedPortal({
-        name: project.themeName || project.name,
-        templateType: project.templateType,
-        colors: project.colors,
-        workspace: (project.workspace ?? {}) as unknown as Record<string, unknown>,
-        portalPlan: (project.portalPlan ?? {}) as unknown as Record<string, unknown>,
-        projectId: project.id,
-        status: 'saved',
-      });
-      portalId = result.id;
-      project.savedPortalId = portalId;
-      await saveProject(project);
-    }
-
-    // Update the saved portal with latest data before publishing
-    const { updateSavedPortal } = await import('./api/saved-portals');
-    await updateSavedPortal(portalId, {
-      name: project.themeName || project.name,
-      templateType: project.templateType,
-      colors: project.colors,
-      workspace: (project.workspace ?? {}) as unknown as Record<string, unknown>,
-      portalPlan: (project.portalPlan ?? {}) as unknown as Record<string, unknown>,
-    });
-
-    // Publish the portal
-    await publishSavedPortal(portalId);
-    const publishUrl = `${window.location.origin}/p/${portalId}`;
-
-    // Show the publish URL
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(publishUrl);
-      alert(`发布成功！链接已复制到剪贴板：\n\n${publishUrl}`);
-    } else {
-      prompt('发布成功！请复制以下链接：', publishUrl);
+    await saveCurrentPortal(project);
+    await refreshSidebar();
+    showNotificationWithOptions('保存成功', { position: 'top-center' });
+    if (button) {
+      button.textContent = originalText;
+      button.disabled = false;
     }
   } catch (err) {
-    alert(`发布失败：${(err as Error).message}`);
+    if (button) {
+      button.textContent = originalText;
+      button.disabled = false;
+    }
+    alert(`保存失败：${(err as Error).message}`);
   }
 }
 
-async function handleResultSaveCase(): Promise<void> {
+async function handleResultCopyEditLink(): Promise<void> {
   const projectId = getCurrentProjectId();
   if (!projectId) { alert('请先创建项目'); return; }
-  const project = await loadProject(projectId);
-  if (!project) { alert('项目不存在'); return; }
-
-  const title = prompt('案例标题：', project.themeName || project.name || '');
-  if (!title) return;
-
-  const industry = project.portalProfile?.customerIndustry ?? '';
-  const keywords = project.portalProfile?.highlightedCards ?? [];
-
-  // Build anonymized requirement summary
-  let anonymizedRequirement = '';
-  if (project.portalPlan?.requirementSummary) {
-    const anonymized = anonymizeRequirementSummary(project.portalPlan.requirementSummary);
-    anonymizedRequirement = JSON.stringify(anonymized);
-  }
-
+  const editUrl = `${window.location.origin}${window.location.pathname}#project=${projectId}`;
   try {
-    const caseData: CreateIndustryCaseData = {
-      customerName: '', // Anonymized — no real customer name
-      industry,
-      keywords,
-      portalPlan: (project.portalPlan ?? {}) as unknown as Record<string, unknown>,
-      projectId: project.id,
-      summary: `来自项目"${title}"的门户案例`,
-      highlights: keywords,
-      referenceEnabled: true,
-      displayEnabled: false,
-      anonymizedRequirement,
-    };
-    await createIndustryCase(caseData);
-    alert('已录入资料库！案例将作为 AI 参考使用。');
-  } catch (err) {
-    alert(`录入失败：${(err as Error).message}`);
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(editUrl);
+    }
+    showNotificationWithOptions('已复制编辑链接', { position: 'top-center' });
+  } catch {
+    prompt('请复制以下编辑链接：', editUrl);
   }
 }
 
@@ -354,6 +422,9 @@ export function setupConfigurationPanel() {
     sidePanel.classList.add('open');
     panelToggleBtn.textContent = '主题配置';
     initializeThemeConfiguration();
+    // Fallback resize after panel CSS transition completes
+    requestAnimationFrame(() => window.resizePreview?.());
+    setTimeout(() => window.resizePreview?.(), 400);
   }
 
   function closePanel() {
@@ -374,6 +445,9 @@ export function setupConfigurationPanel() {
       }
       prePanelState = null;
     }
+    // Fallback resize after panel CSS transition completes
+    requestAnimationFrame(() => window.resizePreview?.());
+    setTimeout(() => window.resizePreview?.(), 400);
   }
 
   window.addEventListener('workspace-card:selected', (event) => {

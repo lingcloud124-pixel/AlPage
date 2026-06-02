@@ -44,8 +44,8 @@ const [
   { usageLogsRouter },
   { cardTemplatesRouter },
   { workspaceRouter },
-  { industryCasesRouter },
-  { savedPortalsRouter },
+  { industryCasesRouter, industryCasesAdminRouter },
+  { savedPortalsRouter, savedPortalsAdminRouter },
 ] = await Promise.all([
   import('express'),
   import('./db.js'),
@@ -140,6 +140,8 @@ app.use('/api/model-config', adminAuthMiddleware, modelConfigRouter);
 app.use('/api/security-config', adminAuthMiddleware, securityConfigRouter);
 app.use('/api/admin-password', adminAuthMiddleware, adminPasswordRouter);
 app.use('/api/admin/usage-logs', adminAuthMiddleware, usageLogsRouter);
+app.use('/api/admin/saved-portals', adminAuthMiddleware, savedPortalsAdminRouter);
+app.use('/api/admin/industry-cases', adminAuthMiddleware, industryCasesAdminRouter);
 app.use('/api/admin-auth', adminAuthRouter);
 // Public (unauthenticated) routes — must mount BEFORE auth-protected routes
 app.get('/api/saved-portals/published/:id', async (req, res) => {

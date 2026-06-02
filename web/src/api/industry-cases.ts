@@ -10,6 +10,8 @@ export interface IndustryCaseSummary {
   displayEnabled: boolean;
   referenceEnabled: boolean;
   anonymizedRequirement?: string;
+  sourcePortalId: string;
+  caseTitle: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -38,37 +40,4 @@ export async function getIndustryCase(id: string): Promise<IndustryCaseDetail> {
   const resp = await fetch(resolveApiUrl(`/${encodeURIComponent(id)}`), { credentials: 'same-origin' });
   if (!resp.ok) throw new Error(`getIndustryCase failed: ${resp.status}`);
   return resp.json();
-}
-
-export interface CreateIndustryCaseData {
-  customerName: string;
-  industry: string;
-  keywords: string[];
-  portalPlan: Record<string, unknown>;
-  projectId: string;
-  summary?: string;
-  highlights?: string[];
-  coverImageUrl?: string;
-  displayEnabled?: boolean;
-  referenceEnabled?: boolean;
-  anonymizedRequirement?: string;
-}
-
-export async function createIndustryCase(data: CreateIndustryCaseData): Promise<{ id: string }> {
-  const resp = await fetch(resolveApiUrl(''), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
-    body: JSON.stringify(data),
-  });
-  if (!resp.ok) throw new Error(`createIndustryCase failed: ${resp.status}`);
-  return resp.json();
-}
-
-export async function deleteIndustryCase(id: string): Promise<void> {
-  const resp = await fetch(resolveApiUrl(`/${encodeURIComponent(id)}`), {
-    method: 'DELETE',
-    credentials: 'same-origin',
-  });
-  if (!resp.ok) throw new Error(`deleteIndustryCase failed: ${resp.status}`);
 }

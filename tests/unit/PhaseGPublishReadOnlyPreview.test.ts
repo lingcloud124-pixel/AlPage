@@ -19,6 +19,10 @@ describe('Phase G: publish read-only preview link', () => {
     test('has published_at column migration', () => {
       expect(dbSource).toContain('ALTER TABLE saved_portals ADD COLUMN published_at');
     });
+
+    test('has project_snapshot column migration for full portal recovery', () => {
+      expect(dbSource).toContain('ALTER TABLE saved_portals ADD COLUMN project_snapshot');
+    });
   });
 
   // --- Server routes ---
@@ -68,6 +72,11 @@ describe('Phase G: publish read-only preview link', () => {
       expect(publishBlock).toContain('workspace');
       expect(publishBlock).toContain('portalPlan');
     });
+
+    test('save and update persist full projectSnapshot', () => {
+      expect(routeSource).toContain('projectSnapshot');
+      expect(routeSource).toContain('project_snapshot');
+    });
   });
 
   // --- Frontend API ---
@@ -85,6 +94,10 @@ describe('Phase G: publish read-only preview link', () => {
       expect(apiSource).toContain('export async function getPublishedPortal');
     });
 
+    test('create and update APIs accept full projectSnapshot', () => {
+      expect(apiSource).toContain('projectSnapshot');
+    });
+
     test('getPublishedPortal does not send credentials', () => {
       const fnStart = apiSource.indexOf('export async function getPublishedPortal');
       const fnBlock = apiSource.substring(fnStart, fnStart + 500);
@@ -93,20 +106,19 @@ describe('Phase G: publish read-only preview link', () => {
   });
 
   // --- HTML ---
-  describe('publish button is enabled', () => {
+  describe('publish is merged into share button', () => {
     const html = fs.readFileSync(
       path.join(projectRoot, 'web/index.html'),
       'utf8',
     );
 
-    test('publish button is not disabled', () => {
-      const btnIdx = html.indexOf('resultPublishBtn');
-      const btnBlock = html.substring(btnIdx - 20, btnIdx + 120);
-      expect(btnBlock).not.toContain('disabled');
+    test('standalone publish button removed', () => {
+      expect(html).not.toContain('resultPublishBtn');
     });
 
-    test('publish button has title', () => {
-      expect(html).toContain('发布为只读预览链接');
+    test('share button exists and handles publish', () => {
+      expect(html).toContain('resultShareBtn');
+      expect(html).toContain('保存并分享预览链接');
     });
   });
 });

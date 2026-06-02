@@ -159,16 +159,16 @@ describe('Phase F: case library dual-purpose', () => {
     });
   });
 
-  // --- HTML has save case button ---
-  describe('HTML has save case button', () => {
+  // --- Save case button removed from frontend (moved to admin panel) ---
+  describe('save case button removed from frontend', () => {
     const html = fs.readFileSync(
       path.join(projectRoot, 'web/index.html'),
       'utf8',
     );
 
-    test('has resultSaveCaseBtn', () => {
-      expect(html).toContain('resultSaveCaseBtn');
-      expect(html).toContain('录入资料库');
+    test('resultSaveCaseBtn no longer in HTML', () => {
+      expect(html).not.toContain('resultSaveCaseBtn');
+      expect(html).not.toContain('录入资料库');
     });
   });
 });

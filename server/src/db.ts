@@ -498,11 +498,13 @@ export async function initDb(): Promise<void> {
       id TEXT PRIMARY KEY,
       user_id INTEGER NOT NULL,
       project_id TEXT NOT NULL DEFAULT '',
+      conversation_id TEXT NOT NULL DEFAULT '',
       name TEXT NOT NULL DEFAULT '未命名门户',
       template_type TEXT NOT NULL DEFAULT 'light-ui',
       colors TEXT NOT NULL DEFAULT '{}',
       workspace TEXT NOT NULL DEFAULT '{}',
       portal_plan TEXT NOT NULL DEFAULT '{}',
+      project_snapshot TEXT NOT NULL DEFAULT '{}',
       status TEXT NOT NULL DEFAULT 'draft',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
@@ -511,8 +513,21 @@ export async function initDb(): Promise<void> {
   db.run('CREATE INDEX IF NOT EXISTS idx_saved_portals_user ON saved_portals(user_id, updated_at DESC)');
 
   // Phase G: published snapshot for read-only preview
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN conversation_id TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN project_snapshot TEXT NOT NULL DEFAULT \'{}\''); } catch {}
   try { db.run('ALTER TABLE saved_portals ADD COLUMN published_snapshot TEXT NOT NULL DEFAULT \'\''); } catch {}
   try { db.run('ALTER TABLE saved_portals ADD COLUMN published_at INTEGER'); } catch {}
+
+  // 沉淀案例溯源：industry_cases 新增字段
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN source_portal_id TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN source_snapshot TEXT NOT NULL DEFAULT \'{}\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN case_title TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN source_project_id TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN source_saved_at INTEGER'); } catch {}
+
+  // 保存方案已沉淀计数 + 对话快照冗余
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN curated_case_count INTEGER NOT NULL DEFAULT 0'); } catch {}
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN conversation_snapshot TEXT NOT NULL DEFAULT \'{}\''); } catch {}
 
   // Save to disk
   flushDb();

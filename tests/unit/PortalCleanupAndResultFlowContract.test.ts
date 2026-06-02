@@ -14,8 +14,8 @@ describe('portal cleanup and result flow contract', () => {
     expect(indexHtml).toContain('生成门户');
     expect(indexHtml).toContain('自动保存');
     expect(indexHtml).toContain('分享方案');
-    expect(indexHtml).toContain('全屏查看');
-    expect(indexHtml).not.toContain('保存门户');
+    expect(indexHtml).toContain('预览');
+    expect(indexHtml).toContain('保存');
     expect(indexHtml).not.toContain('继续编辑');
   });
 
@@ -34,12 +34,12 @@ describe('portal cleanup and result flow contract', () => {
     const indexHtml = fs.readFileSync(path.join(projectRoot, 'web/index.html'), 'utf8');
 
     expect(indexHtml).toContain('resultFullscreenBtn');
-    expect(indexHtml).not.toContain('resultSaveBtn');
+    expect(indexHtml).toContain('resultSavePortalBtn');
     expect(indexHtml).toContain('resultShareBtn');
     expect(indexHtml).not.toContain('resultEditBtn');
     expect(uiSetup).toContain('setupResultActions');
-    expect(uiSetup).toContain('requestFullscreen');
-    expect(uiSetup).toContain('navigator.share');
+    expect(uiSetup).toContain('handleResultSavePortal');
+    expect(uiSetup).toContain('window.open');
     expect(uiSetup).toContain('navigator.clipboard.writeText');
   });
 });
