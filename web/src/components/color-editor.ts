@@ -145,8 +145,8 @@ export function getCurrentVariables(): Record<string, string> {
 /**
  * Initializes the color editor by generating all the necessary UI controls
  */
-export function initializeColorEditor(): void {
-  const container = getThemeEditorContainer();
+export function initializeColorEditor(targetContainer?: HTMLElement | null): void {
+  const container = targetContainer ?? getThemeEditorContainer();
   if (!container) {
     console.error('Color editor container not found');
     return;
@@ -172,7 +172,7 @@ export function initializeColorEditor(): void {
     for (const s of colorSettings) {
       setCSSVar(s.property, baselineColors[s.property] ?? s.defaultValue);
     }
-    initializeColorEditor();
+    initializeColorEditor(container);
   });
   
   container.appendChild(resetButton);
@@ -266,7 +266,7 @@ export function initializeColorEditor(): void {
     }
     
     // 刷新面板显示
-    initializeColorEditor();
+    initializeColorEditor(container);
     showDeriveSuccess(deriveSection, `已按 ${templateType} 规则从 ${hex} 推导并应用全套配色`);
   });
 
@@ -281,7 +281,22 @@ export function initializeColorEditor(): void {
   syncColorEditorFromTheme();
 }
 export function initializeThemeConfiguration(): void {
-  initializeColorEditor();
+  const container = getThemeEditorContainer();
+  if (!container) {
+    initializeColorEditor(document.getElementById('colorEditor'));
+    return;
+  }
+
+  container.innerHTML = `
+    <div id="themeConfigContainer"></div>
+    <div class="config-divider"></div>
+    <div id="colorEditor"></div>
+  `;
+  void import('./theme-configuration').then(({ renderThemeConfiguration }) => {
+    void renderThemeConfiguration();
+  });
+  const colorEditor = document.getElementById('colorEditor');
+  initializeColorEditor(colorEditor);
 }
 
 export function syncThemeConfigurationFromTheme(): void {

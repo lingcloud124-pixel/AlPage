@@ -5,24 +5,24 @@ import { describe, expect, test } from 'vitest';
 const projectRoot = process.cwd();
 
 describe('workspace properties panel placement', () => {
-  test('places the properties entry in the preview topbar and not inside the workspace editor toolbar', () => {
+  test('places workspace configuration in the side drawer and keeps legacy property buttons out of rendered HTML', () => {
     const html = fs.readFileSync(path.join(projectRoot, 'web/index.html'), 'utf8');
     const runtime = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
     const uiSetup = fs.readFileSync(path.join(projectRoot, 'web/src/ui-setup.ts'), 'utf8');
     const css = fs.readFileSync(path.join(projectRoot, 'web/src/styles/sidebar.css'), 'utf8');
 
-    const topbarRight = html.match(/<div class="topbar-right">[\s\S]*?<\/div>\s*<\/div>\s*<div class="preview-content">/)?.[0] ?? '';
+    const topbarRight = html.slice(html.indexOf('<div class="topbar-right"'), html.indexOf('<div class="preview-content">'));
     const editorToolbarActions = html.match(/<div class="workspace-editor-toolbar-actions">[\s\S]*?<\/div>/)?.[0] ?? '';
 
     expect(topbarRight).toContain('id="panelToggleBtn"');
-    expect(topbarRight).toContain('id="workspacePropertiesTopbarBtn"');
-    expect(topbarRight.indexOf('id="workspacePropertiesTopbarBtn"')).toBeGreaterThan(topbarRight.indexOf('id="panelToggleBtn"'));
+    expect(topbarRight).not.toContain('id="workspacePropertiesTopbarBtn"');
     expect(editorToolbarActions).not.toContain('id="workspaceEditorPropertiesBtn"');
 
     expect(runtime).toContain("openWorkspacePropertiesDrawer('card')");
     expect(runtime).toContain("setActiveConfigTab('card')");
     expect(runtime).toContain('renderConfigPanelContent()');
-    expect(runtime).toContain('workspacePropertiesTopbarBtn');
+    expect(runtime).toContain("document.getElementById('workspacePropertiesTopbarBtn')");
+    expect(runtime).toContain('propertiesBtn?.addEventListener');
     expect(runtime).toContain("appContainer.classList.add('panel-open')");
     expect(runtime).toContain("sidePanel?.classList.remove('open')");
     expect(runtime).toContain("drawer.classList.remove('open')");
@@ -36,8 +36,8 @@ describe('workspace properties panel placement', () => {
 
     // 工作区规划面板，卡片内容由工作区卡片点击触发
     expect(html).toContain('data-tab="layout"');
-    expect(html).toContain('data-tab="theme"');
-    expect(html).not.toContain('data-tab="card"');
+    expect(html).not.toContain('data-tab="theme"');
+    expect(html).toContain('data-tab="card"');
     expect(html).toContain('config-panel-tabs');
     expect(runtime).toContain('renderWorkspacePlanningView');
     expect(runtime).toContain('renderCardContentConfiguration');

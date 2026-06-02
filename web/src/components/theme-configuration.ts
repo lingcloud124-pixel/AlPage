@@ -3,6 +3,7 @@ import { setThemeVar } from '../theme-engine';
 import { syncColorEditorFromTheme } from './color-editor';
 import { renderWorkspacePreview } from '../workspace/preview';
 import { getWorkspaceTemplateCache } from '../workspace/runtime';
+import { saveChatHistory } from '../chat/chat-conversation-state';
 
 type Project = NonNullable<Awaited<ReturnType<typeof loadProject>>>;
 
@@ -10,7 +11,7 @@ type Project = NonNullable<Awaited<ReturnType<typeof loadProject>>>;
  * Render the editable theme configuration form into the config panel.
  */
 export async function renderThemeConfiguration(): Promise<void> {
-  const container = document.getElementById('workspacePropertiesContent');
+  const container = document.getElementById('themeConfigContainer') ?? document.getElementById('workspacePropertiesContent');
   if (!container) return;
 
   const projectId = getCurrentProjectId();
@@ -20,9 +21,11 @@ export async function renderThemeConfiguration(): Promise<void> {
     return;
   }
 
-  const logoUrl = project.bgImageUrl ?? '';
+  const logoUrl = project.logoUrl ?? '';
   const customerName = project.portalProfile?.customerName ?? '';
   const headerStyle = project.portalPlan?.themeLayer?.headerStyle ?? 'standard';
+  const logoHeight = project.logoHeight ?? 32;
+  const logoMaxWidth = project.logoMaxWidth ?? 245;
 
   container.innerHTML = `
     <div class="theme-config-form">
@@ -35,6 +38,16 @@ export async function renderThemeConfiguration(): Promise<void> {
             <input type="file" id="themeConfigLogoInput" accept="image/*" class="logo-file-input" />
           </div>
           ${logoUrl ? '<button class="config-btn-danger" id="themeConfigLogoDeleteBtn" type="button">删除 Logo</button>' : ''}
+        </div>
+        <div class="config-field">
+          <label class="config-label" for="themeConfigLogoHeight">Logo 高度 (px)</label>
+          <input type="number" id="themeConfigLogoHeight" class="config-input" min="16" max="96"
+            value="${logoHeight}" />
+        </div>
+        <div class="config-field">
+          <label class="config-label" for="themeConfigLogoMaxWidth">Logo 最大宽度 (px)</label>
+          <input type="number" id="themeConfigLogoMaxWidth" class="config-input" min="64" max="420"
+            value="${logoMaxWidth}" />
         </div>
       </div>
 
@@ -136,7 +149,13 @@ function bindThemeConfigEvents(project: Project): void {
         project.templateType = templateType;
       }
 
+      const logoHeight = parseNumberInput('themeConfigLogoHeight', 16, 96, project.logoHeight ?? 32);
+      const logoMaxWidth = parseNumberInput('themeConfigLogoMaxWidth', 64, 420, project.logoMaxWidth ?? 245);
+      project.logoHeight = logoHeight;
+      project.logoMaxWidth = logoMaxWidth;
+
       await saveProject(project);
+      await saveChatHistory();
       refreshPreview(project);
       saveBtn.textContent = '已保存';
       setTimeout(() => { saveBtn.textContent = '保存主题配置'; }, 1500);
@@ -162,9 +181,27 @@ function updateLogoPreview(url: string): void {
 }
 
 async function applyLogoToProject(project: Project, url: string): Promise<void> {
-  project.bgImageUrl = url || undefined;
+  project.logoUrl = url || undefined;
   await saveProject(project);
+  await saveChatHistory();
   refreshPreview(project);
+}
+
+function applyLogoToPreview(project: Project): void {
+  const logoUrl = project.logoUrl ?? '';
+  document.querySelectorAll<HTMLElement>('.login-logo, .desktop-logo').forEach((el) => {
+    if (logoUrl) {
+      el.style.backgroundImage = `url("${logoUrl.replace(/"/g, '\\"')}")`;
+      el.style.backgroundSize = 'contain';
+      el.style.backgroundRepeat = 'no-repeat';
+      el.style.backgroundPosition = 'left center';
+      el.textContent = '';
+    } else {
+      el.style.removeProperty('background-image');
+    }
+    if (project.logoHeight) el.style.height = `${project.logoHeight}px`;
+    if (project.logoMaxWidth) el.style.maxWidth = `${project.logoMaxWidth}px`;
+  });
 }
 
 function refreshPreview(project: Project): void {
@@ -179,6 +216,7 @@ function refreshPreview(project: Project): void {
     project.workspace ?? null,
     getWorkspaceTemplateCache(),
   );
+  applyLogoToPreview(project);
 }
 
 function escapeHtml(str: string): string {
@@ -187,4 +225,11 @@ function escapeHtml(str: string): string {
 
 function getSelected(condition: boolean): string {
   return condition ? 'selected' : '';
+}
+
+function parseNumberInput(id: string, min: number, max: number, fallback: number): number {
+  const raw = (document.getElementById(id) as HTMLInputElement | null)?.value ?? '';
+  const num = Number(raw);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.max(min, Math.min(max, num));
 }

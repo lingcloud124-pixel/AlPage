@@ -809,6 +809,7 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
   align-items: center;
   gap: 12px;
   position: relative;
+  min-width: 0;
 }
 
 .landing-credits-tooltip
@@ -862,6 +863,17 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
   margin-top: 4px;
 }
 
+.user-avatar-group
+{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 180px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .user-avatar-btn
 {
   width: 32px;
@@ -889,6 +901,17 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
   color: #374151;
   line-height: 1;
   user-select: none;
+}
+
+.user-avatar-name
+{
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #374151;
+  font-size: 13px;
+  line-height: 32px;
 }
 
 .user-avatar-dropdown
@@ -1671,4 +1694,3 @@ body[data-ui-theme="light"] .chat-panel.landing-mode
   color: var(--primary-color);
   transform: translateY(-1px);
 }
-

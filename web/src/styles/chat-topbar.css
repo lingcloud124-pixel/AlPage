@@ -525,6 +525,10 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
 
 .package-progress-btn
 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 11px 36px;
   border-radius: 12px;
   border: none;
@@ -533,6 +537,24 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
   cursor: pointer;
   color: #fff;
   transition: opacity 0.15s;
+}
+
+.package-progress-btn[data-loading="true"]
+{
+  cursor: wait;
+  opacity: 0.86;
+}
+
+.package-progress-btn-spinner
+{
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.48);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  box-sizing: border-box;
+  transform-origin: 50% 50%;
+  animation: pkg-spin 0.75s linear infinite;
 }
 
 .package-progress-btn:hover
@@ -591,4 +613,3 @@ body[data-ui-theme="light"] .ts-confirm-btn-danger
 {
   color: #000;
 }
-

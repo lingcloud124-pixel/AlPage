@@ -274,7 +274,7 @@
             <span class="setting-toggle-title">启用使用限制（积分制）</span>
             <span class="setting-toggle-note">关闭后，前台将隐藏积分与积分消耗提示</span>
           </div>
-          <label class="switch" id="creditsSwitchLabel" aria-label="启用使用限制（积分制）">
+          <label class="switch" aria-label="启用使用限制（积分制）" id="creditsSwitchLabel" onclick="event.preventDefault(); toggleCreditsSettings();">
             <input type="checkbox" id="enableCreditsLimit">
             <span class="switch-slider" aria-hidden="true"></span>
           </label>
@@ -715,49 +715,6 @@
       if (dd && !e.target.closest('.menu-btn') && !e.target.closest('.menu-dropdown')) dd.classList.remove('open');
     });
 
-    function showChangePassword() {
-      document.getElementById('menuDropdown').classList.remove('open');
-      document.getElementById('cpOldPassword').value = '';
-      document.getElementById('cpNewPassword').value = '';
-      document.getElementById('cpConfirmPassword').value = '';
-      document.getElementById('changePasswordModal').classList.add('open');
-    }
-
-    function hideChangePassword() {
-      document.getElementById('changePasswordModal').classList.remove('open');
-    }
-
-    document.getElementById('changePasswordModal').addEventListener('click', e => {
-      if (e.target === e.currentTarget) hideChangePassword();
-    });
-
-    async function submitChangePassword() {
-      const oldPassword = document.getElementById('cpOldPassword').value;
-      const newPassword = document.getElementById('cpNewPassword').value;
-      const confirmPassword = document.getElementById('cpConfirmPassword').value;
-
-      if (!newPassword) { toast('请输入新密码', 'error'); return; }
-      if (newPassword.length < 4) { toast('新密码长度至少为4位', 'error'); return; }
-      if (newPassword !== confirmPassword) { toast('两次输入的新密码不一致', 'error'); return; }
-
-      try {
-        const res = await fetch('/api/admin-password', {
-          method: 'PUT',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ oldPassword, newPassword }),
-        });
-        const data = await res.json();
-        if (!res.ok) { toast(data.error || '修改失败', 'error'); return; }
-
-        toast('密码修改成功，请重新登录');
-        hideChangePassword();
-        logoutAdmin();
-      } catch (e) {
-        toast('修改失败: ' + e.message, 'error');
-      }
-    }
-
     function toast(msg, type = 'success') {
       const el = document.getElementById('toast');
       el.textContent = msg;
@@ -1192,9 +1149,17 @@
       }
     }
 
-    function toggleCreditsSettings() {
-      const enabled = document.getElementById('enableCreditsLimit').checked;
+    function getCreditsLimitEnabled() {
+      return document.getElementById('enableCreditsLimit').checked;
+    }
+
+    function syncCreditsToggleUi(enabled) {
+      document.getElementById('enableCreditsLimit').checked = enabled;
       document.getElementById('creditsSettingsSection').style.display = enabled ? 'block' : 'none';
+    }
+
+    function toggleCreditsSettings() {
+      syncCreditsToggleUi(!getCreditsLimitEnabled());
     }
 
     const IMAGE_PROVIDER_DEFAULTS = {
@@ -1321,8 +1286,7 @@
         document.getElementById('creditsTooltipContent').value = securityData.creditsTooltipContent || '';
 
         const creditsEnabled = securityData.enabledFeatures?.quota !== false;
-        document.getElementById('enableCreditsLimit').checked = creditsEnabled;
-        document.getElementById('creditsSettingsSection').style.display = creditsEnabled ? 'block' : 'none';
+        syncCreditsToggleUi(creditsEnabled);
       } catch (e) {
         console.error("Error loading configuration:", e);
         toast('加载配置失败: ' + e.message, 'error');
@@ -1361,7 +1325,7 @@
             image: true,
             chat: true,
             cors: true,
-            quota: document.getElementById('enableCreditsLimit').checked,
+            quota: getCreditsLimitEnabled(),
             adminAuth: true,
             rateLimiting: true
           },

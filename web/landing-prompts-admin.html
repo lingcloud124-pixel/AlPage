@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>快捷指令配置</title>
+  <script type="module" src="/src/landing-prompts-admin.ts"></script>
+</head>
+<body class="landing-admin-page">
+  <main class="settings-card settings-card--prompt-config">
+    <section class="settings-card-intro">
+      <h1 class="settings-card-intro-title">快捷指令配置</h1>
+      <p class="settings-card-intro-copy">维护首页快捷指令文案、生成提示词和主色提示。</p>
+    </section>
+    <div class="landing-prompt-config-list landing-prompt-config-list--admin" id="landingPromptAdminList"></div>
+    <footer class="landing-admin-footer">
+      <button class="landing-admin-btn" id="landingPromptResetBtn" type="button">恢复默认</button>
+      <button class="landing-admin-btn landing-admin-btn--primary" id="landingPromptSaveBtn" type="button">保存配置</button>
+    </footer>
+  </main>
+</body>
+</html>

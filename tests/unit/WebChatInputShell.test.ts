@@ -20,4 +20,14 @@ describe('web chat input shell', () => {
     expect(styles).toContain('background: var(--surface-btn);');
     expect(styles).not.toContain('.input-row button {');
   });
+
+  test('landing upload trigger is an icon button without visible upload text', () => {
+    const html = fs.readFileSync(path.join(projectRoot, 'web/index.html'), 'utf8');
+    const plusButton = html.match(/<button id="plusBtn"[\s\S]*?<\/button>/)?.[0] ?? '';
+
+    expect(plusButton).toContain('aria-label="上传图片"');
+    expect(plusButton).toContain('<svg');
+    expect(plusButton).not.toContain('>上传图片<');
+    expect(plusButton).not.toContain('style="font-size:13px');
+  });
 });

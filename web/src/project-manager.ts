@@ -25,6 +25,9 @@ export interface Project {
   lifecycle?: 'draft' | 'active';
   templateType: 'light-ui' | 'dark-ui';
   colors: Record<string, string>;
+  logoUrl?: string;
+  logoHeight?: number;
+  logoMaxWidth?: number;
   bgImageUrl?: string;
   headerBgImageUrl?: string;
   visualContext?: ProjectVisualContext;

@@ -29,7 +29,7 @@ import type { ThemePreview } from './tools/executor';
 import { classifyImageIntent } from './image-intent';
 import { applyPrimaryImageToProject } from './primary-image-flow';
 import { showNotificationWithOptions } from './package-manager';
-import { renderLandingPromptButtonsAsync, resolveLegacyLandingPreset } from './landing-prompts';
+import { renderLandingPromptButtonsAsync } from './landing-prompts';
 import { createConversation, updateConversation } from './api/conversations';
 import type { ConversationCreatePayload, ConversationUpdatePayload, ConversationImageData } from './types';
 import { setActiveConversation, getActiveConversationId, refreshSidebar } from './components/sidebar';
@@ -370,13 +370,10 @@ export function setupChatInterface(deps: ChatDeps) {
       const displayPrompt = button?.dataset.prompt?.trim();
       if (!displayPrompt || !defaultMessageInput) return;
 
-      const preset = resolveLegacyLandingPreset(displayPrompt);
       defaultMessageInput.value = displayPrompt;
       resizeMessageInput(defaultMessageInput, defaultComposerInner);
       void sendUserMessage('default', {
         displayMessage: displayPrompt,
-        directPreviewPrompt: preset.prompt,
-        directPreviewPrimaryHint: preset.primaryHint,
       });
     };
   };
@@ -396,8 +393,15 @@ export function setupChatInterface(deps: ChatDeps) {
   window.addEventListener('sidebar:new-conversation', () => {
     clearConversationHistory();
     setCurrentProjectId(null);
+    latestThemePreviews = null;
+    latestThemeAgentDebugState = null;
+    resetThemeTargetStyles();
     _chatDeps?.collapsePreview?.();
     _chatDeps?.setChatPanelWidth(null);
+    const previewPanel = document.getElementById('previewPanel');
+    const appContainer = document.querySelector('.app-container');
+    previewPanel?.classList.remove('expanded');
+    appContainer?.classList.remove('preview-open');
     const messagesContainer = document.getElementById('messagesContainer');
     if (messagesContainer) messagesContainer.innerHTML = '';
     showDefaultChatView();
@@ -488,61 +492,6 @@ export function setupChatInterface(deps: ChatDeps) {
       });
     });
   }
-
-  async function setLandingGalleryImage(imageSrc: string, themeName: string, primaryHint?: string) {
-    if (!defaultMessageInput) return;
-    try {
-      const resolvedImageUrl = new URL(imageSrc, window.location.origin).toString();
-      const response = await fetch(resolvedImageUrl);
-      if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
-      const blob = await response.blob();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string | null;
-          if (!result) {
-            reject(new Error('Failed to read image as data URL'));
-            return;
-          }
-          resolve(result);
-        };
-        reader.onerror = () => reject(reader.error ?? new Error('Failed to read image file'));
-        reader.readAsDataURL(blob);
-      });
-
-      pendingImages.splice(0, pendingImages.length, dataUrl);
-      renderImagePreviewBar();
-      defaultMessageInput.value = `用这张图，生成一个${themeName}门户`;
-      resizeMessageInput(defaultMessageInput, defaultComposerInner);
-      if (primaryHint) {
-        defaultMessageInput.dataset.primaryHint = primaryHint;
-      } else {
-        delete defaultMessageInput.dataset.primaryHint;
-      }
-    } catch (error) {
-      console.warn('[chat-manager] 推荐图资源加载失败:', error);
-      showNotificationWithOptions('推荐图加载失败，请稍后重试', {
-        variant: 'critical',
-        position: 'top-center',
-        durationMs: 2400,
-      });
-      return;
-    }
-
-    try {
-      await ensureActiveProjectForImageUpload();
-      showConversationChatView();
-      await sendUserMessage('default');
-    } catch (error) {
-      console.warn('[chat-manager] 推荐图应用失败:', error);
-      showNotificationWithOptions('推荐图应用失败，请稍后重试', {
-        variant: 'critical',
-        position: 'top-center',
-        durationMs: 2400,
-      });
-    }
-  }
-
 
   function addMessageToChat(role: 'user' | 'ai', content: string): HTMLElement {
     const messageEl = renderMessage(role, content);

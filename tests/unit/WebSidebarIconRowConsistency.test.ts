@@ -12,7 +12,7 @@ describe('web sidebar icon row consistency', () => {
   });
 
   test('new chat icon and full button share consistent sizing', () => {
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles/sidebar.css'), 'utf8');
 
     expect(styles).toContain('.sidebar-new-chat-full svg,');
     expect(styles).toContain('width: 32px;');

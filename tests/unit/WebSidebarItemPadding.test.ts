@@ -6,7 +6,7 @@ const projectRoot = process.cwd();
 
 describe('web sidebar item padding', () => {
   test('uses padding for conversation rows', () => {
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles/sidebar.css'), 'utf8');
     const block = [...styles.matchAll(/\.sidebar-item\s*\{([^}]*)\}/g)].at(-1)?.[1] || '';
 
     expect(block).toContain('padding: 6px 10px;');

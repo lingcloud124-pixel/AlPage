@@ -185,17 +185,18 @@ async function doSaveConversation(): Promise<void> {
       const title = deriveConversationTitle();
       const payload: ConversationCreatePayload = { id, title, messages, projectSnapshot, imageData, hasGeneratedTheme: !!projectId };
       const result = await createConversation(payload);
-      if (result) {
-        _activeConversationId = result.id;
-        setActiveConversation(_activeConversationId);
-      }
+      if (!result) throw new Error('createConversation returned empty result');
+      _activeConversationId = result.id;
+      setActiveConversation(_activeConversationId);
     } else {
       const payload: ConversationUpdatePayload = { messages, projectSnapshot, imageData, hasGeneratedTheme: !!projectId };
-      await updateConversation(_activeConversationId, payload);
+      const updated = await updateConversation(_activeConversationId, payload);
+      if (!updated) throw new Error('updateConversation returned false');
     }
     refreshSidebar();
   } catch (err) {
     console.error('[conversation] Save error:', err);
+    throw err;
   }
 }
 
@@ -270,7 +271,7 @@ export function startNewConversation(opts?: {
  * 从持久化数据恢复会话 UI（消息渲染、侧边栏高亮、项目状态等）
  */
 export function restoreConversationUI(
-  detail: { messages: ChatMessage[]; id: string; imageData?: ConversationImageData; hasGeneratedTheme?: boolean; projectSnapshot?: Record<string, unknown> },
+  detail: { messages: ChatMessage[]; id: string; imageData?: ConversationImageData; hasGeneratedTheme?: boolean; projectSnapshot?: Record<string, unknown>; skipProjectRestore?: boolean },
   setCurrentProjectId: (id: string | null) => void,
   updateProjectVisualContextFn: (projectId: string, ctx: Record<string, unknown>) => void,
   pendingImages: string[],
@@ -305,7 +306,7 @@ export function restoreConversationUI(
       try { updateProjectVisualContextFn(restoredProjectId, { imageInput: { dataUrl: restoredImageUrl, role: 'primary', updatedAt: Date.now() } }); } catch { /* non-critical */ }
     }
   }
-  if (detail.hasGeneratedTheme && detail.projectSnapshot && Object.keys(detail.projectSnapshot).length > 0) {
+  if (!detail.skipProjectRestore && detail.hasGeneratedTheme && detail.projectSnapshot && Object.keys(detail.projectSnapshot).length > 0) {
     window.dispatchEvent(new CustomEvent('sidebar:restore-project', { detail: detail.projectSnapshot }));
     const proj = detail.projectSnapshot as any;
     const chatProjectName = document.getElementById('chatProjectName');

@@ -55,6 +55,7 @@ export default defineConfig({
         index: resolve(__dirname, 'index.html'),
         desktopPreview: resolve(__dirname, 'desktop-preview.html'),
         loginPreview: resolve(__dirname, 'login-preview.html'),
+        landingPromptsAdmin: resolve(__dirname, 'landing-prompts-admin.html'),
       },
     },
   },

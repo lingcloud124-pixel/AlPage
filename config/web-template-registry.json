@@ -12,7 +12,7 @@
     "name": "主页",
     "htmlPath": "/src/templates/desktop.html",
     "cssPath": "/src/templates/desktop.css",
-    "width": 1920,
+    "width": 1440,
     "height": 1080
   },
   "header-default": {

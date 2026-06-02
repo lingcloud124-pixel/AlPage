@@ -7,6 +7,9 @@ import { getWebHeaderSemantics } from '../../web/src/theme/header-semantics';
 
 describe('web template registry', () => {
   const projectRoot = process.cwd();
+  const config = JSON.parse(
+    fs.readFileSync(path.join(projectRoot, 'config', 'web-template-registry.json'), 'utf8'),
+  );
 
   test('contains core page templates and header templates with shared semantic names', () => {
     const registry = getTemplateRegistry();
@@ -21,7 +24,7 @@ describe('web template registry', () => {
     expect(registry.desktop).toMatchObject({
       id: 'desktop',
       name: '主页',
-      width: 1920,
+      width: config.desktop.width,
       height: 1080,
     });
 
@@ -39,10 +42,6 @@ describe('web template registry', () => {
   });
 
   test('template registry structure is sourced from shared config', () => {
-    const config = JSON.parse(
-      fs.readFileSync(path.join(projectRoot, 'config', 'web-template-registry.json'), 'utf8'),
-    );
-
     expect(Object.keys(getTemplateRegistry())).toEqual(Object.keys(config));
     expect(getTemplateConfig('desktop')?.htmlPath).toBe(config.desktop.htmlPath);
   });

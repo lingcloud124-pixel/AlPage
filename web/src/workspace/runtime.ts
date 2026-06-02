@@ -6,7 +6,6 @@ import { escapeHtml, getWorkspaceCardTitle, renderWorkspaceCardShell } from './c
 import { destroyWorkspaceGrid, mountWorkspaceGrid } from './interact-adapter';
 import { renderWorkspacePreview } from './preview';
 import { renderWorkspacePlanningView } from '../components/workspace-configuration';
-import { renderThemeConfiguration } from '../components/theme-configuration';
 import { renderCardContentConfiguration, collectCardFieldValues } from '../components/card-content-configuration';
 
 import type { WorkspaceConfig } from '../types';
@@ -221,6 +220,39 @@ async function commitWorkspaceMutation(nextWorkspace: WorkspaceConfig): Promise<
   void syncWorkspaceToServer(projectId, currentWorkspace);
 }
 
+export function previewWorkspaceSettings(settingsPatch: Partial<WorkspaceConfig['settings']>): void {
+  if (!currentWorkspace) return;
+  const nextWorkspace: WorkspaceConfig = {
+    ...currentWorkspace,
+    settings: {
+      ...currentWorkspace.settings,
+      ...settingsPatch,
+    },
+    meta: {
+      ...currentWorkspace.meta,
+      updatedAt: Date.now(),
+    },
+  };
+  currentWorkspace = nextWorkspace;
+  applyCardGridStyles(currentWorkspace);
+  refreshWorkspacePreview();
+}
+
+export async function commitWorkspaceSettings(settingsPatch: Partial<WorkspaceConfig['settings']>): Promise<void> {
+  if (!currentWorkspace) return;
+  await commitWorkspaceMutation({
+    ...currentWorkspace,
+    settings: {
+      ...currentWorkspace.settings,
+      ...settingsPatch,
+    },
+    meta: {
+      ...currentWorkspace.meta,
+      updatedAt: Date.now(),
+    },
+  });
+}
+
 async function addWorkspaceCardFromTemplate(template: Record<string, any>): Promise<void> {
   if (!currentWorkspace) return;
   const templateId = String(template.type || template.templateId || '');
@@ -313,11 +345,15 @@ export function renderWorkspaceEditorShell(workspace: WorkspaceConfig | null): v
   if (!canvas) return;
 
   if (workspace && Object.keys(workspaceTemplateCache).length === 0) {
-    void ensureWorkspaceTemplateCache().then(() => {
-      if (currentWorkspace) {
-        renderWorkspaceEditorShell(currentWorkspace);
-      }
-    });
+    void ensureWorkspaceTemplateCache()
+      .then(() => {
+        if (currentWorkspace) {
+          renderWorkspaceEditorShell(currentWorkspace);
+        }
+      })
+      .catch((err) => {
+        console.warn('[workspace] Template cache refresh skipped:', err);
+      });
   }
 
   if (!workspace || !Array.isArray(workspace.items) || workspace.items.length === 0) {
@@ -450,7 +486,7 @@ function closeWorkspaceCardLibrary(): void {
   modal?.classList.remove('active');
 }
 
-type ConfigPanelTab = 'theme' | 'layout' | 'card';
+type ConfigPanelTab = 'layout' | 'card';
 let activeConfigTab: ConfigPanelTab = 'layout';
 
 function setActiveConfigTab(tab: ConfigPanelTab): void {
@@ -498,10 +534,6 @@ function bindCardContentFormEvents(item: WorkspaceConfig['items'][number]): void
 }
 
 function renderConfigPanelContent(): void {
-  if (activeConfigTab === 'theme') {
-    void renderThemeConfiguration();
-    return;
-  }
   if (activeConfigTab === 'card') {
     if (!selectedWorkspaceCardId || !currentWorkspace) {
       renderCardContentConfiguration({ id: '', title: '请先在工作区设计中点击一张卡片' });
@@ -545,7 +577,6 @@ export function openWorkspacePropertiesDrawer(mode?: WorkspacePropertiesPanelMod
   appContainer.classList.add('panel-open');
   if (panelToggleBtn) panelToggleBtn.textContent = '主题配置';
   if (mode === 'card') setActiveConfigTab('card');
-  else if (mode === 'theme') setActiveConfigTab('theme');
   else setActiveConfigTab('layout');
 }
 
@@ -576,7 +607,7 @@ export function setupWorkspaceEditorShell(): void {
     return;
   }
 
-  const setMode = (mode: 'preview' | 'design') => {
+  const setWorkspaceMode = (mode: 'preview' | 'design') => {
     const isDesign = mode === 'design';
     previewModeBtn.classList.toggle('is-active', !isDesign);
     designModeBtn.classList.toggle('is-active', isDesign);
@@ -584,14 +615,16 @@ export function setupWorkspaceEditorShell(): void {
     editorView.hidden = !isDesign;
     if (!isDesign) {
       refreshWorkspacePreview();
+      closeWorkspacePropertiesDrawer();
     }
   };
 
   previewModeBtn.addEventListener('click', () => {
-    setMode('preview');
+    setWorkspaceMode('preview');
   });
   designModeBtn.addEventListener('click', () => {
-    setMode('design');
+    setWorkspaceMode('design');
+    openWorkspacePropertiesDrawer('global');
     // canvas 从 hidden 变为可见后需要重新渲染以获得正确尺寸
     if (currentWorkspace) {
       requestAnimationFrame(() => requestAnimationFrame(() => renderWorkspaceEditorShell(currentWorkspace)));
@@ -610,5 +643,5 @@ export function setupWorkspaceEditorShell(): void {
       closeWorkspaceCardLibrary();
     }
   });
-  setMode('preview');
+  setWorkspaceMode('preview');
 }

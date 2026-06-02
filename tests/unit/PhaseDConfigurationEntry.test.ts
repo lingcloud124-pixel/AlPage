@@ -215,5 +215,11 @@ describe('Phase D: theme and workspace configuration entry', () => {
     test('creates divider between form and color editor', () => {
       expect(source).toContain('config-divider');
     });
+
+    test('initializes color controls inside #colorEditor without clearing themeConfigContainer', () => {
+      expect(source).toContain("document.getElementById('colorEditor')");
+      expect(source).toContain('initializeColorEditor(colorEditor)');
+      expect(source).not.toContain('initializeColorEditor();');
+    });
   });
 });

@@ -26,6 +26,14 @@ function suppressStaticPortalChrome(target: HTMLElement): void {
   body?.classList.add('workspace-driven-preview');
 }
 
+function fitWorkspaceDrivenTemplateHeight(target: HTMLElement, host: HTMLElement): void {
+  const templateRoot = target.firstElementChild as HTMLElement | null;
+  if (!templateRoot) return;
+  const contentHeight = Math.max(host.scrollHeight, templateRoot.scrollHeight, target.clientHeight);
+  templateRoot.style.height = `${contentHeight}px`;
+  templateRoot.style.overflow = 'visible';
+}
+
 export function renderWorkspacePreview(target: HTMLElement | null, workspace: WorkspaceConfig | null, templateCache: Record<string, CardTemplateListItem> = {}): void {
   if (!target) return;
   const host = target.querySelector('.desktop-grid') as HTMLElement | null
@@ -65,4 +73,5 @@ export function renderWorkspacePreview(target: HTMLElement | null, workspace: Wo
     const style = `grid-column: ${item.x + 1} / span ${item.w}; grid-row: ${item.y + 1} / span ${item.h};`;
     return renderWorkspaceCardShell({ item, context: { mode: 'preview', templateCache }, style });
   }).join('');
+  fitWorkspaceDrivenTemplateHeight(target, host);
 }

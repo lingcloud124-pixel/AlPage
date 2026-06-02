@@ -69,20 +69,38 @@
 .preview-content
 {
   flex: 1;
+  display: grid;
+  place-items: center;
   position: relative;
   overflow: hidden;
   background-color: #f5f5f5;
+  padding: 16px;
+  box-sizing: border-box;
 }
 
 .preview-page
 {
   display: none;
+  align-self: center;
+  justify-self: center;
   width: 100%;
   height: 100%;
   position: relative;
-  overflow: hidden;
+  overflow-y: hidden;
   background-color: var(--body-bg-color);
   pointer-events: none;
+}
+
+.preview-scroll-spacer
+{
+  width: 1px;
+  min-height: 100%;
+  pointer-events: none;
+}
+
+.preview-page > [data-template-id]
+{
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.10);
 }
 
 .preview-page.active-preview
@@ -358,4 +376,3 @@
     bottom: 373px;
     font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
-

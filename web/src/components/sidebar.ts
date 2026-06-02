@@ -1,8 +1,12 @@
-import { listConversations, getConversation, toggleStar as apiToggleStar, deleteConversation as apiDeleteConversation } from '../api/conversations';
+import { listConversations, getConversation, deleteConversation as apiDeleteConversation } from '../api/conversations';
+import { deleteSavedPortal, getSavedPortal, listSavedPortals, type SavedPortalSummary } from '../api/saved-portals';
 import type { ConversationListItem } from '../types';
+
+const SAVED_PROJECT_VISIBLE_LIMIT = 5;
 
 let activeConversationId: string | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let savedProjectsExpanded = false;
 
 export function initSidebar(): void {
   const toggleBtn = document.getElementById('sidebarToggleBtn');
@@ -17,6 +21,10 @@ export function initSidebar(): void {
   });
   newChatBtn?.addEventListener('click', () => dispatchNewConversation());
   newChatFullBtn?.addEventListener('click', () => dispatchNewConversation());
+  document.getElementById('sidebarSavedProjectMoreBtn')?.addEventListener('click', () => {
+    savedProjectsExpanded = true;
+    refreshSidebar();
+  });
 
   refreshSidebar();
 }
@@ -43,11 +51,16 @@ export function getActiveConversationId(): string | null {
 }
 
 export async function refreshSidebar(): Promise<void> {
+  let savedProjects: SavedPortalSummary[] = [];
   try {
-    const items = await listConversations();
-    renderSidebarList(items);
+    const [items, portals] = await Promise.all([
+      listConversations(),
+      listSavedPortals({ limit: 50, offset: 0 }),
+    ]);
+    savedProjects = portals.items;
+    renderSidebarList(items, savedProjects);
   } catch {
-    renderSidebarList([]);
+    renderSidebarList([], savedProjects);
   }
 }
 
@@ -55,26 +68,34 @@ function dispatchNewConversation(): void {
   window.dispatchEvent(new CustomEvent('sidebar:new-conversation'));
 }
 
-function renderSidebarList(items: ConversationListItem[]): void {
-  const starredItems = items.filter(i => i.isStarred);
-  const historyItems = items.filter(i => !i.isStarred);
+function renderSidebarList(items: ConversationListItem[], savedProjects: SavedPortalSummary[]): void {
+  const savedConversationIds = new Set(
+    savedProjects.map(project => project.conversationId).filter((id): id is string => Boolean(id)),
+  );
+  const sortedSavedProjects = [...savedProjects].sort((a, b) => b.updatedAt - a.updatedAt);
+  const visibleSavedProjects = savedProjectsExpanded
+    ? sortedSavedProjects
+    : sortedSavedProjects.slice(0, SAVED_PROJECT_VISIBLE_LIMIT);
+  const historyItems = items.filter(item => !savedConversationIds.has(item.id));
 
-  const starredSection = document.getElementById('sidebarStarredSection');
-  const starredContainer = document.getElementById('sidebarStarredItems');
+  const savedSection = document.getElementById('sidebarSavedProjectsSection');
+  const savedContainer = document.getElementById('sidebarSavedProjectItems');
+  const moreBtn = document.getElementById('sidebarSavedProjectMoreBtn') as HTMLButtonElement | null;
   const historySection = document.getElementById('sidebarHistorySection');
   const historyContainer = document.getElementById('sidebarHistoryItems');
 
-  if (starredSection) starredSection.style.display = starredItems.length ? '' : 'none';
+  if (savedSection) savedSection.style.display = savedProjects.length ? '' : 'none';
   if (historySection) historySection.style.display = historyItems.length ? '' : 'none';
+  if (moreBtn) moreBtn.style.display = savedProjects.length > SAVED_PROJECT_VISIBLE_LIMIT && !savedProjectsExpanded ? '' : 'none';
 
-  if (starredContainer) {
-    starredContainer.innerHTML = '';
-    starredItems.forEach(item => starredContainer.appendChild(createSidebarItem(item)));
+  if (savedContainer) {
+    savedContainer.innerHTML = '';
+    visibleSavedProjects.forEach(project => savedContainer.appendChild(createSavedProjectItem(project)));
   }
 
   if (historyContainer) {
     historyContainer.innerHTML = '';
-    if (historyItems.length === 0 && starredItems.length === 0) {
+    if (historyItems.length === 0 && savedProjects.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'sidebar-empty-state';
       empty.textContent = '暂无对话记录';
@@ -122,6 +143,38 @@ function createSidebarItem(item: ConversationListItem): HTMLElement {
   return el;
 }
 
+function createSavedProjectItem(project: SavedPortalSummary): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'sidebar-item';
+  el.setAttribute('data-id', project.id);
+
+  const title = document.createElement('span');
+  title.className = 'sidebar-item-title';
+  title.textContent = project.name || '未命名门户';
+
+  const menuBtn = document.createElement('button');
+  menuBtn.className = 'sidebar-item-menu';
+  menuBtn.type = 'button';
+  menuBtn.setAttribute('aria-label', '更多操作');
+  menuBtn.title = '更多操作';
+  menuBtn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.75" fill="currentColor"></circle>
+      <circle cx="12" cy="12" r="1.75" fill="currentColor"></circle>
+      <circle cx="19" cy="12" r="1.75" fill="currentColor"></circle>
+    </svg>
+  `;
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showSavedProjectMenu(el, project);
+  });
+
+  el.appendChild(title);
+  el.appendChild(menuBtn);
+  el.addEventListener('click', () => loadAndRestoreSavedProject(project.id));
+  return el;
+}
+
 async function loadAndRestoreConversation(id: string): Promise<void> {
   try {
     const detail = await getConversation(id);
@@ -136,15 +189,6 @@ function showItemMenu(itemEl: HTMLElement, item: ConversationListItem): void {
   closeAllMenus();
   const dropdown = document.createElement('div');
   dropdown.className = 'sidebar-item-menu-dropdown';
-
-  const starBtn = document.createElement('button');
-  starBtn.textContent = item.isStarred ? '取消收藏' : '收藏';
-  starBtn.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    await apiToggleStar(item.id);
-    dropdown.remove();
-    refreshSidebar();
-  });
 
   const deleteBtn = document.createElement('button');
   deleteBtn.className = 'danger';
@@ -161,9 +205,32 @@ function showItemMenu(itemEl: HTMLElement, item: ConversationListItem): void {
     }
   });
 
-  dropdown.appendChild(starBtn);
   dropdown.appendChild(deleteBtn);
+  positionDropdown(dropdown, itemEl);
+}
 
+function showSavedProjectMenu(itemEl: HTMLElement, item: SavedPortalSummary): void {
+  closeAllMenus();
+  const dropdown = document.createElement('div');
+  dropdown.className = 'sidebar-item-menu-dropdown';
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'danger';
+  deleteBtn.textContent = '删除';
+  deleteBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    dropdown.remove();
+    if (window.confirm('确定要删除这个保存项目吗？')) {
+      await deleteSavedPortal(item.id);
+      refreshSidebar();
+    }
+  });
+
+  dropdown.appendChild(deleteBtn);
+  positionDropdown(dropdown, itemEl);
+}
+
+function positionDropdown(dropdown: HTMLElement, itemEl: HTMLElement): void {
   const rect = itemEl.getBoundingClientRect();
   dropdown.style.position = 'fixed';
   dropdown.style.top = `${rect.top}px`;
@@ -177,6 +244,48 @@ function showItemMenu(itemEl: HTMLElement, item: ConversationListItem): void {
     }
   };
   setTimeout(() => document.addEventListener('click', closeHandler), 0);
+}
+
+async function loadAndRestoreSavedProject(id: string): Promise<void> {
+  try {
+    const detail = await getSavedPortal(id);
+    const snapshot = { ...(detail.projectSnapshot ?? {}) };
+    snapshot.savedPortalId = id;
+    let conversation: any = null;
+    if (detail.conversationId) {
+      try {
+        conversation = await getConversation(detail.conversationId);
+        if (conversation && typeof conversation === 'object') {
+          conversation.projectSnapshot = {
+            ...(conversation.projectSnapshot ?? {}),
+          };
+          conversation.projectSnapshot.savedPortalId = id;
+        }
+      } catch {
+        conversation = null;
+      }
+    }
+    if (!conversation && detail.conversationSnapshot && Array.isArray((detail.conversationSnapshot as any).messages)) {
+      conversation = {
+        id: detail.conversationId || id,
+        messages: (detail.conversationSnapshot as any).messages,
+        projectSnapshot: {
+          ...snapshot,
+          savedPortalId: id,
+        },
+        hasGeneratedTheme: true,
+      };
+    }
+    window.dispatchEvent(new CustomEvent('sidebar:restore-project', {
+      detail: {
+        ...detail,
+        projectSnapshot: snapshot,
+        conversation,
+      },
+    }));
+  } catch {
+    /* intentionally empty - saved portal may have been deleted */
+  }
 }
 
 function closeAllMenus(): void {

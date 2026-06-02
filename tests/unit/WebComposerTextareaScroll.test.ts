@@ -14,7 +14,7 @@ describe('web composer textarea scroll behavior', () => {
   });
 
   test('composer textarea keeps overflow hidden by default and enables vertical scroll when needed', () => {
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles/chat-input.css'), 'utf8');
 
     expect(styles).toContain('overflow-y: hidden;');
     expect(styles).toContain('.chat-shell-composer-inner textarea.is-scrollable');

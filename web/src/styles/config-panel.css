@@ -1,0 +1,479 @@
+/* ===== Config Panel Unified Design System ===== */
+/* Shared config-* classes for #sidePanel and .workspace-properties-content.
+ * Shoelace overrides are scoped to both containers. */
+
+/* --- Shared variable scope --- */
+
+#sidePanel,
+.workspace-properties-content {
+  --config-font-size: 13px;
+  --config-label-size: 12px;
+  --config-hint-size: 11px;
+  --config-title-size: 14px;
+  --config-row-height: 32px;
+  --config-radius: 6px;
+  --config-border-color: #d8dee8;
+  --config-border: 1px solid var(--config-border-color);
+  --config-gap: 12px;
+  --config-section-gap: 20px;
+  --config-focus-color: var(--primary-color, #4A90D9);
+  --config-focus-ring: 0 0 0 2px rgba(74, 144, 217, 0.18);
+}
+
+/* --- Sections --- */
+
+.config-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--config-section-gap);
+}
+
+.config-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--config-gap);
+}
+
+.config-section-title {
+  font-size: var(--config-title-size);
+  font-weight: 600;
+  color: var(--header-font-color, #1a1a1a);
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-color, #f0f0f0);
+}
+
+/* --- Fields --- */
+
+.config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.config-label {
+  font-size: var(--config-label-size);
+  color: var(--auxiliary-gray-dark, #666);
+  font-weight: 500;
+}
+
+.config-hint {
+  font-size: var(--config-hint-size);
+  color: var(--auxiliary-gray, #999);
+  margin: 0;
+}
+
+.config-control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Native input state classes (used while transitioning) --- */
+
+.config-input {
+  height: var(--config-row-height);
+  padding: 0 10px;
+  font-size: var(--config-font-size);
+  border: var(--config-border);
+  border-radius: var(--config-radius);
+  background: transparent;
+  color: var(--header-font-color, #1a1a1a);
+  box-sizing: border-box;
+  width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.config-input:hover {
+  border-color: var(--config-focus-color);
+}
+
+.config-input:focus {
+  outline: none;
+  border-color: var(--config-focus-color);
+  box-shadow: var(--config-focus-ring);
+}
+
+.config-input.is-invalid {
+  border-color: #E53935;
+  box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.15);
+}
+
+/* Shoelace sl-input visual states */
+#sidePanel sl-input.is-invalid::part(base),
+.workspace-properties-content sl-input.is-invalid::part(base) {
+  border-color: #E53935;
+  box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.15);
+}
+
+#sidePanel sl-input.is-dirty::part(base),
+.workspace-properties-content sl-input.is-dirty::part(base) {
+  border-color: var(--config-focus-color);
+}
+
+.config-field-error {
+  font-size: var(--config-hint-size);
+  color: #E53935;
+  margin: 0;
+}
+
+/* --- Segmented control (sl-radio-group pill) --- */
+
+.config-segmented {
+  width: 100%;
+}
+
+#sidePanel sl-radio-group.config-segmented,
+.workspace-properties-content sl-radio-group.config-segmented {
+  --sl-input-height-small: var(--config-row-height);
+}
+
+#sidePanel sl-radio-group.config-segmented::part(form-control-label),
+.workspace-properties-content sl-radio-group.config-segmented::part(form-control-label) {
+  font-size: var(--config-label-size);
+  color: var(--auxiliary-gray-dark, #666);
+  font-weight: 500;
+  padding-bottom: 2px;
+}
+
+/* --- Color rows --- */
+
+.config-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--config-row-height);
+}
+
+.config-color-row .config-label {
+  flex: 1;
+  font-size: var(--config-label-size);
+  color: var(--auxiliary-gray-dark, #666);
+}
+
+.config-color-row .hex-input {
+  width: 76px;
+  height: var(--config-row-height);
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+  border: var(--config-border);
+  border-radius: var(--config-radius);
+  background: transparent;
+  color: var(--header-font-color, #1a1a1a);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.config-color-row .hex-input:focus {
+  outline: none;
+  border-color: var(--config-focus-color);
+  box-shadow: var(--config-focus-ring);
+}
+
+/* Shoelace color-picker trigger sizing */
+#sidePanel sl-color-picker {
+  --sl-input-height-small: var(--config-row-height);
+  width: 36px;
+  height: 36px;
+}
+
+#sidePanel sl-color-picker::part(trigger) {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--config-radius);
+  border: var(--config-border);
+}
+
+#sidePanel sl-color-picker::part(trigger):hover {
+  border-color: var(--config-focus-color);
+}
+
+/* --- Asset row (Logo upload) --- */
+
+.config-asset-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: var(--config-border);
+  border-radius: var(--config-radius);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.config-asset-row:hover {
+  border-color: var(--config-focus-color);
+}
+
+.config-asset-row .config-asset-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--config-radius);
+  background: var(--border-color, #f0f0f0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.config-asset-row .config-asset-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.config-asset-row .config-asset-thumb .config-asset-placeholder {
+  font-size: 18px;
+  color: var(--auxiliary-gray, #bbb);
+}
+
+.config-asset-row .config-asset-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.config-asset-row .config-asset-info .config-label {
+  display: block;
+}
+
+.config-asset-row .config-asset-info .config-hint {
+  display: block;
+  margin-top: 2px;
+}
+
+.config-asset-row input[type="file"] {
+  display: none;
+}
+
+.config-asset-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.config-asset-actions.is-hidden {
+  display: none;
+}
+
+/* --- Action bar --- */
+
+.config-action-bar {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+#sidePanel .config-action-bar sl-button,
+.workspace-properties-content .config-action-bar sl-button {
+  flex: 1;
+}
+
+.config-full-width {
+  width: 100%;
+}
+
+/* --- Shoelace component overrides (both scopes) --- */
+
+#sidePanel sl-input,
+#sidePanel sl-textarea,
+.workspace-properties-content sl-input,
+.workspace-properties-content sl-textarea {
+  --sl-input-height-small: var(--config-row-height);
+  font-size: var(--config-font-size);
+}
+
+#sidePanel sl-input::part(input),
+.workspace-properties-content sl-input::part(input) {
+  font-size: var(--config-font-size);
+}
+
+#sidePanel sl-input::part(form-control-label),
+.workspace-properties-content sl-input::part(form-control-label) {
+  font-size: var(--config-label-size);
+  color: var(--auxiliary-gray-dark, #666);
+  font-weight: 500;
+}
+
+#sidePanel sl-button,
+.workspace-properties-content sl-button {
+  --sl-input-height-small: var(--config-row-height);
+}
+
+#sidePanel sl-button::part(base),
+.workspace-properties-content sl-button::part(base) {
+  font-size: var(--config-font-size);
+  border-radius: var(--config-radius);
+}
+
+/* --- Save button states --- */
+
+.config-btn-save {
+  width: 100%;
+}
+
+.config-btn-save sl-button::part(base) {
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.config-btn-save.is-dirty sl-button::part(base) {
+  box-shadow: 0 0 0 1px var(--config-focus-color), var(--config-focus-ring);
+}
+
+/* --- Result rows (QC) --- */
+
+.config-result-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-color, #f0f0f0);
+  font-size: var(--config-label-size);
+}
+
+.config-result-row:last-child {
+  border-bottom: none;
+}
+
+.config-result-row sl-icon,
+.config-result-row .config-result-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.config-result-row .config-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.config-result-row sl-badge {
+  flex-shrink: 0;
+}
+
+.config-result-pass {
+  color: #4CAF50;
+}
+
+.config-result-fail {
+  color: #E53935;
+}
+
+.config-result-summary {
+  margin-top: 10px;
+  padding: 8px 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.config-result-summary.is-pass {
+  color: #4CAF50;
+}
+
+.config-result-summary.is-fail {
+  color: #E53935;
+}
+
+/* --- Dividers --- */
+
+.config-divider {
+  border: none;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+  margin: var(--config-section-gap) 0 0 0;
+}
+
+/* --- Empty state --- */
+
+.config-empty-state {
+  color: var(--auxiliary-gray, #999);
+  font-size: var(--config-font-size);
+  text-align: center;
+  padding: 20px 0;
+}
+
+/* --- Derive section --- */
+
+.derive-section .config-control-row {
+  gap: 8px;
+  align-items: center;
+}
+
+.derive-section .config-control-row sl-color-picker {
+  flex-shrink: 0;
+}
+
+.derive-section .config-control-row sl-input {
+  flex: 1;
+}
+
+.derive-message {
+  font-size: var(--config-hint-size);
+  margin-top: 8px;
+}
+
+.derive-error {
+  color: #E53935;
+}
+
+.derive-success {
+  color: var(--primary-color, #4A90D9);
+}
+
+/* --- Color editor section --- */
+
+.color-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* --- Workspace planning view --- */
+
+.workspace-planning-view {
+  padding: 0;
+}
+
+.workspace-planning-summary {
+  margin-bottom: 4px;
+}
+
+.workspace-planning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workspace-planning-list > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--config-font-size);
+  padding: 4px 0;
+}
+
+.workspace-planning-list > div > span {
+  color: var(--auxiliary-gray-dark, #666);
+  font-size: var(--config-label-size);
+}
+
+.workspace-planning-list > div > strong {
+  color: var(--header-font-color, #1a1a1a);
+  font-weight: 500;
+}
+
+.workspace-planning-empty {
+  color: var(--auxiliary-gray, #999);
+  font-size: var(--config-font-size);
+  margin: 0 0 12px;
+}
+
+.workspace-autosave-note {
+  color: var(--auxiliary-gray, #999);
+  font-size: var(--config-hint-size);
+  margin: 8px 0 0;
+}

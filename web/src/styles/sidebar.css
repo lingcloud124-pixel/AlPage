@@ -38,6 +38,19 @@
   background-color: #ffffff;
 }
 
+.sidebar:not(.expanded) .sidebar-expand-only {
+  display: none;
+}
+
+.sidebar.expanded .sidebar-collapsed-only {
+  display: none;
+}
+
+.sidebar.expanded .sidebar-new-chat-full.sidebar-expand-only,
+.sidebar.expanded .sidebar-bottom.sidebar-expand-only {
+  display: flex;
+}
+
 .sidebar-collapsed {
   display: flex;
   flex-direction: column;
@@ -79,6 +92,11 @@
 .sidebar-icon-btn:hover {
   background-color: #eff2f7;
   color: #1f2430;
+}
+
+#sidebarToggleBtn {
+  margin-top: 16px;
+  margin-bottom: 16px;
 }
 
 .sidebar-spacer {
@@ -157,6 +175,8 @@
 }
 
 .sidebar-list {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   overflow-y: auto;
   padding: 4px 0 0;
@@ -166,7 +186,7 @@
 }
 
 .sidebar-list:hover {
-  scrollbar-width: thin;
+  scrollbar-width: none;
 }
 
 .sidebar-list::-webkit-scrollbar {
@@ -175,7 +195,7 @@
 }
 
 .sidebar-list:hover::-webkit-scrollbar {
-  display: block;
+  display: none;
 }
 
 .sidebar-list::-webkit-scrollbar-thumb {
@@ -992,7 +1012,7 @@
   align-items: center;
   justify-content: space-between;
   min-height: 36px;
-  padding: 6px 10px 6px 24px;
+  padding: 6px 10px;
   border-radius: 10px;
   border: 0.5px solid transparent;
   cursor: pointer;

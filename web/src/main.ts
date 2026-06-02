@@ -108,14 +108,11 @@ async function initializeFeatureModules() {
   window.addEventListener('sidebar:restore-project', (evt: Event) => {
     const e = evt as CustomEvent;
     void (async () => {
-      const snapshot = e.detail as Record<string, unknown>;
+      const detail = e.detail as Record<string, any>;
+      const snapshot = (detail.projectSnapshot ?? detail) as Record<string, unknown>;
       if (!snapshot || !snapshot.id) return;
       restoreFromSnapshot(snapshot);
       const project = snapshot as any;
-      project.workspace = await ensureProjectWorkspaceReady(project.id, project.workspace);
-      await ensureWorkspaceTemplateCache();
-      renderWorkspaceEditorShell(project.workspace ?? null);
-      renderWorkspacePreview(document.getElementById('mainPage'), project.workspace ?? null, getWorkspaceTemplateCache());
       if (project.colors) {
         for (const [k, v] of Object.entries(project.colors)) {
           setThemeVar(`--${k}`, v as string);
@@ -130,8 +127,37 @@ async function initializeFeatureModules() {
       }
       applyTemplateSpecificThemeVars(project.templateType);
       syncThemeConfigurationFromTheme();
+      initializeThemeConfiguration();
       expandPreview();
       setChatPanelWidth(378);
+      if (detail.conversation?.messages) {
+        window.dispatchEvent(new CustomEvent('sidebar:restore-conversation', {
+          detail: {
+            ...detail.conversation,
+            skipProjectRestore: true,
+          },
+        }));
+      }
+      void (async () => {
+        try {
+          project.workspace = await ensureProjectWorkspaceReady(project.id, project.workspace);
+          renderWorkspaceEditorShell(project.workspace ?? null);
+          renderWorkspacePreview(document.getElementById('mainPage'), project.workspace ?? null, getWorkspaceTemplateCache());
+          requestAnimationFrame(() => window.resizePreview?.());
+        } catch (err) {
+          console.warn('[sidebar] Workspace preview restore skipped:', err);
+          return;
+        }
+        void ensureWorkspaceTemplateCache()
+          .then(() => {
+            renderWorkspaceEditorShell(project.workspace ?? null);
+            renderWorkspacePreview(document.getElementById('mainPage'), project.workspace ?? null, getWorkspaceTemplateCache());
+            requestAnimationFrame(() => window.resizePreview?.());
+          })
+          .catch((err) => {
+            console.warn('[sidebar] Workspace preview restore skipped:', err);
+          });
+      })();
     })();
   });
 }

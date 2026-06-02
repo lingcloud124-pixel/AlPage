@@ -57,7 +57,16 @@ function normalizeThemeToolError(message: string): string {
 }
 
 function buildSafeImagePrompt(prompt: string): string {
-  return prompt.trim();
+  const trimmed = prompt.trim();
+  if (!/(八一|建军节|军人|战机|军事|武器|装备)/u.test(trimmed)) {
+    return trimmed;
+  }
+  return [
+    '企业夏季纪念主题，主题文字“8.1”，现代宣传视觉。',
+    '整体为抽象纪念视觉，使用暖金、深蓝与白色构成庄重但克制的画面。',
+    '以几何光带、城市天际线和企业办公场景表达团结、责任与向上精神。',
+    '画面只保留抽象符号、光影层次和办公空间氛围。',
+  ].join(' ');
 }
 
 function getThemeTarget(): HTMLElement {

@@ -27,7 +27,7 @@ export async function createConversation(payload: ConversationCreatePayload): Pr
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) return null;
+  if (!res.ok) throw new Error(`createConversation failed: ${res.status}`);
   return res.json();
 }
 
@@ -37,7 +37,8 @@ export async function updateConversation(id: string, payload: ConversationUpdate
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  return res.ok;
+  if (!res.ok) throw new Error(`updateConversation failed: ${res.status}`);
+  return true;
 }
 
 export async function toggleStar(id: string): Promise<boolean> {

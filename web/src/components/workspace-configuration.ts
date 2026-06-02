@@ -1,7 +1,6 @@
 import { getCurrentProjectId, loadProject, saveProject } from '../project-manager';
 import type { WorkspaceConfig } from '../types';
-import { renderWorkspacePreview } from '../workspace/preview';
-import { getWorkspaceTemplateCache } from '../workspace/runtime';
+import { commitWorkspaceSettings, previewWorkspaceSettings } from '../workspace/runtime';
 
 function countThemeVariables(project: NonNullable<Awaited<ReturnType<typeof loadProject>>> | null): number {
   return Object.keys(project?.colors ?? {}).length;
@@ -39,6 +38,7 @@ export async function renderWorkspacePlanningView(): Promise<void> {
 
   const ws = project.workspace;
   const settings = ws?.settings;
+  const ruleLayer = project.portalPlan?.workspaceRuleLayer;
 
   container.innerHTML = `
     <section class="workspace-properties-section workspace-planning-view">
@@ -84,10 +84,19 @@ export async function renderWorkspacePlanningView(): Promise<void> {
           <input type="number" id="wsConfigPaddingY" class="config-input" min="0" max="48"
             value="${settings?.paddingY ?? 16}" />
         </div>
-      </div>
-
-      <div class="config-section">
-        <button class="config-btn-primary" id="wsConfigSaveBtn" type="button">保存布局配置</button>
+        <div class="config-field">
+          <label class="config-label" for="wsConfigCardRadius">卡片圆角 (px)</label>
+          <input type="number" id="wsConfigCardRadius" class="config-input" min="0" max="32"
+            value="${ruleLayer?.cardRadius ?? 16}" />
+        </div>
+        <div class="config-field">
+          <label class="config-label" for="wsConfigCardShadow">卡片阴影</label>
+          <select id="wsConfigCardShadow" class="config-input">
+            <option value="none" ${getSelected((ruleLayer?.shadowStyle ?? 'soft') === 'none')}>无阴影</option>
+            <option value="soft" ${getSelected((ruleLayer?.shadowStyle ?? 'soft') === 'soft')}>柔和</option>
+            <option value="strong" ${getSelected((ruleLayer?.shadowStyle ?? 'soft') === 'strong')}>明显</option>
+          </select>
+        </div>
       </div>
 
       <p class="workspace-autosave-note">编辑会自动保存，无需手动保存或返回编辑。</p>
@@ -98,44 +107,83 @@ export async function renderWorkspacePlanningView(): Promise<void> {
 }
 
 function bindWorkspaceConfigEvents(project: Project): void {
-  const saveBtn = document.getElementById('wsConfigSaveBtn');
-  if (!saveBtn) return;
+  const layoutFields: LayoutField[] = [
+    { id: 'wsConfigColumns', key: 'columns', min: 2, max: 12, fallback: 4 },
+    { id: 'wsConfigRowHeight', key: 'rowHeight', min: 16, max: 80, fallback: 24 },
+    { id: 'wsConfigGapX', key: 'gapX', min: 0, max: 48, fallback: 16 },
+    { id: 'wsConfigGapY', key: 'gapY', min: 0, max: 48, fallback: 16 },
+    { id: 'wsConfigPaddingX', key: 'paddingX', min: 0, max: 48, fallback: 20 },
+    { id: 'wsConfigPaddingY', key: 'paddingY', min: 0, max: 48, fallback: 16 },
+  ];
+  const LAYOUT_FIELDS = layoutFields;
 
-  saveBtn.addEventListener('click', async () => {
-    const columns = parseInt((document.getElementById('wsConfigColumns') as HTMLInputElement)?.value ?? '4', 10);
-    const rowHeight = parseInt((document.getElementById('wsConfigRowHeight') as HTMLInputElement)?.value ?? '24', 10);
-    const gapX = parseInt((document.getElementById('wsConfigGapX') as HTMLInputElement)?.value ?? '16', 10);
-    const gapY = parseInt((document.getElementById('wsConfigGapY') as HTMLInputElement)?.value ?? '16', 10);
-    const paddingX = parseInt((document.getElementById('wsConfigPaddingX') as HTMLInputElement)?.value ?? '20', 10);
-    const paddingY = parseInt((document.getElementById('wsConfigPaddingY') as HTMLInputElement)?.value ?? '16', 10);
-
-    if (!project.workspace) {
-      project.workspace = {
-        settings: { columns: 4, rowHeight: 24, gapX: 16, gapY: 16, paddingX: 20, paddingY: 16 },
-        items: [],
-        meta: { initializedAt: Date.now(), updatedAt: Date.now(), source: 'default' },
-      };
+  let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  const readSettings = (): Partial<WorkspaceConfig['settings']> => {
+    const patch: Partial<WorkspaceConfig['settings']> = {};
+    for (const field of LAYOUT_FIELDS) {
+      const input = document.getElementById(field.id) as HTMLInputElement | null;
+      const value = validateField(input?.value ?? '', field);
+      patch[field.key] = value as never;
     }
+    return patch;
+  };
 
-    project.workspace.settings = {
-      ...project.workspace.settings,
-      columns: Math.max(2, Math.min(12, columns)),
-      rowHeight: Math.max(16, Math.min(80, rowHeight)),
-      gapX: Math.max(0, Math.min(48, gapX)),
-      gapY: Math.max(0, Math.min(48, gapY)),
-      paddingX: Math.max(0, Math.min(48, paddingX)),
-      paddingY: Math.max(0, Math.min(48, paddingY)),
-    };
+  const scheduleAutoSave = () => {
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(async () => {
+      const patch = readSettings();
+      await commitWorkspaceSettings(patch);
+      await saveCardRuleSettings(project);
+    }, 300);
+  };
 
+  const livePreview = () => {
+    previewWorkspaceSettings(readSettings());
+    scheduleAutoSave();
+  };
+
+  for (const field of LAYOUT_FIELDS) {
+    document.getElementById(field.id)?.addEventListener('input', livePreview);
+  }
+  document.getElementById('wsConfigCardShadow')?.addEventListener('change', scheduleAutoSave);
+  document.getElementById('wsConfigCardRadius')?.addEventListener('input', scheduleAutoSave);
+}
+
+interface LayoutField {
+  id: string;
+  key: keyof WorkspaceConfig['settings'];
+  min: number;
+  max: number;
+  fallback: number;
+}
+
+function validateField(value: string, field: LayoutField): number {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return field.fallback;
+  if (num < field.min) return field.min;
+  if (num > field.max) return field.max;
+  return num;
+}
+
+async function saveCardRuleSettings(project: Project): Promise<void> {
+  if (project.portalPlan?.workspaceRuleLayer) {
+    const radius = validateField((document.getElementById('wsConfigCardRadius') as HTMLInputElement | null)?.value ?? '', {
+      id: 'wsConfigCardRadius',
+      key: 'maxWidth',
+      min: 0,
+      max: 32,
+      fallback: project.portalPlan.workspaceRuleLayer.cardRadius ?? 16,
+    });
+    const cardShadow = (document.getElementById('wsConfigCardShadow') as HTMLSelectElement | null)?.value ?? 'soft';
+    project.portalPlan.workspaceRuleLayer.cardRadius = radius;
+    project.portalPlan.workspaceRuleLayer.shadowStyle = cardShadow;
+    project.updatedAt = Date.now();
     await saveProject(project);
-    renderWorkspacePreview(
-      document.getElementById('mainPage'),
-      project.workspace ?? null,
-      getWorkspaceTemplateCache(),
-    );
-    saveBtn.textContent = '已保存';
-    setTimeout(() => { saveBtn.textContent = '保存布局配置'; }, 1500);
-  });
+  }
+}
+
+function getSelected(condition: boolean): string {
+  return condition ? 'selected' : '';
 }
 
 type Project = NonNullable<Awaited<ReturnType<typeof loadProject>>>;

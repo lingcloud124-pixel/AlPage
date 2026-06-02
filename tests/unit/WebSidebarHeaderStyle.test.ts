@@ -6,7 +6,7 @@ const projectRoot = process.cwd();
 
 describe('web sidebar header style', () => {
   test('toggle button has vertical margin for spacing', () => {
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles/sidebar.css'), 'utf8');
     const matches = [...styles.matchAll(/#sidebarToggleBtn\s*\{([^}]*)\}/g)];
     const activeBlock = matches[matches.length - 1]?.[1] || '';
 

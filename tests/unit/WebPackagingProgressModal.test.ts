@@ -24,7 +24,7 @@ describe('web packaging progress modal', () => {
 
   test('download button stays visible with loading state until save dialog is triggered', () => {
     const source = fs.readFileSync(path.join(projectRoot, 'web/src/package-manager.ts'), 'utf8');
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles/chat-topbar.css'), 'utf8');
 
     expect(source).toContain('setProgressDownloadButtonLoading');
     expect(source).toContain("downloadBtn.addEventListener('click', async () =>");
