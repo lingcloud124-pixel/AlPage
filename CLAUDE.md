@@ -4,158 +4,106 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Theme Studio — AI-assisted OA theme design and packaging tool for Landray EKP products (MK, V14–V17). Users chat with an AI to describe a theme; the system generates a background image, extracts/computes a full color palette, previews the theme in real-time HTML, then packages everything into product-specific ZIP files.
+AlPage (Theme Studio) is a **pre-sales Portal Agent workbench** — a web app where pre-sales staff generate customer portal proposals through AI-assisted conversations. The system generates visual themes, applies them to portal templates (login page, desktop workspace with configurable card layouts), and supports preview, editing, confirmation, and export.
+
+The product is transitioning from a "theme design & export tool" to a "Portal Agent workbench". Current automated capabilities focus on visual theme generation; portal structure and sample content automation are target capabilities.
 
 ## Commands
 
-### Development
-
 ```bash
-# Install all dependencies (3 separate package.json files)
-npm install && cd web && npm install && cd .. && cd server && npm install && cd ..
+# Install all dependencies (three package.json files)
+npm install && cd web && npm install && cd ../server && npm install && cd ..
 
-# Configure environment
-cp .env.example .env
-# Edit .env — set ADMIN_PASSWORD (required), EKP SSO vars if needed
+# Development (two terminals)
+cd web && npm run dev          # Vite dev server on :5173
+cd server && npm run dev       # Express API on :3001 (tsx watch)
 
-# Start all dev services (server :3001, web :5173, export bridge :5174)
+# Run both at once
 npm run dev:all
 
-# Individual services
-cd web && npm run dev          # Vite dev server only
-cd server && npm run dev       # Express server only (tsx watch)
-cd web && npm run export-bridge  # Playwright screenshot bridge only
-```
+# Tests
+npm test                       # Run all vitest tests
+npx vitest run tests/unit/SomeFile.test.ts   # Single test file
+npx vitest run --reporter=verbose             # Verbose output
+npm run test:coverage          # Coverage report
+npm run test:types             # TypeScript type-check (server + web)
 
-### Build & Production
+# Build
+npm run build                  # tsc server + vite build web
 
-```bash
-npm run build          # Compile server TS + build web (vite build)
-npm start              # PM2 start (serves web/dist + API on :3001)
-npm stop               # PM2 stop
-npm run restart        # PM2 restart
-npm run logs           # PM2 logs
-```
+# Production (PM2)
+npm start                      # pm2 start ecosystem.config.cjs
+npm run stop / restart / logs / status
 
-### Testing
-
-```bash
-npm test                      # Vitest (all unit tests)
-npm run test:coverage         # Vitest with v8 coverage
-npm run test:types            # TypeScript check (server + web)
-npx vitest run tests/unit/WebColorUtils.test.ts  # Single test file
-```
-
-### Export CLI (bypass web UI)
-
-```bash
-# Build + verify theme packages
-npm run export:check -- "Theme Name" theme-id '#HEXCOLOR' light-ui /path/to/bg.jpg mk,ekp_v17
-
-# Verify existing output only
-npm run export:verify -- output/path/输出包 --products mk,ekp_v17
+# Docker
+docker build -t theme-studio .
 ```
 
 ## Architecture
 
-### Three Services
+### Two-Part System: Web Frontend + Express Server
 
-| Service | Port | Tech | Role |
-|---------|------|------|------|
-| **Web** | 5173 (dev) | Vite 6 + Tailwind v4 + vanilla TS | Single-page theme editor with AI chat |
-| **Server** | 3001 | Express 4 + sql.js (SQLite) | API proxy, auth, export jobs, admin config |
-| **Export Bridge** | 5174 | Playwright (Chromium) | Headless screenshots for theme packaging |
+**Web** (`web/`) — SPA built with Vite + TypeScript (no React/Vue). Pure vanilla TS with DOM manipulation. Uses Tailwind CSS v4 via Vite plugin.
 
-In production, Express serves the built `web/dist/` static files directly.
+- `index.html` — Main app shell (chat panel, preview panel, sidebar, workspace editor)
+- `src/main.ts` — Entry point; initializes all modules on DOMContentLoaded
+- `src/chat-manager.ts` (~54KB) — Core chat loop: sends messages to AI, parses tool calls, executes them, manages conversation flow. The largest and most critical file.
+- `src/portal-agent.ts` — Portal profile extraction from chat messages, profile completeness scoring, draft generation, summary building
+- `src/project-manager.ts` — In-memory project store (`Map<string, Project>`); project CRUD with color/workspace/portal state
+- `src/theme-engine.ts` — CSS variable manipulation on the preview panel (`setThemeVar`, `applyTemplateSpecificThemeVars`)
+- `src/ui-setup.ts` — Tab switching, preview panel, collapsible panels, result actions
+- `src/workspace/` — Workspace grid editor (configurable card layout with drag/resize)
 
-### Web ↔ Server Communication
+**Server** (`server/`) — Express 4 + sql.js (SQLite in-process). Single-file DB at `data/theme-studio.db`.
 
-- Dev mode: Vite proxies `/api/*` to Express at `:3001` (600s timeout for AI streaming)
-- API client (`web/src/api-base.ts`) auto-resolves base URL based on environment
-- AI API keys never reach the browser — server proxies all chat/image requests
+- `src/index.ts` — Express app setup, middleware chain, route mounting, graceful shutdown
+- `src/db.ts` — SQLite via sql.js with debounced disk writes and periodic backups
+- `src/routes/ai-proxy.ts` — Proxies chat/image requests to configured AI model providers
+- `src/routes/model-config.ts` — Admin CRUD for AI model endpoint/key/model settings (stored in DB)
+- `src/routes/workspace.ts` — Project persistence (save/load workspace configs)
+- `src/routes/conversations.ts` — Chat history persistence
+- `src/routes/export-jobs.ts` — Async export job management (screenshot + zip packaging)
+- `src/export-job-runner.ts` — Background job processor for export pipeline
+- `admin/` — Static admin panel for configuring model settings
 
-### Key Data Flow: Theme Generation Pipeline
+Vite dev server proxies `/api` requests to `localhost:3001`.
 
-1. User describes theme → AI chat (`web/src/chat-manager.ts` → `/api/theme/chat`)
-2. AI generates background image (`/api/theme/image` → MiniMax/Volcengine)
-3. Primary color extracted from background via Canvas quantization
-4. Full palette derived by `deriveColorsFromPrimary()` in `web/src/theme/color-utils.ts` — computes all 23 CSS variables
-5. CSS variables applied to HTML templates (login + desktop + 8 header variants) in `#previewPanel`
-6. User iterates via chat or manual color editor (`web/src/components/color-editor.ts`)
-7. User triggers export → server creates background job → asset prep → Playwright screenshots → `theme_builder.py` packages ZIPs → `verify-build.py` validates
+### AI Integration
 
-### Code Organization
+The AI flow is browser-centric: the frontend constructs system prompts (`web/src/agent/system-prompt.ts`), sends chat completion requests through the server's `/api/theme/chat` proxy, parses tool calls from the response, and executes them client-side via `web/src/tools/executor.ts`.
 
-```
-web/src/
-  chat-manager.ts          # Core chat loop (72KB) — message handling, tool call parsing
-  theme-engine.ts          # CSS variable application, template rendering
-  project-manager.ts       # Project CRUD in localStorage
-  package-manager.ts       # Export UI, product selection, job dispatch
-  api-base.ts              # API client with auto base URL resolution
-  auth.ts                  # EKP SSO token exchange
-  agent/                   # AI layer
-    system-prompt.ts       # 29KB system prompt defining AI as "OA Theme Designer"
-    chat-client.ts         # Chat API client, routes through backend proxy
-    tool-call-utils.ts     # Parses AI tool call responses
-    knowledge-base.ts      # Preset theme matching
-  tools/                   # Tool execution
-    executor.ts            # Central executor (42KB) — generate_theme_pipeline, update_colors, etc.
-  theme/                   # Color computation
-    color-utils.ts         # deriveColorsFromPrimary() — core algorithm
-  templates/               # 31 HTML/CSS preview templates
-  export/                  # Export pipeline client-side
-  components/              # Color editor, sidebar
+Available tools: `generate_theme_pipeline` (full theme generation), `update_colors` (apply color vars), `analyze_image`, `generate_background`, `screenshot`, `build`, `verify`.
 
-server/src/
-  index.ts                 # Express app setup, DB init, route registration
-  db.ts                    # SQLite via sql.js (users, model_config, conversations, credits, usage_logs)
-  export-job-runner.ts     # Background job queue for export
-  crypto.ts                # AES encryption for stored API keys
-  routes/
-    ai-proxy.ts            # /api/theme/chat, /api/theme/image — proxies to AI providers
-    export-jobs.ts         # /api/theme/export-jobs — create/monitor export jobs
-    model-config.ts        # Admin model config (API keys, endpoints)
-  middleware/
-    auth.ts                # EKP SSO cookie validation
-    admin-auth.ts          # Admin session cookie
-    credits.ts             # Per-user credit deduction
-    rate-limit.ts          # Per-user rate limiting
-  admin/                   # Pre-built static admin panel HTML
+The Portal Agent workflow: extract customer profile from chat → score completeness → build summary → generate portal draft → apply to project (theme + workspace seed).
 
-config/                    # JSON config files (NOT hardcoded in source)
-  variable-mapping.json    # CSS variable mapping per product version (36KB)
-  header-mapping-light-ui.json  # Header type mappings
-  build-verification-rules.json # Expected zip structure per product
-  theme-relations.json     # Dark-UI color relationships
-```
+### Templates & Theming
 
-## Important Patterns
+`web/src/templates/` contains HTML partials for portal components (login, desktop, header variants, sidebar). Each has paired `.html` + `.css` files. `loader.ts` assembles them into preview iframes.
 
-- **Config-as-data**: All product-specific rules live in `config/*.json`, not in source code. `variable-mapping.json` is the single source of truth for CSS variable mapping across MK/V14–V17.
-- **CSS variable-driven theming**: All visual customization flows through 23 CSS custom properties on `#previewPanel`. Templates are pure HTML+CSS that respond to variable changes.
-- **Reference template packaging**: `theme_builder.py` works by cloning reference ZIP templates from `assets/references/samples/` and injecting new colors/images, not generating from scratch.
-- **Server-side AI proxy**: API keys stored encrypted in SQLite, never exposed to browser. All AI calls route through server endpoints.
-- **Multi-tenant**: User isolation via EKP SSO cookies, per-user credits and conversations.
-- **Dual export paths**: Local (Playwright bridge on :5174) or server-side export job runner.
+Templates are `light-ui` or `dark-ui`. Theme is applied via CSS custom properties on `#previewPanel`. Color derivation: `web/src/theme/color-utils.ts` generates a full palette from a single primary color.
 
-## Environment Variables
+`config/web-template-registry.json` maps template metadata; `config/variable-mapping.json` maps CSS variables.
 
-Configured via `.env` (git-ignored). Key variables:
-- `PORT` — Server port (default 3001)
-- `ADMIN_PASSWORD` — Required. Admin panel access password.
-- `EKP_BASE_URL` — EKP SSO integration endpoint
-- `ENABLE_DEV_AUTH=true` — Bypass SSO for local dev (use `DEV_LOGIN_NAME`)
-- `SECRET_ENCRYPTION_KEY` — AES key for encrypting stored API keys (16+ chars)
+### Export Pipeline
 
-Model provider config (API keys, endpoints, model names) is managed through `/admin` web UI and stored in SQLite, not in `.env`.
+Export uses Playwright to screenshot template pages, then packages them via `theme_builder.py` (Python) or the JS-based zip archiver. The server manages async export jobs with status tracking (`queued → preparing → capturing → packaging → verifying → completed`).
 
-## Testing
+### Test Suite
 
-128 unit tests in `tests/unit/` using Vitest. Tests are contract-style — they verify expected behaviors and constraints rather than implementation details. Coverage includes server routes, web components, color utilities, export pipeline, build verification, and multi-user isolation.
+147 unit tests in `tests/unit/`, using Vitest in Node environment. Tests are mostly **contract/style tests** that read source files and assert on CSS properties, HTML structure, or API contracts — they don't spin up browsers. Helper `tests/helpers/read-css.ts` reads CSS from `web/src/styles.css` and its imports.
 
-Web E2E tests use Playwright in `web/e2e/` (smoke, preview-scale).
+## Key Conventions
 
-## Product Versions
+- **Language**: Code comments and UI text are in Chinese (zh-CN). Variable/function names are English.
+- **No framework**: The web frontend is vanilla TypeScript with direct DOM manipulation — no React, Vue, or component framework.
+- **Three separate npm projects**: Root (scripts/tests), `web/`, `server/` — each has its own `package.json`, `tsconfig.json`, and `node_modules`.
+- **Auth**: EKP SSO cookie-based auth in production. Dev mode bypasses auth on localhost (`ENABLE_DEV_AUTH=true`).
+- **Model config**: AI model settings (endpoint, API key, model name) are stored in SQLite via `/admin` panel, not in `.env`.
+- **CSS variables**: Theme is applied exclusively through CSS custom properties on `#previewPanel`. Never mutate template HTML directly for theming.
+- **Project state**: Projects live in browser memory (`Map`). Persistence to server happens via `/api/theme/projects` and conversation snapshots.
 
-Supported theme packages: **MK, EKP V14, V15, V16, V17** — each generates a theme ZIP + login ZIP (up to 10 total). V12/V13/V13.5 are no longer supported.
+## Environment Setup
+
+1. `cp .env.example .env` and set `ADMIN_PASSWORD`
+2. Start server first, then web
+3. Visit `http://localhost:5173/admin` to configure AI model (API Key, Endpoint, Model Name)

@@ -138,6 +138,271 @@ export interface AISettings {
   uiTheme?: 'dark' | 'light';
 }
 
+export type PortalIntakeField =
+  | 'customerName'
+  | 'customerIndustry'
+  | 'customerFunctions'
+  | 'portalPurpose'
+  | 'highlightedCards'
+  | 'visualPreference';
+
+export interface PortalCustomerProfile {
+  customerName?: string;
+  customerIndustry?: string;
+  customerFunctions?: string[];
+  portalPurpose?: string;
+  highlightedCards?: string[];
+  visualPreference?: string;
+  source?: Array<'chat' | 'form' | 'attachment' | 'inferred'>;
+  completeness: number;
+  updatedAt?: number;
+}
+
+export interface PortalSummary {
+  customerName: string;
+  customerIndustry: string;
+  customerFunctions: string[];
+  portalPurpose: string;
+  highlightedCards: string[];
+  visualPreference: string;
+  structureUnderstanding: string[];
+  styleUnderstanding: string;
+  confirmedAt?: number;
+}
+
+/**
+ * 需求理解摘要 — 生成前的独立确认环节，区别于画像字段确认 (PortalCustomerProfile)。
+ * 画像确认 = 确认 6 个画像字段
+ * 需求摘要 = 确认 AI 对门户目标、模块需求、覆盖分析、假设的理解
+ */
+export interface RequirementSummary {
+  portalGoal: string;
+  requestedCapabilities: string[];
+  stylePreferences: string[];
+  assumptions: string[];
+  coverableCards?: string[];
+  uncoveredNeeds?: UncoveredNeed[];
+}
+
+export interface PortalWorkspaceSeedItem {
+  templateId: string;
+  reason: string;
+  title?: string;
+  summary?: string;
+  badge?: string;
+  headline?: string;
+  priority?: 'high' | 'medium' | 'low';
+  itemCount?: number;
+  items?: Array<Record<string, unknown>>;
+  links?: string[];
+}
+
+export interface PortalDraft {
+  themeDirection: string;
+  workspaceSeed: PortalWorkspaceSeedItem[];
+  generatedAt: number;
+}
+
+export interface PortalResultState {
+  savedAt?: number;
+  sharedAt?: number;
+  fullscreenViewedAt?: number;
+}
+
+export type PortalPlanStatus = 'collecting' | 'summary_pending' | 'generated' | 'editing' | 'saved';
+
+export interface PortalEnterpriseProfile {
+  customerName: string;
+  industry: string;
+  customerFunctions: string[];
+  portalPurpose: string;
+  highlightedCards: string[];
+  visualPreference: string;
+  summary: string;
+  sourceProfile?: PortalCustomerProfile;
+}
+
+export interface PortalThemeLayer {
+  themeDirection: string;
+  colors: Record<string, string>;
+  headerStyle: string;
+  navigationStyle: string;
+  bannerStrategy: string;
+  visualKeywords: string[];
+}
+
+/**
+ * 主题配置 — 对应可编辑的 Theme Effect Layer。
+ * Logo 可编辑是产品规则，始终提供上传/替换/删除入口，不作为可关闭的配置字段。
+ */
+export interface ThemeConfig {
+  logoUrl?: string;
+  customerName?: string;
+  headerStyle: string;
+  colorThemeId?: string;
+  colors?: Record<string, string>;
+  backgroundAssetId?: string;
+  backgroundUrl?: string;
+  backgroundMode?: 'library' | 'generated' | 'placeholder';
+}
+
+export type PortalCardDensity = 'compact' | 'standard' | 'comfortable';
+export type PortalLayoutMode = 'dense' | 'showcase' | 'dashboard';
+
+export interface PortalRegion {
+  id: string;
+  name: string;
+  columns: number;
+  rowHeight: number;
+  padding: number;
+}
+
+export interface PortalCardPlacement {
+  cardId: string;
+  templateId: string;
+  regionId: string;
+  column: number;
+  row: number;
+  columnSpan: number;
+  rowSpan: number;
+  minColumnSpan?: number;
+  maxColumnSpan?: number;
+  minRowSpan?: number;
+  maxRowSpan?: number;
+}
+
+export interface PortalWorkspaceRuleLayer {
+  cardRadius: number;
+  cardGap: number;
+  cardDensity: PortalCardDensity;
+  shadowStyle: string;
+  gridColumns: number;
+  rowHeight: number;
+  layoutMode: PortalLayoutMode;
+  regions: PortalRegion[];
+  cardPlacements: PortalCardPlacement[];
+}
+
+export interface PortalCardContent {
+  id: string;
+  templateId: string;
+  title: string;
+  summary?: string;
+  badge?: string;
+  headline?: string;
+  items?: Array<Record<string, unknown>>;
+  links?: string[];
+  enterpriseMappingReason: string;
+}
+
+export interface PortalCardContentLayer {
+  cards: PortalCardContent[];
+}
+
+export interface PortalEditHistoryItem {
+  source: 'agent' | 'config';
+  layer: 'theme' | 'workspaceRules' | 'cardContent';
+  summary: string;
+  createdAt: number;
+}
+
+/**
+ * 未覆盖需求 — 用户要求但当前卡片库无法满足的能力。
+ */
+export interface UncoveredNeed {
+  id: string;
+  label: string;
+  reason: string;
+  requestedCapability: string;
+  suggestedCardType?: string;
+}
+
+/**
+ * 卡片字段 schema — 定义卡片模板中每个字段的结构和 AI 可写性。
+ */
+export interface CardFieldSchema {
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'image' | 'link' | 'list' | 'select' | 'boolean';
+  aiWritable: boolean;
+  required?: boolean;
+  options?: string[];
+  itemSchema?: Record<string, string>;
+}
+
+/**
+ * 卡片模板 — 后台卡片库中的模板定义，AI 只能从中选择。
+ */
+export interface CardTemplate {
+  id: string;
+  name: string;
+  category: string;
+  industryTags: string[];
+  capabilityTags: string[];
+  scenarioTags: string[];
+  defaultW: number;
+  defaultH: number;
+  previewImageUrl?: string;
+  fields: CardFieldSchema[];
+  enabled: boolean;
+}
+
+export interface PortalPlan {
+  id: string;
+  status: PortalPlanStatus;
+  enterpriseProfile: PortalEnterpriseProfile;
+  themeLayer: PortalThemeLayer;
+  workspaceRuleLayer: PortalWorkspaceRuleLayer;
+  cardContentLayer: PortalCardContentLayer;
+  /** 未覆盖需求：用户要求但卡片库无法满足的能力 */
+  uncoveredNeeds?: UncoveredNeed[];
+  /** 需求理解摘要：生成前的独立确认 */
+  requirementSummary?: RequirementSummary;
+  editHistory: PortalEditHistoryItem[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface WorkspaceSettings {
+  columns: number;
+  rowHeight: number;
+  gapX: number;
+  gapY: number;
+  paddingX: number;
+  paddingY: number;
+  maxWidth?: number;
+  backgroundMode?: 'theme' | 'plain';
+}
+
+export interface WorkspaceItem {
+  id: string;
+  templateId: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  minW?: number;
+  minH?: number;
+  maxW?: number;
+  maxH?: number;
+  locked?: boolean;
+  zIndex?: number;
+  instanceProps?: Record<string, unknown>;
+  styleOverrides?: Record<string, unknown>;
+}
+
+export interface WorkspaceMeta {
+  initializedAt: number;
+  updatedAt: number;
+  source: 'default' | 'portal-draft';
+}
+
+export interface WorkspaceConfig {
+  settings: WorkspaceSettings;
+  items: WorkspaceItem[];
+  meta: WorkspaceMeta;
+}
+
 export interface ConfirmedProjectSnapshot {
   projectId: string;
   name: string;

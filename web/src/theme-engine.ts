@@ -143,7 +143,6 @@ export function getAllCSSVariables(): Record<string, string> {
 
 export async function loadDefaultTemplates() {
   try {
-    const loginTarget = document.getElementById('loginPage');
     const mainTarget = document.getElementById('mainPage');
     const headerDefaultTarget = document.getElementById('headerDefaultPage');
     const headerComplexTarget = document.getElementById('headerComplexPage');
@@ -151,7 +150,6 @@ export async function loadDefaultTemplates() {
     const headerBannerTarget = document.getElementById('headerBannerPage');
     const sidebarTarget = document.getElementById('sidebarPage');
 
-    if (loginTarget) await renderTemplate('login', loginTarget);
     if (mainTarget) await renderTemplate('desktop', mainTarget);
     if (mainTarget?.firstElementChild instanceof HTMLElement) {
       initDesktopBehavior(mainTarget.firstElementChild);
@@ -202,7 +200,7 @@ function runQualityCheck() {
   resultsContainer.innerHTML = '';
   const root = getComputedStyle(document.documentElement);
   const checks = [
-    { label: '主题文字对比 (primary on white)', fg: root.getPropertyValue('--primary-color').trim(), bg: '#FFFFFF' },
+    { label: '门户文字对比 (primary on white)', fg: root.getPropertyValue('--primary-color').trim(), bg: '#FFFFFF' },
     { label: '标题文字对比 (header-font on body-bg)', fg: root.getPropertyValue('--header-font-color').trim(), bg: root.getPropertyValue('--body-bg-color').trim() },
     { label: '标题文字对比 (header-font on panel)', fg: root.getPropertyValue('--header-font-color').trim(), bg: root.getPropertyValue('--panel-bg-color').trim() || '#FFFFFF' },
     { label: '辅助灰文字对比 (aux-gray on white)', fg: root.getPropertyValue('--auxiliary-gray').trim(), bg: '#FFFFFF' },

@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
 describe('web ui card surfaces', () => {
   test('styles recommendation blocks and export task surfaces as restrained dark system cards', () => {
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = readAllCSS();
 
     expect(styles).toContain('backdrop-filter: blur(12px);');
     expect(styles).toContain('grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));');

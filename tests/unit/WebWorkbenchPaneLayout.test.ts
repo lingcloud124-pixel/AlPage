@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
@@ -8,7 +9,7 @@ describe('web workbench pane layout', () => {
   test('includes dedicated pane dividers and main-page tab behavior hooks', () => {
     const html = fs.readFileSync(path.join(projectRoot, 'web/index.html'), 'utf8');
     const uiSetup = fs.readFileSync(path.join(projectRoot, 'web/src/ui-setup.ts'), 'utf8');
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = readAllCSS();
 
     expect(html).toContain('id="previewDivider"');
     expect(uiSetup).toContain('setChatPanelWidth');

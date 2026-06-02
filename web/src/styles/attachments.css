@@ -1,0 +1,30 @@
+/* 附件预览 */
+.attachments-preview,
+.chat-shell-attachments
+{
+  padding: 0 16px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attachment-item
+{
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--surface-btn);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.attachment-item .remove-btn
+{
+  background: none;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+}
+

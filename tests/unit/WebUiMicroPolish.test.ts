@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
 describe('web ui micro polish', () => {
   test('includes final shell polish hooks for toast, menus, and modal detail surfaces', () => {
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = readAllCSS();
 
     expect(styles).toContain('.theme-studio-toast');
     expect(styles).toContain('min-width: 280px;');

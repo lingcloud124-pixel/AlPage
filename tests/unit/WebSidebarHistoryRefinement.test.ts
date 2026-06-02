@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
 describe('web sidebar history refinement', () => {
   test('hides the sidebar list scrollbar, keeps collapsed rail white, and uses stable white active history items', () => {
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = readAllCSS();
 
     expect(styles).toContain('.sidebar {');
     expect(styles).toContain('background-color: #ffffff;');

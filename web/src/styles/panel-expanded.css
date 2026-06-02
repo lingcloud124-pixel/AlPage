@@ -1,0 +1,57 @@
+/* 面板展开时：导航收起，对话隐藏，面板+预览占满 */
+
+
+.app-container.panel-open .chat-panel
+{
+  width: 0 !important;
+  min-width: 0 !important;
+  flex: 0 0 0 !important;
+  overflow: hidden;
+  border: none;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.app-container.panel-open .resize-divider,
+.app-container.panel-open .pane-divider
+{
+  display: none;
+}
+
+.app-container.panel-open .preview-panel
+{
+  margin-right: 360px;
+  transition: margin-right 0.3s ease;
+}
+
+.drawer-header
+{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.drawer-header h3
+{
+  font-size: 16px;
+  color: var(--header-font-color);
+  margin: 0;
+}
+
+.drawer-close-btn
+{
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+

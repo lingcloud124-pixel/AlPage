@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Theme Studio - 后台管理</title>
+  <title>AlPage - 后台管理</title>
   <style>
     :root {
       --bg: #0f1117;
@@ -80,6 +80,8 @@
     .range-btn { padding: 4px 14px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--muted); cursor: pointer; transition: all .15s; }
     .range-btn:hover { color: var(--text); border-color: var(--accent); }
     .range-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .subtab-panel { display: none; }
+    .subtab-panel.active { display: block; }
     .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
     .header-row h1 { margin: 0; }
     .menu-btn { position: relative; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
@@ -133,6 +135,20 @@
     .status-pill.pending { color: #fde68a; background: rgba(245, 158, 11, .14); }
     .empty-state { color: var(--muted); font-size: 13px; padding: 18px 0; }
     .wl-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .card-library-toolbar { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px; margin-bottom: 16px; }
+    .card-library-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .card-library-card { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--input-bg); }
+    .card-library-preview-thumb { height: 160px; background: linear-gradient(135deg, rgba(99, 102, 241, .22), rgba(129, 140, 248, .08)); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--border); background-size: cover; background-position: center; }
+    .card-library-card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .card-library-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .card-library-card-title { font-size: 15px; font-weight: 600; }
+    .card-library-card-meta { color: var(--muted); font-size: 12px; }
+    .card-library-card-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .card-library-tag { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+    .card-library-card-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+    .drawer-form { display: flex; flex-direction: column; gap: 12px; }
+    .drawer-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .drawer-form textarea.code-field { min-height: 124px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -148,7 +164,7 @@
     
     <div id="adminPanel" style="display: none;">
       <div class="header-row">
-        <h1>Theme Studio 后台管理</h1>
+        <h1>AlPage 后台管理</h1>
         <div style="position: relative;">
           <button class="menu-btn" id="menuBtn">⋯</button>
           <div class="menu-dropdown" id="menuDropdown">
@@ -162,6 +178,8 @@
         <button class="tab-btn active" data-tab="config">产品配置</button>
         <button class="tab-btn" data-tab="users">用户列表</button>
         <button class="tab-btn" data-tab="userdata" id="tabBtnWhitelist" style="display:none">白名单用户</button>
+        <button class="tab-btn" data-tab="card-library" onclick="switchTab('card-library')">卡片库</button>
+        <button class="tab-btn" data-tab="industry-cases" onclick="switchTab('industry-cases')">资料库管理</button>
       </div>
 
       <div class="tab-panel active" id="tab-config">
@@ -344,6 +362,20 @@
           <tbody id="userTableBody"></tbody>
         </table>
       </div>
+      </div>
+
+      <div class="tab-panel" id="tab-card-library">
+      <div class="card">
+        <h2>卡片库 <span class="badge">Workspace Editor</span></h2>
+        <div class="card-library-toolbar">
+          <select id="cardLibraryCategoryFilter">
+            <option value="">全部分类</option>
+          </select>
+          <input type="text" id="cardLibrarySearchInput" placeholder="搜索卡片名称、类型或描述">
+        </div>
+        <div class="card-library-grid" id="cardLibraryGrid"></div>
+      </div>
+      </div>
     </div>
 
 
@@ -450,6 +482,1245 @@
     </div>
   </div>
 
+  <div class="drawer-overlay" id="cardTemplateEditorOverlay" onclick="closeCardTemplateEditor()"></div>
+  <aside class="drawer" id="cardTemplateEditorDrawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div>
+        <div class="drawer-title" id="cardTemplateEditorTitle">编辑卡片模板</div>
+        <div class="drawer-subtitle">修改模板基础信息与默认内容，前台工作区会按模板默认值渲染</div>
+      </div>
+      <button class="close-btn" type="button" onclick="closeCardTemplateEditor()" aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-form">
+        <input type="hidden" id="cardTemplateEditorId">
+        <div class="drawer-form-grid">
+          <div>
+            <label>模板名称</label>
+            <input type="text" id="cardTemplateName">
+          </div>
+          <div>
+            <label>模板类型</label>
+            <input type="text" id="cardTemplateType" disabled>
+          </div>
+        </div>
+        <div class="drawer-form-grid">
+          <div>
+            <label>默认宽度</label>
+            <input type="number" id="cardTemplateDefaultW" min="1" max="4">
+          </div>
+          <div>
+            <label>默认高度</label>
+            <input type="number" id="cardTemplateDefaultH" min="1" max="24">
+          </div>
+        </div>
+        <div>
+          <label>描述</label>
+          <input type="text" id="cardTemplateDescription">
+        </div>
+        <div>
+          <label>预览图 URL</label>
+          <input type="text" id="cardTemplatePreviewImageUrl">
+        </div>
+        <hr style="border:0;border-top:1px solid var(--border);margin:8px 0;">
+        <h3 style="font-size:13px;color:var(--muted);font-weight:600;">标签（逗号分隔）</h3>
+        <div class="drawer-form-grid">
+          <div>
+            <label>行业标签</label>
+            <input type="text" id="cardTemplateIndustryTags" placeholder="能源,制造,金融">
+          </div>
+          <div>
+            <label>能力标签</label>
+            <input type="text" id="cardTemplateCapabilityTags" placeholder="待办,日程,新闻">
+          </div>
+        </div>
+        <div>
+          <label>场景标签</label>
+          <input type="text" id="cardTemplateScenarioTags" placeholder="门户首页,工作台">
+        </div>
+        <hr style="border:0;border-top:1px solid var(--border);margin:8px 0;">
+        <h3 style="font-size:13px;color:var(--muted);font-weight:600;">字段 Schema</h3>
+        <div id="cardTemplateFieldEditor"></div>
+        <button type="button" class="btn-secondary btn-sm" onclick="addFieldRow()" style="margin-bottom:8px;">+ 添加字段</button>
+        <hr style="border:0;border-top:1px solid var(--border);margin:8px 0;">
+        <h3 style="font-size:13px;color:var(--muted);font-weight:600;">默认内容</h3>
+        <div class="drawer-form-grid">
+          <div>
+            <label>卡片标题</label>
+            <input type="text" id="cardTemplateCardTitle">
+          </div>
+          <div>
+            <label>展示条数</label>
+            <input type="number" id="cardTemplateItemCount" min="1" max="12">
+          </div>
+        </div>
+        <div>
+          <label>主标题</label>
+          <input type="text" id="cardTemplateHeadline">
+        </div>
+        <div>
+          <label>摘要</label>
+          <input type="text" id="cardTemplateSummary">
+        </div>
+        <div>
+          <label>列表项 JSON</label>
+          <textarea class="code-field" id="cardTemplateItemsJson" placeholder='[{"label":"合同审批待处理","meta":"2h"}]'></textarea>
+        </div>
+        <div>
+          <label>快捷入口 JSON</label>
+          <textarea class="code-field" id="cardTemplateLinksJson" placeholder='["流程中心","知识库"]'></textarea>
+        </div>
+        <div class="actions" style="margin-top: 4px;">
+          <button class="btn-primary" type="button" onclick="saveCardTemplateEditor()">保存模板</button>
+          <button class="btn-secondary" type="button" onclick="closeCardTemplateEditor()">取消</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="tab-panel" id="tab-industry-cases">
+    <!-- 子页签 -->
+    <div class="tab-bar" style="margin-bottom: 16px;">
+      <button class="tab-btn active" data-subtab="saved-portals" onclick="switchSubTab('saved-portals')">已保存方案</button>
+      <button class="tab-btn" data-subtab="curated-cases" onclick="switchSubTab('curated-cases')">沉淀案例</button>
+    </div>
+
+    <!-- 已保存方案 -->
+    <div class="subtab-panel active" id="subtab-saved-portals">
+      <div class="card">
+        <h2>已保存方案</h2>
+        <div class="row" style="margin-bottom: 16px;">
+          <div>
+            <label>关键词搜索</label>
+            <input type="text" id="spFilterKeyword" placeholder="搜索方案名称" oninput="loadSavedPortalsAdmin()">
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr><th>名称</th><th>用户</th><th>行业</th><th>更新时间</th><th>发布</th><th>已沉淀</th><th>操作</th></tr>
+          </thead>
+          <tbody id="savedPortalsAdminBody">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 沉淀案例 -->
+    <div class="subtab-panel" id="subtab-curated-cases">
+      <div class="card">
+        <h2>沉淀案例</h2>
+        <div class="row" style="margin-bottom: 16px;">
+          <div>
+            <label>按行业筛选</label>
+            <input type="text" id="caseFilterIndustry" placeholder="如：能源、制造" oninput="loadCuratedCases()">
+          </div>
+          <div>
+            <label>关键词搜索</label>
+            <input type="text" id="caseFilterKeyword" placeholder="如：调度、运营" oninput="loadCuratedCases()">
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr><th>案例标题</th><th>行业</th><th>关键词</th><th>来源方案</th><th>沉淀时间</th><th>AI 参考</th><th>展示</th><th>操作</th></tr>
+          </thead>
+          <tbody id="curatedCasesBody">
+            <tr><td colspan="8" style="text-align:center;color:var(--muted);">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 沉淀为案例弹窗 -->
+  <div class="modal-overlay" id="curateModal">
+    <div class="modal-box" style="width: 440px;">
+      <h2>沉淀为案例</h2>
+      <label>案例标题</label>
+      <input type="text" id="curateCaseTitle" placeholder="输入案例标题">
+      <label>行业</label>
+      <input type="text" id="curateIndustry" placeholder="如：能源、金融" readonly>
+      <label>关键词（逗号分隔）</label>
+      <input type="text" id="curateKeywords" placeholder="关键词1, 关键词2">
+      <label>摘要</label>
+      <textarea id="curateSummary" rows="3" placeholder="简要描述此案例特点"></textarea>
+      <div class="setting-toggle-row" style="margin-top: 14px;">
+        <div class="setting-toggle-copy">
+          <span class="setting-toggle-title">启用 AI 参考</span>
+          <span class="setting-toggle-note">作为 AI 生成时的参考案例</span>
+        </div>
+        <label class="switch" aria-label="启用 AI 参考">
+          <input type="checkbox" id="curateRefEnabled" checked>
+          <span class="switch-slider" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="setting-toggle-row">
+        <div class="setting-toggle-copy">
+          <span class="setting-toggle-title">前台展示</span>
+          <span class="setting-toggle-note">在前台案例展示中可见</span>
+        </div>
+        <label class="switch" aria-label="前台展示">
+          <input type="checkbox" id="curateDisplayEnabled">
+          <span class="switch-slider" aria-hidden="true"></span>
+        </label>
+      </div>
+      <input type="hidden" id="curatePortalId">
+      <div class="actions" style="justify-content: flex-end;">
+        <button class="btn-secondary" onclick="closeCurateModal()">取消</button>
+        <button class="btn-primary" onclick="submitCurateCase()">确认沉淀</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑案例弹窗 -->
+  <div class="modal-overlay" id="editCaseModal">
+    <div class="modal-box" style="width: 440px;">
+      <h2>编辑案例</h2>
+      <label>案例标题</label>
+      <input type="text" id="editCaseTitle" placeholder="输入案例标题">
+      <label>关键词（逗号分隔）</label>
+      <input type="text" id="editCaseKeywords" placeholder="关键词1, 关键词2">
+      <label>摘要</label>
+      <textarea id="editCaseSummary" rows="3" placeholder="简要描述此案例特点"></textarea>
+      <input type="hidden" id="editCaseId">
+      <div class="actions" style="justify-content: flex-end;">
+        <button class="btn-secondary" onclick="closeEditCaseModal()">取消</button>
+        <button class="btn-primary" onclick="saveCaseDetails()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let _authenticated = false;
+    let _activeUsageUserId = null;
+    let _cardTemplateItems = [];
+    let _activeCardTemplate = null;
+    const USAGE_TREND_DAYS = 7;
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector(`.tab-btn[data-tab="${name}"]`).classList.add('active');
+      document.getElementById(`tab-${name}`).classList.add('active');
+      if (name === 'users') loadUsers();
+      if (name === 'card-library') loadCardLibrary();
+      if (name === 'industry-cases') { loadSavedPortalsAdmin(); loadCuratedCases(); }
+    }
+
+    function toggleMenu() {
+      document.getElementById('menuDropdown').classList.toggle('open');
+    }
+    document.addEventListener('click', e => {
+      const dd = document.getElementById('menuDropdown');
+      if (dd && !e.target.closest('.menu-btn') && !e.target.closest('.menu-dropdown')) dd.classList.remove('open');
+    });
+
+    function showChangePassword() {
+      document.getElementById('menuDropdown').classList.remove('open');
+      document.getElementById('cpOldPassword').value = '';
+      document.getElementById('cpNewPassword').value = '';
+      document.getElementById('cpConfirmPassword').value = '';
+      document.getElementById('changePasswordModal').classList.add('open');
+    }
+
+    function hideChangePassword() {
+      document.getElementById('changePasswordModal').classList.remove('open');
+    }
+
+    document.getElementById('changePasswordModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) hideChangePassword();
+    });
+
+    async function submitChangePassword() {
+      const oldPassword = document.getElementById('cpOldPassword').value;
+      const newPassword = document.getElementById('cpNewPassword').value;
+      const confirmPassword = document.getElementById('cpConfirmPassword').value;
+
+      if (!newPassword) { toast('请输入新密码', 'error'); return; }
+      if (newPassword.length < 4) { toast('新密码长度至少为4位', 'error'); return; }
+      if (newPassword !== confirmPassword) { toast('两次输入的新密码不一致', 'error'); return; }
+
+      try {
+        const res = await fetch('/api/admin-password', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oldPassword, newPassword }),
+        });
+        const data = await res.json();
+        if (!res.ok) { toast(data.error || '修改失败', 'error'); return; }
+
+        toast('密码修改成功，请重新登录');
+        hideChangePassword();
+        logoutAdmin();
+      } catch (e) {
+        toast('修改失败: ' + e.message, 'error');
+      }
+    }
+
+    function toast(msg, type = 'success') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast ${type} show`;
+      setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatTime(value) {
+      if (!value) return '-';
+      try {
+        return new Date(Number(value)).toLocaleString('zh-CN');
+      } catch (_e) {
+        return '-';
+      }
+    }
+
+    function renderSparkline(points, options = {}) {
+      const safePoints = Array.isArray(points) && points.length > 0
+        ? points
+        : Array.from({ length: USAGE_TREND_DAYS }, (_value, index) => ({
+            label: `${index + 1}`,
+            count: 0,
+          }));
+      const maxCount = Math.max(...safePoints.map(point => Number(point?.count ?? 0)), 1);
+      const sparklineClass = options.compact ? 'sparkline' : 'sparkline large';
+      const emptyClass = safePoints.every(point => Number(point?.count ?? 0) === 0) ? ' empty' : '';
+      const bars = safePoints.map(point => {
+        const count = Math.max(0, Number(point?.count ?? 0));
+        const height = count === 0 ? 8 : Math.max(12, Math.round((count / maxCount) * 100));
+        return `
+          <div class="sparkline-slot" title="${escapeHtml(`${point.label}: ${count}`)}">
+            <div class="sparkline-bar" style="height: ${height}%"></div>
+          </div>
+        `;
+      }).join('');
+      const labels = safePoints.map(point => `<span>${escapeHtml(point.label ?? '')}</span>`).join('');
+      return `
+        <div class="${sparklineClass}${emptyClass}">
+          ${bars}
+        </div>
+        <div class="sparkline-labels">${labels}</div>
+      `;
+    }
+
+    function renderUsageOverview(data) {
+      const summary = data?.summary || {};
+      document.getElementById('usageOverviewTotalCalls').textContent = String(summary.totalImageCalls ?? 0);
+      document.getElementById('usageOverviewActiveUsers').textContent = String(summary.activeUserCount ?? 0);
+      document.getElementById('usageOverviewDownloadCount').textContent = String(summary.totalDownloadCount ?? 0);
+    }
+
+    function renderCardLibraryTemplates(items) {
+      const grid = document.getElementById('cardLibraryGrid');
+      if (!Array.isArray(items) || items.length === 0) {
+        grid.innerHTML = '<div class="empty-state">暂无卡片模板</div>';
+        return;
+      }
+      grid.innerHTML = items.map((item) => {
+        const previewStyle = item.previewImageUrl
+          ? ` style="background-image: linear-gradient(135deg, rgba(99, 102, 241, .16), rgba(129, 140, 248, .06)), url('${escapeHtml(item.previewImageUrl)}');"`
+          : '';
+        const statusLabel = item.enabled === false ? '已禁用' : '已启用';
+        const statusColor = item.enabled === false ? 'var(--danger)' : 'var(--success)';
+        const fieldCount = (item.fields || []).length;
+        const tagChips = [].concat(
+          (item.industryTags || []).map(t => `<span class="card-library-tag">${escapeHtml(t)}</span>`),
+          (item.capabilityTags || []).map(t => `<span class="card-library-tag">${escapeHtml(t)}</span>`),
+        ).slice(0, 6).join('');
+        return `
+          <article class="card-library-card">
+            <div class="card-library-preview-thumb"${previewStyle}>模板预览缩略图</div>
+            <div class="card-library-card-body">
+              <div class="card-library-card-header">
+                <div class="card-library-card-title">${escapeHtml(item.name || '未命名卡片')}</div>
+                <div class="card-library-card-meta" style="color:${statusColor}">${statusLabel}</div>
+              </div>
+              <div class="card-library-card-meta">${escapeHtml(item.description || item.type || '')}</div>
+              <div class="card-library-card-tags">
+                <span class="card-library-tag">${escapeHtml(item.category || '未分类')}</span>
+                <span class="card-library-tag">${escapeHtml(`${item.defaultW || 2} x ${item.defaultH || 12}`)}</span>
+                ${fieldCount > 0 ? `<span class="card-library-tag">${fieldCount} 字段</span>` : ''}
+              </div>
+              ${tagChips ? `<div class="card-library-card-tags" style="margin-top:4px;">${tagChips}</div>` : ''}
+              <div class="card-library-card-actions">
+                <button type="button" class="btn-secondary btn-sm" onclick='toggleCardTemplateEnable(${JSON.stringify(String(item.id || ""))})'>${item.enabled === false ? '启用' : '禁用'}</button>
+                <button type="button" class="btn-secondary btn-sm" onclick='openCardTemplateEditor(${JSON.stringify(String(item.id || ''))})'>编辑模板</button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function closeCardTemplateEditor() {
+      _activeCardTemplate = null;
+      document.getElementById('cardTemplateEditorDrawer').classList.remove('open');
+      document.getElementById('cardTemplateEditorDrawer').setAttribute('aria-hidden', 'true');
+      document.getElementById('cardTemplateEditorOverlay').classList.remove('open');
+    }
+
+    async function toggleCardTemplateEnable(id) {
+      if (!_authenticated) { toast('请先登录', 'error'); return; }
+      try {
+        const res = await fetch(`/api/card-templates/${encodeURIComponent(id)}/toggle`, {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (res.status === 401) { showLoginSection(); toast('登录已过期', 'error'); return; }
+        if (!res.ok) throw new Error('操作失败');
+        toast('卡片模板状态已切换');
+        await loadCardLibrary();
+      } catch (e) {
+        toast(`操作失败: ${e.message}`, 'error');
+      }
+    }
+
+    function openCardTemplateEditor(id) {
+      const item = _cardTemplateItems.find((entry) => String(entry.id) === String(id));
+      if (!item) {
+        toast('未找到卡片模板', 'error');
+        return;
+      }
+      _activeCardTemplate = item;
+      const defaultProps = item.defaultProps || {};
+      document.getElementById('cardTemplateEditorId').value = String(item.id || '');
+      document.getElementById('cardTemplateEditorTitle').textContent = `编辑卡片模板 · ${item.name || item.type || ''}`;
+      document.getElementById('cardTemplateName').value = item.name || '';
+      document.getElementById('cardTemplateType').value = item.type || '';
+      document.getElementById('cardTemplateDefaultW').value = String(item.defaultW || 2);
+      document.getElementById('cardTemplateDefaultH').value = String(item.defaultH || 12);
+      document.getElementById('cardTemplateDescription').value = item.description || '';
+      document.getElementById('cardTemplatePreviewImageUrl').value = item.previewImageUrl || '';
+      document.getElementById('cardTemplateIndustryTags').value = (item.industryTags || []).join(', ');
+      document.getElementById('cardTemplateCapabilityTags').value = (item.capabilityTags || []).join(', ');
+      document.getElementById('cardTemplateScenarioTags').value = (item.scenarioTags || []).join(', ');
+      document.getElementById('cardTemplateCardTitle').value = defaultProps.title || '';
+      document.getElementById('cardTemplateItemCount').value = String(defaultProps.itemCount || 4);
+      document.getElementById('cardTemplateHeadline').value = defaultProps.headline || '';
+      document.getElementById('cardTemplateSummary').value = defaultProps.summary || '';
+      document.getElementById('cardTemplateItemsJson').value = JSON.stringify(defaultProps.items || [], null, 2);
+      document.getElementById('cardTemplateLinksJson').value = JSON.stringify(defaultProps.links || [], null, 2);
+      renderFieldEditor(item.fields || []);
+      document.getElementById('cardTemplateEditorDrawer').classList.add('open');
+      document.getElementById('cardTemplateEditorDrawer').setAttribute('aria-hidden', 'false');
+      document.getElementById('cardTemplateEditorOverlay').classList.add('open');
+    }
+
+    function renderFieldEditor(fields) {
+      const container = document.getElementById('cardTemplateFieldEditor');
+      if (!fields || fields.length === 0) {
+        container.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px 0;">暂无字段定义</div>';
+        return;
+      }
+      container.innerHTML = fields.map((f, i) => `
+        <div class="drawer-form-grid" style="align-items:end;gap:8px;margin-bottom:4px;">
+          <div><label style="font-size:11px;">Key</label><input type="text" class="field-key" value="${escapeHtml(f.key || '')}" style="font-size:12px;padding:6px 8px;"></div>
+          <div><label style="font-size:11px;">标签</label><input type="text" class="field-label" value="${escapeHtml(f.label || '')}" style="font-size:12px;padding:6px 8px;"></div>
+          <div><label style="font-size:11px;">类型</label><select class="field-type" style="font-size:12px;padding:6px 8px;width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--text);">
+            ${['text','number','image','link','list','select','boolean'].map(t => `<option value="${t}" ${f.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+          </select></div>
+          <div style="display:flex;gap:8px;align-items:center;padding-bottom:2px;">
+            <label style="font-size:11px;display:flex;align-items:center;gap:4px;margin:0;"><input type="checkbox" class="field-ai-writable" ${f.aiWritable !== false ? 'checked' : ''}> AI 可写</label>
+            <label style="font-size:11px;display:flex;align-items:center;gap:4px;margin:0;"><input type="checkbox" class="field-required" ${f.required === true ? 'checked' : ''}> 必填</label>
+            <button type="button" class="btn-danger btn-sm" onclick="this.closest('.drawer-form-grid').remove()" style="padding:4px 8px;font-size:11px;">删除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addFieldRow() {
+      const container = document.getElementById('cardTemplateFieldEditor');
+      const emptyHint = container.querySelector('div[style*="color:var(--muted)"]');
+      if (emptyHint) emptyHint.remove();
+      const html = `
+        <div class="drawer-form-grid" style="align-items:end;gap:8px;margin-bottom:4px;">
+          <div><label style="font-size:11px;">Key</label><input type="text" class="field-key" placeholder="fieldKey" style="font-size:12px;padding:6px 8px;"></div>
+          <div><label style="font-size:11px;">标签</label><input type="text" class="field-label" placeholder="字段名称" style="font-size:12px;padding:6px 8px;"></div>
+          <div><label style="font-size:11px;">类型</label><select class="field-type" style="font-size:12px;padding:6px 8px;width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--text);">
+            ${['text','number','image','link','list','select','boolean'].map(t => `<option value="${t}">${t}</option>`).join('')}
+          </select></div>
+          <div style="display:flex;gap:8px;align-items:center;padding-bottom:2px;">
+            <label style="font-size:11px;display:flex;align-items:center;gap:4px;margin:0;"><input type="checkbox" class="field-ai-writable" checked> AI 可写</label>
+            <label style="font-size:11px;display:flex;align-items:center;gap:4px;margin:0;"><input type="checkbox" class="field-required"> 必填</label>
+            <button type="button" class="btn-danger btn-sm" onclick="this.closest('.drawer-form-grid').remove()" style="padding:4px 8px;font-size:11px;">删除</button>
+          </div>
+        </div>`;
+      container.insertAdjacentHTML('beforeend', html);
+    }
+
+    function collectFields() {
+      const container = document.getElementById('cardTemplateFieldEditor');
+      const rows = container.querySelectorAll('.drawer-form-grid');
+      const fields = [];
+      rows.forEach((row) => {
+        const key = row.querySelector('.field-key')?.value?.trim();
+        if (!key) return;
+        fields.push({
+          key,
+          label: row.querySelector('.field-label')?.value?.trim() || key,
+          type: row.querySelector('.field-type')?.value || 'text',
+          aiWritable: row.querySelector('.field-ai-writable')?.checked !== false,
+          required: row.querySelector('.field-required')?.checked === true,
+        });
+      });
+      return fields;
+    }
+
+    function parseTagsInput(value) {
+      return String(value || '').split(/[,，]/).map(s => s.trim()).filter(Boolean);
+    }
+
+    async function saveCardTemplateEditor() {
+      if (!_authenticated || !_activeCardTemplate) {
+        toast('请先选择卡片模板', 'error');
+        return;
+      }
+      try {
+        const items = JSON.parse(document.getElementById('cardTemplateItemsJson').value || '[]');
+        const links = JSON.parse(document.getElementById('cardTemplateLinksJson').value || '[]');
+        const payload = {
+          name: document.getElementById('cardTemplateName').value.trim(),
+          type: _activeCardTemplate.type,
+          categoryId: _activeCardTemplate.categoryId || _activeCardTemplate.category_id || 'cat-portal-basic',
+          description: document.getElementById('cardTemplateDescription').value.trim(),
+          enabled: _activeCardTemplate.enabled !== false,
+          configurable: _activeCardTemplate.configurable !== false,
+          defaultW: parseInt(document.getElementById('cardTemplateDefaultW').value, 10) || 2,
+          defaultH: parseInt(document.getElementById('cardTemplateDefaultH').value, 10) || 12,
+          minW: _activeCardTemplate.minW ?? null,
+          minH: _activeCardTemplate.minH ?? null,
+          maxW: _activeCardTemplate.maxW ?? null,
+          maxH: _activeCardTemplate.maxH ?? null,
+          defaultProps: {
+            title: document.getElementById('cardTemplateCardTitle').value.trim(),
+            itemCount: parseInt(document.getElementById('cardTemplateItemCount').value, 10) || 4,
+            headline: document.getElementById('cardTemplateHeadline').value.trim(),
+            summary: document.getElementById('cardTemplateSummary').value.trim(),
+            items,
+            links,
+          },
+          layoutRules: _activeCardTemplate.layoutRules || {},
+          previewImageUrl: document.getElementById('cardTemplatePreviewImageUrl').value.trim(),
+          industryTags: parseTagsInput(document.getElementById('cardTemplateIndustryTags').value),
+          capabilityTags: parseTagsInput(document.getElementById('cardTemplateCapabilityTags').value),
+          scenarioTags: parseTagsInput(document.getElementById('cardTemplateScenarioTags').value),
+          fields: collectFields(),
+        };
+        const res = await fetch(`/api/card-templates/${encodeURIComponent(String(_activeCardTemplate.id))}`, {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.status === 401) { closeCardTemplateEditor(); showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || '保存模板失败');
+        }
+        toast('卡片模板已保存');
+        closeCardTemplateEditor();
+        await loadCardLibrary();
+      } catch (e) {
+        toast(`保存模板失败: ${e.message}`, 'error');
+      }
+    }
+
+    async function loadCardLibrary() {
+      if (!_authenticated) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+
+      try {
+        const [templatesRes, categoriesRes] = await Promise.all([
+          fetch('/api/card-templates', { credentials: 'same-origin' }),
+          fetch('/api/card-templates/categories', { credentials: 'same-origin' }),
+        ]);
+        if (templatesRes.status === 401 || categoriesRes.status === 401) {
+          showLoginSection();
+          toast('登录已过期，请重新登录', 'error');
+          return;
+        }
+        const templates = await templatesRes.json();
+        const categories = await categoriesRes.json();
+        _cardTemplateItems = Array.isArray(templates) ? templates : [];
+        const categoryFilter = document.getElementById('cardLibraryCategoryFilter');
+        const searchInput = document.getElementById('cardLibrarySearchInput');
+        const categoryOptions = ['<option value="">全部分类</option>'].concat(
+          (Array.isArray(categories) ? categories : []).map((category) => {
+            const name = category.name || category.category || '';
+            return `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+          })
+        );
+        categoryFilter.innerHTML = categoryOptions.join('');
+
+        const applyFilters = () => {
+          const selectedCategory = categoryFilter.value;
+          const keyword = String(searchInput.value || '').trim().toLowerCase();
+          const filtered = _cardTemplateItems.filter((item) => {
+            const inCategory = !selectedCategory || item.category === selectedCategory;
+            const haystack = `${item.name || ''} ${item.type || ''} ${item.description || ''}`.toLowerCase();
+            const keywordMatch = !keyword || haystack.includes(keyword);
+            return inCategory && keywordMatch;
+          });
+          renderCardLibraryTemplates(filtered);
+        };
+
+        categoryFilter.onchange = applyFilters;
+        searchInput.oninput = applyFilters;
+        applyFilters();
+      } catch (e) {
+        toast('加载卡片库失败: ' + e.message, 'error');
+      }
+    }
+
+    function setUserUsageSummary(data) {
+      document.getElementById('userUsageCountValue').textContent = String(data?.summary?.totalImageCalls ?? 0);
+      document.getElementById('userDownloadCountValue').textContent = String(data?.summary?.totalDownloadCount ?? 0);
+      document.getElementById('userUsageTrend').innerHTML = renderSparkline(data?.trend, { compact: false });
+    }
+
+    function formatUsageStatus(status) {
+      if (status === 'success') return '成功';
+      if (status === 'failed') return '失败';
+      return '处理中';
+    }
+
+    function buildRecordTooltip(item) {
+      const segments = [
+        `时间: ${formatTime(item.startedAt)}`,
+        `模型: ${item.modelProvider || '-'} / ${item.modelName || '-'}`,
+        `输入: ${item.rawInput || item.finalPrompt || '-'}`,
+      ];
+      if (item.status === 'failed' && item.errorMessage) {
+        segments.push(`失败原因: ${item.errorMessage}`);
+      }
+      return segments.join('\n');
+    }
+
+    function renderUserUsageRecords(items) {
+      const container = document.getElementById('userUsageRecordList');
+      if (!Array.isArray(items) || items.length === 0) {
+        container.innerHTML = '<div class="empty-state">近 7 天暂无生图记录</div>';
+        return;
+      }
+      container.innerHTML = items.map(item => {
+        const modelText = `${item.modelProvider || '-'} / ${item.modelName || '-'}`;
+        const inputText = item.rawInput || item.finalPrompt || '-';
+        const tooltip = buildRecordTooltip(item);
+        return `
+          <div class="record-item">
+            <div class="record-time">${escapeHtml(formatTime(item.startedAt))}</div>
+            <div class="record-cell" title="${escapeHtml(modelText)}">${escapeHtml(modelText)}</div>
+            <div class="record-cell" title="${escapeHtml(tooltip)}">${escapeHtml(inputText)}</div>
+            <div class="record-status">
+              <span class="status-pill ${escapeHtml(item.status || 'pending')}">${escapeHtml(formatUsageStatus(item.status))}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderUserDownloadRecords(items) {
+      const container = document.getElementById('userDownloadRecordList');
+      if (!Array.isArray(items) || items.length === 0) {
+        container.innerHTML = '<div class="empty-state">暂无主题下载记录</div>';
+        return;
+      }
+      container.innerHTML = items.map(item => {
+        const downloadText = item.finalPrompt || item.rawInput || item.jobId || '-';
+        const tooltip = [
+          `时间: ${formatTime(item.startedAt)}`,
+          `下载内容: ${downloadText}`,
+          item.status === 'failed' && item.errorMessage ? `失败原因: ${item.errorMessage}` : '',
+        ].filter(Boolean).join('\n');
+        return `
+          <div class="record-item">
+            <div class="record-time">${escapeHtml(formatTime(item.startedAt))}</div>
+            <div class="record-cell" title="${escapeHtml(item.jobId || '-')}">${escapeHtml(item.jobId || '-')}</div>
+            <div class="record-cell" title="${escapeHtml(tooltip)}">${escapeHtml(downloadText)}</div>
+            <div class="record-status">
+              <span class="status-pill ${escapeHtml(item.status || 'pending')}">${escapeHtml(formatUsageStatus(item.status))}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function closeUserUsageDrawer() {
+      _activeUsageUserId = null;
+      document.getElementById('userUsageDrawer').classList.remove('open');
+      document.getElementById('userUsageDrawer').setAttribute('aria-hidden', 'true');
+      document.getElementById('userUsageDrawerOverlay').classList.remove('open');
+    }
+
+    async function openUserUsageDrawer(userId, loginName, displayName) {
+      if (!_authenticated) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+
+      _activeUsageUserId = userId;
+      document.getElementById('userUsageDrawerTitle').textContent = displayName || loginName || `用户 #${userId}`;
+      document.getElementById('userUsageDrawerSubtitle').textContent = `${loginName || `用户 #${userId}`} 的生图趋势与最近记录`;
+      setUserUsageSummary({ summary: { totalImageCalls: '-' }, trend: [] });
+      renderUserUsageRecords([]);
+      renderUserDownloadRecords([]);
+      document.getElementById('userUsageDrawer').classList.add('open');
+      document.getElementById('userUsageDrawer').setAttribute('aria-hidden', 'false');
+      document.getElementById('userUsageDrawerOverlay').classList.add('open');
+
+      try {
+        const res = await fetch(`/api/admin/usage-logs/users/${userId}?limit=20&days=${USAGE_TREND_DAYS}`, { credentials: 'same-origin' });
+        if (res.status === 401) { closeUserUsageDrawer(); showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
+        const data = await res.json();
+        if (_activeUsageUserId !== userId) return;
+        setUserUsageSummary(data || {});
+        renderUserUsageRecords(Array.isArray(data.items) ? data.items : []);
+        renderUserDownloadRecords(Array.isArray(data.downloadItems) ? data.downloadItems : []);
+      } catch (e) {
+        toast('加载用户使用情况失败: ' + e.message, 'error');
+      }
+    }
+
+    function toggleCreditsSettings() {
+      const enabled = document.getElementById('enableCreditsLimit').checked;
+      document.getElementById('creditsSettingsSection').style.display = enabled ? 'block' : 'none';
+    }
+
+    const IMAGE_PROVIDER_DEFAULTS = {
+      minimax: {
+        endpoint: 'https://api.minimax.chat/v1/image_generation',
+        model: 'image-01',
+      },
+      jimeng: {
+        endpoint: 'https://visual.volcengineapi.com',
+        model: 'jimeng_t2i_v40',
+      },
+      ark: {
+        endpoint: 'https://ark.cn-beijing.volces.com/api/v3/images/generations',
+        model: 'doubao-seedream-3-0-t2i-250415',
+      },
+    };
+
+    function toggleImageProviderFields() {
+      const provider = document.getElementById('imageProvider').value;
+      const useApiKey = provider === 'minimax';
+
+      document.getElementById('imageApiKeyBlock').style.display = useApiKey ? 'block' : 'none';
+      document.getElementById('imageAccessKeyIdBlock').style.display = useApiKey ? 'none' : 'block';
+      document.getElementById('imageSecretAccessKeyBlock').style.display = useApiKey ? 'none' : 'block';
+
+      const defaults = IMAGE_PROVIDER_DEFAULTS[provider];
+      if (defaults) {
+        document.getElementById('imageEndpoint').value = defaults.endpoint;
+        document.getElementById('imageModel').value = defaults.model;
+      }
+    }
+
+    function showAdminPanel() {
+      _authenticated = true;
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
+    }
+
+    function showLoginSection() {
+      _authenticated = false;
+      document.getElementById('adminPanel').style.display = 'none';
+      document.getElementById('loginSection').style.display = 'block';
+      document.getElementById('adminPassword').value = '';
+    }
+
+    toggleImageProviderFields();
+
+    async function authenticateAdmin() {
+      const password = document.getElementById('adminPassword').value;
+      if (!password) {
+        toast('请输入管理员密码', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin-auth/login', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+        const data = await res.json();
+
+        if (res.status === 429) {
+          toast(data.error || '登录失败次数过多，请稍后再试', 'error');
+          return;
+        }
+
+        if (!res.ok) {
+          toast(data.error || '密码不正确', 'error');
+          return;
+        }
+
+        showAdminPanel();
+        toast('认证成功，欢迎使用管理面板');
+        loadConfig();
+        loadUsers();
+      } catch (e) {
+        toast(e.message || '认证失败，请检查网络', 'error');
+      }
+    }
+
+    async function logoutAdmin() {
+      if (!confirm('确认退出登录？')) return;
+      try {
+        await fetch('/api/admin-auth/logout', {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+      } catch (_e) { /* ignore */ }
+      showLoginSection();
+    }
+
+    async function loadConfig() {
+      if (!_authenticated) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/model-config', { credentials: 'same-origin' });
+        if (res.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
+        const data = await res.json();
+        document.getElementById('chatEndpoint').value = data.chatEndpoint || '';
+        document.getElementById('chatApiKey').value = data.chatApiKey || '';
+        document.getElementById('chatModel').value = data.chatModel || '';
+        document.getElementById('imageProvider').value = data.imageProvider || 'minimax';
+        document.getElementById('imageEndpoint').value = data.imageEndpoint || '';
+        document.getElementById('imageApiKey').value = data.imageApiKey || '';
+        document.getElementById('imageAccessKeyId').value = data.imageAccessKeyId || '';
+        document.getElementById('imageSecretAccessKey').value = data.imageSecretAccessKey || '';
+        document.getElementById('imageModel').value = data.imageModel || '';
+        toggleImageProviderFields();
+
+        const securityRes = await fetch('/api/security-config', { credentials: 'same-origin' });
+        if (securityRes.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
+        const securityData = await securityRes.json();
+        document.getElementById('corsAllowlist').value = securityData.corsOrigins?.join('\n') || '';
+        document.getElementById('proxyImageAllowlist').value = securityData.proxyImageHosts?.join('\n') || '';
+        document.getElementById('dailyCreditsLimit').value = securityData.dailyCreditsLimit ?? '100';
+        document.getElementById('creditsPerImage').value = securityData.creditsPerImage ?? '50';
+        document.getElementById('backupRetentionCount').value = securityData.backupRetentionCount ?? '8';
+        document.getElementById('exportRetentionDays').value = securityData.exportRetentionDays ?? '7';
+        document.getElementById('creditsTooltipContent').value = securityData.creditsTooltipContent || '';
+
+        const creditsEnabled = securityData.enabledFeatures?.quota !== false;
+        document.getElementById('enableCreditsLimit').checked = creditsEnabled;
+        document.getElementById('creditsSettingsSection').style.display = creditsEnabled ? 'block' : 'none';
+      } catch (e) {
+        console.error("Error loading configuration:", e);
+        toast('加载配置失败: ' + e.message, 'error');
+      }
+    }
+
+    async function saveConfig() {
+      if (!_authenticated) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+
+      try {
+        const body = {
+          chatEndpoint: document.getElementById('chatEndpoint').value,
+          chatApiKey: document.getElementById('chatApiKey').value,
+          chatModel: document.getElementById('chatModel').value,
+          imageProvider: document.getElementById('imageProvider').value,
+          imageEndpoint: document.getElementById('imageEndpoint').value,
+          imageApiKey: document.getElementById('imageApiKey').value,
+          imageAccessKeyId: document.getElementById('imageAccessKeyId').value,
+          imageSecretAccessKey: document.getElementById('imageSecretAccessKey').value,
+          imageModel: document.getElementById('imageModel').value,
+          corsAllowlist: document.getElementById('corsAllowlist').value
+            .split('\n')
+            .map(item => item.trim())
+            .filter(item => item.length > 0),
+          proxyImageHosts: document.getElementById('proxyImageAllowlist').value
+            .split('\n')
+            .map(item => item.trim())
+            .filter(item => item.length > 0),
+          rateLimits: undefined,
+          enabledFeatures: {
+            export: true,
+            proxyImage: true,
+            image: true,
+            chat: true,
+            cors: true,
+            quota: document.getElementById('enableCreditsLimit').checked,
+            adminAuth: true,
+            rateLimiting: true
+          },
+          dailyCreditsLimit: parseInt(document.getElementById('dailyCreditsLimit').value) || 100,
+          creditsPerImage: parseInt(document.getElementById('creditsPerImage').value) || 50,
+          backupRetentionCount: parseInt(document.getElementById('backupRetentionCount').value) || 8,
+          exportRetentionDays: parseInt(document.getElementById('exportRetentionDays').value) || 7,
+          creditsTooltipContent: document.getElementById('creditsTooltipContent').value
+        };
+
+        const fetchOpts = {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+        };
+
+        const [modelRes, securityRes] = await Promise.allSettled([
+          fetch('/api/model-config', {
+            ...fetchOpts,
+            body: JSON.stringify({
+              chatEndpoint: body.chatEndpoint,
+              chatApiKey: body.chatApiKey,
+              chatModel: body.chatModel,
+              imageProvider: body.imageProvider,
+              imageEndpoint: body.imageEndpoint,
+              imageApiKey: body.imageApiKey,
+              imageAccessKeyId: body.imageAccessKeyId,
+              imageSecretAccessKey: body.imageSecretAccessKey,
+              imageModel: body.imageModel,
+            }),
+          }),
+          fetch('/api/security-config', {
+            ...fetchOpts,
+            body: JSON.stringify({
+              corsOrigins: body.corsAllowlist,
+              proxyImageHosts: body.proxyImageHosts,
+              ...(body.rateLimits ? { rateLimits: body.rateLimits } : {}),
+              enabledFeatures: body.enabledFeatures,
+              dailyCreditsLimit: body.dailyCreditsLimit,
+              creditsPerImage: body.creditsPerImage,
+              backupRetentionCount: body.backupRetentionCount,
+              exportRetentionDays: body.exportRetentionDays,
+              creditsTooltipContent: body.creditsTooltipContent,
+            })
+          })
+        ]);
+
+        let successCount = 0;
+        if (modelRes.status === 'fulfilled' && modelRes.value.ok) {
+          const modelData = await modelRes.value.json();
+          if (modelData.success) {
+            successCount++;
+          } else {
+            toast(modelData.error || '模型配置保存失败', 'error');
+          }
+        } else if (modelRes.reason) {
+          toast('模型配置保存失败: ' + modelRes.reason.message, 'error');
+        }
+
+        if (securityRes.status === 'fulfilled' && securityRes.value.ok) {
+          const securityData = await securityRes.value.json();
+          if (securityData.success) {
+            successCount++;
+          } else {
+            toast(securityData.error || '安全配置保存失败', 'error');
+          }
+        } else if (securityRes.reason) {
+          toast('安全配置保存失败: ' + securityRes.reason.message, 'error');
+        }
+
+        if (successCount > 0) {
+          toast(`配置已保存 (${successCount}/2 成功)`);
+        }
+      } catch (e) {
+        toast('保存失败: ' + e.message, 'error');
+      }
+    }
+
+    async function testConnection() {
+      if (!_authenticated) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+
+      const statusEl = document.getElementById('connectionStatus');
+      statusEl.innerHTML = '测试中...';
+      try {
+        await fetch('/api/health', { credentials: 'same-origin' }).then(r => r.json());
+        statusEl.innerHTML = '<span class="status-dot ok"></span>服务正常运行';
+      } catch (e) {
+        statusEl.innerHTML = '<span class="status-dot err"></span>连接失败: ' + e.message;
+      }
+    }
+
+    async function loadUsers() {
+      if (!_authenticated) {
+        toast('请先进行管理员身份验证', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/usage-logs/overview?days=${USAGE_TREND_DAYS}`, { credentials: 'same-origin' });
+        if (res.status === 401) { showLoginSection(); toast('登录已过期，请重新登录', 'error'); return; }
+        const data = await res.json();
+        const users = Array.isArray(data.users) ? data.users : [];
+        renderUsageOverview(data);
+        const tbody = document.getElementById('userTableBody');
+        if (users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="color: var(--muted);">暂无用户记录</td></tr>';
+          return;
+        }
+        tbody.innerHTML = users.map(u => `
+          <tr>
+            <td>${escapeHtml(u.name)}</td>
+            <td>${escapeHtml(u.displayName)}</td>
+            <td>${u.lastLoginAt ? new Date(u.lastLoginAt * 1000).toLocaleString('zh-CN') : '-'}</td>
+            <td>
+              <button
+                type="button"
+                class="btn-primary btn-sm user-action-btn"
+                onclick='openUserUsageDrawer(${Number(u.id)}, ${JSON.stringify(String(u.name ?? ''))}, ${JSON.stringify(String(u.displayName ?? ''))})'
+              >查看使用情况</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        toast('加载用户失败: ' + e.message, 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+      try {
+        const res = await fetch('/api/admin-auth/check', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.authenticated) {
+          showAdminPanel();
+          loadConfig();
+          loadUsers();
+          loadCardLibrary();
+        }
+      } catch (_e) { /* show login */ }
+    });
+
+    // ── 行业案例库管理 ──
+    // === 子页签切换 ===
+    function switchSubTab(name) {
+      document.querySelectorAll('[data-subtab]').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.subtab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector(`[data-subtab="${name}"]`).classList.add('active');
+      document.getElementById(`subtab-${name}`).classList.add('active');
+    }
+
+    // === 已保存方案（管理员） ===
+    async function loadSavedPortalsAdmin() {
+      const keyword = document.getElementById('spFilterKeyword')?.value?.trim() || '';
+      const qs = new URLSearchParams();
+      if (keyword) qs.set('keyword', keyword);
+      qs.set('limit', '50');
+      try {
+        const res = await fetch('/api/admin/saved-portals/all?' + qs.toString(), { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        const tbody = document.getElementById('savedPortalsAdminBody');
+        if (!data.items || data.items.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">暂无保存方案</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.items.map(p => `
+          <tr>
+            <td>${esc(p.name || '-')}</td>
+            <td>${esc(p.displayName || '-')}</td>
+            <td>${esc(p.industry || '-')}</td>
+            <td>${new Date(p.updatedAt * 1000).toLocaleDateString()}</td>
+            <td>${p.publishedAt ? '<span class="status-pill success">已发布</span>' : '<span style="color:var(--muted)">未发布</span>'}</td>
+            <td>${p.curatedCaseCount > 0 ? '<span class="status-pill success">已沉淀(' + p.curatedCaseCount + ')</span>' : '-'}</td>
+            <td style="white-space:nowrap;">
+              ${p.publishedAt ? `<button class="btn-sm btn-secondary" onclick="copyPublishLink('${p.id}')">复制链接</button>` : ''}
+              <button class="btn-danger btn-sm" onclick="deleteSavedPortalAdmin('${p.id}')">删除</button>
+              <button class="btn-primary btn-sm" onclick="openCurateModal('${p.id}', '${esc(p.name || '')}', '${esc(p.industry || '')}')">沉淀</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        document.getElementById('savedPortalsAdminBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">加载失败</td></tr>';
+      }
+    }
+
+    function copyPublishLink(portalId) {
+      const url = window.location.origin + '/p/' + portalId;
+      navigator.clipboard?.writeText(url).then(() => toast('已复制预览链接', 'success'));
+    }
+
+    async function deleteSavedPortalAdmin(id) {
+      if (!confirm('确定删除此保存方案？')) return;
+      try {
+        await fetch('/api/admin/saved-portals/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        toast('已删除', 'success');
+        loadSavedPortalsAdmin();
+      } catch (e) {
+        toast('删除失败', 'error');
+      }
+    }
+
+    // === 沉淀为案例弹窗 ===
+    function openCurateModal(portalId, name, industry) {
+      document.getElementById('curatePortalId').value = portalId;
+      document.getElementById('curateCaseTitle').value = name;
+      document.getElementById('curateIndustry').value = industry;
+      document.getElementById('curateKeywords').value = '';
+      document.getElementById('curateSummary').value = '';
+      document.getElementById('curateRefEnabled').checked = true;
+      document.getElementById('curateDisplayEnabled').checked = false;
+      document.getElementById('curateModal').classList.add('open');
+    }
+
+    function closeCurateModal() {
+      document.getElementById('curateModal').classList.remove('open');
+    }
+
+    async function submitCurateCase() {
+      const portalId = document.getElementById('curatePortalId').value;
+      const data = {
+        caseTitle: document.getElementById('curateCaseTitle').value.trim(),
+        referenceEnabled: document.getElementById('curateRefEnabled').checked,
+        displayEnabled: document.getElementById('curateDisplayEnabled').checked,
+        keywords: document.getElementById('curateKeywords').value.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+        summary: document.getElementById('curateSummary').value.trim(),
+      };
+      try {
+        const res = await fetch('/api/admin/industry-cases/from-saved-portal/' + portalId, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed');
+        toast('已沉淀为案例', 'success');
+        closeCurateModal();
+        loadSavedPortalsAdmin();
+        loadCuratedCases();
+      } catch (e) {
+        toast('沉淀失败', 'error');
+      }
+    }
+
+    // === 沉淀案例列表 ===
+    async function loadCuratedCases() {
+      const industry = document.getElementById('caseFilterIndustry')?.value?.trim() || '';
+      const keyword = document.getElementById('caseFilterKeyword')?.value?.trim() || '';
+      const qs = new URLSearchParams();
+      if (industry) qs.set('industry', industry);
+      if (keyword) qs.set('keyword', keyword);
+      qs.set('limit', '50');
+      try {
+        const res = await fetch('/api/admin/industry-cases?' + qs.toString(), { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        const tbody = document.getElementById('curatedCasesBody');
+        if (!data.items || data.items.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">暂无沉淀案例</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.items.map(c => `
+          <tr>
+            <td>${esc(c.caseTitle || c.case_title || c.customerName || c.customer_name || '-')}</td>
+            <td>${esc(c.industry || '-')}</td>
+            <td>${(c.keywords || []).map(esc).join(', ') || '-'}</td>
+            <td>${c.sourcePortalId || c.source_portal_id ? '有来源' : '-'}</td>
+            <td>${new Date(c.createdAt * 1000 || c.created_at * 1000).toLocaleDateString()}</td>
+            <td><label class="switch" style="min-height:28px"><input type="checkbox" ${c.referenceEnabled ? 'checked' : ''} onchange="toggleCaseRef('${c.id}', this.checked)"><span class="switch-slider"></span></label></td>
+            <td><label class="switch" style="min-height:28px"><input type="checkbox" ${c.displayEnabled ? 'checked' : ''} onchange="toggleCaseDisplay('${c.id}', this.checked)"><span class="switch-slider"></span></label></td>
+            <td style="white-space:nowrap;">
+              <button class="btn-secondary btn-sm" onclick="openEditCaseModal('${c.id}', '${esc(c.caseTitle || c.case_title || '')}', '${(c.keywords || []).map(esc).join(', ')}', '${esc(c.summary || '')}')">编辑</button>
+              <button class="btn-danger btn-sm" onclick="deleteCuratedCase('${c.id}')">删除</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        document.getElementById('curatedCasesBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">加载失败</td></tr>';
+      }
+    }
+
+    async function toggleCaseRef(id, enabled) {
+      try {
+        await fetch('/api/admin/industry-cases/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ referenceEnabled: enabled }),
+        });
+        toast(enabled ? '已启用 AI 参考' : '已停用 AI 参考', 'success');
+      } catch (e) { toast('操作失败', 'error'); }
+    }
+
+    async function toggleCaseDisplay(id, enabled) {
+      try {
+        await fetch('/api/admin/industry-cases/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ displayEnabled: enabled }),
+        });
+        toast(enabled ? '已启用展示' : '已停用展示', 'success');
+      } catch (e) { toast('操作失败', 'error'); }
+    }
+
+    async function deleteCuratedCase(id) {
+      if (!confirm('确定删除此案例？')) return;
+      try {
+        await fetch('/api/admin/industry-cases/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        toast('已删除', 'success');
+        loadCuratedCases();
+      } catch (e) {
+        toast('删除失败', 'error');
+      }
+    }
+
+    // === 编辑案例弹窗 ===
+    function openEditCaseModal(id, title, keywords, summary) {
+      document.getElementById('editCaseId').value = id;
+      document.getElementById('editCaseTitle').value = title;
+      document.getElementById('editCaseKeywords').value = keywords;
+      document.getElementById('editCaseSummary').value = summary;
+      document.getElementById('editCaseModal').classList.add('open');
+    }
+
+    function closeEditCaseModal() {
+      document.getElementById('editCaseModal').classList.remove('open');
+    }
+
+    async function saveCaseDetails() {
+      const id = document.getElementById('editCaseId').value;
+      const data = {
+        caseTitle: document.getElementById('editCaseTitle').value.trim(),
+        keywords: document.getElementById('editCaseKeywords').value.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+        summary: document.getElementById('editCaseSummary').value.trim(),
+      };
+      try {
+        const res = await fetch('/api/admin/industry-cases/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed');
+        toast('已保存', 'success');
+        closeEditCaseModal();
+        loadCuratedCases();
+      } catch (e) {
+        toast('保存失败', 'error');
+      }
+    }
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+  </script>
   <script src="admin.js"></script>
 </body>
 </html>

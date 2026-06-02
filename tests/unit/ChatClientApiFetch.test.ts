@@ -24,6 +24,7 @@ const apiFetchMock = vi.fn();
 
 vi.mock('../../web/src/api-base', () => ({
   apiFetch: apiFetchMock,
+  resolveApiUrl: (path: string) => path,
 }));
 
 describe('chat client apiFetch integration', () => {

@@ -1,6 +1,19 @@
-import type { ChatMessage, ExportBatch, ServerExportJob } from './types';
+import type {
+  ExportBatch,
+  PortalCustomerProfile,
+  PortalDraft,
+  PortalPlan,
+  PortalPlanStatus,
+  PortalResultState,
+  PortalSummary,
+  ServerExportJob,
+  WorkspaceConfig,
+  WorkspaceItem,
+  WorkspaceSettings,
+} from './types';
 import { DEFAULT_LIGHT_UI_PRIMARY, deriveColorsFromPrimary, toCssVarRecord } from './theme/color-utils';
 import type { ProjectVisualContext } from './tools/project-visual-context-store';
+import { ensureProjectWorkspaceReady } from './workspace/store';
 
 const _projects = new Map<string, Project>();
 
@@ -15,11 +28,96 @@ export interface Project {
   bgImageUrl?: string;
   headerBgImageUrl?: string;
   visualContext?: ProjectVisualContext;
+  portalProfile?: PortalCustomerProfile;
+  portalSummary?: PortalSummary;
+  portalDraft?: PortalDraft;
+  portalResult?: PortalResultState;
+  portalPlan?: PortalPlan;
+  portalPlanStatus?: PortalPlanStatus;
+  workspace?: WorkspaceConfig;
   serverExportJobs?: ServerExportJob[];
   exportBatches?: ExportBatch[];
   pinned?: boolean;
+  savedPortalId?: string;
   createdAt: number;
   updatedAt: number;
+}
+
+export const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
+  columns: 4,
+  rowHeight: 24,
+  gapX: 16,
+  gapY: 16,
+  paddingX: 20,
+  paddingY: 20,
+  maxWidth: 1440,
+  backgroundMode: 'theme',
+};
+
+export const DEFAULT_WORKSPACE_ITEMS: WorkspaceItem[] = [
+  { id: 'workspace-card-message-todo', templateId: 'message-todo', x: 0, y: 0, w: 2, h: 14, minW: 2, minH: 12 },
+  { id: 'workspace-card-news-carousel', templateId: 'news-carousel', x: 2, y: 0, w: 2, h: 14, minW: 2, minH: 12 },
+  { id: 'workspace-card-my-schedule', templateId: 'my-schedule', x: 0, y: 14, w: 2, h: 12, minW: 1, minH: 12 },
+  { id: 'workspace-card-quick-access', templateId: 'quick-access', x: 2, y: 14, w: 2, h: 12, minW: 1, minH: 12 },
+];
+
+const DEFAULT_WORKSPACE_LAYOUT_SLOTS = [
+  { x: 0, y: 0, w: 2, h: 14, minW: 2, minH: 12 },
+  { x: 2, y: 0, w: 2, h: 14, minW: 2, minH: 12 },
+  { x: 0, y: 14, w: 2, h: 12, minW: 1, minH: 12 },
+  { x: 2, y: 14, w: 2, h: 12, minW: 1, minH: 12 },
+] as const;
+
+export function createWorkspaceConfigFromPortalDraft(portalDraft: PortalDraft): WorkspaceConfig {
+  const now = Date.now();
+  return {
+    settings: DEFAULT_WORKSPACE_SETTINGS,
+    items: portalDraft.workspaceSeed.map((seed, index) => ({
+      id: `workspace-card-${seed.templateId}-${index + 1}`,
+      templateId: seed.templateId,
+      ...DEFAULT_WORKSPACE_LAYOUT_SLOTS[index % DEFAULT_WORKSPACE_LAYOUT_SLOTS.length],
+      instanceProps: {
+        ...(seed.title ? { title: seed.title } : {}),
+        ...(seed.summary ? { summary: seed.summary } : {}),
+        ...(seed.badge ? { badge: seed.badge } : {}),
+        ...(seed.headline ? { headline: seed.headline } : {}),
+        ...(typeof seed.itemCount === 'number' ? { itemCount: seed.itemCount } : {}),
+        ...(seed.items ? { items: seed.items } : {}),
+        ...(seed.links ? { links: seed.links } : {}),
+      },
+    })),
+    meta: {
+      initializedAt: now,
+      updatedAt: now,
+      source: 'portal-draft',
+    },
+  };
+}
+
+function createDefaultWorkspaceConfig(portalDraft?: PortalDraft | null): WorkspaceConfig {
+  if (portalDraft?.workspaceSeed?.length) {
+    return createWorkspaceConfigFromPortalDraft(portalDraft);
+  }
+  const now = Date.now();
+  return {
+    settings: DEFAULT_WORKSPACE_SETTINGS,
+    items: [],
+    meta: {
+      initializedAt: now,
+      updatedAt: now,
+      source: 'default',
+    },
+  };
+}
+
+export function applyPortalDraftToProject(project: Project, portalDraft: PortalDraft): Project {
+  const workspace = createWorkspaceConfigFromPortalDraft(portalDraft);
+  return {
+    ...project,
+    portalDraft,
+    workspace,
+    updatedAt: Date.now(),
+  };
 }
 
 export interface ProjectMutationError {
@@ -53,7 +151,7 @@ export function getLastProjectMutationError(): ProjectMutationError | null {
 }
 
 export function getProjectThemeLabel(project: Pick<Project, 'themeName' | 'name'>): string {
-  return project.themeName?.trim() || 'AI主题';
+  return project.themeName?.trim() || project.name?.trim() || '未命名门户';
 }
 
 export function updateProjectNameDisplay(project: Project): void {
@@ -75,10 +173,13 @@ export async function createProject(name: string, templateType: 'light-ui' | 'da
     lifecycle: 'draft',
     templateType,
     colors: {},
+    workspace: createDefaultWorkspaceConfig(),
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
   trackProjectCreated?.();
+  const hydratedWorkspace = await ensureProjectWorkspaceReady(newProject.id, newProject.workspace);
+  newProject.workspace = hydratedWorkspace ?? newProject.workspace;
   _projects.set(id, newProject);
   return newProject;
 }
@@ -94,13 +195,58 @@ export async function createProjectWithPreset(name: string, templateType: 'light
     lifecycle: 'active',
     templateType,
     colors,
+    workspace: createDefaultWorkspaceConfig(),
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
 
   localStorage.setItem(`theme-studio-colors-${presetId}`, JSON.stringify(presetColors));
+  const hydratedWorkspace = await ensureProjectWorkspaceReady(newProject.id, newProject.workspace);
+  newProject.workspace = hydratedWorkspace ?? newProject.workspace;
   _projects.set(id, newProject);
   return newProject;
+}
+
+export function markPortalResultSaved(project: Project): Project {
+  const savedAt = Date.now();
+  return {
+    ...project,
+    portalPlan: project.portalPlan
+      ? {
+          ...project.portalPlan,
+          status: 'saved',
+          updatedAt: savedAt,
+        }
+      : project.portalPlan,
+    portalPlanStatus: 'saved',
+    portalResult: {
+      ...project.portalResult,
+      savedAt,
+    },
+    updatedAt: savedAt,
+  };
+}
+
+export function markPortalResultShared(project: Project): Project {
+  return {
+    ...project,
+    portalResult: {
+      ...project.portalResult,
+      sharedAt: Date.now(),
+    },
+    updatedAt: Date.now(),
+  };
+}
+
+export function markPortalResultFullscreenViewed(project: Project): Project {
+  return {
+    ...project,
+    portalResult: {
+      ...project.portalResult,
+      fullscreenViewedAt: Date.now(),
+    },
+    updatedAt: Date.now(),
+  };
 }
 
 export async function loadProject(id: string): Promise<Project | null> {
@@ -214,6 +360,7 @@ export function getAvailablePresets(): string[] {
 export function restoreFromSnapshot(snapshot: Record<string, unknown>): void {
   if (!snapshot || !snapshot.id) return;
   const project = snapshot as unknown as Project;
+  project.workspace ??= createDefaultWorkspaceConfig(project.portalDraft);
   project.updatedAt = Date.now();
   _projects.set(project.id, project);
   setCurrentProjectId(project.id);

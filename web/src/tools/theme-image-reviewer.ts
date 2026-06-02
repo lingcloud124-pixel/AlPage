@@ -89,7 +89,7 @@ export function reviewGeneratedImage(params: {
     if (uniqueHueRanges.size >= 2) {
       checks.push({ label: '色彩丰富度', passed: true, severity: 'info', reason: `识别到 ${dominantColors.length} 种主色，跨越 ${uniqueHueRanges.size} 个色相区间。` });
     } else {
-      checks.push({ label: '色彩丰富度', passed: true, severity: 'info', reason: '色彩集中在单一色相区间，适合主题一致性。' });
+      checks.push({ label: '色彩丰富度', passed: true, severity: 'info', reason: '色彩集中在单一色相区间，适合门户视觉一致性。' });
     }
   } else if (dominantColors.length >= 1) {
     score -= 5;
@@ -127,7 +127,7 @@ export function reviewGeneratedImage(params: {
   // ── 4. 主题色偏差 ──
   if (enforcedPreferredHue) {
     score -= 5;
-    checks.push({ label: '主题色偏差', passed: true, severity: 'warning', reason: '生成图片主色与确认方向不一致，已强制校正。建议后续关注色彩匹配度。' });
+    checks.push({ label: '门户主色偏差', passed: true, severity: 'warning', reason: '生成图片主色与确认方向不一致，已强制校正。建议后续关注色彩匹配度。' });
   }
 
   // ── 5. 回退使用 ──

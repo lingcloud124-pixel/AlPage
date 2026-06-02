@@ -257,6 +257,206 @@ export async function initDb(): Promise<void> {
     cs.free();
   });
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS card_template_categories (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS card_templates (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      category_id TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      enabled INTEGER NOT NULL DEFAULT 1,
+      configurable INTEGER NOT NULL DEFAULT 1,
+      default_w INTEGER NOT NULL DEFAULT 2,
+      default_h INTEGER NOT NULL DEFAULT 12,
+      min_w INTEGER,
+      min_h INTEGER,
+      max_w INTEGER,
+      max_h INTEGER,
+      default_props TEXT NOT NULL DEFAULT '{}',
+      layout_rules TEXT NOT NULL DEFAULT '{}',
+      preview_image_url TEXT NOT NULL DEFAULT '',
+      industry_tags TEXT NOT NULL DEFAULT '[]',
+      capability_tags TEXT NOT NULL DEFAULT '[]',
+      scenario_tags TEXT NOT NULL DEFAULT '[]',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_card_templates_category_updated ON card_templates(category_id, updated_at DESC)');
+
+  // Migrate: add tag columns if missing (existing DBs)
+  if (!hasColumn('card_templates', 'industry_tags')) {
+    db.run("ALTER TABLE card_templates ADD COLUMN industry_tags TEXT NOT NULL DEFAULT '[]'");
+  }
+  if (!hasColumn('card_templates', 'capability_tags')) {
+    db.run("ALTER TABLE card_templates ADD COLUMN capability_tags TEXT NOT NULL DEFAULT '[]'");
+  }
+  if (!hasColumn('card_templates', 'scenario_tags')) {
+    db.run("ALTER TABLE card_templates ADD COLUMN scenario_tags TEXT NOT NULL DEFAULT '[]'");
+  }
+
+  // Card template field schema table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS card_template_fields (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      template_id TEXT NOT NULL,
+      field_key TEXT NOT NULL,
+      label TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'text',
+      ai_writable INTEGER NOT NULL DEFAULT 1,
+      required INTEGER NOT NULL DEFAULT 0,
+      options TEXT NOT NULL DEFAULT '[]',
+      item_schema TEXT NOT NULL DEFAULT '{}',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (template_id) REFERENCES card_templates(id) ON DELETE CASCADE
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_card_template_fields_template ON card_template_fields(template_id, sort_order ASC)');
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS project_workspaces (
+      project_id TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      workspace_settings TEXT NOT NULL DEFAULT '{}',
+      workspace_items TEXT NOT NULL DEFAULT '[]',
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (project_id, user_id)
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_project_workspaces_user_updated ON project_workspaces(user_id, updated_at DESC)');
+
+  const workspaceSeedNow = Math.floor(Date.now() / 1000);
+  const todoDefaultProps = JSON.stringify({
+    summary: '今日共 4 项待处理',
+    itemCount: 4,
+    items: [
+      { label: '合同审批待处理', meta: '2h' },
+      { label: '预算调整待确认', meta: '今天' },
+      { label: '项目结项流程', meta: '明天' },
+      { label: '采购申请提醒', meta: '待办' },
+    ],
+  });
+  const newsDefaultProps = JSON.stringify({
+    badge: '专题',
+    headline: '年度经营复盘大会将在本周五举行',
+    summary: '聚焦重点经营指标、业务协同与组织提效，统一发布季度行动清单。',
+    itemCount: 2,
+    items: [
+      { title: '园区活动报名通道开启', meta: '08:30' },
+      { title: '品牌升级规范正式发布', meta: '昨天' },
+    ],
+  });
+  const scheduleDefaultProps = JSON.stringify({
+    itemCount: 3,
+    items: [
+      { title: '晨会同步', meta: '09:00 - 09:30 · 运营中心', status: '进行中' },
+      { title: '门户改版评审', meta: '14:00 - 15:00 · 会议室 A', status: '待开始' },
+      { title: '项目周报整理', meta: '17:30 - 18:00 · 在线', status: '今日' },
+    ],
+  });
+  const quickAccessDefaultProps = JSON.stringify({
+    itemCount: 6,
+    links: ['流程中心', '知识库', '项目空间', '客户台账', '数据报表', '团队日历'],
+  });
+  db.run(`
+    INSERT OR IGNORE INTO card_template_categories (id, name, sort_order, created_at, updated_at)
+    VALUES ('cat-portal-basic', '基础门户', 0, ${workspaceSeedNow}, ${workspaceSeedNow})
+  `);
+
+  db.run(`
+    INSERT OR IGNORE INTO card_templates (
+      id, name, type, category_id, description, enabled, configurable,
+      default_w, default_h, min_w, min_h, max_w, max_h,
+      default_props, layout_rules, preview_image_url, created_at, updated_at
+    ) VALUES
+      (
+        'tpl-message-todo', '待办事务', 'message-todo', 'cat-portal-basic',
+        '标准门户默认待办卡片', 1, 1,
+        2, 14, 2, 12, 4, 20,
+        '${todoDefaultProps}', '{}', '', ${workspaceSeedNow}, ${workspaceSeedNow}
+      ),
+      (
+        'tpl-news-carousel', '新闻轮播', 'news-carousel', 'cat-portal-basic',
+        '标准门户默认新闻卡片', 1, 1,
+        2, 14, 2, 12, 4, 20,
+        '${newsDefaultProps}', '{}', '', ${workspaceSeedNow}, ${workspaceSeedNow}
+      ),
+      (
+        'tpl-my-schedule', '我的日程', 'my-schedule', 'cat-portal-basic',
+        '标准门户默认日程卡片', 1, 1,
+        2, 12, 1, 12, 4, 20,
+        '${scheduleDefaultProps}', '{}', '', ${workspaceSeedNow}, ${workspaceSeedNow}
+      ),
+      (
+        'tpl-quick-access', '快捷入口', 'quick-access', 'cat-portal-basic',
+        '标准门户默认快捷入口卡片', 1, 1,
+        2, 12, 1, 12, 4, 20,
+        '${quickAccessDefaultProps}', '{}', '', ${workspaceSeedNow}, ${workspaceSeedNow}
+      )
+  `);
+
+  db.run(`UPDATE card_templates SET default_props = '${todoDefaultProps}', updated_at = ${workspaceSeedNow} WHERE id = 'tpl-message-todo'`);
+  db.run(`UPDATE card_templates SET default_props = '${newsDefaultProps}', updated_at = ${workspaceSeedNow} WHERE id = 'tpl-news-carousel'`);
+  db.run(`UPDATE card_templates SET default_props = '${scheduleDefaultProps}', updated_at = ${workspaceSeedNow} WHERE id = 'tpl-my-schedule'`);
+  db.run(`UPDATE card_templates SET default_props = '${quickAccessDefaultProps}', updated_at = ${workspaceSeedNow} WHERE id = 'tpl-quick-access'`);
+
+  // Seed card template fields (INSERT OR IGNORE for idempotency)
+  const todoFields = [
+    { key: 'summary', label: '摘要', type: 'text', aiWritable: 1, required: 0, sortOrder: 0 },
+    { key: 'itemCount', label: '事项数量', type: 'number', aiWritable: 1, required: 0, sortOrder: 1 },
+    { key: 'items', label: '待办列表', type: 'list', aiWritable: 1, required: 0, options: '[]', itemSchema: '{"label":"text","meta":"text"}', sortOrder: 2 },
+  ];
+  const newsFields = [
+    { key: 'badge', label: '角标', type: 'text', aiWritable: 1, required: 0, sortOrder: 0 },
+    { key: 'headline', label: '标题', type: 'text', aiWritable: 1, required: 1, sortOrder: 1 },
+    { key: 'summary', label: '摘要', type: 'text', aiWritable: 1, required: 0, sortOrder: 2 },
+    { key: 'itemCount', label: '新闻数量', type: 'number', aiWritable: 1, required: 0, sortOrder: 3 },
+    { key: 'items', label: '新闻列表', type: 'list', aiWritable: 1, required: 0, options: '[]', itemSchema: '{"title":"text","meta":"text"}', sortOrder: 4 },
+  ];
+  const scheduleFields = [
+    { key: 'itemCount', label: '日程数量', type: 'number', aiWritable: 1, required: 0, sortOrder: 0 },
+    { key: 'items', label: '日程列表', type: 'list', aiWritable: 1, required: 0, options: '[]', itemSchema: '{"title":"text","meta":"text","status":"text"}', sortOrder: 1 },
+  ];
+  const quickAccessFields = [
+    { key: 'itemCount', label: '入口数量', type: 'number', aiWritable: 1, required: 0, sortOrder: 0 },
+    { key: 'links', label: '入口列表', type: 'list', aiWritable: 1, required: 0, options: '[]', itemSchema: '{}', sortOrder: 1 },
+  ];
+  const fieldSeedMap: Array<[string, Array<Record<string, unknown>>]> = [
+    ['tpl-message-todo', todoFields],
+    ['tpl-news-carousel', newsFields],
+    ['tpl-my-schedule', scheduleFields],
+    ['tpl-quick-access', quickAccessFields],
+  ];
+  for (const [templateId, fields] of fieldSeedMap) {
+    for (const field of fields) {
+      const fSeedSql = `INSERT OR IGNORE INTO card_template_fields (template_id, field_key, label, type, ai_writable, required, options, item_schema, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      const fSeedStmt = db.prepare(fSeedSql);
+      fSeedStmt.bind([
+        templateId,
+        field.key,
+        field.label,
+        field.type,
+        field.aiWritable,
+        field.required ? 1 : 0,
+        (field as any).options ?? '[]',
+        (field as any).itemSchema ?? '{}',
+        field.sortOrder,
+      ]);
+      fSeedStmt.step();
+      fSeedStmt.free();
+    }
+  }
+
   // Create conversations table for sidebar history
   db.run(`
     CREATE TABLE IF NOT EXISTS conversations (
@@ -315,6 +515,68 @@ export async function initDb(): Promise<void> {
   `);
   db.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_started ON usage_logs(started_at DESC)');
   db.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_user_started ON usage_logs(user_id, started_at DESC)');
+
+  // 行业案例库
+  db.run(`
+    CREATE TABLE IF NOT EXISTS industry_cases (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      customer_name TEXT NOT NULL DEFAULT '',
+      industry TEXT NOT NULL DEFAULT '',
+      keywords TEXT NOT NULL DEFAULT '[]',
+      portal_plan TEXT NOT NULL DEFAULT '{}',
+      project_id TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_industry_cases_industry ON industry_cases(industry)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_industry_cases_user ON industry_cases(user_id, created_at DESC)');
+
+  // Phase F: dual-purpose case library columns
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN summary TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN highlights TEXT NOT NULL DEFAULT \'[]\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN cover_image_url TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN display_enabled INTEGER NOT NULL DEFAULT 0'); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN reference_enabled INTEGER NOT NULL DEFAULT 1'); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN anonymized_requirement TEXT NOT NULL DEFAULT \'\''); } catch {}
+
+  // 门户方案保存
+  db.run(`
+    CREATE TABLE IF NOT EXISTS saved_portals (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      project_id TEXT NOT NULL DEFAULT '',
+      conversation_id TEXT NOT NULL DEFAULT '',
+      name TEXT NOT NULL DEFAULT '未命名门户',
+      template_type TEXT NOT NULL DEFAULT 'light-ui',
+      colors TEXT NOT NULL DEFAULT '{}',
+      workspace TEXT NOT NULL DEFAULT '{}',
+      portal_plan TEXT NOT NULL DEFAULT '{}',
+      project_snapshot TEXT NOT NULL DEFAULT '{}',
+      status TEXT NOT NULL DEFAULT 'draft',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_saved_portals_user ON saved_portals(user_id, updated_at DESC)');
+
+  // Phase G: published snapshot for read-only preview
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN conversation_id TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN project_snapshot TEXT NOT NULL DEFAULT \'{}\''); } catch {}
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN published_snapshot TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN published_at INTEGER'); } catch {}
+
+  // 沉淀案例溯源：industry_cases 新增字段
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN source_portal_id TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN source_snapshot TEXT NOT NULL DEFAULT \'{}\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN case_title TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN source_project_id TEXT NOT NULL DEFAULT \'\''); } catch {}
+  try { db.run('ALTER TABLE industry_cases ADD COLUMN source_saved_at INTEGER'); } catch {}
+
+  // 保存方案已沉淀计数 + 对话快照冗余
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN curated_case_count INTEGER NOT NULL DEFAULT 0'); } catch {}
+  try { db.run('ALTER TABLE saved_portals ADD COLUMN conversation_snapshot TEXT NOT NULL DEFAULT \'{}\''); } catch {}
 
   // Save to disk
   flushDb();

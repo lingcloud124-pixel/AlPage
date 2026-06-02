@@ -1,13 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
 describe('web chat input shell', () => {
   test('uses dedicated shell classes for attachment strip, plus button, and send button instead of broad legacy rules', () => {
     const html = fs.readFileSync(path.join(projectRoot, 'web/index.html'), 'utf8');
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = readAllCSS();
 
     expect(html).toContain('class="plus-btn ui-icon-button chat-shell-plus"');
     expect(html).toContain('id="sendBtn" class="ui-icon-button chat-shell-send"');

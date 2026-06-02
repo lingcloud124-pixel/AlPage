@@ -124,7 +124,7 @@ function isColorAdjustmentMessage(text: string | undefined): boolean {
   if (!normalized) return false;
 
   const explicitHex = extractHexColor(text);
-  const colorContext = /(主题色|主色|颜色|色调|配色|色彩)/u.test(text);
+  const colorContext = /(门户主色|主题色|主色|颜色|色调|配色|色彩)/u.test(text);
   const colorAction = hasExplicitColorEditIntent(text);
   const namedColor = /(红|蓝|绿|黄|金|橙|紫|粉|棕|咖|褐|灰|青|墨绿|酒红|卡其|米色|藏蓝|深棕|浅棕|暖白)/u.test(text);
   const brightnessOnly = /(亮一点|暗一点|深一点|浅一点|更亮|更暗|更深|更浅)/u.test(text);

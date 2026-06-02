@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
 describe('web ui shell polish', () => {
   test('applies command-panel and task-surface refinements for the xai-style shell', () => {
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = readAllCSS();
 
     expect(styles).toContain('backdrop-filter: blur(18px);');
     expect(styles).toContain('max-width: 920px;');

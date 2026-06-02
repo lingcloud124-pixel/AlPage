@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Theme Studio - 主题编辑器</title>
+    <title>AlPage - Portal Agent 工作台</title>
     <link rel="stylesheet" href="/src/styles.css">
     <link rel="stylesheet" href="/src/templates/theme-variables.css">
     <link rel="stylesheet" href="/src/tailwind.css">
 </head>
 <body>
+    <!-- Published portal viewer (shown only at /p/:id) -->
+    <div id="publishedPortalContainer" style="display:none;"></div>
+
     <!-- Removed homePage - app goes directly to workspace -->
 
     <div id="workspaceView" class="view-hidden">
@@ -27,9 +30,10 @@
                     </button>
                 </div>
                 <div class="sidebar-list sidebar-expand-only" id="sidebarList">
-                    <div class="sidebar-section" id="sidebarStarredSection" style="display:none">
-                        <div class="sidebar-section-title">收藏项目</div>
-                        <div class="sidebar-section-items" id="sidebarStarredItems"></div>
+                    <div class="sidebar-section" id="sidebarSavedProjectsSection" style="display:none">
+                        <div class="sidebar-section-title">保存项目</div>
+                        <div class="sidebar-section-items" id="sidebarSavedProjectItems"></div>
+                        <button class="sidebar-more-btn" id="sidebarSavedProjectMoreBtn" type="button" style="display:none">更多</button>
                     </div>
                     <div class="sidebar-section" id="sidebarHistorySection" style="display:none">
                         <div class="sidebar-section-title sidebar-section-title--history">
@@ -77,8 +81,8 @@
                         <section class="landing-shell" id="chatLandingHero">
                             <div class="landing-hero landing-hero--compact">
                                 <div class="landing-hero-copy landing-hero-copy--centered">
-          <h1 class="landing-hero-title">瞬感焕肤  <span class="landing-hero-highlight">随需而变</span>  即刻生成你的专属主题包</h1>
-                                        <p class="landing-hero-subtitle">蓝凌OA登录页、皮肤主题包对话式生成</p>
+                                    <h1 class="landing-hero-title">售前方案，<span class="landing-hero-highlight">边聊边成形</span>，客户门户即时生成</h1>
+                                    <p class="landing-hero-subtitle">面向售前人员的 Portal Agent 工作台，用对话和资料快速生成客户化门户方案</p>
                                 </div>
                             </div>
 
@@ -86,7 +90,7 @@
                                 <div class="image-preview-bar" id="imagePreviewBar"></div>
                                 <div class="input-row chat-shell-composer">
                                     <div class="chat-input-wrapper chat-shell-composer-inner chat-shell-composer-inner--landing">
-                                        <textarea id="messageInput" rows="1" placeholder="描述你要生成的主题包，例如：生成一个国庆节主题"></textarea>
+                                        <textarea id="messageInput" rows="1" placeholder="描述这次客户门户需求，或直接上传图片 / Word / PDF 资料。例如：客户名称是申能集团，能源行业，做运营门户，希望突出待办、快捷入口和公告，视觉上稳重企业蓝。"></textarea>
                                         <div class="chat-shell-toolbar">
                                             <div class="chat-shell-upload-group">
                                                 <button id="plusBtn" class="plus-btn ui-icon-button chat-shell-plus" title="上传图片可直接生成主题">
@@ -118,51 +122,8 @@
                         </section>
 
                         <div class="messages-container messages-container--landing">
-                            <section class="landing-section landing-section--gallery" aria-labelledby="landingInspirationTitle">
-                                <div class="landing-section-header landing-section-header--stacked">
-                                    <h3 class="landing-section-title" id="landingInspirationTitle">主图推荐</h3>
-                                </div>
-                                <div class="landing-gallery-grid">
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Mid-AutumnFestival-01.png" data-theme-name="中秋" aria-label="用中秋主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/Mid-AutumnFestival-01.png" alt="中秋主题效果图" loading="lazy">
-                                    </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Cooperation-02.png" data-theme-name="生生不息 共筑未来" aria-label="用协作办公主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/Cooperation-02.png" alt="企业主题效果图" loading="lazy">
-                                    </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Technology-03.png" data-theme-name="科技蓝" aria-label="用科技蓝主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/Technology-03.png" alt="科技蓝主题效果图" loading="lazy">
-                                    </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/Industry-04.png" data-theme-name="智能工厂" aria-label="用智能工厂主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/Industry-04.png" alt="科技工厂主题效果图" loading="lazy">
-                                    </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/WorkCabin-05.png" data-theme-name="数据中台" aria-label="用工作舱主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/WorkCabin-05.png" alt="办公工作台主题效果图" loading="lazy">
-                                    </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/EnvironmentalProtection-06.png" data-theme-name="环保科技" aria-label="用环保科技主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/EnvironmentalProtection-06.png" alt="环保科技主题效果图" loading="lazy">
-                                    </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/GreenChemistry-07.png" data-theme-name="绿色化学" aria-label="用绿色化学主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/GreenChemistry-07.png" alt="绿色化学主题效果图" loading="lazy">
-                                    </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/GreenIndustry-08.png" data-theme-name="绿色工业" aria-label="用绿色工业主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/GreenIndustry-08.png" alt="绿色工业主题效果图" loading="lazy">
-                                    </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/AdvancedTechnology-09.png" data-theme-name="先进科技" aria-label="用先进科技主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/AdvancedTechnology-09.png" alt="先进科技主题效果图" loading="lazy">
-                                    </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/NationalDay-10.png" data-theme-name="国庆" aria-label="用国庆主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/NationalDay-10.png" alt="国庆主题效果图" loading="lazy">
-                                    </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/city-11.png" data-theme-name="城市未来" data-primary-hint="#DA362B" aria-label="用城市未来主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/city-11.png" alt="城市未来主题效果图" loading="lazy">
-                                    </article>
-                                    <article class="landing-gallery-card landing-template-card landing-gallery-trigger" data-image-src="/workbench-gallery/run-12.png" data-theme-name="奔跑活力" data-primary-hint="#DA0404" aria-label="用奔跑活力主题图生成主题包" role="button" tabindex="0">
-                                        <img class="landing-template-image" src="/workbench-gallery/run-12.png" alt="奔跑活力主题效果图" loading="lazy">
-                                    </article>
-                                </div>
-                            </section>
-                            <div class="landing-page-footer" aria-label="功能说明">
-                                AI 智能生成 ｜ 遵循蓝凌设计规范 ｜ 蓝凌标准主题包结构 ｜ 一键打包上线
+                                <div class="landing-page-footer" aria-label="功能说明">
+                                对话引导收集客户信息 ｜ 摘要确认后生成门户 ｜ 支持工作区直接编辑 ｜ 自动保存与分享方案
                             </div>
                         </div>
                     </div>
@@ -217,121 +178,89 @@
                             <button id="mainPageTab" class="tab-btn">主页皮肤</button>
                         </div>
                     </div>
-                    <div class="topbar-right">
-                        <button class="topbar-action-btn" id="backToHomeBtn">返回首页</button>
-                        <button class="topbar-action-btn" id="panelToggleBtn">面板</button>
-                        <button class="topbar-action-btn" id="packageBtn" style="background:#000;color:#fff;border-color:#000;">下载主题</button>
+                    <div class="workspace-mode-switch">
+                        <button class="workspace-mode-btn is-active" id="workspacePreviewModeBtn" type="button">预览</button>
+                        <button class="workspace-mode-btn" id="workspaceDesignModeBtn" type="button">工作区设计</button>
+                    </div>
+                    <div class="topbar-right" id="topbarRight">
+                        <button class="topbar-action-btn" id="panelToggleBtn">主题配置</button>
+                        <button class="topbar-action-btn" id="resultFullscreenBtn" type="button">预览</button>
+                        <button class="topbar-action-btn topbar-action-btn--primary" id="resultSavePortalBtn" type="button" title="保存当前门户配置">保存</button>
+                        <button class="topbar-action-btn topbar-action-btn--accent" id="resultShareBtn" type="button" title="保存并分享预览链接">分享</button>
+                        <div class="topbar-more-menu" id="topbarMoreMenu">
+                            <button class="topbar-action-btn topbar-more-trigger" id="topbarMoreBtn" type="button" title="更多操作">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg>
+                            </button>
+                            <div class="topbar-more-dropdown" id="topbarMoreDropdown">
+                                <button class="topbar-more-item" id="resultCopyEditLinkBtn" type="button" title="复制可编辑的项目链接">复制编辑链接</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="preview-content">
-                    <div id="loginPage" class="preview-page active-preview">
+                    <div id="mainPage" class="preview-page active-preview">
                     </div>
-                    
-                    <div id="mainPage" class="preview-page">
+                </div>
+                <div class="workspace-editor-view" id="workspaceEditorView" hidden>
+                    <div class="workspace-editor-toolbar">
+                        <div class="workspace-editor-toolbar-copy">
+                            <h3>工作区设计</h3>
+                            <p>从后台卡片库组合标准门户布局，当前阶段先支持静态预览。</p>
+                        </div>
+                        <div class="workspace-editor-toolbar-actions">
+                            <button class="topbar-action-btn" id="workspaceEditorAddBtn" type="button">添加</button>
+                        </div>
                     </div>
+                    <div class="workspace-card-canvas" id="workspaceCardCanvas"></div>
                 </div>
             </div> <!-- end preview-panel -->
 
         </div> <!-- end app-container -->
 
         <!-- 右侧滑出面板 -->
-        <div class="side-panel" id="sidePanel">
-            <div class="side-panel-header">
-                <h3>颜色配置</h3>
-                <button class="side-panel-close" id="sidePanelClose">&times;</button>
+        <div class="side-panel configuration-panel" id="sidePanel">
+            <div class="side-panel-header configuration-panel-header">
+                <h3 id="configurationPanelTitle">主题配置</h3>
+                <button class="side-panel-close" id="sidePanelClose" aria-label="关闭主题配置">&times;</button>
             </div>
-            <div class="side-panel-body" id="colorEditor"></div>
-            
+            <div class="side-panel-body configuration-panel-body" id="themeEditor"></div>
+
             <!-- 质检报告区域 -->
-            <div class="qc-section" id="qcSection">
-                <h3 class="qc-title">质检报告</h3>
-                <button class="qc-run-btn" id="qcRunBtn">运行检查</button>
+            <div class="config-section qc-section" id="qcSection">
+                <h4 class="config-section-title qc-title">质检报告</h4>
+                <sl-button variant="primary" id="qcRunBtn" class="config-full-width">运行检查</sl-button>
                 <div id="qcResults" class="qc-results"></div>
             </div>
         </div>
 
-        <!-- 打包选择弹窗 -->
-        <div class="modal-overlay" id="packageModal">
-            <div class="modal-content package-modal">
+        <div class="modal-overlay" id="workspaceCardLibraryModal">
+            <div class="modal-content workspace-card-library-modal">
                 <header class="package-modal-header">
                     <div>
-                        <h2 class="package-modal-title">主题打包</h2>
-                        <p class="package-modal-subtitle">选择需要打包的产品并执行打包任务</p>
+                        <h2 class="package-modal-title">添加卡片</h2>
+                        <p class="package-modal-subtitle">从后台卡片库选择卡片加入当前工作区</p>
                     </div>
-                    <button class="package-modal-close-btn" id="packageModalClose" aria-label="关闭">
+                    <button class="package-modal-close-btn" id="workspaceCardLibraryCloseBtn" aria-label="关闭">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                 </header>
-                <div class="package-modal-body">
-                    <section class="package-section">
-                        <div class="section-heading">
-                            <span class="section-accent"></span>
-                            <h3>产品选择</h3>
-                        </div>
-                        <div id="packageProductList" class="package-product-list"></div>
-                    </section>
-                </div>
-                <footer class="package-modal-footer">
-                    <button id="packageStartBtn" class="btn-primary">开始打包</button>
-                    <button id="packageCancelBtn" class="btn-secondary">取消</button>
-                </footer>
+                <div class="workspace-card-library-grid" id="workspaceCardLibraryList"></div>
             </div>
         </div>
 
-        <!-- 打包进度弹窗（独立） -->
-        <div class="modal-overlay" id="packageProgressModal">
-            <div class="modal-content package-progress-modal">
-                <div id="packageProgressContent" class="package-progress-content"></div>
-                <div id="packageProgressNotice" class="package-progress-notice">主题包生成中（约需1分钟），过程中不支持中断，请耐心等待</div>
+        <aside class="workspace-properties-drawer" id="workspacePropertiesDrawer" aria-hidden="true">
+            <div class="drawer-header">
+                <h3>工作区</h3>
+                <button class="drawer-close-btn" id="workspacePropertiesDrawerCloseBtn" type="button" aria-label="关闭">×</button>
             </div>
-        </div>
+            <div class="config-panel-tabs" id="configPanelTabs">
+                <button class="config-panel-tab is-active" data-tab="layout" type="button">工作区规划</button>
+                <button class="config-panel-tab" data-tab="card" type="button">卡片属性</button>
+            </div>
+            <div class="workspace-properties-content" id="workspacePropertiesContent"></div>
+        </aside>
 
-        <script>
-          function resizePreview() {
-            var containers = document.querySelectorAll('.preview-content');
-            containers.forEach(function(container) {
-              var cw = container.clientWidth;
-              var ch = container.clientHeight;
-              if (cw === 0 || ch === 0) return;
-
-              var activePage = container.querySelector('.preview-page.active-preview');
-              if (!activePage) activePage = container.querySelector('.preview-page');
-              if (!activePage) return;
-
-              var rendered = activePage.firstElementChild;
-              if (!rendered) return;
-
-              var rw = rendered.offsetWidth || parseInt(rendered.style.width) || 0;
-              var rh = rendered.offsetHeight || parseInt(rendered.style.height) || 0;
-              if (rw === 0 || rh === 0) return;
-
-              var horizontalInset = 24;
-              var innerWidth = Math.max(cw - horizontalInset * 2, 0);
-              if (innerWidth === 0) return;
-
-              var scaleX = innerWidth / rw;
-              var scaleY = ch / rh;
-              var scale = Math.min(scaleX, scaleY);
-
-              var offsetX = horizontalInset + (innerWidth - rw * scale) / 2;
-              var offsetY = (ch - rh * scale) / 2;
-
-              rendered.style.transform = 'scale(' + scale + ') translate3d(' + (offsetX / scale) + 'px, ' + (offsetY / scale) + 'px, 0)';
-              rendered.style.transformOrigin = 'top left';
-            });
-          }
-
-          window.addEventListener('resize', resizePreview);
-          window.resizePreview = resizePreview;
-          document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(resizePreview, 200);
-            setTimeout(resizePreview, 1000);
-            document.querySelectorAll('.topbar-tabs .tab-btn').forEach(function(btn) {
-              btn.addEventListener('click', function() { setTimeout(resizePreview, 100); });
-            });
-          });
-        </script>
 
         <script type="module" src="/src/main.ts"></script>
     </div> <!-- end workspaceView -->
@@ -354,6 +283,85 @@
             <p class="whitelist-block-sub">Theme Studio · 主题工作台</p>
         </div>
     </div>
+
+        <div class="modal-overlay" id="portalConfirmModal">
+            <div class="modal-content portal-confirm-modal">
+                <header class="package-modal-header">
+                    <div>
+                        <h2 class="package-modal-title">确认门户信息</h2>
+                        <p class="package-modal-subtitle">请确认以下信息无误后开始生成</p>
+                    </div>
+                    <button class="package-modal-close-btn" id="portalConfirmCloseBtn" aria-label="关闭">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </header>
+                <div class="portal-confirm-form" id="portalConfirmFormBody">
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmCustomerName">客户名称</label>
+                        <input type="text" id="portalConfirmCustomerName" class="portal-confirm-input" placeholder="请输入客户名称" />
+                    </div>
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmIndustry">客户行业</label>
+                        <select id="portalConfirmIndustry" class="portal-confirm-input">
+                            <option value="">请选择</option>
+                            <option value="能源">能源</option>
+                            <option value="医疗">医疗</option>
+                            <option value="教育">教育</option>
+                            <option value="金融">金融</option>
+                            <option value="制造">制造</option>
+                            <option value="零售">零售</option>
+                            <option value="物流">物流</option>
+                            <option value="科技">科技</option>
+                            <option value="政务">政务</option>
+                            <option value="文旅">文旅</option>
+                            <option value="交通">交通</option>
+                            <option value="化工">化工</option>
+                            <option value="__custom__">其他（自定义）</option>
+                        </select>
+                        <input type="text" id="portalConfirmIndustryCustom" class="portal-confirm-input portal-confirm-custom-input" placeholder="自定义行业" style="display:none;" />
+                    </div>
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmFunctions">核心职能/业务特征</label>
+                        <input type="text" id="portalConfirmFunctions" class="portal-confirm-input" placeholder="如：电力调度、设备巡检" />
+                    </div>
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmPurpose">本次门户用途</label>
+                        <select id="portalConfirmPurpose" class="portal-confirm-input">
+                            <option value="">请选择</option>
+                            <option value="客户演示门户">客户演示门户</option>
+                            <option value="运营管理门户">运营管理门户</option>
+                            <option value="调度指挥门户">调度指挥门户</option>
+                            <option value="方案汇报门户">方案汇报门户</option>
+                            <option value="活动专题门户">活动专题门户</option>
+                            <option value="__custom__">其他（自定义）</option>
+                        </select>
+                        <input type="text" id="portalConfirmPurposeCustom" class="portal-confirm-input portal-confirm-custom-input" placeholder="自定义用途" style="display:none;" />
+                    </div>
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmCards">重点卡片/重点信息</label>
+                        <input type="text" id="portalConfirmCards" class="portal-confirm-input" placeholder="如：调度看板、工单流转、设备台账" />
+                    </div>
+                    <div class="portal-confirm-field">
+                        <label for="portalConfirmVisual">品牌/视觉倾向</label>
+                        <select id="portalConfirmVisual" class="portal-confirm-input">
+                            <option value="">请选择</option>
+                            <option value="科技蓝白，稳重企业风">科技蓝白，稳重企业风</option>
+                            <option value="蓝白简洁，现代商务">蓝白简洁，现代商务</option>
+                            <option value="喜庆红金，热闹氛围">喜庆红金，热闹氛围</option>
+                            <option value="深色科技风，未来感">深色科技风，未来感</option>
+                            <option value="轻盈明亮，清新自然">轻盈明亮，清新自然</option>
+                            <option value="绿蓝生态，环保清新">绿蓝生态，环保清新</option>
+                            <option value="__custom__">其他（自定义）</option>
+                        </select>
+                        <input type="text" id="portalConfirmVisualCustom" class="portal-confirm-input portal-confirm-custom-input" placeholder="自定义视觉倾向" style="display:none;" />
+                    </div>
+                </div>
+                <footer class="package-modal-footer">
+                    <button id="portalConfirmSubmitBtn" class="btn-primary">确认并生成</button>
+                    <button id="portalConfirmCancelBtn" class="btn-secondary">取消</button>
+                </footer>
+            </div>
+        </div>
 
 </body>
 

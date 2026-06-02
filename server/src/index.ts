@@ -44,6 +44,10 @@ const [
   { default: adminAuthRouter },
   { usageLogsRouter },
   { ssoRouter },
+  { cardTemplatesRouter },
+  { workspaceRouter },
+  { industryCasesRouter, industryCasesAdminRouter },
+  { savedPortalsRouter, savedPortalsAdminRouter },
 ] = await Promise.all([
   import('express'),
   import('./db.js'),
@@ -64,6 +68,10 @@ const [
   import('./routes/admin-auth.js'),
   import('./routes/usage-logs.js'),
   import('./routes/sso.js'),
+  import('./routes/card-templates.js'),
+  import('./routes/workspace.js'),
+  import('./routes/industry-cases.js'),
+  import('./routes/saved-portals.js'),
 ]);
 
 const { migratePlaintextKeys } = await import('./routes/model-config.js');
@@ -95,6 +103,14 @@ function validateStartupConfig(): void {
   requireEnv('EKP_BASE_URL');
   requireEnv('EKP_SSO_USER');
   requireEnv('EKP_SSO_PASS');
+}
+
+function bindAuthenticatedUser(req: any, _res: any, next: any): void {
+  const loginName = req.loginName as string | undefined;
+  if (loginName) {
+    req.userId = ensureUserByLoginName(loginName);
+  }
+  next();
 }
 
 app.use(dynamicCors);
@@ -180,6 +196,8 @@ app.put('/api/landing-prompts-config', adminAuthMiddleware, async (req, res) => 
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+app.use('/api/admin/saved-portals', adminAuthMiddleware, savedPortalsAdminRouter);
+app.use('/api/admin/industry-cases', adminAuthMiddleware, industryCasesAdminRouter);
 app.use('/api/admin-auth', adminAuthRouter);
 app.use('/api/auth/sso', ssoRouter);
 app.use('/api/theme', authMiddleware);
@@ -188,9 +206,41 @@ app.use('/api/theme', (req: any, _res: any, next: any) => {
   const loginName = req.loginName as string | undefined;
   if (loginName) {
     req.userId = ensureUserByLoginName(loginName);
+// Public (unauthenticated) routes — must mount BEFORE auth-protected routes
+app.get('/api/saved-portals/published/:id', async (req, res) => {
+  try {
+    const { db: dbPub } = await import('./db.js');
+    const stmt = dbPub.prepare('SELECT published_snapshot, template_type, name FROM saved_portals WHERE id = ? AND published_snapshot IS NOT NULL AND published_snapshot != \'\'');
+    stmt.bind([req.params.id]);
+    if (!stmt.step()) {
+      stmt.free();
+      return res.status(404).json({ error: '发布内容不存在' });
+    }
+    const row = stmt.getAsObject() as any;
+    stmt.free();
+
+    let snapshot: any = {};
+    try { snapshot = JSON.parse(row.published_snapshot); } catch {}
+
+    res.json({
+      name: row.name || '未命名门户',
+      templateType: snapshot.templateType || row.template_type || 'light-ui',
+      colors: snapshot.colors || {},
+      workspace: snapshot.workspace || {},
+      portalPlan: snapshot.portalPlan || {},
+      publishedAt: snapshot.publishedAt,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
   }
-  next();
 });
+
+app.use('/api/card-templates', authMiddleware, cardTemplatesRouter);
+app.use('/api/theme/projects', authMiddleware, bindAuthenticatedUser, workspaceRouter);
+app.use('/api/industry-cases', authMiddleware, bindAuthenticatedUser, industryCasesRouter);
+app.use('/api/saved-portals', authMiddleware, bindAuthenticatedUser, savedPortalsRouter);
+app.use('/api/theme', authMiddleware);
+app.use('/api/theme', bindAuthenticatedUser);
 app.use('/api/theme', rateLimitMiddleware);
 app.use('/api/theme', creditsMiddleware);
 app.use('/api/theme', exportJobsRouter);

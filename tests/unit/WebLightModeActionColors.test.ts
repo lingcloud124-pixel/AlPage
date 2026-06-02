@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
 describe('web light mode action colors', () => {
   test('uses light-appropriate action colors for sidebar, new project button, and workspace topbar', () => {
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = readAllCSS();
 
     // Light mode shell variable overrides
     expect(styles).toContain('body[data-ui-theme="light"]');

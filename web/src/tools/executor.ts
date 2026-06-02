@@ -3,22 +3,23 @@ import { generateImage } from '../agent/chat-client';
 import { buildConfirmedProjectSnapshot, createServerExportJob } from '../export/online-export';
 import { fetchExportJobStatus } from '../export/export-status-client';
 import { getCurrentProjectId, loadProject } from '../project-manager';
-import { resolvePrimaryContrast, validateColorScheme } from './contrast-validator';
+import { validateColorScheme } from './contrast-validator';
 import {
   buildThemeGenerationReport,
-  DEFAULT_FALLBACK_BRAND_COLOR,
   deriveColorsFromPrimary,
-  normalizePrimaryForTemplate,
-  pickFallbackPaletteColorByHue,
-  rankPrimaryCandidates,
   resolvePreferredHueHint,
-  type DerivedColors,
 } from '../theme/color-utils';
-import { resolveEnterprisePrimaryFromText, snapToEnterpriseGreen } from '../theme/enterprise-primary-mapper';
-import { resolveFestivalColorRule } from '../theme/festival-color-rules';
 import { buildThemeImageAssignments } from '../templates/theme-images';
-import { updateProjectVisualContext, loadProjectVisualContext } from './project-visual-context-store';
-import { loadCustomerVisualProfile } from './customer-visual-profile-store';
+import { updateProjectVisualContext } from './project-visual-context-store';
+import {
+  pickBestThemeCandidate,
+  resolveLockedPrimaryHex,
+  buildPromptWithPreferredHue,
+  resolveEffectivePreferredHueHint,
+} from './theme-candidate-selector';
+
+// 保持向后兼容 — 外部测试和模块从 executor 导入这些函数
+export { pickBestThemeCandidate, resolveLockedPrimaryHex, buildPromptWithPreferredHue, resolveEffectivePreferredHueHint } from './theme-candidate-selector';
 
 const COLOR_VARS = [
   'primary-color', 'primary-color-hover', 'alter-color', 'alter-color-hover-on',
@@ -53,6 +54,10 @@ function normalizeThemeToolError(message: string): string {
     return '当前仅支持文字生图，暂不支持基于上传图片继续生成';
   }
   return message;
+}
+
+function buildSafeImagePrompt(prompt: string): string {
+  return prompt.trim();
 }
 
 function getThemeTarget(): HTMLElement {
@@ -90,70 +95,8 @@ function getAllCurrentColors(): Record<string, string> {
   return vars;
 }
 
-function getHueDistanceDegrees(a: number, b: number): number {
-  const delta = Math.abs(a - b) % 360;
-  return Math.min(delta, 360 - delta);
-}
-
 export function quantizedBucketToHex(r: number, g: number, b: number): string {
   return '#' + [r, g, b].map(c => Math.max(0, Math.min(255, c)).toString(16).padStart(2, '0')).join('');
-}
-
-function buildCandidateOutcome(
-  primaryHex: string,
-  templateType: 'light-ui' | 'dark-ui',
-  options?: { preservePrimary?: boolean },
-): {
-  primaryHex: string;
-  derivedColors: DerivedColors;
-  report: ReturnType<typeof buildThemeGenerationReport>;
-} {
-  const normalizedPrimary = options?.preservePrimary
-    ? primaryHex
-    : normalizePrimaryForTemplate(primaryHex, templateType);
-  const contrastResolved = templateType === 'light-ui'
-    ? resolvePrimaryContrast(normalizedPrimary)
-    : { primary: normalizedPrimary, text: '#333333', adjusted: false };
-  const derivedColors = deriveColorsFromPrimary(contrastResolved.primary, templateType);
-  if (templateType === 'light-ui') {
-    derivedColors['primary-text-color'] = contrastResolved.text;
-  }
-  const report = buildThemeGenerationReport(contrastResolved.primary, derivedColors, templateType);
-  return { primaryHex: contrastResolved.primary, derivedColors, report };
-}
-
-function resolveLockedPrimaryHex(primaryHint: string | undefined): string | null {
-  if (!primaryHint) return null;
-  const normalized = primaryHint.trim().toUpperCase();
-  return /^#[0-9A-F]{6}$/.test(normalized) ? normalized : null;
-}
-
-function buildPromptWithPreferredHue(
-  bgPrompt: string,
-  preferredHueHint: string,
-  templateType: 'light-ui' | 'dark-ui',
-): string {
-  const hint = resolvePreferredHueHint(preferredHueHint, templateType);
-  if (!hint) return bgPrompt;
-
-  if (/^#[0-9A-F]{6}$/.test(hint.label)) {
-    return `${bgPrompt.trim().replace(/\s+$/, '')} Use ${hint.label} as the exact dominant brand color. This hex must define the final primary visual color and all supporting accents should align to it.`.trim();
-  }
-
-  const hueDirectiveMap: Record<string, string> = {
-    red: 'Use a dominant festive red palette. Red must be the unmistakable primary visual color, with other accents only supporting it.',
-    orange: 'Use a dominant warm orange palette. Orange must be the unmistakable primary visual color, with other accents only supporting it.',
-    yellow: 'Use a dominant golden yellow palette. Gold must be the unmistakable primary visual color, with other accents only supporting it.',
-    green: 'Use a dominant green palette. Green must be the unmistakable primary visual color, with other accents only supporting it.',
-    teal: 'Use a dominant teal palette. Teal must be the unmistakable primary visual color, with other accents only supporting it.',
-    blue: 'Use a dominant blue palette. Blue must be the unmistakable primary visual color, with other accents only supporting it.',
-    purple: 'Use a dominant purple palette. Purple must be the unmistakable primary visual color, with other accents only supporting it.',
-    pink: 'Use a dominant pink palette. Pink must be the unmistakable primary visual color, with other accents only supporting it.',
-  };
-
-  const directive = hueDirectiveMap[hint.label];
-  if (!directive) return bgPrompt;
-  return `${bgPrompt.trim().replace(/\s+$/, '')} ${directive}`.trim();
 }
 
 export interface ThemePreview {
@@ -167,210 +110,6 @@ export interface ThemePreview {
 interface ThemePreviewFailure {
   directionLabel: string;
   error: string;
-}
-
-export function pickBestThemeCandidate(
-  dominantColors: string[],
-  templateType: 'light-ui' | 'dark-ui',
-  preferredHueHint?: string,
-  semanticSourceText?: string,
-): {
-  primaryColor: string;
-  derivedColors: DerivedColors;
-  report: ReturnType<typeof buildThemeGenerationReport>;
-  triedCandidates: Array<{ hex: string; score: number; passed: boolean }>;
-  enforcedPreferredHue: boolean;
-  enforcementReason?: string;
-} {
-  const explicitHex = typeof semanticSourceText === 'string'
-    ? semanticSourceText.match(/#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/)?.[0]
-    : undefined;
-  if (explicitHex) {
-    const normalizedHex = explicitHex.length === 4
-      ? `#${explicitHex.slice(1).split('').map((char) => char + char).join('')}`.toUpperCase()
-      : explicitHex.toUpperCase();
-    const { primaryHex, derivedColors, report } = buildCandidateOutcome(
-      normalizedHex,
-      templateType,
-      { preservePrimary: true },
-    );
-    return {
-      primaryColor: primaryHex,
-      derivedColors,
-      report,
-      triedCandidates: dominantColors.map((hex) => ({ hex, score: 0, passed: false })),
-      enforcedPreferredHue: false,
-      enforcementReason: `用户明确指定主题色 ${normalizedHex}，已优先使用该颜色。`,
-    };
-  }
-
-  const lockedPrimaryHex = resolveLockedPrimaryHex(preferredHueHint);
-  if (lockedPrimaryHex) {
-    const { primaryHex, derivedColors, report } = buildCandidateOutcome(
-      lockedPrimaryHex,
-      templateType,
-      { preservePrimary: true },
-    );
-    return {
-      primaryColor: primaryHex,
-      derivedColors,
-      report,
-      triedCandidates: dominantColors.map((hex) => ({ hex, score: 0, passed: false })),
-      enforcedPreferredHue: true,
-      enforcementReason: `快捷入口已锁定主题色 ${lockedPrimaryHex}，跳过图片提色候选选择。`,
-    };
-  }
-
-  const festivalRule = resolveFestivalColorRule(semanticSourceText ?? '');
-  const explicitHueHint = resolvePreferredHueHint(semanticSourceText ?? '', templateType)?.label;
-  if (
-    festivalRule
-    && (!explicitHueHint || explicitHueHint === festivalRule.primaryHint)
-  ) {
-    const { primaryHex, derivedColors, report } = buildCandidateOutcome(
-      festivalRule.primaryHex,
-      templateType,
-      { preservePrimary: true },
-    );
-    return {
-      primaryColor: primaryHex,
-      derivedColors,
-      report,
-      triedCandidates: dominantColors.map((hex) => ({ hex, score: 0, passed: false })),
-      enforcedPreferredHue: false,
-      enforcementReason: `命中节日安全主色：${festivalRule.id} → ${festivalRule.primaryHex}`,
-    };
-  }
-
-  const semanticMatch = resolveEnterprisePrimaryFromText(semanticSourceText ?? '');
-  if (semanticMatch?.confidence === 'high') {
-    const { primaryHex, derivedColors, report } = buildCandidateOutcome(
-      semanticMatch.presetHex,
-      templateType,
-      { preservePrimary: true },
-    );
-    return {
-      primaryColor: primaryHex,
-      derivedColors,
-      report,
-      triedCandidates: dominantColors.map((hex) => ({ hex, score: 0, passed: false })),
-      enforcedPreferredHue: false,
-      enforcementReason: semanticMatch.reason,
-    };
-  }
-
-  const ranked = rankPrimaryCandidates(
-    dominantColors,
-    templateType,
-    preferredHueHint,
-    semanticMatch?.confidence === 'medium'
-      ? {
-          hex: semanticMatch.presetHex,
-          family: semanticMatch.family,
-          confidence: 'medium',
-        }
-      : undefined,
-  );
-  const hint = resolvePreferredHueHint(preferredHueHint, templateType);
-  let candidatePool = ranked;
-  const fallbackHex = hint?.fallbackHex
-    ?? pickFallbackPaletteColorByHue(candidatePool[0]?.h)
-    ?? DEFAULT_FALLBACK_BRAND_COLOR;
-
-  if (ranked.length === 0) {
-    const { primaryHex, derivedColors, report } = buildCandidateOutcome(fallbackHex, templateType);
-    return {
-      primaryColor: primaryHex,
-      derivedColors,
-      report,
-      triedCandidates: [],
-      enforcedPreferredHue: Boolean(hint),
-      enforcementReason: hint ? `未识别到匹配 ${hint.label} 的候选主色，已按确认主色校正。` : undefined,
-    };
-  }
-
-  if (hint) {
-    const hueMatched = ranked.filter((candidate) => getHueDistanceDegrees(candidate.h, hint.targetHue) <= hint.tolerance);
-    if (hueMatched.length === 0) {
-      const { primaryHex, derivedColors, report } = buildCandidateOutcome(fallbackHex, templateType);
-      return {
-        primaryColor: primaryHex,
-        derivedColors,
-        report,
-        triedCandidates: ranked.map((candidate) => ({
-          hex: candidate.hex,
-          score: candidate.score,
-          passed: buildCandidateOutcome(candidate.hex, templateType).report.passed,
-        })),
-        enforcedPreferredHue: true,
-        enforcementReason: `生成图片主色偏离已确认的 ${hint.label} 方向，已按确认主色强制校正。`,
-      };
-    }
-    candidatePool = hueMatched;
-  }
-
-  const snappedBest = snapToEnterpriseGreen(candidatePool[0].hex);
-  if (snappedBest) {
-    const { derivedColors, report } = buildCandidateOutcome(
-      snappedBest.snappedHex,
-      templateType,
-      { preservePrimary: true },
-    );
-    return {
-      primaryColor: snappedBest.snappedHex,
-      derivedColors,
-      report,
-      triedCandidates: candidatePool.map((candidate) => ({
-        hex: candidate.hex,
-        score: candidate.score,
-        passed: buildCandidateOutcome(candidate.hex, templateType).report.passed,
-      })),
-      enforcedPreferredHue: false,
-      enforcementReason: snappedBest.reason,
-    };
-  }
-
-  let best = candidatePool[0];
-  let bestOutcome = buildCandidateOutcome(best.hex, templateType);
-  const triedCandidates = [{ hex: best.hex, score: best.score, passed: bestOutcome.report.passed }];
-
-  for (const candidate of candidatePool.slice(1)) {
-    if (bestOutcome.report.passed) break;
-    const outcome = buildCandidateOutcome(candidate.hex, templateType);
-    triedCandidates.push({ hex: candidate.hex, score: candidate.score, passed: outcome.report.passed });
-    if (outcome.report.passed) {
-      best = candidate;
-      bestOutcome = outcome;
-      break;
-    }
-  }
-
-  return {
-    primaryColor: bestOutcome.primaryHex,
-    derivedColors: bestOutcome.derivedColors,
-    report: bestOutcome.report,
-    triedCandidates,
-    enforcedPreferredHue: false,
-  };
-}
-
-function resolveEffectivePreferredHueHint(
-  preferredHueHint: string,
-  bgPrompt: string,
-  templateType: 'light-ui' | 'dark-ui',
-): string {
-  if (preferredHueHint.trim()) return preferredHueHint;
-  return resolvePreferredHueHint(bgPrompt, templateType)?.label ?? '';
-}
-
-function buildSafeImagePrompt(prompt: string): string {
-  if (!/八一|建军节/u.test(prompt)) return prompt;
-  return [
-    '企业夏季纪念主题 OA 登录页背景，庄重现代宣传视觉，16:9 横版宽幅构图。',
-    '画面以蓝白渐变天空、抽象山河轮廓、金色光线、纪念飘带和几何装饰组成，整体干净通透，适合企业办公系统主题背景。',
-    '左侧为清晰的主题文字“8.1”，使用稳重大气的中文黑体，浅金与白色渐变文字，轻微浮雕光影，排版集中且留有呼吸感。',
-    '右侧以柔和光晕、虚化云层、几何线条和大气透视延展，形成电影级光影层次，整体为抽象纪念视觉，庄重、克制、明亮。',
-  ].join(' ');
 }
 
 export async function analyzeImageAsync(imageUrl: string): Promise<ToolResult> {
@@ -676,6 +415,8 @@ function validateToolArgs(tool: string, args: Record<string, unknown>): string |
       return null;
     case 'apply_selected_theme':
       if (!args.imageUrl && !args.selectedImageUrl && !args.url) return 'apply_selected_theme 需要 imageUrl 参数';
+      return null;
+    case 'update_portal_profile':
       return null;
     default:
       return null;
@@ -1083,6 +824,44 @@ export async function executeTool(
       case 'build':
       case 'verify':
         return runExportJobTool(tool, args, onProgress);
+
+      case 'update_portal_profile': {
+        const profileArgs = args as {
+          customerName?: string;
+          customerIndustry?: string;
+          customerFunctions?: string[];
+          portalPurpose?: string;
+          highlightedCards?: string[];
+          visualPreference?: string;
+        };
+        const partial: Record<string, unknown> = {};
+        if (typeof profileArgs.customerName === 'string' && profileArgs.customerName.trim()) {
+          partial.customerName = profileArgs.customerName.trim();
+        }
+        if (typeof profileArgs.customerIndustry === 'string' && profileArgs.customerIndustry.trim()) {
+          partial.customerIndustry = profileArgs.customerIndustry.trim();
+        }
+        if (Array.isArray(profileArgs.customerFunctions)) {
+          partial.customerFunctions = profileArgs.customerFunctions.filter(
+            (f) => typeof f === 'string' && f.trim(),
+          );
+        }
+        if (typeof profileArgs.portalPurpose === 'string' && profileArgs.portalPurpose.trim()) {
+          partial.portalPurpose = profileArgs.portalPurpose.trim();
+        }
+        if (Array.isArray(profileArgs.highlightedCards)) {
+          partial.highlightedCards = profileArgs.highlightedCards.filter(
+            (c) => typeof c === 'string' && c.trim(),
+          );
+        }
+        if (typeof profileArgs.visualPreference === 'string' && profileArgs.visualPreference.trim()) {
+          partial.visualPreference = profileArgs.visualPreference.trim();
+        }
+        return {
+          success: true,
+          data: { profile: partial },
+        };
+      }
 
       default:
         return { success: false, error: `未知工具: ${tool}` };

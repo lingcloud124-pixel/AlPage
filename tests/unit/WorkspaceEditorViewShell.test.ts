@@ -1,0 +1,51 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
+
+const projectRoot = process.cwd();
+
+describe('workspace editor view shell', () => {
+  test('preview panel exposes a workspace design mode switch and editor shell container', () => {
+    const html = fs.readFileSync(path.join(projectRoot, 'web/index.html'), 'utf8');
+
+    expect(html).toContain('id="workspacePreviewModeBtn"');
+    expect(html).toContain('id="workspaceDesignModeBtn"');
+    expect(html).toContain('id="workspaceEditorView"');
+    expect(html).toContain('id="workspaceEditorAddBtn"');
+    expect(html).toContain('id="workspacePropertiesTopbarBtn"');
+    expect(html).toContain('id="workspaceCardCanvas"');
+  });
+
+  test('styles define workspace editor toolbar, canvas and static card shell sections', () => {
+    const css = readAllCSS();
+
+    expect(css).toContain('.workspace-mode-switch');
+    expect(css).toContain('.workspace-editor-view');
+    expect(css).toContain('.workspace-editor-toolbar');
+    expect(css).toContain('.workspace-card-canvas');
+    expect(css).toContain('.workspace-editor-card');
+    expect(css).toContain('.workspace-editor-card-header');
+    expect(css).toContain('.workspace-editor-card-content');
+  });
+
+  test('runtime renders the editor canvas and default project seeds include starter cards', () => {
+    const runtime = fs.readFileSync(path.join(projectRoot, 'web/src/workspace/runtime.ts'), 'utf8');
+    const projectManager = fs.readFileSync(path.join(projectRoot, 'web/src/project-manager.ts'), 'utf8');
+
+    expect(runtime).toContain('export function renderWorkspaceEditorShell');
+    expect(runtime).toContain('workspaceCardCanvas');
+    expect(projectManager).toContain('message-todo');
+    expect(projectManager).toContain('news-carousel');
+    expect(projectManager).toContain('my-schedule');
+    expect(projectManager).toContain('quick-access');
+  });
+
+  test('main boot wires workspace design mode toggle and shell rendering', () => {
+    const source = fs.readFileSync(path.join(projectRoot, 'web/src/main.ts'), 'utf8');
+
+    expect(source).toContain('setupWorkspaceEditorShell');
+    expect(source).toContain('renderWorkspaceEditorShell');
+    expect(source).toContain('ensureProjectWorkspaceReady');
+  });
+});

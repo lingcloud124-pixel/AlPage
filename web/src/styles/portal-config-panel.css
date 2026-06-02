@@ -1,0 +1,15 @@
+#chatPanel.is-config-collapsed
+{
+  width: 72px;
+  flex: 0 0 72px;
+  min-width: 72px;
+  overflow: hidden;
+}
+
+#chatPanel.is-config-collapsed .chat-header,
+#chatPanel.is-config-collapsed .chat-default-view,
+#chatPanel.is-config-collapsed .chat-conversation-view
+{
+  opacity: 0;
+  pointer-events: none;
+}

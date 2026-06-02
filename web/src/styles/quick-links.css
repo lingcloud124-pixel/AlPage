@@ -1,0 +1,131 @@
+/* Quick Links */
+.quick-links
+{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 15px;
+  background-color: white;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+.quick-link-item
+{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 94px;
+}
+
+.quick-link-item span
+{
+  font-size: 14px;
+  color: var(--header-font-color);
+  text-align: center;
+}
+
+.quick-link-item:first-child span
+{
+  color: var(--primary-color);
+}
+
+.link-icon
+{
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #f0f0f0;
+}
+
+.page-header-main .header-gradient-left
+{
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 859px;
+  height: 60px;
+  background: linear-gradient(to right, var(--gradient-start) 0%, var(--gradient-mid) 50%, transparent 100%);
+  z-index: 1;
+}
+
+.page-header-main .header-gradient-right
+{
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 920px;
+  height: 60px;
+  background: linear-gradient(to left, var(--gradient-start) 0%, var(--gradient-mid) 50%, transparent 100%);
+  z-index: 1;
+}
+
+.page-header-main .header-content
+{
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  width: 100%;
+  z-index: 2;
+}
+
+.page-header-main .logo-placeholder
+{
+  font-weight: bold;
+  margin-right: 30px;
+  color: var(--header-font-color);
+}
+
+.page-header-main .main-nav
+{
+  display: flex;
+  gap: 30px;
+  margin-right: auto;
+}
+
+.page-header-main .nav-item
+{
+  color: var(--auxiliary-gray-dark);
+  text-decoration: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+.page-header-main .nav-item.active
+{
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+.page-header-main .search-bar input
+{
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  width: 200px;
+  font-size: 14px;
+}
+
+.page-header-main .header-icons
+{
+  display: flex;
+  gap: 20px;
+  margin-left: 20px;
+}
+
+.page-header-main .icon-btn
+{
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.main-layout
+{
+  display: flex;
+  height: calc(100% - 60px);
+}
+

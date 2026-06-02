@@ -1,13 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { readAllCSS } from '../helpers/read-css';
 
 const projectRoot = process.cwd();
 
 describe('web ui icon consistency', () => {
   test('uses a unified icon system for workbench chrome instead of emoji/text glyph shortcuts', () => {
     const html = fs.readFileSync(path.join(projectRoot, 'web/index.html'), 'utf8');
-    const styles = fs.readFileSync(path.join(projectRoot, 'web/src/styles.css'), 'utf8');
+    const styles = readAllCSS();
 
     expect(html).not.toContain('⚙ 设置');
     expect(styles).toContain('.ui-icon-button');
